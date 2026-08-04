@@ -229,3 +229,33 @@ def subscription_tiers(request):
         'published_pages': pages,
         'limits': limits,
     }
+
+
+
+
+def brand_context(request):
+    """
+    Add brand_name to all template contexts.
+    """
+    context = {
+        'brand_name': 'My Store',  # Default fallback
+        'page': None,
+    }
+    
+    # Check if we have a published_page in the request (set by middleware)
+    if hasattr(request, 'published_page') and request.published_page:
+        page = request.published_page
+        context['brand_name'] = page.brand_name or 'My Store'
+        context['page'] = page
+    
+    # For editor, check if page is in request
+    elif hasattr(request, 'page'):
+        context['brand_name'] = getattr(request.page, 'brand_name', 'My Store')
+        context['page'] = request.page
+    
+    # Check session for brand_name (for onboarding)
+    elif request.session.get('brand_name'):
+        context['brand_name'] = request.session.get('brand_name')
+    
+    return context
+

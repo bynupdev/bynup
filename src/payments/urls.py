@@ -181,4 +181,9 @@ path('api/tax/validate-exemption/<str:subdomain>/', views.api_validate_tax_exemp
     path('checkout/cryptomus/<str:tier>/<str:billing_period>/', views.cryptomus_checkout, name='cryptomus_checkout_period'),
     path('webhook/cryptomus/', views.cryptomus_webhook, name='cryptomus_webhook'),
     path('payment-status/<str:transaction_id>/', views.cryptomus_payment_status, name='payment_status'),
+
+
+    # payments/urls.py - Add this URL
+
+path('create-chat-order/<str:subdomain>/', views.create_chat_order, name='create_chat_order'),
 ]

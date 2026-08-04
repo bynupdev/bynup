@@ -371,17 +371,39 @@ class PublishedPage(models.Model):
     #     super().save(*args, **kwargs)
 
     def save(self, *args, **kwargs):
+        print(f"\n🔍 [PublishedPage.save] ===== SAVE CALLED =====")
+        print(f"   self.id: {self.id}")
+        print(f"   self.brand_name BEFORE save: '{self.brand_name}'")
+        print(f"   self.subdomain BEFORE save: '{self.subdomain}'")
+        
+        # Check if this is a new instance
+        is_new = self.pk is None
+        print(f"   Is new instance: {is_new}")
+        
+        # Only generate subdomain if it's empty
         if not self.subdomain:
-            # Generate subdomain from brand name
+            print("   🔑 subdomain is empty - generating from brand name")
             base_subdomain = slugify(self.brand_name)
             counter = 1
             self.subdomain = base_subdomain
             
-            # Ensure uniqueness
             while PublishedPage.objects.filter(subdomain=self.subdomain).exists():
                 self.subdomain = f"{base_subdomain}-{counter}"
                 counter += 1
-        super().save(*args, **kwargs)
+            
+            print(f"   Generated subdomain: '{self.subdomain}'")
+        else:
+            print(f"   ✅ subdomain already set: '{self.subdomain}'")
+        
+        # Call the original save
+        result = super().save(*args, **kwargs)
+        
+        print(f"   ✅ Save complete!")
+        print(f"   self.brand_name AFTER save: '{self.brand_name}'")
+        print(f"   self.subdomain AFTER save: '{self.subdomain}'")
+        print("="*60 + "\n")
+        
+        return result
 
     def get_absolute_url(self):
         """Get the absolute URL for this published page"""
@@ -1043,19 +1065,68 @@ class ProductSpecification(models.Model):
 class ProductVariant(models.Model):
     """Product variants for different options"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    options = models.JSONField(default=dict, help_text="e.g., {'Size': 'Large', 'Color': 'Red'}")
+
     sku = models.CharField(max_length=100, unique=True)
-    option1 = models.CharField(max_length=100, blank=True)
-    option2 = models.CharField(max_length=100, blank=True)
-    option3 = models.CharField(max_length=100, blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    barcode = models.CharField(max_length=100, blank=True)
+
+    option1 = models.CharField(max_length=100, null=True, blank=True)
+    option2 = models.CharField(max_length=100, null=True, blank=True)
+    option3 = models.CharField(max_length=100, null=True, blank=True)
+
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     compare_at_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    inventory = models.OneToOneField(ProductInventory, on_delete=models.CASCADE)
+    cost_per_item = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    inventory = models.OneToOneField(ProductInventory, on_delete=models.CASCADE, null=True, blank=True)
+    # Inventory - separate stock for each variant
+    quantity = models.IntegerField(default=0)
+    track_quantity = models.BooleanField(default=True)
+    low_stock_threshold = models.IntegerField(default=5)
+
+    # Media
+    image = models.ImageField(upload_to='variant_images/', blank=True, null=True)
+
+    # Shipping
+    weight = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    length = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    width = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    height = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
     cj_vid = models.CharField(max_length=100, null=True, blank=True)
-    image = models.ImageField(upload_to='product_variants/', storage=MediaCloudinaryStorage(), blank=True, null=True)
+    # image = models.ImageField(upload_to='product_variants/', storage=MediaCloudinaryStorage(), blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['id']
     
     def __str__(self):
-        return f"{self.product.title} - {self.option1} {self.option2} {self.option3}"
+        option_str = ', '.join([f"{k}: {v}" for k, v in self.options.items()])
+        return f"{self.product.title} - {option_str}"
+    
+    def save(self, *args, **kwargs):
+        if not self.sku:
+            # Generate SKU like: PROD123-Size-Large-Color-Red
+            base = f"{self.product.id}"
+            for key, value in self.options.items():
+                base += f"-{value[:3]}"
+            self.sku = f"VAR-{base}-{int(timezone.now().timestamp())}"
+        super().save(*args, **kwargs)
+    
+    @property
+    def in_stock(self):
+        if not self.track_quantity:
+            return True
+        return self.quantity > 0
+    
+    @property
+    def is_on_sale(self):
+        return self.compare_at_price and self.compare_at_price > self.price
+    
+    def get_price(self):
+        """Get variant price or fallback to product price"""
+        return self.price if self.price else self.product.price
 
 class ProductReview(models.Model):
     """Customer reviews for products"""
@@ -1363,7 +1434,10 @@ class CartItem(models.Model):
     """Items in shopping cart"""
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='cart_items')
+
     quantity = models.IntegerField(default=1)
+    selected_options = models.JSONField(default=dict, blank=True)  # Store selected option values for display
     selected_color = models.CharField(max_length=50, blank=True, null=True)
     selected_size = models.CharField(max_length=50, blank=True, null=True)
     added_at = models.DateTimeField(auto_now_add=True)
@@ -1379,8 +1453,21 @@ class CartItem(models.Model):
             variant_info += f" - Size: {self.selected_size}"
         return f"{self.quantity}x {self.product.title}{variant_info}"
     
+    def get_price(self):
+        """Get the actual price (variant price > product price)"""
+        if self.variant and self.variant.price:
+            return self.variant.price
+        return self.product.price
+    
     def get_total_price(self):
-        return self.quantity * self.product.price
+        """Get total price for this item"""
+        return self.quantity * self.get_price()
+    
+    def get_variant_image(self):
+        """Get variant image if available"""
+        if self.variant and self.variant.image:
+            return self.variant.image.url
+        return None
 
     def get_item(self, product_id):
         """Get a specific cart item by product ID"""
@@ -2681,6 +2768,49 @@ class ContactSubmission(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.subject}"
+
+
+
+# Add at the end of your models.py file
+
+class ProductOption(models.Model):
+    """Product option types like Size, Color, Material"""
+    OPTION_TYPES = [
+        ('text', 'Text (Dropdown)'),
+        ('color', 'Color Swatch'),
+        ('button', 'Button (Pills)'),
+        ('image', 'Image Swatch'),
+    ]
+    
+    page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='product_options')
+    name = models.CharField(max_length=100, help_text="e.g., Size, Color, Material")
+    option_type = models.CharField(max_length=20, choices=OPTION_TYPES, default='text')
+    display_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['display_order']
+        unique_together = ['page', 'name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.page.brand_name})"
+
+
+class ProductOptionValue(models.Model):
+    """Individual option values like Small/Red/Cotton"""
+    option = models.ForeignKey(ProductOption, on_delete=models.CASCADE, related_name='values')
+    value = models.CharField(max_length=100)
+    color_code = models.CharField(max_length=20, blank=True, null=True, help_text="For color swatches")
+    image = models.ImageField(upload_to='option_images/', blank=True, null=True)
+    display_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['display_order']
+        unique_together = ['option', 'value']
+    
+    def __str__(self):
+        return f"{self.option.name}: {self.value}"
 
 
 

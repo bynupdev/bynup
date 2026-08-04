@@ -91,7 +91,21 @@ urlpatterns = [
     path('edit-product-category/<str:subdomain>/<int:category_id>/', 
          views.edit_product_category, name='edit_product_category'),
     path('delete-product-category/<str:subdomain>/<int:category_id>/', 
-         views.delete_product_category, name='delete_product_category'),  
+         views.delete_product_category, name='delete_product_category'), 
+
+     # Variant Management URLs
+     path('variants-simple/<str:subdomain>/<int:product_id>/', views.manage_variants_simple, name='manage_variants_simple'),
+    path('api/add-variant-simple/<str:subdomain>/<int:product_id>/', views.add_variant_simple, name='add_variant_simple'),
+    path('api/upload-variant-image/<str:subdomain>/<int:variant_id>/', views.upload_variant_image, name='upload_variant_image'),
+
+    path('variants/<str:subdomain>/<int:product_id>/', views.manage_variants, name='manage_variants'),
+    path('api/create-option/<str:subdomain>/', views.create_product_option, name='create_product_option'),
+    path('api/bulk-update-variants/<str:subdomain>/<int:product_id>/', views.bulk_update_variants, name='bulk_update_variants'),
+    path('api/delete-option/<str:subdomain>/<int:option_id>/', views.delete_option, name='delete_option'),
+    path('api/quick-edit-variant/<str:subdomain>/<int:variant_id>/', views.quick_edit_variant, name='quick_edit_variant'),
+    path('api/delete-variant/<str:subdomain>/<int:variant_id>/', views.delete_variant, name='delete_variant'),
+    path('api/duplicate-variant/<str:subdomain>/<int:variant_id>/', views.duplicate_variant, name='duplicate_variant'),
+    path('api/get-variant/<str:subdomain>/<int:product_id>/', views.get_product_variant, name='get_product_variant'), 
 
 
 
@@ -195,7 +209,9 @@ urlpatterns = [
     path('terms/', views.terms_of_service, name='terms'),
 
     path('demo/', views.demo_page, name='demo'),
-
+    path('onboarding/', views.onboarding_wizard, name='onboarding'),
+    path('onboarding/launch-editor/', views.launch_editor, name='launch_editor'),
+    path('templates/api/', views.get_templates_api, name='templates_api'),
 
      
     path('', views.public_page, name='public_page'),

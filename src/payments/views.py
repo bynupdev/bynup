@@ -19,6 +19,9 @@ from django.db.models import Avg, Sum, Count, Max, Min, StdDev, Variance, Q, F
 from django.conf import settings
 import json
 import uuid
+# Add these imports at the top of payments/views.py
+from urllib.parse import quote
+import re
 
 from builder.models import PublishedPage
 from .models import PaymentGateway, Order, OrderItem, Transaction
@@ -246,66 +249,106 @@ def get_client_ip(request):
     return ip
 
 
-
 def create_order_from_cart(page, cart_data):
     """Create order from cart data"""
-    order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
-    order_data=cart_data.get()
-    print(f"Order data is {order_data}")
-    order = Order.objects.create(
-        page=page,
-        order_number=order_number,
-        customer_email=cart_data.get('customer_email', ''),
-        customer_name=cart_data.get('customer_name', ''),
-        customer_phone=cart_data.get('customer_phone', ''),
-        customer_address=cart_data.get('customer_address', ''),
-        customer_city=cart_data.get('customer_city', ''),
-        customer_state=cart_data.get('customer_state', ''),
-        customer_zip=cart_data.get('customer_zip', ''),
-        customer_country=cart_data.get('customer_country', 'US'),
-        
-        # Delivery information (copy from customer if not separate)
-        delivery_address=cart_data.get('delivery_address', cart_data.get('customer_address', '')),
-        delivery_city=cart_data.get('delivery_city', cart_data.get('customer_city', '')),
-        delivery_state=cart_data.get('delivery_state', cart_data.get('customer_state', '')),
-        delivery_zip=cart_data.get('delivery_zip', cart_data.get('customer_zip', '')),
-        delivery_country=cart_data.get('delivery_country', cart_data.get('customer_country', 'US')),
-        delivery_notes=cart_data.get('delivery_notes', ''),
-        
-        # Pricing
-        subtotal=cart_data.get('subtotal', 0),
-        tax_amount=cart_data.get('tax_amount', 0),
-        shipping_amount=cart_data.get('shipping_amount', 0),
-        discount_amount=cart_data.get('discount_amount', 0),
-        total_amount=cart_data.get('total_amount', 0),
-        
-        # Payment method
-        payment_method=cart_data.get('payment_method', 'stripe'),
-        
-        # Additional metadata
-        ip_address=cart_data.get('ip_address'),
-        user_agent=cart_data.get('user_agent', ''),
-        referrer=cart_data.get('referrer', ''),
-        utm_source=cart_data.get('utm_source', ''),
-        utm_medium=cart_data.get('utm_medium', ''),
-        utm_campaign=cart_data.get('utm_campaign', ''),
-    )
+    # This function expects page and cart_data
+    # Make sure it handles both instant and cart checkout types
     
-    # Create order items
-    for item in cart_data.get('items', []):
-        print(f"OrderItem data is {item}")
+    order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Check if it's instant checkout (has product)
+    if cart_data.get('checkout_type') == 'instant' and cart_data.get('product'):
+        product = cart_data.get('product')
+        customer_info = cart_data.get('customer', {})
+        
+        order = Order.objects.create(
+            page=page,
+            order_number=order_number,
+            customer_email=customer_info.get('email', ''),
+            customer_name=customer_info.get('name', ''),
+            phone=customer_info.get('phone', ''),
+            customer_address=customer_info.get('address', ''),
+            customer_city=customer_info.get('city', ''),
+            customer_state=customer_info.get('state', ''),
+            customer_zip=customer_info.get('zip', ''),
+            customer_country=customer_info.get('country', 'US'),
+            country_iso=customer_info.get('country_iso', ''),
+            delivery_address=customer_info.get('delivery_address', customer_info.get('address', '')),
+            delivery_city=customer_info.get('delivery_city', customer_info.get('city', '')),
+            delivery_state=customer_info.get('delivery_state', customer_info.get('state', '')),
+            delivery_zip=customer_info.get('delivery_zip', customer_info.get('zip', '')),
+            delivery_country=customer_info.get('country', 'US'),
+            delivery_notes=customer_info.get('delivery_notes', ''),
+            subtotal=cart_data.get('subtotal', product.get('price', 0) * product.get('quantity', 1)),
+            tax_amount=cart_data.get('tax_amount', 0),
+            shipping_amount=cart_data.get('shipping_amount', 0),
+            total_amount=cart_data.get('total_amount', product.get('price', 0) * product.get('quantity', 1)),
+            payment_method=cart_data.get('payment_method', 'social_media'),
+            vid=product.get('cj_vid', ''),
+        )
+        
+        # Create order item
         OrderItem.objects.create(
             order=order,
-            product_id=item.get('id', ''),
-            product_title=item.get('title', ''),
-            product_description=item.get('description', ''),
-            product_price=item.get('price', 0),
-            quantity=item.get('quantity', 1),
-            total_price=item.get('total_price', 0),
-            product_variant=item.get('variant', ''),
-            product_sku=item.get('sku', ''),
-            product_image=item.get('image', ''),
+            product_id=product.get('id', ''),
+            vid=product.get('cj_vid', ''),
+            product_title=product.get('title', 'Product'),
+            product_description=product.get('description', ''),
+            product_price=product.get('price', 0),
+            quantity=product.get('quantity', 1),
+            total_price=product.get('total_price', product.get('price', 0) * product.get('quantity', 1)),
+            selected_color=product.get('selected_color', ''),
+            selected_size=product.get('selected_size', ''),
+            product_variant=f"{product.get('selected_color', '')} {product.get('selected_size', '')}".strip(),
         )
+        
+    else:
+        # Cart checkout
+        customer_info = cart_data.get('customer', {})
+        
+        order = Order.objects.create(
+            page=page,
+            order_number=order_number,
+            customer_email=customer_info.get('email', ''),
+            customer_name=customer_info.get('name', ''),
+            phone=customer_info.get('phone', ''),
+            customer_address=customer_info.get('address', ''),
+            customer_city=customer_info.get('city', ''),
+            customer_state=customer_info.get('state', ''),
+            customer_zip=customer_info.get('zip', ''),
+            customer_country=customer_info.get('country', 'US'),
+            country_iso=customer_info.get('country_iso', ''),
+            delivery_address=customer_info.get('delivery_address', customer_info.get('address', '')),
+            delivery_city=customer_info.get('delivery_city', customer_info.get('city', '')),
+            delivery_state=customer_info.get('delivery_state', customer_info.get('state', '')),
+            delivery_zip=customer_info.get('delivery_zip', customer_info.get('zip', '')),
+            delivery_country=customer_info.get('country', 'US'),
+            delivery_notes=customer_info.get('delivery_notes', ''),
+            subtotal=cart_data.get('subtotal', 0),
+            tax_amount=cart_data.get('tax_amount', 0),
+            shipping_amount=cart_data.get('shipping_amount', 0),
+            total_amount=cart_data.get('total_amount', 0),
+            payment_method=cart_data.get('payment_method', 'social_media'),
+            vid=cart_data.get('vid', ''),
+        )
+        
+        # Create order items from cart
+        for item in cart_data.get('items', []):
+            OrderItem.objects.create(
+                order=order,
+                product_id=item.get('id', ''),
+                vid=item.get('cj_vid', ''),
+                product_title=item.get('title', 'Product'),
+                product_description=item.get('description', ''),
+                product_price=item.get('price', 0),
+                quantity=item.get('quantity', 1),
+                total_price=item.get('total_price', item.get('price', 0) * item.get('quantity', 1)),
+                selected_color=item.get('selected_color', ''),
+                selected_size=item.get('selected_size', ''),
+                product_variant=f"{item.get('selected_color', '')} {item.get('selected_size', '')}".strip(),
+                product_sku=item.get('sku', ''),
+                product_image=item.get('image_url', ''),
+            )
     
     return order
 
@@ -488,9 +531,10 @@ import json
     
 #     return render(request, 'payments/payment_selection.html', context)
 
+# payments/views.py - Update the payment_selection view
 
 def payment_selection(request, subdomain):
-    """Payment method selection page"""
+    """Payment method selection page with Pay Via Chat integration"""
     page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
     
     # Get available payment gateways
@@ -504,13 +548,161 @@ def payment_selection(request, subdomain):
     if customer_info:
         order_data['customer'] = customer_info
     
+    # ========== GET SOCIAL MEDIA PLATFORMS ==========
+    social_gateway = page.payment_gateways.filter(
+        gateway_type='social_media',
+        is_active=True
+    ).first()
+    
+    platform_messages = {}
+    platform_count = 0
+    
+    if social_gateway:
+        # Get enabled platforms
+        platforms = social_gateway.social_media_platforms or []
+        
+        # Get order for message prefill
+        order_number = request.session.get('last_order_number', '')
+        order = None
+        if order_number:
+            try:
+                order = Order.objects.get(order_number=order_number, page=page)
+            except Order.DoesNotExist:
+                pass
+        
+        # Build order message
+        order_message = build_order_message(order, order_data, customer_info)
+        
+        # Encode message for URL
+        encoded_message = quote(order_message)
+        
+        for platform in platforms:
+            platform_key = platform.lower()
+            
+            if platform_key == 'whatsapp':
+                phone = social_gateway.whatsapp_number or ''
+                if phone:
+                    # Clean phone number (remove non-digits)
+                    phone = re.sub(r'\D', '', phone)
+                    if phone:
+                        platform_messages['whatsapp'] = {
+                            'icon': 'fab fa-whatsapp',
+                            'display_name': 'WhatsApp',
+                            'username': phone,
+                            'business_name': social_gateway.whatsapp_business_name or page.brand_name,
+                            'link': f"https://wa.me/{phone}?text={encoded_message}"
+                        }
+                        platform_count += 1
+                        
+            elif platform_key == 'facebook':
+                page_id = social_gateway.facebook_page_id or ''
+                if page_id:
+                    platform_messages['facebook'] = {
+                        'icon': 'fab fa-facebook-messenger',
+                        'display_name': 'Messenger',
+                        'username': social_gateway.facebook_username or page_id,
+                        'business_name': social_gateway.whatsapp_business_name or page.brand_name,
+                        'link': f"https://m.me/{page_id}?ref=order_{order_number}"
+                    }
+                    platform_count += 1
+                    
+            elif platform_key == 'instagram':
+                username = social_gateway.instagram_username or ''
+                if username:
+                    platform_messages['instagram'] = {
+                        'icon': 'fab fa-instagram',
+                        'display_name': 'Instagram',
+                        'username': username,
+                        'business_name': social_gateway.whatsapp_business_name or page.brand_name,
+                        'link': f"https://www.instagram.com/{username}/"
+                    }
+                    platform_count += 1
+                    
+            elif platform_key == 'telegram':
+                username = social_gateway.telegram_username or ''
+                if username:
+                    # Remove @ if present
+                    username = username.lstrip('@')
+                    platform_messages['telegram'] = {
+                        'icon': 'fab fa-telegram',
+                        'display_name': 'Telegram',
+                        'username': username,
+                        'business_name': social_gateway.whatsapp_business_name or page.brand_name,
+                        'link': f"https://t.me/{username}"
+                    }
+                    platform_count += 1
+                    
+            elif platform_key == 'x':
+                username = social_gateway.x_username or ''
+                if username:
+                    username = username.lstrip('@')
+                    platform_messages['x'] = {
+                        'icon': 'fab fa-x-twitter',
+                        'display_name': 'X.com',
+                        'username': username,
+                        'business_name': social_gateway.whatsapp_business_name or page.brand_name,
+                        'link': f"https://twitter.com/{username}"
+                    }
+                    platform_count += 1
+    
     context = {
         'page': page,
         'available_gateways': available_gateways,
         'order_data': order_data,
+        'platform_messages': platform_messages,
+        'platform_count': platform_count,
+        'customer_info': customer_info,
     }
-
+    
     return render(request, 'payments/payment_selection.html', context)
+
+
+def build_order_message(order, order_data, customer_info):
+    """Build prefilled order message for chat platforms"""
+    message = "Hello! I would like to place an order.\n\n"
+    
+    if order:
+        message += f"📦 Order #: {order.order_number}\n"
+        message += f"👤 Customer: {order.customer_name}\n"
+        message += f"📧 Email: {order.customer_email}\n"
+        message += f"📱 Phone: {order.phone}\n\n"
+        
+        message += "🛍️ Order Items:\n"
+        for item in order.items.all():
+            variant = ""
+            if item.selected_color:
+                variant += f" Color: {item.selected_color}"
+            if item.selected_size:
+                variant += f" Size: {item.selected_size}"
+            message += f"  • {item.quantity}x {item.product_title}{variant} - ${item.total_price}\n"
+        
+        message += f"\n💰 Total: ${order.total_amount}\n"
+        message += f"📍 Delivery: {order.delivery_address or order.customer_address}\n"
+        if order.delivery_city or order.customer_city:
+            message += f"📍 City: {order.delivery_city or order.customer_city}\n"
+        if order.delivery_state or order.customer_state:
+            message += f"📍 State: {order.delivery_state or order.customer_state}\n"
+        
+    else:
+        # Fallback from order_data
+        if order_data.get('checkout_type') == 'instant':
+            product = order_data.get('product', {})
+            message += f"🛍️ Product: {product.get('title', 'Product')}\n"
+            message += f"💰 Price: ${product.get('price', 0)}\n"
+        else:
+            cart = order_data.get('cart', {})
+            message += "🛍️ Items:\n"
+            for item in cart.get('items', []):
+                message += f"  • {item.get('quantity', 1)}x {item.get('title', 'Product')} - ${item.get('price', 0)}\n"
+            message += f"\n💰 Total: ${cart.get('total_amount', 0)}\n"
+        
+        if customer_info:
+            message += f"\n👤 Customer: {customer_info.get('name', '')}\n"
+            message += f"📧 Email: {customer_info.get('email', '')}\n"
+            message += f"📱 Phone: {customer_info.get('phone', '')}\n"
+            message += f"📍 Address: {customer_info.get('address', '')}\n"
+    
+    return message
 
 
 
@@ -5624,3 +5816,49 @@ def cryptomus_payment_status(request, transaction_id):
         'currency': transaction.currency,
         'completed': transaction.status == 'completed',
     })
+
+
+
+
+
+
+
+
+
+
+# payments/views.py - Add this new view
+
+@csrf_exempt
+def create_chat_order(request, subdomain):
+    """Create order for chat payment without processing payment"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'})
+    
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+        data = json.loads(request.body)
+        
+        order_data = data.get('order_data', {})
+        customer_info = data.get('customer', {})
+        
+        # Merge customer info into order_data
+        if customer_info:
+            order_data['customer'] = customer_info
+        
+        # Create order - pass the order_data directly
+        order = create_order_from_cart(page, order_data)
+        
+        # Store order number in session
+        request.session['last_order_number'] = order.order_number
+        
+        return JsonResponse({
+            'success': True,
+            'order_number': order.order_number,
+            'order_id': order.id
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+    

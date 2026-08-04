@@ -1,0 +1,1212 @@
+<!-- builder/templates/builder/variants_simple.html -->
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Manage Variants - {{ product.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ====== MAIN LAYOUT ====== */
+    .variant-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .page-header h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .page-header .subtitle {
+        color: #64748b;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    
+    /* ====== ADD VARIANT FORM ====== */
+    .add-variant-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+    
+    .add-variant-card.collapsed {
+        padding: 16px 24px;
+        cursor: pointer;
+    }
+    
+    .add-variant-card.collapsed .form-content {
+        display: none;
+    }
+    
+    .add-variant-card .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .add-variant-card .card-header h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+        color: #1e293b;
+    }
+    
+    .add-variant-card .card-header .toggle-icon {
+        transition: transform 0.3s ease;
+        font-size: 18px;
+        color: #94a3b8;
+    }
+    
+    .add-variant-card.collapsed .card-header .toggle-icon {
+        transform: rotate(180deg);
+    }
+    
+    .form-content {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .form-row.three-col {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .form-group label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #475569;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+        background: white;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+    
+    .form-group .help-text {
+        font-size: 12px;
+        color: #94a3b8;
+    }
+    
+    /* Image upload */
+    .image-upload-area {
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f8fafc;
+        position: relative;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .image-upload-area:hover {
+        border-color: #4361ee;
+        background: #f1f5f9;
+    }
+    
+    .image-upload-area.has-image {
+        border-color: #22c55e;
+        background: #f0fdf4;
+        padding: 8px;
+    }
+    
+    .image-upload-area img {
+        max-width: 100%;
+        max-height: 120px;
+        border-radius: 4px;
+    }
+    
+    .image-upload-area .placeholder {
+        color: #94a3b8;
+        font-size: 14px;
+    }
+    
+    .image-upload-area .placeholder i {
+        font-size: 32px;
+        display: block;
+        margin-bottom: 8px;
+        color: #cbd5e1;
+    }
+    
+    .image-upload-area input[type="file"] {
+        display: none;
+    }
+    
+    .image-upload-area .remove-image {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .image-upload-area.has-image .remove-image {
+        display: flex;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        justify-content: flex-end;
+    }
+    
+    .btn {
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .btn-primary {
+        background: #4361ee;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #3a56d4;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+    
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #475569;
+    }
+    
+    .btn-secondary:hover {
+        background: #cbd5e1;
+    }
+    
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+    
+    .btn-outline {
+        background: transparent;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+    }
+    
+    .btn-outline:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+    
+    .btn-success {
+        background: #22c55e;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #16a34a;
+    }
+    
+    /* ====== VARIANT LIST ====== */
+    .variant-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .variant-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .variant-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    .variant-card .variant-image {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .variant-card .variant-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .variant-card .variant-image .no-image {
+        color: #94a3b8;
+        font-size: 24px;
+    }
+    
+    .variant-card .variant-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .variant-card .variant-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .variant-card .option-tag {
+        background: #f1f5f9;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #475569;
+    }
+    
+    .variant-card .option-tag strong {
+        color: #1e293b;
+    }
+    
+    .variant-card .variant-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        font-size: 13px;
+        color: #64748b;
+    }
+    
+    .variant-card .variant-details .price {
+        font-weight: 600;
+        color: #1e293b;
+    }
+    
+    .variant-card .variant-details .compare {
+        text-decoration: line-through;
+        color: #94a3b8;
+    }
+    
+    .variant-card .variant-details .stock {
+        color: #22c55e;
+    }
+    
+    .variant-card .variant-details .stock.low {
+        color: #f59e0b;
+    }
+    
+    .variant-card .variant-details .stock.out {
+        color: #ef4444;
+    }
+    
+    .variant-card .variant-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    
+    .variant-card .variant-actions .btn {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    /* ====== EMPTY STATE ====== */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 12px;
+        border: 2px dashed #e2e8f0;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #cbd5e1;
+        margin-bottom: 16px;
+    }
+    
+    .empty-state h3 {
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+        color: #94a3b8;
+        margin-bottom: 20px;
+    }
+    
+    /* ====== EDIT MODAL ====== */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: white;
+        border-radius: 16px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 32px;
+        animation: slideUp 0.3s ease;
+    }
+    
+    .modal-content .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .modal-content .modal-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .modal-content .modal-header .close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #94a3b8;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    
+    .modal-content .modal-header .close:hover {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    
+    .modal-content .modal-footer {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* ====== RESPONSIVE ====== */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-row.three-col {
+            grid-template-columns: 1fr;
+        }
+        
+        .variant-card {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+            padding: 16px;
+        }
+        
+        .variant-card .variant-image {
+            align-self: center;
+        }
+        
+        .variant-card .variant-actions {
+            justify-content: center;
+            margin-top: 8px;
+        }
+        
+        .variant-card .variant-details {
+            justify-content: center;
+        }
+        
+        .variant-card .variant-options {
+            justify-content: center;
+        }
+        
+        .modal-content {
+            padding: 20px;
+            margin: 16px;
+        }
+    }
+    
+    /* ====== NOTIFICATION ====== */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .notification.success {
+        background: #22c55e;
+    }
+    
+    .notification.error {
+        background: #ef4444;
+    }
+    
+    .notification.info {
+        background: #3b82f6;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="variant-page">
+    <!-- Hidden fields for JavaScript -->
+    <input type="hidden" id="page-subdomain" value="{{ page.subdomain }}">
+    <input type="hidden" id="product-id" value="{{ product.id }}">
+    
+    <!-- ====== HEADER ====== -->
+    <div class="page-header">
+        <div>
+            <h1>
+                <i class="fas fa-cubes me-2 text-primary"></i>
+                Manage Variants
+            </h1>
+            <div class="subtitle">
+                {{ product.title }} • 
+                <span class="text-success">{{ variants.count }}</span> variants
+                {% if variants.count == 0 %}
+                    <span class="text-muted">— Click "Add Variant" to get started</span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'product_editor' subdomain=page.subdomain product_id=product.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back
+            </a>
+        </div>
+    </div>
+    
+    <!-- ====== ADD VARIANT FORM ====== -->
+    <div class="add-variant-card" id="addVariantCard">
+        <div class="card-header" onclick="toggleAddVariant()">
+            <h3>
+                <i class="fas fa-plus-circle me-2 text-primary"></i>
+                <span id="addVariantTitle">Add New Variant</span>
+            </h3>
+            <span class="toggle-icon" id="toggleIcon">
+                <i class="fas fa-chevron-down"></i>
+            </span>
+        </div>
+        
+        <div class="form-content" id="addVariantForm">
+            <div class="form-row">
+                <!-- Option 1 -->
+                <div class="form-group">
+                    <label>Option 1 Name</label>
+                    <input type="text" id="opt1Name" placeholder="e.g., Size" value="Size">
+                    <span class="help-text">e.g., Size, Color, Material</span>
+                </div>
+                <div class="form-group">
+                    <label>Option 1 Value</label>
+                    <input type="text" id="opt1Value" placeholder="e.g., Large" value="Large">
+                    <span class="help-text">e.g., Large, Red, Cotton</span>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <!-- Option 2 -->
+                <div class="form-group">
+                    <label>Option 2 Name <span class="text-muted">(optional)</span></label>
+                    <input type="text" id="opt2Name" placeholder="e.g., Color">
+                    <span class="help-text">Leave blank for single option</span>
+                </div>
+                <div class="form-group">
+                    <label>Option 2 Value <span class="text-muted">(optional)</span></label>
+                    <input type="text" id="opt2Value" placeholder="e.g., Red">
+                </div>
+            </div>
+            
+            <div class="form-row three-col">
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="number" id="variantPrice" placeholder="99.99" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Compare at Price <span class="text-muted">(sale)</span></label>
+                    <input type="number" id="variantCompare" placeholder="129.99" step="0.01" min="0">
+                    <span class="help-text">Original price for sale badge</span>
+                </div>
+                <div class="form-group">
+                    <label>Stock Quantity</label>
+                    <input type="number" id="variantQuantity" placeholder="10" min="0" value="10">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SKU <span class="text-muted">(optional)</span></label>
+                    <input type="text" id="variantSku" placeholder="Auto-generated if empty">
+                </div>
+                <div class="form-group">
+                    <label>Variant Image <span class="text-muted">(optional)</span></label>
+                    <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageInput').click()">
+                        <div class="placeholder" id="imagePlaceholder">
+                            <i class="fas fa-image"></i>
+                            <span>Click to upload image</span>
+                            <span style="font-size:12px; color:#94a3b8;">PNG, JPG up to 5MB</span>
+                        </div>
+                        <img id="imagePreview" style="display:none;" alt="Variant image">
+                        <button class="remove-image" id="removeImageBtn" onclick="event.stopPropagation(); removeImage();">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <input type="file" id="imageInput" accept="image/*">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="resetForm()">Clear</button>
+                <button class="btn btn-primary" id="addVariantBtn" onclick="addVariant()">
+                    <i class="fas fa-plus me-1"></i> Add Variant
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ====== VARIANT LIST ====== -->
+    <div class="variant-list" id="variantList">
+        {% if variants %}
+            {% for variant in variants %}
+            <div class="variant-card" id="variant-{{ variant.id }}">
+                <!-- Image -->
+                <div class="variant-image">
+                    {% if variant.image %}
+                        <img src="{{ variant.image.url }}" alt="{{ variant.options|join:',' }}">
+                    {% else %}
+                        <span class="no-image"><i class="fas fa-cube"></i></span>
+                    {% endif %}
+                </div>
+                
+                <!-- Info -->
+                <div class="variant-info">
+                    <div class="variant-options">
+                        {% for key, value in variant.options.items %}
+                            <span class="option-tag">
+                                <strong>{{ key }}:</strong> {{ value }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    <div class="variant-details">
+                        <span class="price">${{ variant.price|default:'0.00' }}</span>
+                        {% if variant.compare_at_price %}
+                            <span class="compare">${{ variant.compare_at_price }}</span>
+                        {% endif %}
+                        <span class="stock {% if variant.quantity <= 0 %}out{% elif variant.quantity <= 5 %}low{% endif %}">
+                            <i class="fas fa-{% if variant.quantity <= 0 %}times-circle{% elif variant.quantity <= 5 %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+                            {{ variant.quantity }} in stock
+                        </span>
+                        {% if variant.sku %}
+                            <span>SKU: {{ variant.sku }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="variant-actions">
+                    <button class="btn btn-outline" onclick="editVariant({{ variant.id }})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteVariant({{ variant.id }})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-cubes"></i>
+                <h3>No Variants Yet</h3>
+                <p>Create your first variant by filling out the form above.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('addVariantCard').scrollIntoView({behavior:'smooth'}); toggleAddVariant();">
+                    <i class="fas fa-plus me-1"></i> Create First Variant
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ====== EDIT MODAL ====== -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-edit me-2 text-primary"></i> Edit Variant</h2>
+            <button class="close" onclick="closeModal()">&times;</button>
+        </div>
+        <div id="editFormContent">
+            <!-- Dynamic content loaded via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+
+let currentEditVariantId = null;
+let tempImageFile = null;
+let isAdding = true;
+
+// ================================================================
+// TOGGLE ADD FORM
+// ================================================================
+
+function toggleAddVariant() {
+    const card = document.getElementById('addVariantCard');
+    card.classList.toggle('collapsed');
+    const icon = document.getElementById('toggleIcon');
+    icon.innerHTML = card.classList.contains('collapsed') 
+        ? '<i class="fas fa-chevron-up"></i>' 
+        : '<i class="fas fa-chevron-down"></i>';
+}
+
+// ================================================================
+// IMAGE UPLOAD
+// ================================================================
+
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        tempImageFile = file;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const preview = document.getElementById('imagePreview');
+            const placeholder = document.getElementById('imagePlaceholder');
+            const area = document.getElementById('imageUploadArea');
+            
+            preview.src = event.target.result;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            area.classList.add('has-image');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function removeImage() {
+    tempImageFile = null;
+    const preview = document.getElementById('imagePreview');
+    const placeholder = document.getElementById('imagePlaceholder');
+    const area = document.getElementById('imageUploadArea');
+    const input = document.getElementById('imageInput');
+    
+    preview.src = '';
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+    area.classList.remove('has-image');
+    input.value = '';
+}
+
+// ================================================================
+// ADD VARIANT
+// ================================================================
+
+function addVariant() {
+    const btn = document.getElementById('addVariantBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Adding...';
+    
+    const subdomain = document.getElementById('page-subdomain').value;
+    const productId = document.getElementById('product-id').value;
+    
+    // Get form data
+    const opt1Name = document.getElementById('opt1Name').value.trim();
+    const opt1Value = document.getElementById('opt1Value').value.trim();
+    const opt2Name = document.getElementById('opt2Name').value.trim();
+    const opt2Value = document.getElementById('opt2Value').value.trim();
+    const price = document.getElementById('variantPrice').value;
+    const compare = document.getElementById('variantCompare').value;
+    const quantity = document.getElementById('variantQuantity').value;
+    const sku = document.getElementById('variantSku').value.trim();
+    
+    // Validate
+    if (!opt1Name || !opt1Value) {
+        showNotification('Please fill in Option 1', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus me-1"></i> Add Variant';
+        return;
+    }
+    
+    // Build form data
+    const formData = new FormData();
+    formData.append('option1_name', opt1Name);
+    formData.append('option1_value', opt1Value);
+    formData.append('option2_name', opt2Name);
+    formData.append('option2_value', opt2Value);
+    formData.append('price', price);
+    formData.append('compare_price', compare);
+    formData.append('quantity', quantity);
+    formData.append('sku', sku);
+    
+    if (tempImageFile) {
+        formData.append('image', tempImageFile);
+    }
+    
+    // Send request
+    fetch(`/builder/api/add-variant-simple/${subdomain}/${productId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Variant added successfully! 🎉', 'success');
+            // Reload to show new variant
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus me-1"></i> Add Variant';
+        }
+    })
+    .catch(error => {
+        showNotification('Error: ' + error, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus me-1"></i> Add Variant';
+    });
+}
+
+// ================================================================
+// EDIT VARIANT
+// ================================================================
+
+function editVariant(variantId) {
+    currentEditVariantId = variantId;
+    
+    // Find the variant card
+    const card = document.getElementById(`variant-${variantId}`);
+    if (!card) return;
+    
+    // Extract data from the card
+    const options = [];
+    card.querySelectorAll('.option-tag').forEach(tag => {
+        const text = tag.textContent.trim();
+        const parts = text.split(':');
+        if (parts.length === 2) {
+            options.push({ name: parts[0].trim(), value: parts[1].trim() });
+        }
+    });
+    
+    const details = card.querySelector('.variant-details');
+    const priceEl = details.querySelector('.price');
+    const compareEl = details.querySelector('.compare');
+    const stockEl = details.querySelector('.stock');
+    
+    const price = priceEl ? priceEl.textContent.replace('$', '') : '';
+    const compare = compareEl ? compareEl.textContent.replace('$', '') : '';
+    const stock = stockEl ? stockEl.textContent.match(/\d+/) : '0';
+    const sku = details.textContent.match(/SKU:\s*(\S+)/);
+    
+    // Get image
+    const img = card.querySelector('.variant-image img');
+    const hasImage = img && img.src && !img.src.includes('cube');
+    
+    // Build edit form
+    const formContent = document.getElementById('editFormContent');
+    formContent.innerHTML = `
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>Options</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0;">
+                ${options.map(opt => `
+                    <span class="option-tag" style="font-size:14px; padding:4px 14px;">
+                        <strong>${opt.name}:</strong> ${opt.value}
+                    </span>
+                `).join('')}
+            </div>
+            <span class="help-text">Edit options by deleting and re-adding the variant</span>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Price</label>
+                <input type="number" id="editPrice" value="${price}" step="0.01" min="0" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Compare at Price</label>
+                <input type="number" id="editCompare" value="${compare}" step="0.01" min="0" class="form-control">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Stock Quantity</label>
+                <input type="number" id="editQuantity" value="${stock}" min="0" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>SKU</label>
+                <input type="text" id="editSku" value="${sku ? sku[1] : ''}" class="form-control">
+            </div>
+        </div>
+        
+        <div class="form-group" style="margin-top: 16px;">
+            <label>Variant Image</label>
+            <div class="image-upload-area ${hasImage ? 'has-image' : ''}" id="editImageArea" onclick="document.getElementById('editImageInput').click()">
+                ${hasImage ? `<img src="${img.src}" alt="Variant image" style="max-width:100%; max-height:120px;">` : `
+                    <div class="placeholder">
+                        <i class="fas fa-image"></i>
+                        <span>Click to upload new image</span>
+                    </div>
+                `}
+                <button class="remove-image" id="editRemoveImageBtn" onclick="event.stopPropagation(); document.getElementById('editImageArea').querySelector('img')?.remove(); this.parentElement.classList.remove('has-image');">
+                    <i class="fas fa-times"></i>
+                </button>
+                <input type="file" id="editImageInput" accept="image/*" style="display:none;">
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEdit()">
+                <i class="fas fa-save me-1"></i> Save Changes
+            </button>
+        </div>
+    `;
+    
+    // Handle image upload in edit mode
+    document.getElementById('editImageInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const area = document.getElementById('editImageArea');
+                const existingImg = area.querySelector('img');
+                if (existingImg) {
+                    existingImg.src = event.target.result;
+                } else {
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    img.alt = 'Variant image';
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '120px';
+                    area.querySelector('.placeholder')?.remove();
+                    area.appendChild(img);
+                    area.classList.add('has-image');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Show modal
+    document.getElementById('editModal').classList.add('active');
+}
+
+function saveEdit() {
+    const subdomain = document.getElementById('page-subdomain').value;
+    const variantId = currentEditVariantId;
+    
+    const price = document.getElementById('editPrice').value;
+    const compare = document.getElementById('editCompare').value;
+    const quantity = document.getElementById('editQuantity').value;
+    const sku = document.getElementById('editSku').value.trim();
+    
+    // Check if image was changed
+    const imageArea = document.getElementById('editImageArea');
+    const img = imageArea.querySelector('img');
+    const hasImage = img && img.src && !img.src.includes('cube');
+    
+    // Build form data
+    const formData = new FormData();
+    formData.append('price', price);
+    formData.append('compare_price', compare);
+    formData.append('quantity', quantity);
+    formData.append('sku', sku);
+    
+    // If image was changed, we need to handle it
+    // For simplicity, we'll use the existing quick-edit endpoint
+    // and handle image separately
+    
+    // First update the variant data
+    fetch(`/builder/api/quick-edit-variant/${subdomain}/${variantId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            price: price,
+            compare_at_price: compare,
+            quantity: quantity,
+            sku: sku,
+            track_quantity: true,
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If there's an image change, handle it
+            const fileInput = document.getElementById('editImageInput');
+            if (fileInput && fileInput.files.length > 0) {
+                const imageFormData = new FormData();
+                imageFormData.append('image', fileInput.files[0]);
+                
+                return fetch(`/builder/api/upload-variant-image/${subdomain}/${variantId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: imageFormData,
+                });
+            }
+            return { success: true };
+        } else {
+            throw new Error(data.error);
+        }
+    })
+    .then(result => {
+        if (result.success !== false) {
+            showNotification('Variant updated successfully! ✅', 'success');
+            closeModal();
+            setTimeout(() => location.reload(), 500);
+        }
+    })
+    .catch(error => {
+        showNotification('Error: ' + error.message, 'error');
+    });
+}
+
+// ================================================================
+// DELETE VARIANT
+// ================================================================
+
+function deleteVariant(variantId) {
+    if (!confirm('Delete this variant?')) return;
+    
+    const subdomain = document.getElementById('page-subdomain').value;
+    
+    fetch(`/builder/api/delete-variant/${subdomain}/${variantId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Variant deleted', 'info');
+            const card = document.getElementById(`variant-${variantId}`);
+            if (card) {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 300);
+            }
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Error: ' + error, 'error');
+    });
+}
+
+// ================================================================
+// MODAL
+// ================================================================
+
+function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+    currentEditVariantId = null;
+}
+
+// Close modal on overlay click
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+// ================================================================
+// RESET FORM
+// ================================================================
+
+function resetForm() {
+    document.getElementById('opt1Name').value = 'Size';
+    document.getElementById('opt1Value').value = 'Large';
+    document.getElementById('opt2Name').value = '';
+    document.getElementById('opt2Value').value = '';
+    document.getElementById('variantPrice').value = '';
+    document.getElementById('variantCompare').value = '';
+    document.getElementById('variantQuantity').value = '10';
+    document.getElementById('variantSku').value = '';
+    removeImage();
+}
+
+// ================================================================
+// HELPERS
+// ================================================================
+
+function getCsrfToken() {
+    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || 
+           document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function showNotification(message, type) {
+    // Remove existing notifications
+    document.querySelectorAll('.notification').forEach(el => el.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// ================================================================
+// KEYBOARD SHORTCUTS
+// ================================================================
+
+document.addEventListener('keydown', function(e) {
+    // Ctrl+Enter to add variant
+    if (e.ctrlKey && e.key === 'Enter') {
+        const form = document.getElementById('addVariantForm');
+        if (form.style.display !== 'none') {
+            e.preventDefault();
+            addVariant();
+        }
+    }
+});
+</script>
+{% endblock %}

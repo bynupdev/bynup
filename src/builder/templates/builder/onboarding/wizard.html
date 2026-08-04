@@ -1,0 +1,2190 @@
+<!-- builder/templates/builder/onboarding/wizard.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Your Store - bynUp</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* ====== VARIABLES ====== */
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a0ca3;
+            --primary-light: #e7f0ff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --radius-lg: 16px;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-50);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ====== TOP BAR ====== */
+        .onboarding-topbar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .topbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--gray-900);
+            text-decoration: none;
+        } */
+
+        .topbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            text-decoration: none;
+        }
+
+        .topbar-brand span {
+           color: var(--primary);
+        }
+        
+        
+        
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: var(--primary-light);
+            border-radius: 16px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        /* ====== STEP TABS ====== */
+        .step-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            background: white;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-200);
+            position: sticky;
+            top: 60px;
+            z-index: 50;
+        }
+        
+        .step-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border: none;
+            background: transparent;
+            color: var(--gray-400);
+            font-weight: 500;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .step-tab:hover { color: var(--gray-600); }
+        .step-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .step-tab.completed { color: var(--success); }
+        .step-tab.completed .step-number { background: var(--success); color: white; }
+        
+        .step-tab .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            color: var(--gray-500);
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .step-tab.active .step-number { background: var(--primary); color: white; }
+        .step-tab .step-check { display: none; }
+        .step-tab.completed .step-check { display: inline; }
+        .step-tab.completed .step-number-text { display: none; }
+        
+        /* ====== STEP PANELS ====== */
+        .step-panel {
+            display: none;
+            animation: fadeSlideIn 0.4s ease;
+        }
+        .step-panel.active { display: block; }
+        
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .onboarding-main {
+            flex: 1;
+            padding: 30px 0 50px;
+        }
+        
+        .wizard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        .step-header {
+            margin-bottom: 24px;
+        }
+        
+        .step-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+        
+        .step-header p {
+            color: var(--gray-500);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* ====== FORM CARDS ====== */
+        .form-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .form-card .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--gray-700);
+            margin-bottom: 4px;
+            display: block;
+        }
+        
+        .form-group .required-star { color: var(--danger); margin-left: 2px; }
+        .form-group .help-text { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+        
+        .form-control, .form-select {
+            border: 1.5px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+            outline: none;
+        }
+        
+        .form-control.is-invalid { border-color: var(--danger); }
+        .form-control.is-valid { border-color: var(--success); }
+        
+        .invalid-feedback {
+            color: var(--danger);
+            font-size: 11px;
+            margin-top: 4px;
+            display: none;
+        }
+        .invalid-feedback.show { display: block; }
+        
+        /* ====== AUTH ====== */
+        .auth-toggle-container {
+            display: flex;
+            background: var(--gray-100);
+            border-radius: var(--radius);
+            padding: 3px;
+            margin-bottom: 20px;
+        }
+        
+        .auth-toggle-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: var(--gray-500);
+        }
+        
+        .auth-toggle-btn.active {
+            background: white;
+            color: var(--gray-900);
+            box-shadow: var(--shadow);
+        }
+        
+        .auth-panel { display: none; animation: fadeSlideIn 0.3s ease; }
+        .auth-panel.active { display: block; }
+        
+        .auth-link { color: var(--primary); text-decoration: none; font-weight: 500; }
+        .auth-link:hover { text-decoration: underline; }
+        
+        /* ====== PASSWORD STRENGTH ====== */
+        .password-strength {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .password-strength .bar {
+            height: 3px;
+            flex: 1;
+            background: var(--gray-200);
+            border-radius: 2px;
+            transition: background 0.3s ease;
+        }
+        .password-strength .bar.weak { background: var(--danger); }
+        .password-strength .bar.medium { background: var(--warning); }
+        .password-strength .bar.strong { background: var(--success); }
+        .password-strength-text { font-size: 11px; margin-top: 4px; }
+        
+        /* ====== SUBDOMAIN PREVIEW ====== */
+        .subdomain-preview {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 6px;
+            border: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        
+        .subdomain-preview .label {
+            color: var(--gray-500);
+            font-weight: 500;
+            font-size: 12px;
+        }
+        
+        .subdomain-preview .url {
+            color: var(--primary);
+            font-weight: 600;
+            font-family: monospace;
+        }
+        
+        .subdomain-preview .status {
+            margin-left: auto;
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+        
+        .subdomain-preview .status.available {
+            color: var(--success);
+            background: #d1fae5;
+        }
+        
+        .subdomain-preview .status.unavailable {
+            color: var(--danger);
+            background: #fee2e2;
+        }
+        
+        .subdomain-preview .status.checking {
+            color: var(--gray-500);
+            background: var(--gray-100);
+        }
+        
+        /* ====== PALETTE CATEGORIES ====== */
+        .palette-category-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .palette-category-tab {
+            padding: 5px 14px;
+            border-radius: 16px;
+            border: 1.5px solid var(--gray-200);
+            background: transparent;
+            color: var(--gray-600);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .palette-category-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .palette-category-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        .palette-category-tab .count {
+            background: var(--gray-200);
+            color: var(--gray-600);
+            padding: 0 5px;
+            border-radius: 8px;
+            font-size: 9px;
+            margin-left: 4px;
+        }
+        
+        .palette-category-tab.active .count {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .palette-grid-container {
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        
+        .palette-grid-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .palette-grid-container::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 4px; }
+        .palette-grid-container::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
+        
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        
+        .palette-option {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 14px 12px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+        }
+        
+        .palette-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .palette-option.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+        
+        .palette-option.selected::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 22px;
+            height: 22px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .palette-option .color-strip {
+            display: flex;
+            height: 32px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .palette-option .color-chip { flex: 1; height: 100%; }
+        .palette-option .palette-name { 
+            font-weight: 600; 
+            font-size: 12px; 
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+        .palette-option .palette-category { 
+            font-size: 10px; 
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        /* ====== TEMPLATES ====== */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .template-option {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .template-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .template-option.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+        
+        .template-option .template-thumbnail {
+            width: 100%;
+            height: 140px;
+            background: var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .template-option .template-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .template-option .template-info { padding: 12px; }
+        .template-option .template-name { font-weight: 600; font-size: 13px; color: var(--gray-800); }
+        .template-option .template-desc { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+        .template-option .template-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 500;
+            background: var(--primary-light);
+            color: var(--primary);
+            margin-top: 4px;
+        }
+        
+        .template-preview-wrapper {
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .template-preview-wrapper #templatePreviewContent {
+            padding: 20px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* ====== BUTTONS ====== */
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-200);
+        }
+        
+        .btn {
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(67, 97, 238, 0.4); }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--gray-600);
+            border: 1.5px solid var(--gray-200);
+        }
+        .btn-secondary:hover { background: var(--gray-50); border-color: var(--gray-300); }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4); }
+        .btn-success:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-lg { padding: 12px 36px; font-size: 15px; }
+        
+        /* ====== TOAST ====== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .toast-message {
+            padding: 10px 16px;
+            border-radius: var(--radius);
+            background: var(--gray-900);
+            color: white;
+            font-size: 13px;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 260px;
+            max-width: 380px;
+        }
+        .toast-message.success { background: var(--success); }
+        .toast-message.error { background: var(--danger); }
+        .toast-message.warning { background: var(--warning); }
+        .toast-message.info { background: var(--primary); }
+        
+        .toast-message .toast-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            padding: 0 4px;
+            font-size: 14px;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 768px) {
+            .step-tabs { overflow-x: auto; justify-content: flex-start; gap: 2px; padding: 10px 16px; flex-wrap: nowrap; }
+            .step-tab { padding: 6px 12px; font-size: 11px; white-space: nowrap; }
+            .step-tab .step-number { width: 18px; height: 18px; font-size: 9px; }
+            .form-card { padding: 16px; }
+            .palette-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+            .template-grid { grid-template-columns: 1fr 1fr; }
+            .wizard-actions { flex-direction: column-reverse; gap: 10px; }
+            .wizard-actions .btn { width: 100%; justify-content: center; }
+            .step-header h2 { font-size: 20px; }
+            .palette-category-tab { font-size: 10px; padding: 4px 10px; }
+            .subdomain-preview { font-size: 12px; }
+        }
+        
+        @media (max-width: 480px) {
+            .template-grid { grid-template-columns: 1fr; }
+            .palette-grid { grid-template-columns: 1fr 1fr; }
+            .topbar-content { padding: 0 16px; }
+            .topbar-brand span { display: none; }
+            .auth-toggle-container { flex-direction: column; gap: 4px; }
+        }
+
+                .hero-image {
+            background: #f8fafc;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.3s;
+        }
+
+        .hero-image:hover {
+            transform: translateY(-4px);
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+
+    </style>
+</head>
+<body>
+    <!-- ====== TOP BAR ====== -->
+    <header class="onboarding-topbar">
+        <div class="topbar-content">
+            <a href="/" class="topbar-brand">
+                byn<span>Up</span>
+            </a>
+            <div class="topbar-actions">
+                {% if user.is_authenticated %}
+                <div class="user-badge">
+                    <i class="fas fa-user-circle"></i>
+                    {{ user.first_name|default:user.username }}
+                </div>
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                {% else %}
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Exit Setup
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- ====== STEP TABS ====== -->
+    <div class="step-tabs" id="stepTabs">
+        {% if not user.is_authenticated %}
+        <button class="step-tab active" data-step="0">
+            <span class="step-number"><span class="step-number-text">1</span><span class="step-check"><i class="fas fa-check"></i></span></span>
+            Account
+        </button>
+        {% endif %}
+        <button class="step-tab {% if user.is_authenticated %}active{% endif %}" data-step="1">
+            <span class="step-number"><span class="step-number-text">{% if user.is_authenticated %}1{% else %}2{% endif %}</span><span class="step-check"><i class="fas fa-check"></i></span></span>
+            Store
+        </button>
+        <button class="step-tab" data-step="2">
+            <span class="step-number"><span class="step-number-text">{% if user.is_authenticated %}2{% else %}3{% endif %}</span><span class="step-check"><i class="fas fa-check"></i></span></span>
+            Brand
+        </button>
+        <button class="step-tab" data-step="3">
+            <span class="step-number"><span class="step-number-text">{% if user.is_authenticated %}3{% else %}4{% endif %}</span><span class="step-check"><i class="fas fa-check"></i></span></span>
+            Template
+        </button>
+    </div>
+
+    <!-- ====== MAIN CONTENT ====== -->
+    <main class="onboarding-main">
+        <div class="wizard-container">
+            
+            <!-- ====== STEP 0: ACCOUNT ====== -->
+            {% if not user.is_authenticated %}
+            <div class="step-panel active" data-step="0" id="stepAccount">
+                <div class="step-header">
+                    <h2>Create Your Account</h2>
+                    <p>Get started by setting up your account credentials</p>
+                </div>
+                
+                <div class="auth-toggle-container">
+                    <button class="auth-toggle-btn active" data-auth="signup" id="authSignupBtn">
+                        <i class="fas fa-user-plus me-2"></i> <a style="text-decoration: none; color: var(--primary); " href="{% url 'accounts:builder_register' %}">Create Account</a>
+                    </button>
+                    <button class="auth-toggle-btn" data-auth="login" id="authLoginBtn">
+                        <i class="fas fa-sign-in-alt me-2"></i> <a style="text-decoration: none; color: var(--primary); " href="{% url 'accounts:universal_login' %}">Login</a>
+                    </button>
+
+                </div>
+
+                <div class="hero-image">
+                        <img src="{% static 'images/landing/landing-hero.png' %}" alt="Hero Image">
+                </div>
+                
+                <div style=" display: none;" class="auth-panel active" id="signupPanel">
+                    <div class="form-card">
+                        <div class="card-title">Sign Up</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Full Name <span class="required-star">*</span></label>
+                                    <input type="text" class="form-control" id="fullName" placeholder="John Doe" required>
+                                    <div class="invalid-feedback">Please enter your full name</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Email Address <span class="required-star">*</span></label>
+                                    <input type="email" class="form-control" id="email" placeholder="john@example.com" required>
+                                    <div class="invalid-feedback">Please enter a valid email</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Password <span class="required-star">*</span></label>
+                                    <input type="password" class="form-control" id="password" placeholder="Min 8 characters" required>
+                                    <div class="help-text"><i class="fas fa-info-circle"></i> Must be at least 8 characters with a number</div>
+                                    <div class="invalid-feedback">Password must be at least 8 characters</div>
+                                    <div class="password-strength" id="passwordStrength">
+                                        <div class="bar" id="strengthBar1"></div>
+                                        <div class="bar" id="strengthBar2"></div>
+                                        <div class="bar" id="strengthBar3"></div>
+                                        <div class="bar" id="strengthBar4"></div>
+                                    </div>
+                                    <div class="password-strength-text" id="strengthText"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Confirm Password <span class="required-star">*</span></label>
+                                    <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm your password" required>
+                                    <div class="invalid-feedback">Passwords do not match</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="termsCheck">
+                                <label class="form-check-label" for="termsCheck">
+                                    I agree to the <a href="#" class="auth-link">Terms of Service</a> and <a href="#" class="auth-link">Privacy Policy</a>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-primary btn-lg" id="signupBtn" style="width: 100%;">
+                            <i class="fas fa-user-plus me-2"></i> Create Account
+                        </button>
+                    </div>
+                    <div class="text-center mt-3">
+                        <span class="text-muted">Already have an account?</span>
+                        <button class="btn btn-link auth-link" id="switchToLogin">Sign In</button>
+                    </div>
+                </div>
+                
+                <div style="display: none;" class="auth-panel" id="loginPanel">
+                    <div class="form-card">
+                        <div class="card-title">Welcome Back</div>
+                        <div class="form-group">
+                            <label>Email Address <span class="required-star">*</span></label>
+                            <input type="email" class="form-control" id="loginEmail" placeholder="john@example.com" required>
+                            <div class="invalid-feedback">Please enter your email</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Password <span class="required-star">*</span></label>
+                            <input type="password" class="form-control" id="loginPassword" placeholder="Enter your password" required>
+                            <div class="invalid-feedback">Please enter your password</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="rememberMe">
+                                <label class="form-check-label" for="rememberMe">Remember me</label>
+                            </div>
+                            <a href="#" class="auth-link">Forgot password?</a>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-primary btn-lg" id="loginBtn" style="width: 100%;">
+                            <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                        </button>
+                    </div>
+                    <div class="text-center mt-3">
+                        <span class="text-muted">Don't have an account?</span>
+                        <button class="btn btn-link auth-link" id="switchToSignup">Create One</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- ====== STEP 1: STORE DETAILS ====== -->
+            <div class="step-panel {% if user.is_authenticated %}active{% endif %}" data-step="1" id="stepStore">
+                <div class="step-header">
+                    <h2>Store Details</h2>
+                    <p>Tell us about your business</p>
+                </div>
+                
+                <div class="form-card">
+                    <div class="card-title">Business Information</div>
+                    
+                    <div class="form-group">
+                        <label>Brand / Store Name <span class="required-star">*</span></label>
+                        <input type="text" class="form-control" id="brandName" placeholder="My Awesome Store" required>
+                        <div class="help-text"><i class="fas fa-info-circle"></i> This will appear as your website title</div>
+                        <div class="invalid-feedback">Please enter a brand name</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Phone Number <span class="required-star">*</span></label>
+                        <input type="tel" class="form-control" id="contactNumber" placeholder="+1 234 567 8900" required>
+                        <div class="help-text"><i class="fas fa-info-circle"></i> This will be used for customer support</div>
+                        <div class="invalid-feedback">Please enter a valid phone number</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Country <span class="required-star">*</span></label>
+                                <select class="form-select" id="country" required>
+                                    <option value="">Select Country</option>
+                                    <option value="US">United States</option>
+                                    <option value="GB">United Kingdom</option>
+                                    <option value="CA">Canada</option>
+                                    <option value="AU">Australia</option>
+                                    <option value="DE">Germany</option>
+                                    <option value="FR">France</option>
+                                    <option value="IN">India</option>
+                                    <option value="NG">Nigeria</option>
+                                    <option value="ZA">South Africa</option>
+                                    <option value="KE">Kenya</option>
+                                    <option value="GH">Ghana</option>
+                                    <option value="EG">Egypt</option>
+                                    <option value="BR">Brazil</option>
+                                    <option value="JP">Japan</option>
+                                    <option value="CN">China</option>
+                                    <option value="AE">UAE</option>
+                                    <option value="SG">Singapore</option>
+                                    <option value="MY">Malaysia</option>
+                                    <option value="PH">Philippines</option>
+                                    <option value="VN">Vietnam</option>
+                                </select>
+                                <div class="invalid-feedback">Please select your country</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Currency <span class="required-star">*</span></label>
+                                <select class="form-select" id="currency" required>
+                                    <option value="">Select Currency</option>
+                                    <option value="USD">$ USD - US Dollar</option>
+                                    <option value="EUR">€ EUR - Euro</option>
+                                    <option value="GBP">£ GBP - British Pound</option>
+                                    <option value="CAD">C$ CAD - Canadian Dollar</option>
+                                    <option value="AUD">A$ AUD - Australian Dollar</option>
+                                    <option value="NGN">₦ NGN - Nigerian Naira</option>
+                                    <option value="KES">KSh KES - Kenyan Shilling</option>
+                                    <option value="ZAR">R ZAR - South African Rand</option>
+                                    <option value="INR">₹ INR - Indian Rupee</option>
+                                    <option value="BRL">R$ BRL - Brazilian Real</option>
+                                    <option value="JPY">¥ JPY - Japanese Yen</option>
+                                    <option value="CNY">¥ CNY - Chinese Yuan</option>
+                                    <option value="AED">د.إ AED - UAE Dirham</option>
+                                    <option value="SGD">S$ SGD - Singapore Dollar</option>
+                                    <option value="MYR">RM MYR - Malaysian Ringgit</option>
+                                    <option value="PHP">₱ PHP - Philippine Peso</option>
+                                    <option value="VND">₫ VND - Vietnamese Dong</option>
+                                </select>
+                                <div class="invalid-feedback">Please select your currency</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Subdomain - Auto-generated from brand name -->
+                    <div class="form-group">
+                        <label>Your Website URL</label>
+                        <div class="subdomain-preview" id="subdomainPreview">
+                            <span class="label">Your site:</span>
+                            <span class="url" id="subdomainUrl">your-store</span>
+                            <span class="text-muted">.bynup.store</span>
+                            <span class="status checking" id="subdomainStatus">Checking...</span>
+                        </div>
+                        <input type="hidden" id="subdomain" value="">
+                        <div class="help-text">
+                            <i class="fas fa-info-circle"></i> 
+                            Automatically generated from your brand name
+                        </div>
+                        <div class="invalid-feedback" id="subdomainError">Subdomain is already taken</div>
+                    </div>
+                </div>
+                
+                <div class="wizard-actions">
+                    {% if not user.is_authenticated %}
+                    <button class="btn btn-secondary" onclick="goToStep(0)">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    {% else %}
+                    <div></div>
+                    {% endif %}
+                    <button class="btn btn-primary" onclick="validateAndGoTo(2)">
+                        Next Step <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ====== STEP 2: BRAND IDENTITY ====== -->
+            <div class="step-panel" data-step="2" id="stepBrand">
+                <div class="step-header">
+                    <h2>Choose Your Brand Colors</h2>
+                    <p>Select a color scheme that reflects your brand identity</p>
+                </div>
+                
+                <div class="form-card">
+                    <div class="card-title">Color Palettes</div>
+                    
+                    <div class="palette-category-tabs" id="paletteCategoryTabs">
+                        <!-- Generated by JavaScript -->
+                        <div class="text-muted small">Loading categories...</div>
+                    </div>
+                    
+                    <div class="palette-grid-container" id="paletteGridContainer">
+                        <div class="palette-grid" id="paletteGrid">
+                            <div class="text-center py-4 w-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading palettes...</span>
+                                </div>
+                                <p class="text-muted mt-2">Loading color palettes...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="paletteStatus" class="mt-2 text-muted small" style="display:none;">
+                        <i class="fas fa-check-circle text-success"></i> Palette selected
+                    </div>
+                </div>
+                
+                <div class="form-card">
+                    <div class="card-title">Font Selection</div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Heading Font</label>
+                                <select class="form-select" id="headingFont">
+                                    <option value="Inter">Inter</option>
+                                    <option value="Poppins">Poppins</option>
+                                    <option value="Montserrat">Montserrat</option>
+                                    <option value="Playfair Display">Playfair Display</option>
+                                    <option value="Open Sans" selected>Open Sans</option>
+                                    <option value="Lora">Lora</option>
+                                    <option value="Merriweather">Merriweather</option>
+                                    <option value="Raleway">Raleway</option>
+                                    <option value="Nunito">Nunito</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Body Font</label>
+                                <select class="form-select" id="bodyFont">
+                                    <option value="Inter" selected>Inter</option>
+                                    <option value="Roboto">Roboto</option>
+                                    <option value="Open Sans">Open Sans</option>
+                                    <option value="Lato">Lato</option>
+                                    <option value="Nunito">Nunito</option>
+                                    <option value="Source Sans Pro">Source Sans Pro</option>
+                                    <option value="System UI">System UI</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <span class="badge bg-primary p-2" id="previewHeading" style="font-family: Inter; font-size: 18px;">
+                                    Heading Preview
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <span id="previewBody" style="font-family: Inter; font-size: 14px;">
+                                    Body text preview — The quick brown fox jumps over the lazy dog.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="wizard-actions">
+                    <button class="btn btn-secondary" onclick="goToStep(1)">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button class="btn btn-primary" onclick="validateAndGoTo(3)">
+                        Next Step <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ====== STEP 3: TEMPLATE ====== -->
+            <div class="step-panel" data-step="3" id="stepTemplate">
+                <div class="step-header">
+                    <h2>Choose Your Template</h2>
+                    <p>Pick a layout that matches your brand — you can customize everything later</p>
+                </div>
+                
+                <div class="form-card">
+                    <div class="card-title">Available Templates</div>
+                    <p class="text-muted small">
+                        <i class="fas fa-info-circle"></i> 
+                        Your selected colors and fonts will be applied automatically
+                    </p>
+                    
+                    <div class="template-grid" id="templateGrid">
+                        <div class="text-center py-4 w-100">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading templates...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading templates...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="templatePreviewContainer" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200);">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <span class="fw-bold" id="selectedTemplateName">Template Name</span>
+                                <span class="badge bg-success ms-2" id="templateSelectedBadge">
+                                    <i class="fas fa-check"></i> Selected
+                                </span>
+                            </div>
+                            <span class="text-muted small" id="templatePages">Pages: Home, Products, About, Contact</span>
+                        </div>
+                        <div class="template-preview-wrapper">
+                            <div id="templatePreviewContent" style="padding: 20px; min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                                <div class="text-center">
+                                    <i class="fas fa-paint-brush fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted small">Select a template to see preview</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="wizard-actions">
+                    <button class="btn btn-secondary" onclick="goToStep(2)">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button class="btn btn-success btn-lg" id="launchEditorBtn" disabled>
+                        <i class="fas fa-rocket"></i> Launch Editor
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- ============================================
+         COMPLETE JAVASCRIPT
+         ============================================ -->
+    <script>
+        // ============================================
+// COMPLETE JAVASCRIPT - FIXED VERSION
+// ============================================
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+        const state = {
+            isLoggedIn: {{ user.is_authenticated|yesno:"true,false" }},
+            currentStep: {{ user.is_authenticated|yesno:"1,0" }},
+            paletteId: null,
+            paletteName: null,
+            paletteColors: [],
+            templateId: null,
+            templateName: null,
+            templateTitle: null,
+            brandName: '',
+            subdomain: '',
+            contactNumber: '',
+            country: '',
+            currency: '',
+            headingFont: 'Inter',
+            bodyFont: 'Inter',
+            fullName: '',
+            email: '',
+            password: '',
+            palettes: [],
+            templates: [],
+            categories: [],
+            currentCategory: 'all',
+            subdomainAvailable: false,
+            subdomainChecking: false,
+        };
+
+        // ============================================
+        // STEP NAVIGATION
+        // ============================================
+        
+        function goToStep(step) {
+            console.log('📍 goToStep called with:', step);
+            
+            document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+            
+            const targetPanel = document.querySelector(`.step-panel[data-step="${step}"]`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+                console.log('✅ Showing panel:', targetPanel.id);
+            } else {
+                console.error('❌ Panel not found for step:', step);
+                const fallback = document.getElementById(`step${['Account','Store','Brand','Template'][step]}`);
+                if (fallback) {
+                    fallback.classList.add('active');
+                    console.log('✅ Fallback showing:', fallback.id);
+                }
+            }
+            
+            document.querySelectorAll('.step-tab').forEach(tab => {
+                const tabStep = parseInt(tab.dataset.step);
+                tab.classList.remove('active', 'completed');
+                
+                if (tabStep === step) {
+                    tab.classList.add('active');
+                } else if (tabStep < step) {
+                    tab.classList.add('completed');
+                }
+            });
+            
+            state.currentStep = step;
+            console.log('📍 Current step:', step);
+        }
+        
+        function validateAndGoTo(step) {
+            console.log('🔍 validateAndGoTo called with:', step);
+            
+            const currentStep = state.currentStep;
+            let isValid = true;
+            
+            if (currentStep === 0) {
+                isValid = validateAccount();
+            } else if (currentStep === 1) {
+                isValid = validateStore();
+            } else if (currentStep === 2) {
+                isValid = state.paletteId !== null;
+                if (!isValid) {
+                    showToast('Please select a color palette', 'warning');
+                }
+            }
+            
+            if (isValid) {
+                goToStep(step);
+            } else {
+                console.log('❌ Validation failed for step:', currentStep);
+            }
+        }
+        
+        // ============================================
+        // VALIDATION
+        // ============================================
+        
+        function validateAccount() {
+            const name = document.getElementById('fullName');
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const confirm = document.getElementById('confirmPassword');
+            const terms = document.getElementById('termsCheck');
+            let valid = true;
+            
+            if (!name.value.trim()) { name.classList.add('is-invalid'); valid = false; } 
+            else { name.classList.remove('is-invalid'); name.classList.add('is-valid'); }
+            
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) { email.classList.add('is-invalid'); valid = false; } 
+            else { email.classList.remove('is-invalid'); email.classList.add('is-valid'); }
+            
+            if (password.value.length < 8) { password.classList.add('is-invalid'); valid = false; } 
+            else { password.classList.remove('is-invalid'); password.classList.add('is-valid'); }
+            
+            if (password.value !== confirm.value || !confirm.value) { confirm.classList.add('is-invalid'); valid = false; } 
+            else { confirm.classList.remove('is-invalid'); confirm.classList.add('is-valid'); }
+            
+            if (!terms.checked) { terms.classList.add('is-invalid'); valid = false; } 
+            else { terms.classList.remove('is-invalid'); }
+            
+            if (valid) {
+                state.fullName = name.value.trim();
+                state.email = email.value.trim();
+                state.password = password.value;
+            }
+            
+            return valid;
+        }
+        
+        function validateStore() {
+            const brand = document.getElementById('brandName');
+            const contact = document.getElementById('contactNumber');
+            const country = document.getElementById('country');
+            const currency = document.getElementById('currency');
+            let valid = true;
+            
+            if (!brand.value.trim()) { brand.classList.add('is-invalid'); valid = false; } 
+            else { brand.classList.remove('is-invalid'); brand.classList.add('is-valid'); }
+            
+            if (!contact.value.trim() || contact.value.trim().length < 5) { 
+                contact.classList.add('is-invalid'); 
+                valid = false; 
+            } else { 
+                contact.classList.remove('is-invalid'); 
+                contact.classList.add('is-valid'); 
+            }
+            
+            if (!country.value) { country.classList.add('is-invalid'); valid = false; } 
+            else { country.classList.remove('is-invalid'); country.classList.add('is-valid'); }
+            
+            if (!currency.value) { currency.classList.add('is-invalid'); valid = false; } 
+            else { currency.classList.remove('is-invalid'); currency.classList.add('is-valid'); }
+            
+            if (!state.subdomainAvailable) {
+                valid = false;
+                const errorEl = document.getElementById('subdomainError');
+                if (errorEl) errorEl.style.display = 'block';
+            } else {
+                const errorEl = document.getElementById('subdomainError');
+                if (errorEl) errorEl.style.display = 'none';
+            }
+            
+            if (valid) {
+                state.brandName = brand.value.trim();
+                state.contactNumber = contact.value.trim();
+                state.country = country.value;
+                state.currency = currency.value;
+            }
+            
+            return valid;
+        }
+        
+        // ============================================
+        // SUBDOMAIN GENERATION & SMART CONFLICT RESOLUTION - FIXED
+        // ============================================
+        
+        function generateSubdomain(brandName) {
+            if (!brandName) return '';
+            
+            let subdomain = brandName
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            
+            if (!subdomain) subdomain = 'my-store';
+            return subdomain;
+        }
+        
+        function generateRandomSuffix() {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            const length = 3 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+        
+        function updateSubdomainPreview(brandName) {
+            // ✅ BRAND NAME STAYS AS IS - never modified
+            const originalBrandName = brandName;
+            let subdomain = generateSubdomain(brandName);
+            
+            const hiddenInput = document.getElementById('subdomain');
+            const urlEl = document.getElementById('subdomainUrl');
+            const statusEl = document.getElementById('subdomainStatus');
+            const errorEl = document.getElementById('subdomainError');
+            
+            // ✅ Store the generated subdomain in the hidden input
+            if (hiddenInput) hiddenInput.value = subdomain;
+            if (urlEl) urlEl.textContent = subdomain;
+            
+            if (subdomain && subdomain.length >= 2) {
+                state.subdomainChecking = true;
+                if (statusEl) {
+                    statusEl.textContent = 'Checking...';
+                    statusEl.className = 'status checking';
+                }
+                // ✅ Pass the original brand name separately
+                checkSubdomainAvailability(subdomain, originalBrandName);
+            } else {
+                if (statusEl) {
+                    statusEl.textContent = 'Enter a brand name';
+                    statusEl.className = 'status';
+                }
+                state.subdomainAvailable = false;
+                if (errorEl) errorEl.style.display = 'none';
+            }
+        }
+        
+        async function checkSubdomainAvailability(subdomain, originalBrandName) {
+            try {
+                const response = await fetch(`/builder/api/check-subdomain/?subdomain=${encodeURIComponent(subdomain)}`);
+                const result = await response.json();
+                
+                const statusEl = document.getElementById('subdomainStatus');
+                const errorEl = document.getElementById('subdomainError');
+                const urlEl = document.getElementById('subdomainUrl');
+                const hiddenInput = document.getElementById('subdomain');
+                
+                state.subdomainChecking = false;
+                
+                if (result.success && result.is_available) {
+                    state.subdomainAvailable = true;
+                    state.subdomain = subdomain;
+                    // ✅ BRAND NAME NEVER CHANGES - keep original
+                    // state.brandName is NOT modified here
+                    
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Available';
+                        statusEl.className = 'status available';
+                    }
+                    if (errorEl) errorEl.style.display = 'none';
+                    if (urlEl) urlEl.textContent = subdomain;
+                    if (hiddenInput) hiddenInput.value = subdomain;
+                    
+                    console.log(`✅ Subdomain available: ${subdomain}, Brand: ${originalBrandName}`);
+                } else {
+                    // 🔑 SMART CONFLICT RESOLUTION: Auto-generate a short suffix
+                    const suffix = generateRandomSuffix();
+                    const newSubdomain = `${subdomain}-${suffix}`;
+                    
+                    const checkResponse = await fetch(`/builder/api/check-subdomain/?subdomain=${encodeURIComponent(newSubdomain)}`);
+                    const checkResult = await checkResponse.json();
+                    
+                    if (checkResult.success && checkResult.is_available) {
+                        state.subdomainAvailable = true;
+                        state.subdomain = newSubdomain;
+                        // ✅ BRAND NAME NEVER CHANGES
+                        if (urlEl) urlEl.textContent = newSubdomain;
+                        if (hiddenInput) hiddenInput.value = newSubdomain;
+                        if (statusEl) {
+                            statusEl.textContent = `✅ ${newSubdomain} available`;
+                            statusEl.className = 'status available';
+                        }
+                        if (errorEl) errorEl.style.display = 'none';
+                        console.log(`🔑 Auto-resolved: ${subdomain} → ${newSubdomain}, Brand: ${originalBrandName}`);
+                    } else {
+                        const suffix2 = generateRandomSuffix();
+                        const newSubdomain2 = `${subdomain}-${suffix2}`;
+                        const checkResponse2 = await fetch(`/builder/api/check-subdomain/?subdomain=${encodeURIComponent(newSubdomain2)}`);
+                        const checkResult2 = await checkResponse2.json();
+                        
+                        if (checkResult2.success && checkResult2.is_available) {
+                            state.subdomainAvailable = true;
+                            state.subdomain = newSubdomain2;
+                            // ✅ BRAND NAME NEVER CHANGES
+                            if (urlEl) urlEl.textContent = newSubdomain2;
+                            if (hiddenInput) hiddenInput.value = newSubdomain2;
+                            if (statusEl) {
+                                statusEl.textContent = `✅ ${newSubdomain2} available`;
+                                statusEl.className = 'status available';
+                            }
+                            if (errorEl) errorEl.style.display = 'none';
+                            console.log(`🔑 Auto-resolved: ${subdomain} → ${newSubdomain2}, Brand: ${originalBrandName}`);
+                        } else {
+                            state.subdomainAvailable = false;
+                            if (statusEl) {
+                                statusEl.textContent = '❌ Unavailable - try a different name';
+                                statusEl.className = 'status unavailable';
+                            }
+                            if (errorEl) {
+                                errorEl.style.display = 'block';
+                                errorEl.textContent = 'Subdomain is already taken. Try a different brand name.';
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking subdomain:', error);
+                state.subdomainAvailable = false;
+                const statusEl = document.getElementById('subdomainStatus');
+                if (statusEl) {
+                    statusEl.textContent = '⚠️ Check failed';
+                    statusEl.className = 'status';
+                }
+            }
+        }
+        
+        // ============================================
+        // AUTH
+        // ============================================
+        
+        async function handleSignup() {
+            if (!validateAccount()) {
+                showToast('Please fix the errors above', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('signupBtn');
+            btn.innerHTML = '<span class="loading-spinner"></span> Creating Account...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/accounts/signup/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ full_name: state.fullName, email: state.email, password: state.password }),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Account created successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    throw new Error(result.error || 'Signup failed');
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+                btn.innerHTML = '<i class="fas fa-user-plus me-2"></i> Create Account';
+                btn.disabled = false;
+            }
+        }
+        
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail');
+            const password = document.getElementById('loginPassword');
+            
+            if (!email.value.trim()) { email.classList.add('is-invalid'); return; }
+            if (!password.value.trim()) { password.classList.add('is-invalid'); return; }
+            
+            const btn = document.getElementById('loginBtn');
+            btn.innerHTML = '<span class="loading-spinner"></span> Signing In...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/accounts/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ 
+                        email: email.value.trim(), 
+                        password: password.value.trim(),
+                        remember: document.getElementById('rememberMe')?.checked || false 
+                    }),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Welcome back!', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    throw new Error(result.error || 'Login failed');
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i> Sign In';
+                btn.disabled = false;
+            }
+        }
+        
+        // ============================================
+        // LOAD PALETTES & GENERATE CATEGORIES
+        // ============================================
+        
+        async function loadPalettes() {
+            try {
+                console.log('🎨 Loading palettes...');
+                const response = await fetch('/builder/api/color-palettes/');
+                const result = await response.json();
+                
+                if (result.success) {
+                    state.palettes = result.data.palettes || [];
+                    state.categories = result.data.categories || [];
+                    console.log(`✅ Loaded ${state.palettes.length} palettes`);
+                    console.log(`✅ Loaded ${state.categories.length} categories`);
+                    renderCategoryTabs();
+                    renderPalettes('all');
+                }
+            } catch (error) {
+                console.error('Error loading palettes:', error);
+            }
+        }
+        
+        function renderCategoryTabs() {
+            const container = document.getElementById('paletteCategoryTabs');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            const allTab = document.createElement('button');
+            allTab.className = 'palette-category-tab active';
+            allTab.dataset.category = 'all';
+            allTab.innerHTML = `All <span class="count" id="countAll">${state.palettes.length}</span>`;
+            allTab.addEventListener('click', function() {
+                renderPalettes('all');
+            });
+            container.appendChild(allTab);
+            
+            state.categories.forEach(cat => {
+                const tab = document.createElement('button');
+                tab.className = 'palette-category-tab';
+                tab.dataset.category = cat.code;
+                
+                const count = state.palettes.filter(p => p.category === cat.code).length;
+                
+                tab.innerHTML = `${cat.name} <span class="count">${count}</span>`;
+                tab.addEventListener('click', function() {
+                    renderPalettes(cat.code);
+                });
+                container.appendChild(tab);
+            });
+            
+            console.log(`✅ Rendered ${state.categories.length + 1} category tabs`);
+        }
+        
+        async function loadTemplates() {
+            try {
+                console.log('📄 Loading templates...');
+                const response = await fetch('/builder/templates/api/');
+                const result = await response.json();
+                
+                if (result.success) {
+                    state.templates = result.templates || [];
+                    console.log(`✅ Loaded ${state.templates.length} templates`);
+                    renderTemplates();
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                loadFallbackTemplates();
+            }
+        }
+        
+        function loadFallbackTemplates() {
+            state.templates = [
+                { id: 1, name: 'ecommerce_4', title: 'Modern E-commerce', description: 'Perfect for online stores', is_responsive: true, pages: ['home', 'products', 'about', 'contact'] },
+                { id: 2, name: 'blog_1', title: 'Blog & Magazine', description: 'Clean layout for content creators', is_responsive: true, pages: ['home', 'blog', 'about', 'contact'] },
+                { id: 3, name: 'portfolio_1', title: 'Portfolio Showcase', description: 'Showcase your work beautifully', is_responsive: true, pages: ['home', 'portfolio', 'about', 'contact'] },
+            ];
+            renderTemplates();
+        }
+        
+        // ============================================
+        // RENDER PALETTES
+        // ============================================
+        
+        function renderPalettes(category = 'all') {
+            const grid = document.getElementById('paletteGrid');
+            if (!grid) return;
+            
+            state.currentCategory = category;
+            
+            let filtered = state.palettes;
+            if (category !== 'all') {
+                filtered = state.palettes.filter(p => p.category === category);
+            }
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="text-center py-4 w-100">
+                        <i class="fas fa-palette fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No palettes found in this category</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.querySelectorAll('.palette-category-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.category === category);
+            });
+            
+            let html = '';
+            filtered.forEach((palette) => {
+                const colors = palette.colors || [];
+                const isSelected = state.paletteId === palette.id;
+                
+                html += `
+                    <div class="palette-option ${isSelected ? 'selected' : ''}" 
+                         data-palette-id="${palette.id}"
+                         onclick="selectPalette(this, '${palette.id}')">
+                        <div class="color-strip">
+                            ${colors.slice(0, 5).map(c => `<div class="color-chip" style="background: ${c.hex || '#ccc'};"></div>`).join('')}
+                        </div>
+                        <div class="palette-name">${palette.name}</div>
+                        <div class="palette-category">${palette.category_display || palette.category || ''}</div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = html;
+            
+            if (!state.paletteId && filtered.length > 0) {
+                const first = filtered[0];
+                state.paletteId = first.id;
+                state.paletteName = first.name;
+                state.paletteColors = first.colors || [];
+                const firstOption = grid.querySelector('.palette-option');
+                if (firstOption) firstOption.classList.add('selected');
+                const status = document.getElementById('paletteStatus');
+                if (status) status.style.display = 'block';
+            }
+            
+            console.log(`🎨 Rendered ${filtered.length} palettes in category: ${category}`);
+        }
+        
+        function renderTemplates() {
+            const grid = document.getElementById('templateGrid');
+            if (!grid) return;
+            
+            if (state.templates.length === 0) {
+                grid.innerHTML = `<div class="text-center py-4 w-100"><i class="fas fa-file-alt fa-2x text-muted"></i><p class="text-muted mt-2">No templates available</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            state.templates.forEach((template, index) => {
+                const isSelected = index === 0;
+                if (isSelected) {
+                    state.templateId = template.id;
+                    state.templateName = template.name;
+                    state.templateTitle = template.title;
+                }
+                
+                const previewHtml = template.preview_image ? 
+                    `<img src="${template.preview_image}" alt="${template.name}">` : 
+                    `<i class="fas fa-file-alt fa-3x text-muted"></i>`;
+                
+                html += `
+                    <div class="template-option ${isSelected ? 'selected' : ''}" 
+                         data-template-id="${template.id}"
+                         onclick="selectTemplate(this, '${template.id}')">
+                        <div class="template-thumbnail">${previewHtml}</div>
+                        <div class="template-info">
+                            <div class="template-name">${template.title || template.name}</div>
+                            <div class="template-desc">${template.description || 'A beautiful template'}</div>
+                            ${template.is_responsive ? `<span class="template-badge"><i class="fas fa-mobile-alt"></i> Responsive</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+            
+            const launchBtn = document.getElementById('launchEditorBtn');
+            if (launchBtn && state.templateId) {
+                launchBtn.disabled = false;
+                launchBtn.innerHTML = `<i class="fas fa-rocket"></i> Launch "${state.templateTitle || state.templateName}"`;
+            }
+            
+            console.log(`📄 Rendered ${state.templates.length} templates, selected: ${state.templateTitle}`);
+        }
+        
+        // ============================================
+        // SELECTION
+        // ============================================
+        
+        function selectPalette(element, paletteId) {
+            document.querySelectorAll('.palette-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            const palette = state.palettes.find(p => p.id == paletteId);
+            if (palette) {
+                state.paletteId = palette.id;
+                state.paletteName = palette.name;
+                state.paletteColors = palette.colors || [];
+                console.log(`🎨 Selected: ${palette.name}`);
+                
+                const status = document.getElementById('paletteStatus');
+                if (status) status.style.display = 'block';
+                
+                applyPalettePreview(palette);
+            }
+        }
+        
+        function applyPalettePreview(palette) {
+            const colors = palette.colors || [];
+            const primary = colors.find(c => c.type === 'primary') || colors[0];
+            if (primary) {
+                document.documentElement.style.setProperty('--primary', primary.hex || '#4361ee');
+            }
+        }
+        
+        function selectTemplate(element, templateId) {
+            document.querySelectorAll('.template-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            const template = state.templates.find(t => t.id == templateId);
+            if (template) {
+                state.templateId = template.id;
+                state.templateName = template.name;
+                state.templateTitle = template.title;
+                console.log(`📄 Selected: ${template.name}`);
+                
+                showTemplatePreview(template);
+                
+                const launchBtn = document.getElementById('launchEditorBtn');
+                if (launchBtn) {
+                    launchBtn.disabled = false;
+                    launchBtn.innerHTML = `<i class="fas fa-rocket"></i> Launch "${template.title || template.name}"`;
+                }
+            }
+        }
+        
+        function showTemplatePreview(template) {
+            const container = document.getElementById('templatePreviewContainer');
+            const content = document.getElementById('templatePreviewContent');
+            const nameEl = document.getElementById('selectedTemplateName');
+            const pagesEl = document.getElementById('templatePages');
+            
+            if (!container || !content) return;
+            
+            container.style.display = 'block';
+            if (nameEl) nameEl.textContent = template.title || template.name;
+            if (pagesEl) pagesEl.textContent = `Pages: ${template.pages ? template.pages.join(', ') : 'Home, Products, About, Contact'}`;
+            
+            const primaryColor = state.paletteColors?.find(c => c.type === 'primary')?.hex || '#4361ee';
+            const headingFont = state.headingFont || 'Inter';
+            const bodyFont = state.bodyFont || 'Inter';
+            const brandName = state.brandName || 'Your Store';
+            
+            content.innerHTML = `
+                <div style="width: 100%; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="background: ${primaryColor}; padding: 20px; border-radius: 8px; color: white; text-align: center; margin-bottom: 16px;">
+                        <h3 style="font-family: '${headingFont}', sans-serif; margin: 0;">${brandName}</h3>
+                        <p style="font-family: '${bodyFont}', sans-serif; opacity: 0.9; margin: 8px 0 0 0;">Your store is ready</p>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div style="background: var(--gray-50); padding: 12px; border-radius: 6px; text-align: center;">
+                            <div style="font-family: '${headingFont}', sans-serif; font-weight: 600;">Product 1</div>
+                            <div style="font-family: '${bodyFont}', sans-serif; font-size: 12px; color: var(--gray-500);">$99.99</div>
+                        </div>
+                        <div style="background: var(--gray-50); padding: 12px; border-radius: 6px; text-align: center;">
+                            <div style="font-family: '${headingFont}', sans-serif; font-weight: 600;">Product 2</div>
+                            <div style="font-family: '${bodyFont}', sans-serif; font-size: 12px; color: var(--gray-500);">$49.99</div>
+                        </div>
+                        <div style="background: var(--gray-50); padding: 12px; border-radius: 6px; text-align: center;">
+                            <div style="font-family: '${headingFont}', sans-serif; font-weight: 600;">Product 3</div>
+                            <div style="font-family: '${bodyFont}', sans-serif; font-size: 12px; color: var(--gray-500);">$29.99</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 16px; font-family: '${bodyFont}', sans-serif; font-size: 12px; color: var(--gray-400);">
+                        <i class="fas fa-mobile-alt"></i> Responsive · 
+                        <i class="fas fa-palette"></i> ${state.paletteName || 'Custom'} Palette · 
+                        <i class="fas fa-font"></i> ${headingFont}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ============================================
+        // LAUNCH EDITOR - COMPLETE FIXED VERSION
+        // ============================================
+        
+        async function launchEditor() {
+            console.log('🚀 Launching editor...');
+            
+            const btn = document.getElementById('launchEditorBtn');
+            if (!btn) {
+                console.error('❌ Launch button not found!');
+                return;
+            }
+            
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span> Preparing Editor...';
+            btn.disabled = true;
+            
+            try {
+                // 🔑 Collect BOTH brand name and subdomain
+                const brandNameEl = document.getElementById('brandName');
+                const contactNumberEl = document.getElementById('contactNumber');
+                const countryEl = document.getElementById('country');
+                const currencyEl = document.getElementById('currency');
+                const headingFontEl = document.getElementById('headingFont');
+                const bodyFontEl = document.getElementById('bodyFont');
+                const subdomainHidden = document.getElementById('subdomain');
+                
+                // ✅ Get brand name - THIS IS THE USER'S BRAND NAME, NEVER MODIFIED
+                const brandName = brandNameEl ? brandNameEl.value.trim() : '';
+                
+                // ✅ Get subdomain from hidden input (generated from brand name)
+                let subdomain = subdomainHidden ? subdomainHidden.value.trim().toLowerCase() : '';
+                
+                // If subdomain is empty, generate from brand name
+                if (!subdomain) {
+                    subdomain = generateSubdomain(brandName);
+                }
+                
+                // ✅ Update state - brandName is ALWAYS the user's input
+                state.brandName = brandName;      // ✅ THIS IS THE USER'S BRAND NAME
+                state.subdomain = subdomain;       // ✅ THIS IS THE GENERATED SUBDOMAIN
+                
+                state.contactNumber = contactNumberEl ? contactNumberEl.value.trim() : '';
+                state.country = countryEl ? countryEl.value : '';
+                state.currency = currencyEl ? currencyEl.value : '';
+                state.headingFont = headingFontEl ? headingFontEl.value : 'Inter';
+                state.bodyFont = bodyFontEl ? bodyFontEl.value : 'Inter';
+                
+                // 🔑 Validate both fields
+                if (!state.brandName) {
+                    showToast('Please enter your brand name', 'warning');
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                    return;
+                }
+                
+                if (!state.subdomain) {
+                    showToast('Please enter a valid subdomain', 'warning');
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                    return;
+                }
+                
+                // ✅ Build payload with BOTH fields - BRAND NAME IS NEVER OVERWRITTEN
+                const payload = {
+                    template_name: state.templateName || 'ecommerce_4',
+                    brand_name: state.brandName,      // ✅ User's brand name (display name)
+                    subdomain: state.subdomain,       // ✅ Generated subdomain (URL)
+                    contact_number: state.contactNumber,
+                    country: state.country,
+                    currency: state.currency,
+                    palette_id: state.paletteId,
+                    palette_colors: state.paletteColors || [],
+                    heading_font: state.headingFont,
+                    body_font: state.bodyFont,
+                    is_onboarding: true,
+                    launch_editor: true,
+                };
+                
+                // Add user data if not logged in
+                if (!state.isLoggedIn) {
+                    const fullNameEl = document.getElementById('fullName');
+                    const emailEl = document.getElementById('email');
+                    const passwordEl = document.getElementById('password');
+                    
+                    state.fullName = fullNameEl ? fullNameEl.value.trim() : '';
+                    state.email = emailEl ? emailEl.value.trim() : '';
+                    state.password = passwordEl ? passwordEl.value : '';
+                    
+                    payload.user_data = {
+                        full_name: state.fullName,
+                        email: state.email,
+                        password: state.password,
+                    };
+                }
+                
+                console.log('📤 Sending payload with brand and subdomain:', {
+                    brand_name: payload.brand_name,   // ✅ This will be "JRAS"
+                    subdomain: payload.subdomain,      // ✅ This will be "jras-sez" (or similar)
+                });
+                
+                const response = await fetch('/builder/onboarding/launch-editor/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify(payload),
+                });
+                
+                const result = await response.json();
+                console.log('📥 Response:', result);
+                
+                if (result.success) {
+                    btn.innerHTML = '✅ Opening Editor...';
+                    btn.className = 'btn btn-success btn-lg';
+                    showToast('Opening your website editor!', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = result.editor_url;
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Failed to launch editor');
+                }
+            } catch (error) {
+                console.error('❌ Launch error:', error);
+                btn.innerHTML = '❌ Failed - Try Again';
+                btn.disabled = false;
+                showToast(error.message, 'error');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.className = 'btn btn-success btn-lg';
+                    btn.disabled = false;
+                }, 3000);
+            }
+        }
+        
+        // ============================================
+        // PASSWORD STRENGTH
+        // ============================================
+        
+        function setupPasswordStrength() {
+            const input = document.getElementById('password');
+            if (!input) {
+                console.warn('⚠️ Password input not found');
+                return;
+            }
+            
+            const bars = [
+                document.getElementById('strengthBar1'),
+                document.getElementById('strengthBar2'),
+                document.getElementById('strengthBar3'),
+                document.getElementById('strengthBar4'),
+            ];
+            const textEl = document.getElementById('strengthText');
+            
+            input.addEventListener('input', () => {
+                const password = input.value;
+                const strength = calculatePasswordStrength(password);
+                
+                bars.forEach((bar, index) => {
+                    if (bar) {
+                        bar.className = 'bar';
+                        if (index < strength.score) {
+                            bar.classList.add(strength.class);
+                        }
+                    }
+                });
+                
+                if (textEl) {
+                    textEl.textContent = strength.label;
+                    textEl.style.color = strength.color;
+                }
+            });
+        }
+        
+        function calculatePasswordStrength(password) {
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[^a-zA-Z0-9]/.test(password)) score++;
+            score = Math.min(4, Math.floor(score / 1.25));
+            
+            const levels = [
+                { score: 0, class: '', label: 'Enter a password', color: 'var(--gray-500)' },
+                { score: 1, class: 'weak', label: 'Weak', color: 'var(--danger)' },
+                { score: 2, class: 'medium', label: 'Fair', color: 'var(--warning)' },
+                { score: 3, class: 'strong', label: 'Good', color: 'var(--success)' },
+                { score: 4, class: 'strong', label: 'Strong', color: 'var(--success)' },
+            ];
+            return levels[score] || levels[0];
+        }
+        
+        // ============================================
+        // FONT PREVIEW
+        // ============================================
+        
+        function setupFontPreview() {
+            const headingFont = document.getElementById('headingFont');
+            const bodyFont = document.getElementById('bodyFont');
+            const previewHeading = document.getElementById('previewHeading');
+            const previewBody = document.getElementById('previewBody');
+            
+            if (headingFont && previewHeading) {
+                headingFont.addEventListener('change', () => {
+                    previewHeading.style.fontFamily = headingFont.value;
+                    state.headingFont = headingFont.value;
+                });
+            }
+            
+            if (bodyFont && previewBody) {
+                bodyFont.addEventListener('change', () => {
+                    previewBody.style.fontFamily = bodyFont.value;
+                    state.bodyFont = bodyFont.value;
+                });
+            }
+        }
+        
+        // ============================================
+        // SUBDOMAIN BRAND NAME BINDING - FIXED
+        // ============================================
+        
+        function setupSubdomainBinding() {
+            const brandInput = document.getElementById('brandName');
+            if (brandInput) {
+                brandInput.addEventListener('input', function() {
+                    // ✅ Get the brand name value (user's input)
+                    const brandNameValue = this.value.trim();
+                    
+                    // ✅ Store brand name in state WITHOUT MODIFYING IT
+                    state.brandName = brandNameValue;
+                    
+                    // ✅ Generate subdomain from brand name
+                    // ✅ The brand name itself NEVER changes
+                    updateSubdomainPreview(brandNameValue);
+                });
+                
+                // Initial update
+                if (brandInput.value.trim()) {
+                    const initialBrand = brandInput.value.trim();
+                    state.brandName = initialBrand;
+                    updateSubdomainPreview(initialBrand);
+                }
+            }
+        }
+        
+        // ============================================
+        // AUTH TOGGLE
+        // ============================================
+        
+        function setupAuthToggle() {
+            const signupBtn = document.getElementById('authSignupBtn');
+            const loginBtn = document.getElementById('authLoginBtn');
+            const signupPanel = document.getElementById('signupPanel');
+            const loginPanel = document.getElementById('loginPanel');
+            const switchToLogin = document.getElementById('switchToLogin');
+            const switchToSignup = document.getElementById('switchToSignup');
+            
+            if (signupBtn && loginBtn) {
+                signupBtn.addEventListener('click', () => {
+                    signupBtn.classList.add('active');
+                    loginBtn.classList.remove('active');
+                    if (signupPanel) signupPanel.classList.add('active');
+                    if (loginPanel) loginPanel.classList.remove('active');
+                });
+                
+                loginBtn.addEventListener('click', () => {
+                    loginBtn.classList.add('active');
+                    signupBtn.classList.remove('active');
+                    if (loginPanel) loginPanel.classList.add('active');
+                    if (signupPanel) signupPanel.classList.remove('active');
+                });
+                
+                if (switchToLogin) switchToLogin.addEventListener('click', () => loginBtn.click());
+                if (switchToSignup) switchToSignup.addEventListener('click', () => signupBtn.click());
+            }
+        }
+        
+        // ============================================
+        // TOAST
+        // ============================================
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-message ${type}`;
+            const icons = { success: 'fas fa-check-circle', error: 'fas fa-exclamation-circle', warning: 'fas fa-exclamation-triangle', info: 'fas fa-info-circle' };
+            toast.innerHTML = `
+                <i class="${icons[type] || icons.info}"></i>
+                <span>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, 4000);
+        }
+        
+        // ============================================
+        // UTILITIES
+        // ============================================
+        
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+        }
+        
+        // ============================================
+        // INIT
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM ready - initializing onboarding...');
+            
+            loadPalettes();
+            loadTemplates();
+            
+            setupPasswordStrength();
+            setupFontPreview();
+            setupSubdomainBinding();
+            
+            if (!state.isLoggedIn) {
+                setupAuthToggle();
+            }
+            
+            goToStep(state.currentStep);
+            
+            const signupBtn = document.getElementById('signupBtn');
+            if (signupBtn) signupBtn.addEventListener('click', handleSignup);
+            
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+            
+            // 🔑 LAUNCH EDITOR BUTTON
+            const launchBtn = document.getElementById('launchEditorBtn');
+            if (launchBtn) {
+                console.log('✅ Launch button found, attaching listener');
+                launchBtn.addEventListener('click', launchEditor);
+            }
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const signupPanel = document.getElementById('signupPanel');
+                    const loginPanel = document.getElementById('loginPanel');
+                    if (signupPanel?.classList.contains('active')) { handleSignup(); } 
+                    else if (loginPanel?.classList.contains('active')) { handleLogin(); }
+                }
+            });
+            
+            console.log('✅ Onboarding ready!');
+        });
+    </script>
+</body>
+</html>

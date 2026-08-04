@@ -770,46 +770,36 @@ def public_page(request):
 
 import re
 def apply_component_customizations(html_content, customizations, background_images=None):
-    """Apply customizations while preserving ALL original component styles and structure"""
+    """
+    Apply customizations to component HTML
+    """
     if not customizations and not background_images:
         return html_content
-
+    
     try:
-        print(f"🎨 Applying customizations while preserving ALL defaults...")
-        
-        # Start with the original component HTML - this preserves ALL default styles
         processed_html = html_content
-
-        # Apply text customizations - update content ONLY
+        
+        # Apply text customizations
         if 'texts' in customizations:
             for element_id, content in customizations['texts'].items():
                 try:
-                    # Escape content for HTML
                     escaped_content = content.replace('"', '&quot;').replace("'", "&#39;")
-                    
-                    # More precise pattern that only replaces the CONTENT between tags
-                    # This preserves all original attributes including styles and classes
                     pattern = f'(<[^>]*data-text="{element_id}"[^>]*>)(.*?)(</[^>]*>)'
                     
                     def replace_content(match):
-                        opening_tag = match.group(1)  # Preserve original opening tag with all attributes
-                        closing_tag = match.group(3)  # Preserve original closing tag
-                        return f'{opening_tag}{escaped_content}{closing_tag}'
+                        return f'{match.group(1)}{escaped_content}{match.group(3)}'
                     
                     processed_html = re.sub(pattern, replace_content, processed_html, flags=re.DOTALL)
-                    print(f"✅ Updated text for {element_id}")
-                    
                 except Exception as e:
                     print(f"⚠️ Error replacing text for {element_id}: {e}")
-
-        # Apply style customizations - ADD to existing styles
+        
+        # Apply style customizations
         if 'styles' in customizations:
             for element_id, styles in customizations['styles'].items():
                 try:
                     if not styles:
                         continue
-
-                    # Build style string for customizations only
+                    
                     style_parts = []
                     for prop, value in styles.items():
                         if value and value.strip():
@@ -818,107 +808,82 @@ def apply_component_customizations(html_content, customizations, background_imag
                     
                     if not style_parts:
                         continue
-                        
-                    style_string = '; '.join(style_parts)
                     
-                    # Pattern to find elements with data-section
+                    style_string = '; '.join(style_parts)
                     pattern = f'(<[^>]*data-section="{element_id}"[^>]*)(>)'
                     
                     def add_style_to_element(match):
-                        element_start = match.group(1)  # Everything before the closing >
+                        element_start = match.group(1)
                         closing_bracket = match.group(2)
                         
-                        # Check if style attribute already exists
                         if 'style="' in element_start:
-                            # Extract existing style and append new styles
                             style_pattern = r'style="([^"]*)"'
                             def append_to_style(style_match):
                                 existing_styles = style_match.group(1)
-                                # Combine existing and new styles
-                                combined_styles = f'{existing_styles}; {style_string}'
-                                return f'style="{combined_styles}"'
-                            
+                                combined = f'{existing_styles}; {style_string}'
+                                return f'style="{combined}"'
                             updated_element = re.sub(style_pattern, append_to_style, element_start)
                             return f'{updated_element}{closing_bracket}'
                         else:
-                            # Add new style attribute
                             return f'{element_start} style="{style_string}"{closing_bracket}'
                     
                     processed_html = re.sub(pattern, add_style_to_element, processed_html)
-                    print(f"✅ Added styles for {element_id}: {style_string}")
-                    
                 except Exception as e:
                     print(f"⚠️ Error applying styles for {element_id}: {e}")
-
-        # Apply background images from editor
+        
+        # Apply background images
         if background_images:
             for element_id, image_data in background_images.items():
                 try:
                     if not image_data:
                         continue
-                        
-                    # Extract image URL from different possible formats
+                    
                     image_url = image_data
                     if isinstance(image_data, dict) and image_data.get('image_url'):
                         image_url = image_data['image_url']
                     
                     if not image_url or image_url == 'none':
                         continue
-                        
-                    # Build background image style
-                    bg_style = f'background-image: url("{image_url}"); background-size: cover; background-position: center; background-repeat: no-repeat;'
                     
-                    # Pattern to find elements with data-section
+                    bg_style = f'background-image: url("{image_url}"); background-size: cover; background-position: center; background-repeat: no-repeat;'
                     pattern = f'(<[^>]*data-section="{element_id}"[^>]*)(>)'
                     
                     def add_background_image(match):
-                        element_start = match.group(1)  # Everything before the closing >
+                        element_start = match.group(1)
                         closing_bracket = match.group(2)
                         
-                        # Check if style attribute already exists
                         if 'style="' in element_start:
-                            # Extract existing style and append background image
                             style_pattern = r'style="([^"]*)"'
                             def append_background(style_match):
                                 existing_styles = style_match.group(1)
-                                
-                                # Remove any existing background-image to avoid conflicts
                                 cleaned_styles = re.sub(r'background-image[^;]*;?', '', existing_styles)
                                 cleaned_styles = re.sub(r'background-size[^;]*;?', '', cleaned_styles)
                                 cleaned_styles = re.sub(r'background-position[^;]*;?', '', cleaned_styles)
                                 cleaned_styles = re.sub(r'background-repeat[^;]*;?', '', cleaned_styles)
                                 cleaned_styles = cleaned_styles.strip().strip(';')
                                 
-                                # Combine existing styles with background image
                                 if cleaned_styles:
-                                    combined_styles = f'{cleaned_styles}; {bg_style}'
+                                    combined = f'{cleaned_styles}; {bg_style}'
                                 else:
-                                    combined_styles = bg_style
-                                    
-                                return f'style="{combined_styles}"'
-                            
+                                    combined = bg_style
+                                return f'style="{combined}"'
                             updated_element = re.sub(style_pattern, append_background, element_start)
                             return f'{updated_element}{closing_bracket}'
                         else:
-                            # Add style attribute with background image
                             return f'{element_start} style="{bg_style}"{closing_bracket}'
                     
                     processed_html = re.sub(pattern, add_background_image, processed_html)
-                    print(f"✅ Added background image for {element_id}: {image_url[:50]}...")
-                    
                 except Exception as e:
                     print(f"⚠️ Error applying background image for {element_id}: {e}")
-
+        
         return processed_html
-
+        
     except Exception as e:
         print(f"❌ Error in apply_component_customizations: {e}")
         import traceback
         traceback.print_exc()
-        return html_content  # Return original if error
-
-
-
+        return html_content
+    
 def find_element_by_data_attribute(html, attr_name, attr_value):
     """Helper to find element with specific data attribute"""
     pattern = f'<[^>]*{attr_name}="{attr_value}"[^>]*>.*?</[^>]*>'
@@ -945,7 +910,9 @@ def generate_component_styles(component_customizations):
     return '\n'.join(styles)
 
 def load_component_from_file(component_id):
-    """Load component HTML from file system"""
+    """
+    Load component HTML from file system
+    """
     try:
         components_path = os.path.join(settings.BASE_DIR, 'builder', 'components')
         manifest_path = os.path.join(components_path, 'component_manifest.json')
@@ -953,21 +920,22 @@ def load_component_from_file(component_id):
         with open(manifest_path, 'r') as f:
             manifest = json.load(f)
         
-        # Find the component
-        for category in manifest['categories']:
-            for component in category['components']:
-                if component['id'] == component_id:
-                    component_file = os.path.join(components_path, component['file'])
-                    with open(component_file, 'r') as f:
-                        return {
-                            'id': component['id'],
-                            'name': component['name'],
-                            'html_content': f.read()
-                        }
+        for category in manifest.get('categories', []):
+            for component in category.get('components', []):
+                if component.get('id') == component_id:
+                    component_file = os.path.join(components_path, component.get('file', ''))
+                    if os.path.exists(component_file):
+                        with open(component_file, 'r') as f:
+                            return {
+                                'id': component.get('id'),
+                                'name': component.get('name'),
+                                'html_content': f.read()
+                            }
         return None
     except Exception as e:
         print(f"Error loading component {component_id} from file: {e}")
         return None
+
 
 def get_component_customizations(page, instance_id):
     """Get customizations for a component instance"""
@@ -1002,6 +970,9 @@ def template_selection(request):
     }
     return render(request, 'builder/template_selection.html', context)
 
+
+
+# builder/views.py - Fixed load_template view
 def load_template(request, template_name):
     """Load template HTML as snippet for editor"""
     try:
@@ -1015,6 +986,7 @@ def load_template(request, template_name):
                 context['is_editing_published'] = True
                 context['page'] = page
                 context['current_page'] = current_page  # NEW
+                context['brand_name'] = page.brand_name  # ✅ CHANGE 1: Added this line
 
                 print(f"🔄 Loading template for editing published page: {page.brand_name}")
                  # Load existing data for the CURRENT PAGE
@@ -1139,8 +1111,13 @@ def load_template(request, template_name):
         else:
             context['is_editing_published'] = False
             
-         # NEW: Load the specific page for multi-page templates
+        # NEW: Load the specific page for multi-page templates
         template_html = load_multi_page_template(template_name, current_page)
+        
+        # ✅ CHANGE 2: Replace {brand} placeholder with actual brand name
+        brand_name = context.get('brand_name', 'My Store')
+        template_html = template_html.replace('{brand}', brand_name)
+        
         return HttpResponse(template_html)    
         # return render(request, f'builder/templates/{template_name}.html', context)
         
@@ -1148,211 +1125,407 @@ def load_template(request, template_name):
         print(f"ERROR in load_template: {e}")
         import traceback
         traceback.print_exc()
-        return HttpResponse('Template not found', status=404)        
+        return HttpResponse('Template not found', status=404)
 
+def load_multi_page_template_with_palette(template_name, page_name, context):
+    """
+    Load specific page from multi-page template with palette applied.
+    ✅ Injects CSS variables for the palette.
+    """
+    try:
+        # Get the template HTML
+        template_html = render_to_string(
+            f'builder/public_templates/{template_name}/{page_name}.html',
+            context
+        )
+        
+        # ✅ Inject palette CSS variables into the template
+        palette_css = context.get('palette_css_variables', '')
+        if palette_css:
+            # Insert the palette CSS at the beginning of the head or body
+            # Look for <style> tags or inject at the top
+            if '<style>' in template_html:
+                # Insert after the first <style> tag
+                template_html = template_html.replace(
+                    '<style>',
+                    f'<style>\n/* Palette CSS */\n{palette_css}\n'
+                )
+            elif '</head>' in template_html:
+                # Insert before </head>
+                template_html = template_html.replace(
+                    '</head>',
+                    f'<style>\n/* Palette CSS */\n{palette_css}\n</style>\n</head>'
+                )
+            else:
+                # Inject at the top
+                template_html = f'<style>\n/* Palette CSS */\n{palette_css}\n</style>\n{template_html}'
+        
+        return template_html
+        
+    except TemplateDoesNotExist:
+        # Fallback to single page template
+        template_html = render_to_string(
+            f'builder/public_templates/{template_name}.html',
+            context
+        )
+        # Apply palette CSS to fallback as well
+        palette_css = context.get('palette_css_variables', '')
+        if palette_css:
+            if '<style>' in template_html:
+                template_html = template_html.replace(
+                    '<style>',
+                    f'<style>\n/* Palette CSS */\n{palette_css}\n'
+                )
+            elif '</head>' in template_html:
+                template_html = template_html.replace(
+                    '</head>',
+                    f'<style>\n/* Palette CSS */\n{palette_css}\n</style>\n</head>'
+                )
+            else:
+                template_html = f'<style>\n/* Palette CSS */\n{palette_css}\n</style>\n{template_html}'
+        return template_html
+    
 @login_required
 def editor(request, template_name, subdomain=None):
-    """Main editor interface - handles both new pages and editing existing pages"""
-    
+    """
+    Main editor interface - handles both new pages and editing existing pages.
+    MODIFIED: Detects onboarding and preloads all data automatically.
+    """
+
+    print(f"\n📝 [editor] ===== VIEW CALLED =====")
+    print(f"   template_name: {template_name}")
+    print(f"   subdomain: {subdomain}")
+    print(f"   user: {request.user.username}")
+
     context = {
         'template_name': template_name,
+        'SITE_DOMAIN': getattr(settings, 'SITE_DOMAIN', 'bynup.store'),
     }
-
+    
     # Get current page and available pages
     current_page = request.GET.get('page', 'home')
     available_pages = get_template_pages(template_name)
     context['current_page'] = current_page
     context['available_pages'] = available_pages
     context['is_multi_page'] = len(available_pages) > 1
-
-    # Check if we're editing an existing page
+    
+    # ============ CHECK FOR ONBOARDING ============
+    is_onboarding = request.GET.get('onboarding', 'false') == 'true'
+    onboarding_brand = request.GET.get('brand', '')
+    context['is_onboarding'] = is_onboarding
+    context['onboarding_brand'] = onboarding_brand
+    
+    # ============ HANDLE EXISTING PAGE OR CREATE NEW ============
     page_subdomain = request.GET.get('edit') or subdomain
+    page = None
+    is_new_page = False
     
     if page_subdomain and request.user.is_authenticated:
         try:
             page = PublishedPage.objects.get(subdomain=page_subdomain, user=request.user)
+            print(f"\n📄 [editor] Page found:")
+            print(f"   ID: {page.id}")
+            print(f"   brand_name: '{page.brand_name}'")
+            print(f"   subdomain: '{page.subdomain}'")
+            print(f"   template: {page.template_name}")
             context['page'] = page
             context['is_editing_published'] = True
-            
-            # ===== CRITICAL: Load ALL image customizations from database =====
-            # Load ALL image customizations for this page, not just current page
-            all_image_customizations = {}
-            
-            # Get all image customizations for this page
-            image_objects = ImageCustomization.objects.filter(page=page)
-            print(f"🖼️ EDITOR: Found {image_objects.count()} total image customizations in database")
-            
-            for img in image_objects:
-                if img.image:
-                    # Store by page_name and element_id
-                    if img.page_name not in all_image_customizations:
-                        all_image_customizations[img.page_name] = {}
-                    
-                    all_image_customizations[img.page_name][img.element_id] = {
-                        'image_url': img.image.url,
-                        'alt_text': img.alt_text or '',
-                        'element_id': img.element_id,
-                        'page_name': img.page_name
-                    }
-                    print(f"  ✅ Loaded image: {img.page_name}/{img.element_id} -> {img.image.url}")
-            
-            # Store in page_customizations for the JavaScript
-            if not page.page_customizations:
-                page.page_customizations = {}
-            
-            for page_name, images in all_image_customizations.items():
-                if page_name not in page.page_customizations:
-                    page.page_customizations[page_name] = {}
-                
-                page.page_customizations[page_name]['image_customizations'] = images
-            
-            # Save the updated page_customizations
-            page.save(update_fields=['page_customizations'])
-            
-            # ===== Load existing data for the CURRENT page =====
-            page_data = page.page_customizations.get(current_page, {})
-            
-            # Load all existing data for the current page
-            text_contents = page_data.get('text_contents', {})
-            style_customizations = page_data.get('style_customizations', {})
-            background_images = page_data.get('background_images', {})
-            icon_customizations = page_data.get('icon_customizations', {})
-            component_layout = page_data.get('component_layout', [])
-            component_customizations = page_data.get('component_customizations', [])
-            
-            # Load text contents from TextContent model
-            text_contents = {}
-            for tc in page.text_contents.all():
-                key_simple = tc.element_id.split('-')[-1] if '-' in tc.element_id else tc.element_id
-                key_full = f"editable_text_{tc.element_id.replace('-', '_')}"
-                key_original = tc.element_id
-                
-                text_contents[key_simple] = tc.content
-                text_contents[key_full] = tc.content
-                text_contents[key_original] = tc.content
-            
-            # Load style customizations
-            style_customizations = {}
-            for sc in page.style_customizations.all():
-                key_simple = extract_numeric_id(sc.element_id)
-                if key_simple:
-                    style_data = {
-                        'background_color': sc.background_color or '',
-                        'text_color': sc.text_color or '',
-                        'font_size': sc.font_size or '',
-                        'font_family': sc.font_family or '',
-                        'font_weight': sc.font_weight or '',
-                        'padding': sc.padding or '',
-                        'margin': sc.margin or '',
-                        'border_radius': sc.border_radius or '',
-                        'border': sc.border or '',
-                    }
-                    style_customizations[key_simple] = style_data
-            
-            # Load background images
-            background_images = {}
-            bg_objects = page.background_images.all()
-            for bg in bg_objects:
-                clean_id = extract_numeric_id(bg.element_id)
-                if clean_id and bg.image:
-                    background_images[clean_id] = {
-                        'image_url': bg.image.url,
-                        'element_id': bg.element_id,
-                        'has_image': True
-                    }
-            
-            # Load icon customizations
-            icon_customizations = {}
-            for ic in page.icon_customizations.all():
-                key = ic.element_id.replace('-', '_')
-                icon_customizations[key] = {
-                    'icon_class': ic.icon_class or '',
-                    'color': ic.color or '',
-                    'font_size': ic.font_size or ''
-                }
-            
-            # Load component layout and customizations
-            component_layout = page.component_layout if page.component_layout else []
-            component_customizations = []
-            
-            for comp_ref in component_layout:
-                try:
-                    comp_customization = ComponentCustomization.objects.get(
-                        page=page,
-                        component_instance_id=comp_ref['instance_id']
-                    )
-                    component_customizations.append({
-                        'instance_id': comp_ref['instance_id'],
-                        'component_id': comp_ref['component_id'],
-                        'drop_zone': comp_ref.get('drop_zone', 'end'),
-                        'display_order': comp_ref.get('display_order', 0),
-                        'customizations': comp_customization.customizations
-                    })
-                except ComponentCustomization.DoesNotExist:
-                    component_customizations.append({
-                        'instance_id': comp_ref['instance_id'],
-                        'component_id': comp_ref['component_id'],
-                        'drop_zone': comp_ref.get('drop_zone', 'end'),
-                        'display_order': comp_ref.get('display_order', 0),
-                        'customizations': {}
-                    })
-            
-            # ===== CRITICAL: Get image customizations for the CURRENT page =====
-            current_page_images = all_image_customizations.get(current_page, {})
-            
-            print(f"📸 EDITOR: Loaded {len(current_page_images)} image customizations for page '{current_page}'")
-            
-            # Pass all data to template
-            context['editor_text_contents'] = text_contents
-            context['editor_style_customizations'] = style_customizations
-            context['editor_background_images'] = background_images
-            context['editor_icon_customizations'] = icon_customizations
-            context['editor_component_layout'] = component_layout
-            context['editor_component_customizations'] = component_customizations
-            context['editor_image_customizations'] = current_page_images  # CRITICAL: Pass to template
-            
-            # Build all_page_data for JavaScript
-            all_page_data = {}
-            
-            # First, add all pages from available_pages
-            for page_name in available_pages:
-                page_specific_data = page.page_customizations.get(page_name, {})
-                
-                all_page_data[page_name] = {
-                    'text_contents': page_specific_data.get('text_contents', {}),
-                    'style_customizations': page_specific_data.get('style_customizations', {}),
-                    'background_images': page_specific_data.get('background_images', {}),
-                    'icon_customizations': page_specific_data.get('icon_customizations', {}),
-                    'component_layout': page_specific_data.get('component_layout', []),
-                    'component_customizations': page_specific_data.get('component_customizations', []),
-                    'image_customizations': all_image_customizations.get(page_name, {}),  # CRITICAL: Add images
-                }
-            
-            context['existing_page_data'] = all_page_data
-            
-            # For JavaScript - convert to JSON
-            context['existing_text_contents'] = json.dumps(text_contents)
-            context['existing_style_customizations'] = json.dumps(style_customizations)
-            context['existing_background_images'] = json.dumps(background_images)
-            context['existing_icon_customizations'] = json.dumps(icon_customizations)
-            context['existing_component_layout'] = json.dumps(component_layout)
-            context['existing_component_customizations'] = json.dumps(component_customizations)
-            context['existing_image_customizations'] = json.dumps(current_page_images)  # CRITICAL: Pass to JS
-            
-            print(f"✅ EDITOR: Loaded editor data for {current_page}:", {
-                'texts': len(context['editor_text_contents']),
-                'styles': len(context['editor_style_customizations']),
-                'background_images': len(context['editor_background_images']),
-                'components': len(context['editor_component_layout']),
-                'component_customizations': len(context['editor_component_customizations']),
-                'image_customizations': len(context['editor_image_customizations'])  # Should show count
-            })
+            print(f"✅ Found existing page: {page.brand_name} ({page.subdomain})")
             
         except PublishedPage.DoesNotExist:
             context['is_editing_published'] = False
             print(f"❌ Page {page_subdomain} not found for editing")
+            
+            # 🔑 If this is onboarding, create the page automatically
+            if is_onboarding:
+                try:
+                    template = Template.objects.get(name=template_name)
+                    
+                    # Create page with onboarding data
+                    page = PublishedPage.objects.create(
+                        user=request.user,
+                        template=template,
+                        template_name=template_name,
+                        brand_name=onboarding_brand or 'My Store',
+                        subdomain=page_subdomain,
+                        is_published=False,
+                        currency_code='USD',
+                    )
+                    
+                    context['page'] = page
+                    context['is_editing_published'] = True
+                    is_new_page = True
+                    
+                    print(f"✅ Created new page during onboarding: {page.brand_name} ({page.subdomain})")
+                    
+                    # Show welcome notification via context
+                    context['onboarding_success'] = True
+                    
+                except Template.DoesNotExist:
+                    print(f"❌ Template {template_name} not found")
+                    messages.error(request, f'Template "{template_name}" not found.')
+                    return redirect('template_selection')
+                except Exception as e:
+                    print(f"❌ Failed to create page during onboarding: {e}")
+                    messages.error(request, f'Error creating page: {str(e)}')
+                    return redirect('template_selection')
+            else:
+                # Not onboarding - redirect to template selection
+                messages.warning(request, 'Page not found. Please create a new page.')
+                return redirect('template_selection')
     else:
         context['is_editing_published'] = False
+        print("ℹ️ No subdomain provided or user not authenticated")
+    
+    # ============ IF NO PAGE YET, SHOW EMPTY EDITOR ============
+    if not page:
+        return render(request, 'builder/editor.html', context)
+    
+    # ============ LOAD ALL EXISTING DATA ============
+    
+    # Get current page data from page_customizations
+    page_data = page.page_customizations.get(current_page, {})
+    
+    # Initialize data containers
+    text_contents = {}
+    style_customizations = {}
+    background_images = {}
+    icon_customizations = {}
+    image_customizations = {}
+    component_layout = []
+    component_customizations = []
+    
+    # ===== 1. LOAD TEXT CONTENTS =====
+    text_contents_from_db = page.text_contents.all()
+    for tc in text_contents_from_db:
+        key_simple = tc.element_id.split('-')[-1] if '-' in tc.element_id else tc.element_id
+        key_full = f"editable_text_{tc.element_id.replace('-', '_')}"
+        key_original = tc.element_id
+        
+        text_contents[key_simple] = tc.content
+        text_contents[key_full] = tc.content
+        text_contents[key_original] = tc.content
+    
+    # Also load from page_customizations
+    if 'text_contents' in page_data:
+        for key, value in page_data['text_contents'].items():
+            text_contents[key] = value
+    
+    # ===== 2. LOAD STYLE CUSTOMIZATIONS =====
+    style_customizations_from_db = page.style_customizations.all()
+    for sc in style_customizations_from_db:
+        clean_id = extract_numeric_id(sc.element_id)
+        if clean_id:
+            style_data = {
+                'background_color': sc.background_color or '',
+                'text_color': sc.text_color or '',
+                'font_size': sc.font_size or '',
+                'font_family': sc.font_family or '',
+                'font_weight': sc.font_weight or '',
+                'padding': sc.padding or '',
+                'margin': sc.margin or '',
+                'border_radius': sc.border_radius or '',
+                'border': sc.border or '',
+                'display': sc.display or '',
+            }
+            style_customizations[clean_id] = style_data
+            
+            # Also store by original ID
+            style_customizations[sc.element_id] = style_data
+    
+    # Load from page_customizations (overrides)
+    if 'style_customizations' in page_data:
+        for key, value in page_data['style_customizations'].items():
+            if key not in style_customizations:
+                style_customizations[key] = value
+            else:
+                # Merge
+                style_customizations[key].update(value)
+    
+    # ===== 3. LOAD BACKGROUND IMAGES =====
+    bg_objects = page.background_images.all()
+    for bg in bg_objects:
+        clean_id = extract_numeric_id(bg.element_id)
+        if clean_id and bg.image:
+            image_data = {
+                'image_url': bg.image.url,
+                'element_id': bg.element_id,
+                'has_image': True,
+                'page_name': current_page,
+            }
+            background_images[clean_id] = image_data
+            background_images[bg.element_id] = image_data
+    
+    # Load from page_customizations
+    if 'background_images' in page_data:
+        for key, value in page_data['background_images'].items():
+            if key not in background_images:
+                background_images[key] = value
+    
+    # ===== 4. LOAD ICON CUSTOMIZATIONS =====
+    icon_objects = page.icon_customizations.all()
+    for ic in icon_objects:
+        key = ic.element_id.replace('-', '_')
+        icon_data = {
+            'icon_class': ic.icon_class or '',
+            'color': ic.color or '',
+            'font_size': ic.font_size or '',
+            'page_name': current_page,
+        }
+        icon_customizations[key] = icon_data
+        icon_customizations[ic.element_id] = icon_data
+    
+    # Load from page_customizations
+    if 'icon_customizations' in page_data:
+        for key, value in page_data['icon_customizations'].items():
+            if key not in icon_customizations:
+                icon_customizations[key] = value
+    
+    # ===== 5. LOAD IMAGE CUSTOMIZATIONS =====
+    image_objects = ImageCustomization.objects.filter(page=page, page_name=current_page)
+    for img in image_objects:
+        if img.image:
+            image_customizations[img.element_id] = {
+                'image_url': img.image.url,
+                'alt_text': img.alt_text or '',
+                'element_id': img.element_id,
+                'page_name': img.page_name,
+            }
+    
+    # Load from page_customizations
+    if 'image_customizations' in page_data:
+        for key, value in page_data['image_customizations'].items():
+            if key not in image_customizations:
+                image_customizations[key] = value
+    
+    # ===== 6. LOAD COMPONENT LAYOUT =====
+    component_layout = page.component_layout if page.component_layout else []
+    
+    # Load from page_customizations
+    if 'component_layout' in page_data and page_data['component_layout']:
+        component_layout = page_data['component_layout']
+    
+    # ===== 7. LOAD COMPONENT CUSTOMIZATIONS =====
+    comp_customs = ComponentCustomization.objects.filter(page=page)
+    for comp in comp_customs:
+        comp_data = {
+            'instance_id': comp.component_instance_id,
+            'component_id': comp.component_id,
+            'drop_zone': comp.drop_zone,
+            'display_order': comp.display_order,
+            'customizations': comp.customizations,
+        }
+        component_customizations.append(comp_data)
+    
+    # Load from page_customizations
+    if 'component_customizations' in page_data:
+        for comp_data in page_data['component_customizations']:
+            # Check if already exists
+            exists = any(c.get('instance_id') == comp_data.get('instance_id') 
+                        for c in component_customizations)
+            if not exists:
+                component_customizations.append(comp_data)
+    
+    # ===== 8. LOAD COLOR PALETTE =====
+    active_palette = None
+    active_palette_colors = {}
+    
+    # Check if page has active palette cached
+    if page.active_palette and page.active_palette_colors:
+        active_palette = page.active_palette
+        active_palette_colors = page.active_palette_colors
+        print(f"🎨 Using cached palette: {active_palette.name}")
+    else:
+        # Try to get from PageColorPalette
+        active_palette_record = page.color_palettes.filter(is_active=True).first()
+        if active_palette_record:
+            active_palette = active_palette_record.palette
+            active_palette_colors = active_palette_record.applied_colors
+            
+            # Cache on page
+            page.active_palette = active_palette
+            page.active_palette_colors = active_palette_colors
+            page.save(update_fields=['active_palette', 'active_palette_colors'])
+            print(f"🎨 Loaded and cached palette: {active_palette.name}")
+    
+    # Apply palette colors to context
+    context['active_palette'] = active_palette
+    context['active_palette_colors'] = active_palette_colors
+    
+    # Generate CSS variables for palette
+    palette_css_variables = ""
+    if active_palette_colors:
+        css_lines = [":root {"]
+        for var_name, color_data in active_palette_colors.items():
+            if isinstance(color_data, dict):
+                hex_value = color_data.get('hex', '')
+            else:
+                hex_value = color_data
+            if hex_value:
+                css_lines.append(f"  --{var_name}: {hex_value};")
+        css_lines.append("}")
+        palette_css_variables = "\n".join(css_lines)
+    context['palette_css_variables'] = palette_css_variables
+    
+    # ===== 9. BUILD ALL PAGE DATA FOR JAVASCRIPT =====
+    all_page_data = {}
+    for page_name in available_pages:
+        page_specific_data = page.page_customizations.get(page_name, {})
+        all_page_data[page_name] = {
+            'text_contents': page_specific_data.get('text_contents', {}),
+            'style_customizations': page_specific_data.get('style_customizations', {}),
+            'background_images': page_specific_data.get('background_images', {}),
+            'icon_customizations': page_specific_data.get('icon_customizations', {}),
+            'component_layout': page_specific_data.get('component_layout', []),
+            'component_customizations': page_specific_data.get('component_customizations', []),
+            'image_customizations': page_specific_data.get('image_customizations', {}),
+        }
+    
+    # ===== 10. LOAD PRODUCTS FOR EDITOR PREVIEW =====
+    products = page.products.filter(is_active=True, status='active').order_by('-created_at')[:10]
+    categories = page.product_categories.filter(is_active=True)
+    
+    # ===== 11. SETUP CONTEXT =====
+    context.update({
+        'page':page,
+        # Editor data
+        'editor_text_contents': text_contents,
+        'editor_style_customizations': style_customizations,
+        'editor_background_images': background_images,
+        'editor_icon_customizations': icon_customizations,
+        'editor_image_customizations': image_customizations,
+        'editor_component_layout': component_layout,
+        'editor_component_customizations': component_customizations,
+        
+        # All page data for JavaScript
+        'existing_page_data': all_page_data,
+        
+        # JSON for JavaScript
+        'existing_text_contents': json.dumps(text_contents),
+        'existing_style_customizations': json.dumps(style_customizations),
+        'existing_background_images': json.dumps(background_images),
+        'existing_icon_customizations': json.dumps(icon_customizations),
+        'existing_image_customizations': json.dumps(image_customizations),
+        'existing_component_layout': json.dumps(component_layout),
+        'existing_component_customizations': json.dumps(component_customizations),
+        
+        # Products
+        'products': products,
+        'categories': categories,
+        
+        # Flags
+        'is_new_page': is_new_page,
+        'show_auth_links': True,
+        'registration_url': reverse('accounts:website_register', args=[page.subdomain]) if hasattr(page, 'subdomain') else '#',
+        'login_url': reverse('accounts:universal_login') + f'?website_id={page.id}',
+    })
+    
+    print(f"📊 Editor loaded with: {len(text_contents)} texts, {len(style_customizations)} styles, "
+          f"{len(component_layout)} components, {len(image_customizations)} images")
+    
+    if is_onboarding and is_new_page:
+        print(f"🎉 Onboarding complete! New page created: {page.brand_name}")
+        messages.success(request, f'🎉 Welcome {page.brand_name}! Your store is ready to edit.')
     
     return render(request, 'builder/editor.html', context)
 
@@ -2044,254 +2217,308 @@ from django.core.cache import cache
 
 # builder/views.py
 
+# builder/views.py - Complete fixed publish_page view
+
 @csrf_exempt
 @login_required
 @check_website_limit
 def publish_page(request):
     """
     Handle page publishing with optimized database operations.
-    Uses bulk operations and proper error handling.
+    ✅ FIXED: Preserves brand_name instead of overwriting with subdomain
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
     
     try:
         data = json.loads(request.body)
-    except json.JSONDecodeError as e:
-        return JsonResponse({'success': False, 'error': f'Invalid JSON: {e}'}, status=400)
-    
-    # Extract data
-    template_name = data.get('template_name')
-    all_page_data = data.get('all_page_data', {})
-    current_page = data.get('current_page', 'home')
-    brand_name = data.get('brand_name')
-    subdomain = data.get('subdomain')
-    page_subdomain = data.get('page_subdomain')
-    
-    if not template_name:
-        return JsonResponse({'success': False, 'error': 'Template name required'}, status=400)
-    
-    try:
-        with transaction.atomic():
-            # Get or create template
-            template, _ = Template.objects.get_or_create(
-                name=template_name,
-                defaults={
-                    'title': template_name.replace('_', ' ').title(),
-                    'template_file': template_name,
-                    'is_active': True
-                }
-            )
-            
-            # Get or create page
-            if page_subdomain:
-                page = PublishedPage.objects.get(
-                    subdomain=page_subdomain, 
-                    user=request.user
-                )
-                if brand_name:
-                    page.brand_name = brand_name
-            else:
-                if not brand_name or not subdomain:
-                    return JsonResponse({
-                        'success': False, 
-                        'error': 'Brand name and subdomain required for new pages'
-                    }, status=400)
-                
-                page, created = PublishedPage.objects.get_or_create(
-                    subdomain=subdomain,
-                    user=request.user,
+        print(f"\n📤 [publish_page] ===== PUBLISH REQUEST =====")
+        print(f"   brand_name from request: '{data.get('brand_name')}'")
+        print(f"   subdomain from request: '{data.get('subdomain')}'")
+        print(f"   page_subdomain from request: '{data.get('page_subdomain')}'")
+        
+        # Extract data
+        template_name = data.get('template_name')
+        all_page_data = data.get('all_page_data', {})
+        current_page = data.get('current_page', 'home')
+        brand_name = data.get('brand_name')
+        subdomain = data.get('subdomain')
+        page_subdomain = data.get('page_subdomain')
+        
+        print(f"\n🔑 [publish_page] CRITICAL VALUES:")
+        print(f"   brand_name: '{brand_name}'")
+        print(f"   subdomain: '{subdomain}'")
+        print(f"   page_subdomain: '{page_subdomain}'")
+        
+        if not template_name:
+            return JsonResponse({'success': False, 'error': 'Template name required'}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # Get or create template
+                template, _ = Template.objects.get_or_create(
+                    name=template_name,
                     defaults={
-                        'brand_name': brand_name,
-                        'template': template,
-                        'template_name': template_name,
-                        'is_published': True,
-                        'current_page': current_page
+                        'title': template_name.replace('_', ' ').title(),
+                        'template_file': template_name,
+                        'is_active': True
                     }
                 )
-            
-            # Update page
-            page.template = template
-            page.template_name = template_name
-            page.is_published = True
-            page.current_page = current_page
-            page.page_customizations = all_page_data
-            page.save()
-            
-            # ===== BULK DELETE EXISTING DATA =====
-            # This is much faster than deleting in loops
-            TextContent.objects.filter(page=page).delete()
-            StyleCustomization.objects.filter(page=page).delete()
-            ComponentCustomization.objects.filter(page=page).delete()
-            IconCustomization.objects.filter(page=page).delete()
-            
-            # ===== BULK CREATE NEW DATA =====
-            text_objects = []
-            style_objects = []
-            icon_objects = []
-            component_objects = []
-            
-            for page_name, page_data in all_page_data.items():
-                # Text contents
-                for element_id, content in page_data.get('text_contents', {}).items():
-                    clean_id = extract_numeric_id(element_id)
-                    if clean_id and content:
-                        text_objects.append(
-                            TextContent(page=page, element_id=clean_id, content=content)
-                        )
                 
-                # Style customizations
-                for element_id, styles in page_data.get('style_customizations', {}).items():
-                    clean_id = extract_numeric_id(element_id)
-                    if clean_id and any(styles.values()):
-                        style_objects.append(
-                            StyleCustomization(
-                                page=page,
-                                element_id=clean_id,
-                                background_color=styles.get('background_color', ''),
-                                text_color=styles.get('text_color', ''),
-                                font_size=styles.get('font_size', ''),
-                                font_family=styles.get('font_family', ''),
-                                font_weight=styles.get('font_weight', ''),
-                                padding=styles.get('padding', ''),
-                                margin=styles.get('margin', ''),
-                                border_radius=styles.get('border_radius', ''),
-                                border=styles.get('border', ''),
-                                display=styles.get('display', ''),
-                            )
-                        )
+                # Get or create page
+                if page_subdomain:
+                    # ✅ CRITICAL FIX: Get the page but DON'T overwrite brand_name
+                    page = PublishedPage.objects.get(
+                        subdomain=page_subdomain,
+                        user=request.user
+                    )
+                    print(f"✅ Found existing page: {page.brand_name} (subdomain: {page.subdomain})")
+                    
+                    # ✅ PRESERVE the existing brand_name - don't overwrite it
+                    # Only update if a new brand_name is provided AND it's different from subdomain
+                    if brand_name and brand_name.strip():
+                        # ✅ NEVER set brand_name = subdomain
+                        if brand_name.strip() != page.subdomain:
+                            page.brand_name = brand_name.strip()
+                            print(f"   Updating brand_name to: '{page.brand_name}'")
+                        else:
+                            print(f"   ⚠️ brand_name matches subdomain, keeping existing: '{page.brand_name}'")
+                    else:
+                        print(f"   Keeping existing brand_name: '{page.brand_name}'")
+                    
+                    # ✅ Ensure subdomain is correct
+                    if subdomain and subdomain != page.subdomain:
+                        # Only update subdomain if it's different and valid
+                        page.subdomain = subdomain
+                        print(f"   Updating subdomain to: '{page.subdomain}'")
+                    
+                else:
+                    # Create new page
+                    if not brand_name or not subdomain:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Brand name and subdomain required for new pages'
+                        }, status=400)
+                    
+                    # ✅ Create with separate brand_name and subdomain
+                    page = PublishedPage.objects.create(
+                        user=request.user,
+                        brand_name=brand_name.strip(),
+                        subdomain=subdomain,
+                        template=template,
+                        template_name=template_name,
+                        is_published=True,
+                        current_page=current_page
+                    )
+                    print(f"✅ Created new page: {page.brand_name} (subdomain: {page.subdomain})")
                 
-                # Icon customizations
-                for element_id, icons in page_data.get('icon_customizations', {}).items():
-                    clean_id = extract_numeric_id(element_id)
-                    if clean_id:
-                        icon_objects.append(
-                            IconCustomization(
-                                page=page,
-                                element_id=clean_id,
-                                icon_class=icons.get('icon_class', ''),
-                                color=icons.get('color', ''),
-                                font_size=icons.get('font_size', '')
-                            )
-                        )
+                # ✅ Update page fields - NEVER overwrite brand_name with subdomain
+                page.template = template
+                page.template_name = template_name
+                page.is_published = True
+                page.current_page = current_page
+                page.page_customizations = all_page_data
                 
-                # Component customizations
-                for comp_data in page_data.get('component_customizations', []):
-                    if comp_data.get('instance_id'):
-                        component_objects.append(
-                            ComponentCustomization(
-                                page=page,
-                                component_instance_id=comp_data['instance_id'],
-                                component_id=comp_data.get('component_id'),
-                                drop_zone=comp_data.get('drop_zone', 'end'),
-                                display_order=comp_data.get('display_order', 0),
-                                customizations=comp_data.get('customizations', {})
-                            )
-                        )
-            
-            # Bulk create all objects
-            if text_objects:
-                TextContent.objects.bulk_create(text_objects, ignore_conflicts=True)
-            if style_objects:
-                StyleCustomization.objects.bulk_create(style_objects, ignore_conflicts=True)
-            if icon_objects:
-                IconCustomization.objects.bulk_create(icon_objects, ignore_conflicts=True)
-            if component_objects:
-                ComponentCustomization.objects.bulk_create(component_objects, ignore_conflicts=True)
-            
-            # Handle background images (keep existing, only update new ones)
-            for page_name, page_data in all_page_data.items():
-                bg_images = page_data.get('background_images', {})
-                for element_id, image_data in bg_images.items():
-                    clean_id = extract_numeric_id(element_id)
-                    if clean_id and isinstance(image_data, str) and image_data.startswith('data:image'):
-                        # Only process new base64 images
-                        try:
-                            format, imgstr = image_data.split(';base64,')
-                            ext = format.split('/')[-1]
-                            image_file = ContentFile(
-                                base64.b64decode(imgstr),
-                                name=f"bg_{page_name}_{clean_id}_{uuid.uuid4()}.{ext}"
-                            )
-                            BackgroundImage.objects.update_or_create(
-                                page=page,
-                                element_id=clean_id,
-                                defaults={'image': image_file}
-                            )
-                        except Exception as e:
-                            print(f"⚠️ Background image error for {clean_id}: {e}")
+                # ✅ CRITICAL: Log what we're saving
+                print(f"\n📝 [publish_page] SAVING PAGE:")
+                print(f"   page.brand_name (about to save): '{page.brand_name}'")
+                print(f"   page.subdomain (about to save): '{page.subdomain}'")
                 
-                # Handle image customizations
-                img_customizations = page_data.get('image_customizations', {})
-                for element_id, image_data in img_customizations.items():
-                    if image_data and isinstance(image_data, dict):
-                        image_url = image_data.get('image_url', '')
-                        if image_url and image_url.startswith('data:image'):
+                # Save the page
+                page.save()
+                
+                # ✅ Verify after save
+                page.refresh_from_db()
+                print(f"\n✅ [publish_page] AFTER SAVE:")
+                print(f"   page.brand_name: '{page.brand_name}'")
+                print(f"   page.subdomain: '{page.subdomain}'")
+                
+                # ===== BULK DELETE EXISTING DATA =====
+                print("\n🗑️ [publish_page] Deleting existing data...")
+                TextContent.objects.filter(page=page).delete()
+                StyleCustomization.objects.filter(page=page).delete()
+                ComponentCustomization.objects.filter(page=page).delete()
+                IconCustomization.objects.filter(page=page).delete()
+                
+                # ===== BULK CREATE NEW DATA =====
+                print("💾 [publish_page] Creating new data...")
+                text_objects = []
+                style_objects = []
+                icon_objects = []
+                component_objects = []
+                
+                for page_name, page_data in all_page_data.items():
+                    # Text contents
+                    for element_id, content in page_data.get('text_contents', {}).items():
+                        clean_id = extract_numeric_id(element_id)
+                        if clean_id and content:
+                            text_objects.append(
+                                TextContent(page=page, element_id=clean_id, content=content)
+                            )
+                    
+                    # Style customizations
+                    for element_id, styles in page_data.get('style_customizations', {}).items():
+                        clean_id = extract_numeric_id(element_id)
+                        if clean_id and any(styles.values()):
+                            style_objects.append(
+                                StyleCustomization(
+                                    page=page,
+                                    element_id=clean_id,
+                                    background_color=styles.get('background_color', ''),
+                                    text_color=styles.get('text_color', ''),
+                                    font_size=styles.get('font_size', ''),
+                                    font_family=styles.get('font_family', ''),
+                                    font_weight=styles.get('font_weight', ''),
+                                    padding=styles.get('padding', ''),
+                                    margin=styles.get('margin', ''),
+                                    border_radius=styles.get('border_radius', ''),
+                                    border=styles.get('border', ''),
+                                    display=styles.get('display', ''),
+                                )
+                            )
+                    
+                    # Icon customizations
+                    for element_id, icons in page_data.get('icon_customizations', {}).items():
+                        clean_id = extract_numeric_id(element_id)
+                        if clean_id:
+                            icon_objects.append(
+                                IconCustomization(
+                                    page=page,
+                                    element_id=clean_id,
+                                    icon_class=icons.get('icon_class', ''),
+                                    color=icons.get('color', ''),
+                                    font_size=icons.get('font_size', '')
+                                )
+                            )
+                    
+                    # Component customizations
+                    for comp_data in page_data.get('component_customizations', []):
+                        if comp_data.get('instance_id'):
+                            component_objects.append(
+                                ComponentCustomization(
+                                    page=page,
+                                    component_instance_id=comp_data['instance_id'],
+                                    component_id=comp_data.get('component_id'),
+                                    drop_zone=comp_data.get('drop_zone', 'end'),
+                                    display_order=comp_data.get('display_order', 0),
+                                    customizations=comp_data.get('customizations', {})
+                                )
+                            )
+                
+                # Bulk create all objects
+                if text_objects:
+                    TextContent.objects.bulk_create(text_objects, ignore_conflicts=True)
+                    print(f"   Created {len(text_objects)} text contents")
+                if style_objects:
+                    StyleCustomization.objects.bulk_create(style_objects, ignore_conflicts=True)
+                    print(f"   Created {len(style_objects)} style customizations")
+                if icon_objects:
+                    IconCustomization.objects.bulk_create(icon_objects, ignore_conflicts=True)
+                    print(f"   Created {len(icon_objects)} icon customizations")
+                if component_objects:
+                    ComponentCustomization.objects.bulk_create(component_objects, ignore_conflicts=True)
+                    print(f"   Created {len(component_objects)} component customizations")
+                
+                # Handle background images
+                for page_name, page_data in all_page_data.items():
+                    bg_images = page_data.get('background_images', {})
+                    for element_id, image_data in bg_images.items():
+                        clean_id = extract_numeric_id(element_id)
+                        if clean_id and isinstance(image_data, str) and image_data.startswith('data:image'):
                             try:
-                                format, imgstr = image_url.split(';base64,')
+                                format, imgstr = image_data.split(';base64,')
                                 ext = format.split('/')[-1]
                                 image_file = ContentFile(
                                     base64.b64decode(imgstr),
-                                    name=f"img_{page_name}_{element_id}_{uuid.uuid4()}.{ext}"
+                                    name=f"bg_{page_name}_{clean_id}_{uuid.uuid4()}.{ext}"
                                 )
-                                ImageCustomization.objects.update_or_create(
+                                BackgroundImage.objects.update_or_create(
                                     page=page,
-                                    element_id=element_id,
-                                    page_name=page_name,
-                                    defaults={
-                                        'image': image_file,
-                                        'alt_text': image_data.get('alt_text', '')
-                                    }
+                                    element_id=clean_id,
+                                    defaults={'image': image_file}
                                 )
                             except Exception as e:
-                                print(f"⚠️ Image customization error for {element_id}: {e}")
-            
-            # Handle color palette
-            palette_data = all_page_data.get(current_page, {}).get('color_palette')
-            if palette_data:
-                try:
-                    palette = ColorPalette.objects.get(id=palette_data.get('palette_id'))
-                    page.active_palette = palette
-                    page.active_palette_colors = palette_data.get('colors', {})
-                    page.save(update_fields=['active_palette', 'active_palette_colors'])
-                except ColorPalette.DoesNotExist:
-                    pass
-            
-            print(f"✅ Published: {page.brand_name} - "
-                  f"Texts: {len(text_objects)}, "
-                  f"Styles: {len(style_objects)}, "
-                  f"Icons: {len(icon_objects)}, "
-                  f"Components: {len(component_objects)}")
-            
+                                print(f"⚠️ Background image error for {clean_id}: {e}")
+                
+                # Handle image customizations
+                for page_name, page_data in all_page_data.items():
+                    img_customizations = page_data.get('image_customizations', {})
+                    for element_id, image_data in img_customizations.items():
+                        if image_data and isinstance(image_data, dict):
+                            image_url = image_data.get('image_url', '')
+                            if image_url and image_url.startswith('data:image'):
+                                try:
+                                    format, imgstr = image_url.split(';base64,')
+                                    ext = format.split('/')[-1]
+                                    image_file = ContentFile(
+                                        base64.b64decode(imgstr),
+                                        name=f"img_{page_name}_{element_id}_{uuid.uuid4()}.{ext}"
+                                    )
+                                    ImageCustomization.objects.update_or_create(
+                                        page=page,
+                                        element_id=element_id,
+                                        page_name=page_name,
+                                        defaults={
+                                            'image': image_file,
+                                            'alt_text': image_data.get('alt_text', '')
+                                        }
+                                    )
+                                except Exception as e:
+                                    print(f"⚠️ Image customization error for {element_id}: {e}")
+                
+                # Handle color palette
+                palette_data = all_page_data.get(current_page, {}).get('color_palette')
+                if palette_data:
+                    try:
+                        from builder.models import ColorPalette
+                        palette = ColorPalette.objects.get(id=palette_data.get('palette_id'))
+                        page.active_palette = palette
+                        page.active_palette_colors = palette_data.get('colors', {})
+                        page.save(update_fields=['active_palette', 'active_palette_colors'])
+                        print(f"🎨 Applied palette: {palette.name}")
+                    except ColorPalette.DoesNotExist:
+                        pass
+                
+                print(f"\n✅ Published: {page.subdomain} - "
+                      f"Brand: {page.brand_name}, "
+                      f"Texts: {len(text_objects)}, "
+                      f"Styles: {len(style_objects)}, "
+                      f"Icons: {len(icon_objects)}, "
+                      f"Components: {len(component_objects)}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'subdomain': page.subdomain,
+                    'brand_name': page.brand_name,
+                    'page_url': page.get_absolute_url(),
+                    'message': 'Page published successfully!',
+                    'stats': {
+                        'texts': len(text_objects),
+                        'styles': len(style_objects),
+                        'icons': len(icon_objects),
+                        'components': len(component_objects),
+                    }
+                })
+                
+        except PublishedPage.DoesNotExist:
             return JsonResponse({
-                'success': True,
-                'subdomain': page.subdomain,
-                'page_url': page.get_absolute_url(),
-                'message': 'Page published successfully!',
-                'stats': {
-                    'texts': len(text_objects),
-                    'styles': len(style_objects),
-                    'icons': len(icon_objects),
-                    'components': len(component_objects),
-                }
-            })
+                'success': False,
+                'error': 'Page not found'
+            }, status=404)
             
-    except PublishedPage.DoesNotExist:
+    except json.JSONDecodeError as e:
         return JsonResponse({
-            'success': False, 
-            'error': 'Page not found'
-        }, status=404)
-        
+            'success': False,
+            'error': f'Invalid JSON: {str(e)}'
+        }, status=400)
     except Exception as e:
         import traceback
-        print(f"❌ Publish error: {e}")
         traceback.print_exc()
         return JsonResponse({
-            'success': False, 
+            'success': False,
             'error': str(e)
         }, status=500)
-
-        
+    
 # builder/views.py - Add this new view
 
 # builder/views.py - Updated upload_image
@@ -2492,17 +2719,19 @@ def get_processed_images(request, subdomain):
         return JsonResponse({'success': False, 'error': str(e)})
     
 
-# Add this helper function outside the class
 def extract_numeric_id(element_id):
-    """Extract only numeric part from element ID"""
+    """
+    Extract only numeric part from element ID
+    """
     if not element_id:
         return None
-    import re
+    
     if isinstance(element_id, int):
         return str(element_id)
+    
+    import re
     match = re.search(r'\d+', str(element_id))
     return match.group() if match else None
-
 
 
 
@@ -3138,7 +3367,9 @@ def delete_tracking_code(request, subdomain, code_id):
     })
 
 def get_template_pages(template_name):
-    """Get available pages for a template"""
+    """
+    Get available pages for a template
+    """
     try:
         template = Template.objects.get(name=template_name)
         if template.template_type == 'multi' and template.available_pages:
@@ -3168,10 +3399,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 
+
 # @csrf_exempt
 # @require_POST
 # def add_to_cart(request, subdomain):
-#     """Add product to cart"""
+#     """Add product to cart with variant data"""
 #     try:
 #         page = get_object_or_404(PublishedPage, subdomain=subdomain)
 #         data = json.loads(request.body)
@@ -3179,62 +3411,59 @@ from django.views.decorators.http import require_POST
 #         quantity = int(data.get('quantity', 1))
 #         selected_color = data.get('selected_color', '')
 #         selected_size = data.get('selected_size', '')
-
-#         print(f"🛒 Adding to cart - Product: {product_id}, Quantity: {quantity}, Color: {selected_color}, Size: {selected_size}")
-#         # Get the product - ensure it belongs to the correct page
+        
+#         # Get the product
 #         product = get_object_or_404(Product, id=product_id, page=page)
-
-#         # Ensure session exists for guest users
+        
+#         # Ensure session exists
 #         if not request.session.session_key:
 #             request.session.create()
-        
 #         session_key = request.session.session_key
-
-#         # Get or create cart - handle both authenticated and guest users
-#         cart_filter = {
-#             'page': page,
-#         }
-#         print(f'user is {request.user}')
+        
+#         # Get or create cart
+#         cart_filter = {'page': page}
 #         if request.user.is_authenticated:
 #             cart_filter['user'] = request.user
-#             cart_filter['session_key'] = None  # Clear session key for authenticated users
+#             cart_filter['session_key'] = None
 #         else:
 #             cart_filter['user'] = None
 #             cart_filter['session_key'] = session_key
-
+        
 #         cart, created = Cart.objects.get_or_create(**cart_filter)
-
-#         # Add or update cart item
-#         cart_item, item_created = CartItem.objects.get_or_create(
+        
+#         # Check if same variant already exists in cart
+#         existing_item = CartItem.objects.filter(
 #             cart=cart,
 #             product=product,
-#             defaults={
-#                 'quantity': quantity,
-#                 'selected_color': selected_color,
-#                 'selected_size': selected_size
-#             }
-#         )
-
-#         if not item_created:
-#             cart_item.quantity += quantity
-#             cart_item.selected_color = selected_color or cart_item.selected_color
-#             cart_item.selected_size = selected_size or cart_item.selected_size
-#             cart_item.save()
-
+#             selected_color=selected_color,
+#             selected_size=selected_size
+#         ).first()
+        
+#         if existing_item:
+#             # Update existing item
+#             existing_item.quantity += quantity
+#             existing_item.save()
+#             message = f'Updated {product.title} quantity'
+#         else:
+#             # Create new cart item with variant data
+#             CartItem.objects.create(
+#                 cart=cart,
+#                 product=product,
+#                 quantity=quantity,
+#                 selected_color=selected_color,
+#                 selected_size=selected_size
+#             )
+#             message = f'Added {product.title} to cart'
+        
 #         return JsonResponse({
 #             'success': True,
-#             'message': f'Added {product.title} to cart',
+#             'message': message,
 #             'cart_total': cart.get_total_quantity(),
 #             'cart_items_count': cart.items.count(),
 #             'selected_color': selected_color,
 #             'selected_size': selected_size
 #         })
-
-#     except Product.DoesNotExist:
-#         return JsonResponse({
-#             'success': False, 
-#             'error': f'Product with ID {product_id} not found for this store'
-#         })
+        
 #     except Exception as e:
 #         print(f"❌ Cart error: {str(e)}")
 #         import traceback
@@ -3242,76 +3471,140 @@ from django.views.decorators.http import require_POST
 #         return JsonResponse({'success': False, 'error': str(e)})
 
 
+# builder/views.py - Complete fixed add_to_cart
 
 @csrf_exempt
 @require_POST
 def add_to_cart(request, subdomain):
-    """Add product to cart with variant data"""
+    """Add product to cart with variant support - FIXED"""
     try:
-        page = get_object_or_404(PublishedPage, subdomain=subdomain)
-        data = json.loads(request.body)
-        product_id = data.get('product_id')
-        quantity = int(data.get('quantity', 1))
-        selected_color = data.get('selected_color', '')
-        selected_size = data.get('selected_size', '')
+        print(f"🛒 ADD TO CART - Subdomain: {subdomain}")
         
-        # Get the product
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        
+        # Parse request body
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+        
+        product_id = data.get('product_id')
+        variant_id = data.get('variant_id')
+        selected_options = data.get('options', {})
+        quantity = int(data.get('quantity', 1))
+        
+        print(f"📦 Product ID: {product_id}, Variant ID: {variant_id}, Quantity: {quantity}")
+        print(f"📦 Options: {selected_options}")
+        
+        # Get product
         product = get_object_or_404(Product, id=product_id, page=page)
+        print(f"✅ Product found: {product.title}")
+        
+        # Get variant if specified
+        variant = None
+        if variant_id:
+            try:
+                variant = ProductVariant.objects.get(id=variant_id, product=product)
+                print(f"✅ Variant found: {variant}")
+            except ProductVariant.DoesNotExist:
+                print(f"⚠️ Variant {variant_id} not found, trying options match")
+                if selected_options:
+                    variant = product.variants.filter(options=selected_options).first()
+                    if variant:
+                        print(f"✅ Variant found by options: {variant}")
+        elif selected_options:
+            variant = product.variants.filter(options=selected_options).first()
+            if variant:
+                print(f"✅ Variant found by options: {variant}")
         
         # Ensure session exists
         if not request.session.session_key:
             request.session.create()
         session_key = request.session.session_key
+        print(f"🔑 Session: {session_key}")
+        print(f"👤 User authenticated: {request.user.is_authenticated}")
         
-        # Get or create cart
-        cart_filter = {'page': page}
+        # Get or create cart - FIXED: Use correct lookup
         if request.user.is_authenticated:
-            cart_filter['user'] = request.user
-            cart_filter['session_key'] = None
+            # For authenticated users, try to get existing cart or create new
+            cart, created = Cart.objects.get_or_create(
+                user=request.user,
+                page=page,
+                defaults={
+                    'session_key': None,
+                    'created_at': timezone.now(),
+                    'updated_at': timezone.now()
+                }
+            )
+            # If there's a session cart, transfer it
+            if not created:
+                session_cart = Cart.objects.filter(session_key=session_key, page=page, user__isnull=True).first()
+                if session_cart:
+                    # Transfer items from session cart to user cart
+                    for item in session_cart.items.all():
+                        item.cart = cart
+                        item.save()
+                    session_cart.delete()
+                    print("🔄 Transferred session cart to user cart")
         else:
-            cart_filter['user'] = None
-            cart_filter['session_key'] = session_key
+            # For guest users, use session key
+            cart, created = Cart.objects.get_or_create(
+                session_key=session_key,
+                page=page,
+                defaults={
+                    'user': None,
+                    'created_at': timezone.now(),
+                    'updated_at': timezone.now()
+                }
+            )
         
-        cart, created = Cart.objects.get_or_create(**cart_filter)
+        print(f"🛒 Cart: {cart.id}, Created: {created}")
         
-        # Check if same variant already exists in cart
+        # Check if item already exists in cart (with same variant)
         existing_item = CartItem.objects.filter(
             cart=cart,
             product=product,
-            selected_color=selected_color,
-            selected_size=selected_size
+            variant=variant
         ).first()
         
         if existing_item:
-            # Update existing item
+            print(f"📦 Item exists, updating quantity from {existing_item.quantity} to {existing_item.quantity + quantity}")
             existing_item.quantity += quantity
             existing_item.save()
             message = f'Updated {product.title} quantity'
         else:
-            # Create new cart item with variant data
+            print(f"📦 Creating new cart item")
             CartItem.objects.create(
                 cart=cart,
                 product=product,
-                quantity=quantity,
-                selected_color=selected_color,
-                selected_size=selected_size
+                variant=variant,
+                selected_options=selected_options,
+                quantity=quantity
             )
             message = f'Added {product.title} to cart'
+        
+        # Get updated counts
+        total_qty = cart.get_total_quantity()
+        items_count = cart.items.count()
+        
+        print(f"✅ Success: {message}, Total: {total_qty}, Items: {items_count}")
         
         return JsonResponse({
             'success': True,
             'message': message,
-            'cart_total': cart.get_total_quantity(),
-            'cart_items_count': cart.items.count(),
-            'selected_color': selected_color,
-            'selected_size': selected_size
+            'cart_total': total_qty,
+            'cart_items_count': items_count
         })
         
+    except Product.DoesNotExist:
+        print(f"❌ Product not found: {product_id}")
+        return JsonResponse({'success': False, 'error': 'Product not found'})
     except Exception as e:
         print(f"❌ Cart error: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
+    
 
 @csrf_exempt
 @require_POST
@@ -3363,80 +3656,98 @@ def add_to_wishlist(request, subdomain):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+# builder/views.py - Update get_cart_data
+
+# builder/views.py - Fixed get_cart_data
+
 def get_cart_data(request, subdomain):
-    """Get cart data for current user/session"""
+    """Get cart data with variant info - FIXED"""
     try:
         page = get_object_or_404(PublishedPage, subdomain=subdomain)
         
-        # Ensure session exists for guest users
         if not request.session.session_key:
             request.session.create()
-        
         session_key = request.session.session_key
-
-        # Build filter for cart and wishlist
-        cart_filter = {'page': page}
-        wishlist_filter = {'page': page}
+        
+        print(f"🔍 Getting cart data for: {subdomain}")
+        print(f"🔑 Session: {session_key}")
+        print(f"👤 User: {request.user}")
+        
+        # Find cart - FIXED: Better lookup
+        cart = None
         
         if request.user.is_authenticated:
-            # For authenticated users, try user first, then session
-            cart = Cart.objects.filter(
-                user=request.user,
-                page=page
-            ).first()
-            
-            if not cart:
-                cart = Cart.objects.filter(
-                    session_key=session_key,
-                    page=page
-                ).first()
-                
-            wishlist = Wishlist.objects.filter(
-                user=request.user,
-                page=page
-            ).first()
-            
-            if not wishlist:
-                wishlist = Wishlist.objects.filter(
-                    session_key=session_key,
-                    page=page
-                ).first()
+            # Try user cart first
+            cart = Cart.objects.filter(user=request.user, page=page).first()
+            if cart:
+                print(f"✅ Found user cart: {cart.id}")
+            else:
+                # Try session cart
+                cart = Cart.objects.filter(session_key=session_key, page=page).first()
+                if cart:
+                    print(f"✅ Found session cart: {cart.id}")
+                    # Transfer to user
+                    cart.user = request.user
+                    cart.session_key = None
+                    cart.save()
+                    print(f"🔄 Transferred session cart to user: {cart.id}")
         else:
-            # For guest users, use session key
-            cart = Cart.objects.filter(
-                session_key=session_key,
-                page=page
-            ).first()
-            
-            wishlist = Wishlist.objects.filter(
-                session_key=session_key,
-                page=page
-            ).first()
-
+            # Guest user
+            cart = Cart.objects.filter(session_key=session_key, page=page).first()
+            if cart:
+                print(f"✅ Found guest cart: {cart.id}")
+        
         cart_data = {
-            'cart_total': cart.get_total_quantity() if cart else 0,
-            'cart_items_count': cart.items.count() if cart else 0,
-            'wishlist_count': wishlist.items.count() if wishlist else 0,
+            'cart_total': 0,
+            'cart_items_count': 0,
             'cart_items': []
         }
-
+        
         if cart:
-            for item in cart.items.all():
-                cart_data['cart_items'].append({
+            # Force refresh the cart items count
+            items_count = cart.items.count()
+            total_qty = cart.get_total_quantity()
+            
+            cart_data['cart_total'] = total_qty
+            cart_data['cart_items_count'] = items_count
+            
+            print(f"📦 Cart {cart.id} has {items_count} items, total quantity: {total_qty}")
+            
+            # Get all items with proper select_related
+            for item in cart.items.select_related('product', 'variant').all():
+                # Get variant image or product image
+                image_url = None
+                if item.variant and item.variant.image:
+                    image_url = item.variant.image.url
+                elif item.product.main_image:
+                    image_url = item.product.main_image.url
+                
+                # Get variant options for display
+                variant_options = {}
+                if item.variant and item.variant.options:
+                    variant_options = item.variant.options
+                elif item.selected_options:
+                    variant_options = item.selected_options
+                
+                item_data = {
                     'id': item.id,
                     'product_id': item.product.id,
                     'title': item.product.title,
-                    'price': str(item.product.price),
+                    'price': float(item.get_price()),
                     'quantity': item.quantity,
-                    'total_price': str(item.get_total_price()),
-                    'image_url': item.product.main_image.url if item.product.main_image else None,
-                     # NEW: Add variant data
-                    'selected_color': item.selected_color,
-                    'selected_size': item.selected_size
-                })
-
+                    'total_price': float(item.get_total_price()),
+                    'image_url': image_url,
+                    'variant_id': item.variant.id if item.variant else None,
+                    'variant_options': variant_options,
+                }
+                
+                cart_data['cart_items'].append(item_data)
+                print(f"  📦 Item: {item.product.title}, Qty: {item.quantity}, Price: {item.get_price()}")
+        else:
+            print("ℹ️ No cart found")
+        
         return JsonResponse(cart_data)
-
+        
     except Exception as e:
         print(f"❌ Get cart data error: {str(e)}")
         import traceback
@@ -4263,7 +4574,9 @@ def get_product_reviews(request, subdomain, product_id):
         for review in reviews:
             reviews_data.append({
                 'id': review.id,
-                'user_name': review.user.username if review.user else 'Anonymous',
+                # 'user_name': review.author_name if review.user else 'Anonymous',
+                'user_name': review.author_name or 'Anonymous',  # Use author_name here
+                'author_name': review.author_name or 'Anonymous',  # ADD THIS
                 'rating': review.rating,
                 'title': review.title,
                 'comment': review.comment,
@@ -8529,3 +8842,847 @@ def demo_page(request):
     return render(request, 'builder/demo.html', {
         'year': datetime.now().year,
     })
+
+
+# Add these imports at the top if not present
+import hashlib
+from itertools import product as cartesian_product
+from decimal import Decimal
+
+# Add after your existing views
+
+@login_required
+def manage_variants(request, subdomain, product_id):
+    """Main variant management interface"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    options = ProductOption.objects.filter(page=page, is_active=True)
+    variants = product.variants.all()
+    
+    # Generate variant matrix (all possible combinations)
+    variant_matrix = {'rows': [], 'headers': []}
+    
+    if options.exists():
+        option_values = {}
+        for option in options:
+            values = list(option.values.filter(is_active=True).values_list('value', flat=True))
+            if values:
+                option_values[option.name] = values
+                variant_matrix['headers'].append({'name': option.name, 'values': values})
+        
+        if option_values:
+            # Generate all combinations
+            combinations = list(cartesian_product(*option_values.values()))
+            option_names = list(option_values.keys())
+            
+            for combo in combinations:
+                combo_dict = dict(zip(option_names, combo))
+                existing_variant = product.variants.filter(options=combo_dict).first()
+                
+                row = {
+                    'options': combo_dict,
+                    'variant': existing_variant,
+                    'exists': bool(existing_variant),
+                    'combo_key': hashlib.md5(str(combo_dict).encode()).hexdigest()[:10]
+                }
+                
+                if existing_variant:
+                    row.update({
+                        'price': existing_variant.price,
+                        'compare_at_price': existing_variant.compare_at_price,
+                        'quantity': existing_variant.quantity,
+                        'sku': existing_variant.sku,
+                    })
+                variant_matrix['rows'].append(row)
+    
+    context = {
+        'page': page,
+        'product': product,
+        'options': options,
+        'product_options': options,
+        'variants': variants,
+        'variant_matrix': variant_matrix,
+        'has_variants': variants.exists(),
+    }
+    
+    return render(request, 'builder/product_variants.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def create_product_option(request, subdomain):
+    """Create a new product option"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        
+        option = ProductOption.objects.create(
+            page=page,
+            name=data.get('name'),
+            option_type=data.get('option_type', 'text'),
+            display_order=ProductOption.objects.filter(page=page).count()
+        )
+        
+        # Create option values
+        values = data.get('values', [])
+        for idx, val in enumerate(values):
+            ProductOptionValue.objects.create(
+                option=option,
+                value=val.get('value'),
+                color_code=val.get('color_code', ''),
+                display_order=idx
+            )
+        
+        return JsonResponse({
+            'success': True,
+            'option': {
+                'id': option.id,
+                'name': option.name,
+                'option_type': option.option_type,
+                'values': list(option.values.values('id', 'value', 'color_code'))
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def bulk_update_variants(request, subdomain, product_id):
+    """Bulk update variants from the matrix grid"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        data = json.loads(request.body)
+        
+        variants_data = data.get('variants', [])
+        
+        updated_count = 0
+        created_count = 0
+        
+        with transaction.atomic():
+            for variant_data in variants_data:
+                options_dict = variant_data.get('options', {})
+                
+                # Find existing variant or create new
+                variant = product.variants.filter(options=options_dict).first()
+                
+                if variant:
+                    # Update existing
+                    if variant_data.get('price'):
+                        variant.price = Decimal(str(variant_data['price']))
+                    if variant_data.get('compare_at_price'):
+                        variant.compare_at_price = Decimal(str(variant_data['compare_at_price']))
+                    if variant_data.get('quantity') is not None:
+                        variant.quantity = int(variant_data['quantity'])
+                    if variant_data.get('sku'):
+                        variant.sku = variant_data['sku']
+                    variant.save()
+                    updated_count += 1
+                else:
+                    # Create new
+                    variant = ProductVariant.objects.create(
+                        product=product,
+                        options=options_dict,
+                        price=Decimal(str(variant_data['price'])) if variant_data.get('price') else None,
+                        compare_at_price=Decimal(str(variant_data['compare_at_price'])) if variant_data.get('compare_at_price') else None,
+                        quantity=int(variant_data.get('quantity', 0)),
+                        sku=variant_data.get('sku', ''),
+                    )
+                    created_count += 1
+            
+            # Mark product as having variants
+            if variants_data:
+                product.has_variants = True
+                product.save(update_fields=['has_variants'])
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Updated {updated_count}, created {created_count} variants',
+            'updated': updated_count,
+            'created': created_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_option(request, subdomain, option_id):
+    """Delete a product option"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        option = get_object_or_404(ProductOption, id=option_id, page=page)
+        option.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def quick_edit_variant(request, subdomain, variant_id):
+    """Quick edit a single variant"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        variant = get_object_or_404(ProductVariant, id=variant_id, product__page=page)
+        data = json.loads(request.body)
+        
+        if 'price' in data:
+            variant.price = Decimal(str(data['price'])) if data['price'] else None
+        if 'compare_at_price' in data:
+            variant.compare_at_price = Decimal(str(data['compare_at_price'])) if data['compare_at_price'] else None
+        if 'quantity' in data:
+            variant.quantity = int(data['quantity'])
+        if 'sku' in data:
+            variant.sku = data['sku']
+        if 'track_quantity' in data:
+            variant.track_quantity = data['track_quantity']
+        
+        variant.save()
+        return JsonResponse({'success': True, 'message': 'Variant updated'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_variant(request, subdomain, variant_id):
+    """Delete a variant"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        variant = get_object_or_404(ProductVariant, id=variant_id, product__page=page)
+        variant.delete()
+        
+        # Update product has_variants flag
+        has_variants = ProductVariant.objects.filter(product=variant.product).exists()
+        variant.product.has_variants = has_variants
+        variant.product.save(update_fields=['has_variants'])
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def duplicate_variant(request, subdomain, variant_id):
+    """Duplicate a variant"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        original = get_object_or_404(ProductVariant, id=variant_id, product__page=page)
+        
+        duplicate = ProductVariant.objects.create(
+            product=original.product,
+            options=original.options,
+            price=original.price,
+            compare_at_price=original.compare_at_price,
+            quantity=original.quantity,
+            track_quantity=original.track_quantity,
+            weight=original.weight,
+            is_active=original.is_active,
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'variant_id': duplicate.id,
+            'message': 'Variant duplicated'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+def get_product_variant(request, subdomain, product_id):
+    """API endpoint to get variant by selected options"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        data = json.loads(request.body)
+        selected_options = data.get('options', {})
+        
+        # Find matching variant
+        variant = product.variants.filter(options=selected_options).first()
+        
+        if variant:
+            return JsonResponse({
+                'success': True,
+                'variant': {
+                    'id': variant.id,
+                    'price': float(variant.price) if variant.price else float(product.price),
+                    'compare_at_price': float(variant.compare_at_price) if variant.compare_at_price else None,
+                    'quantity': variant.quantity,
+                    'sku': variant.sku,
+                    'in_stock': variant.quantity > 0 if variant.track_quantity else True,
+                    'image_url': variant.image.url if variant.image else None,
+                }
+            })
+        else:
+            return JsonResponse({'success': True, 'variant': None})
+            
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+
+# builder/views.py - Add these views
+
+@login_required
+def manage_variants_simple(request, subdomain, product_id):
+    """Simplified variant management"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    context = {
+        'page': page,
+        'product': product,
+        'variants': product.variants.all(),
+    }
+    
+    return render(request, 'builder/product_variants.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_variant_simple(request, subdomain, product_id):
+    """Add a variant via simple form"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        option1_name = request.POST.get('option1_name', '').strip()
+        option1_value = request.POST.get('option1_value', '').strip()
+        option2_name = request.POST.get('option2_name', '').strip()
+        option2_value = request.POST.get('option2_value', '').strip()
+        price = request.POST.get('price')
+        compare_price = request.POST.get('compare_price')
+        quantity = request.POST.get('quantity', 0)
+        sku = request.POST.get('sku', '').strip()
+        
+        options = {}
+        if option1_name and option1_value:
+            options[option1_name] = option1_value
+        if option2_name and option2_value:
+            options[option2_name] = option2_value
+        
+        if not options:
+            return JsonResponse({'success': False, 'error': 'Please add at least one option'})
+        
+        # Check for duplicates
+        if product.variants.filter(options=options).exists():
+            return JsonResponse({
+                'success': False, 
+                'error': 'This variant already exists!'
+            })
+        
+        variant = ProductVariant.objects.create(
+            product=product,
+            options=options,
+            price=Decimal(price) if price else None,
+            compare_at_price=Decimal(compare_price) if compare_price else None,
+            quantity=int(quantity) if quantity else 0,
+            sku=sku if sku else '',
+        )
+        
+        if 'image' in request.FILES:
+            variant.image = request.FILES['image']
+            variant.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Variant added!',
+            'variant': {
+                'id': variant.id,
+                'options': variant.options,
+                'price': str(variant.price) if variant.price else '',
+                'quantity': variant.quantity,
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_variant_image(request, subdomain, variant_id):
+    """Upload image for a variant"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        variant = get_object_or_404(ProductVariant, id=variant_id, product__page=page)
+        
+        if 'image' not in request.FILES:
+            return JsonResponse({'success': False, 'error': 'No image provided'})
+        
+        variant.image = request.FILES['image']
+        variant.save()
+        
+        return JsonResponse({
+            'success': True,
+            'image_url': variant.image.url,
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+def onboarding_wizard(request):
+    """Main onboarding wizard view - handles authentication state"""
+    
+    # If user is already logged in, we still show the wizard but skip account step
+    context = {
+        'steps': [
+            {'label': 'Account'},
+            {'label': 'Store'},
+            {'label': 'Brand'},
+            {'label': 'Template'},
+            {'label': 'Launch'},
+        ]
+    }
+    return render(request, 'builder/onboarding/wizard.html', context)
+
+
+
+def get_templates_api(request):
+    """API endpoint for template selection during onboarding"""
+    templates = Template.objects.filter(is_active=True).values(
+        'id', 'name', 'title', 'description', 
+        'preview_image', 'is_responsive'
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'templates': list(templates)
+    })
+
+
+@csrf_exempt
+@check_website_limit
+def launch_editor(request):
+    """
+    Create store from onboarding data and redirect to editor.
+    ✅ BRAND NAME AND SUBDOMAIN ARE SAVED SEPARATELY
+    ✅ BRAND NAME IS NEVER MODIFIED
+    """
+    print("\n" + "="*60)
+    print("🚀 [launch_editor] ===== REQUEST RECEIVED =====")
+    print("="*60)
+    
+    if request.method != 'POST':
+        print("❌ [launch_editor] Invalid method:", request.method)
+        return JsonResponse({'success': False, 'error': 'Invalid method'})
+    
+    try:
+        # Log raw request body
+        print("📥 [launch_editor] Raw request body:")
+        print(f"   {request.body[:500]}...")  # First 500 chars
+        
+        data = json.loads(request.body)
+        print("\n📥 [launch_editor] Parsed JSON data:")
+        print(f"   brand_name: '{data.get('brand_name')}'")
+        print(f"   subdomain: '{data.get('subdomain')}'")
+        print(f"   template_name: '{data.get('template_name')}'")
+        print(f"   palette_id: '{data.get('palette_id')}'")
+        print(f"   country: '{data.get('country')}'")
+        print(f"   currency: '{data.get('currency')}'")
+        print(f"   contact_number: '{data.get('contact_number')}'")
+        print(f"   heading_font: '{data.get('heading_font')}'")
+        print(f"   body_font: '{data.get('body_font')}'")
+        
+        with transaction.atomic():
+            print("\n🔐 [launch_editor] Starting database transaction...")
+            
+            # 1. Handle user
+            user = None
+            if request.user.is_authenticated:
+                user = request.user
+                print(f"👤 [launch_editor] User already authenticated: {user.username} (ID: {user.id})")
+            else:
+                print("👤 [launch_editor] Creating new user...")
+                user_data = data.get('user_data', {})
+                if not user_data.get('email') or not user_data.get('password'):
+                    print("❌ [launch_editor] Missing email or password for new user")
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Email and password are required'
+                    }, status=400)
+                
+                email = user_data.get('email')
+                username = email.split('@')[0] if email else 'user'
+                
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                print(f"   Creating user: {username} ({email})")
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=user_data.get('password')
+                )
+                
+                full_name = user_data.get('full_name', '')
+                if full_name:
+                    name_parts = full_name.split()
+                    user.first_name = name_parts[0] if name_parts else ''
+                    user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+                    user.save()
+                    print(f"   User full name: {full_name}")
+                
+                UserProfile.objects.create(
+                    user=user,
+                    contact_number=data.get('contact_number', ''),
+                    country=data.get('country', ''),
+                )
+                
+                login(request, user)
+                print(f"✅ [launch_editor] User created and logged in: {user.username}")
+            
+            # 2. Get or create template
+            template_name = data.get('template_name', 'ecommerce_4')
+            print(f"\n📄 [launch_editor] Getting/Creating template: {template_name}")
+            template, created = Template.objects.get_or_create(
+                name=template_name,
+                defaults={
+                    'title': data.get('brand_name', 'My Store'),
+                    'is_active': True,
+                    'template_type': 'multi',
+                    'available_pages': ['home', 'products', 'about', 'contact'],
+                }
+            )
+            print(f"   Template {'created' if created else 'found'}: {template.name} (ID: {template.id})")
+            
+            # 3. ✅ CRITICAL: Get brand_name and subdomain SEPARATELY
+            brand_name = data.get('brand_name', 'My Store').strip()
+            subdomain = data.get('subdomain', '').strip().lower()
+            
+            print(f"\n🔑 [launch_editor] === CRITICAL VALUES ===")
+            print(f"   brand_name from request: '{brand_name}'")
+            print(f"   subdomain from request: '{subdomain}'")
+            
+            # ✅ Ensure subdomain is unique
+            original_subdomain = subdomain
+            counter = 1
+            while PublishedPage.objects.filter(subdomain=subdomain).exists():
+                subdomain = f"{original_subdomain}{counter}"
+                counter += 1
+            
+            print(f"   After uniqueness check - subdomain: '{subdomain}'")
+            
+            # ✅ If subdomain is empty, generate from brand name
+            if not subdomain:
+                subdomain = generate_subdomain_from_brand(brand_name)
+                print(f"   Subdomain was empty, generated from brand: '{subdomain}'")
+                # Ensure uniqueness
+                original_subdomain = subdomain
+                counter = 1
+                while PublishedPage.objects.filter(subdomain=subdomain).exists():
+                    subdomain = f"{original_subdomain}{counter}"
+                    counter += 1
+                print(f"   After uniqueness check - generated subdomain: '{subdomain}'")
+            
+            print(f"\n✅ [launch_editor] FINAL VALUES BEFORE SAVING:")
+            print(f"   brand_name: '{brand_name}' (type: {type(brand_name)})")
+            print(f"   subdomain: '{subdomain}' (type: {type(subdomain)})")
+            
+            # 4. ✅ Create published page with SEPARATE brand_name and subdomain
+            print(f"\n📝 [launch_editor] Creating PublishedPage...")
+            page = PublishedPage.objects.create(
+                user=user,
+                template=template,
+                template_name=template_name,
+                brand_name=brand_name,      # ✅ User's original brand name - NEVER CHANGED
+                subdomain=subdomain,         # ✅ Generated subdomain - CAN CHANGE
+                is_published=False,
+                currency_code=data.get('currency', 'USD'),
+                page_customizations={},
+            )
+            
+            print(f"\n✅ [launch_editor] Page created successfully!")
+            print(f"   Page ID: {page.id}")
+            print(f"   brand_name in DB: '{page.brand_name}'")
+            print(f"   subdomain in DB: '{page.subdomain}'")
+            print(f"   template: {page.template_name}")
+            print(f"   user: {page.user.username}")
+            
+            # 5. Apply the palette
+            palette_id = data.get('palette_id')
+            if palette_id:
+                print(f"\n🎨 [launch_editor] Applying palette: {palette_id}")
+                try:
+                    palette = ColorPalette.objects.get(id=palette_id)
+                    print(f"   Palette found: {palette.name}")
+                    
+                    from builder.utils.color_extractor import TemplateColorExtractor
+                    color_map = TemplateColorExtractor.generate_color_map(template_name)
+                    variables = color_map.get('variables', {})
+                    print(f"   Found {len(variables)} template variables")
+                    
+                    applied_colors = {}
+                    palette_colors = list(palette.colors.all())
+                    print(f"   Palette has {len(palette_colors)} colors")
+                    
+                    for var_name, var_data in variables.items():
+                        var_lower = var_name.lower()
+                        matched_color = None
+                        
+                        for pc in palette_colors:
+                            if pc.color_type in var_lower or var_lower in pc.color_type:
+                                matched_color = pc
+                                break
+                        
+                        if not matched_color:
+                            for pc in palette_colors:
+                                if pc.name.lower() in var_lower or var_lower in pc.name.lower():
+                                    matched_color = pc
+                                    break
+                        
+                        if not matched_color:
+                            primary = palette.colors.filter(color_type='primary').first()
+                            if primary:
+                                matched_color = primary
+                            else:
+                                matched_color = palette_colors[0] if palette_colors else None
+                        
+                        if matched_color:
+                            applied_colors[var_name] = {
+                                'hex': matched_color.hex_value,
+                                'rgb': matched_color.rgb_value,
+                                'source': 'palette',
+                                'palette_color_id': matched_color.id,
+                                'color_type': matched_color.color_type,
+                            }
+                    
+                    page.active_palette = palette
+                    page.active_palette_colors = applied_colors
+                    page.save(update_fields=['active_palette', 'active_palette_colors'])
+                    
+                    PageColorPalette.objects.create(
+                        page=page,
+                        palette=palette,
+                        is_active=True,
+                        applied_colors=applied_colors,
+                        variable_mapping={}
+                    )
+                    
+                    print(f"✅ [launch_editor] Palette applied successfully: {palette.name}")
+                    
+                except ColorPalette.DoesNotExist:
+                    print(f"⚠️ [launch_editor] Palette {palette_id} not found")
+                except Exception as e:
+                    print(f"⚠️ [launch_editor] Error applying palette: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # 6. Build editor URL
+            editor_url = reverse('editor_with_page', kwargs={
+                'template_name': template_name,
+                'subdomain': subdomain
+            })
+            editor_url += f'?onboarding=true&brand={brand_name}'
+            
+            print(f"\n📤 [launch_editor] Returning response:")
+            print(f"   success: True")
+            print(f"   editor_url: {editor_url}")
+            print(f"   subdomain: {subdomain}")
+            print(f"   brand_name: {brand_name}")
+            print(f"   page_id: {page.id}")
+            print("="*60 + "\n")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Store created, launching editor...',
+                'editor_url': editor_url,
+                'subdomain': subdomain,
+                'brand_name': brand_name,
+                'page_id': page.id,
+                'template_name': template_name,
+                'palette_applied': palette_id is not None,
+            })
+            
+    except Exception as e:
+        print(f"\n❌ [launch_editor] EXCEPTION CAUGHT:")
+        print(f"   Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("="*60 + "\n")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+def generate_subdomain_from_brand(brand_name):
+    """
+    Generate a subdomain from a brand name
+    """
+    if not brand_name:
+        return 'my-store'
+    
+    subdomain = brand_name.lower()
+    subdomain = re.sub(r'[^a-z0-9\s-]', '', subdomain)
+    subdomain = re.sub(r'\s+', '-', subdomain)
+    subdomain = re.sub(r'-+', '-', subdomain)
+    subdomain = re.sub(r'^-|-$', '', subdomain)
+    
+    if not subdomain:
+        subdomain = 'my-store'
+    
+    return subdomain
+    
+
+def apply_palette_directly(page, palette_id):
+    """Fallback: Apply palette directly to page"""
+    try:
+        from builder.utils.color_extractor import TemplateColorExtractor
+        palette = ColorPalette.objects.get(id=palette_id)
+        
+        color_map = TemplateColorExtractor.generate_color_map(page.template.name)
+        variables = color_map.get('variables', {})
+        
+        applied_colors = {}
+        palette_colors = list(palette.colors.all())
+        
+        for var_name, var_data in variables.items():
+            var_lower = var_name.lower()
+            matched_color = None
+            
+            for pc in palette_colors:
+                if pc.color_type in var_lower or var_lower in pc.color_type:
+                    matched_color = pc
+                    break
+            
+            if not matched_color:
+                for pc in palette_colors:
+                    if pc.name.lower() in var_lower or var_lower in pc.name.lower():
+                        matched_color = pc
+                        break
+            
+            if not matched_color:
+                primary = palette.colors.filter(color_type='primary').first()
+                if primary:
+                    matched_color = primary
+                else:
+                    matched_color = palette_colors[0] if palette_colors else None
+            
+            if matched_color:
+                applied_colors[var_name] = {
+                    'hex': matched_color.hex_value,
+                    'rgb': matched_color.rgb_value,
+                    'source': 'palette',
+                }
+            else:
+                applied_colors[var_name] = {
+                    'hex': var_data.get('value', '#4361ee'),
+                    'rgb': var_data.get('rgb', '67, 97, 238'),
+                    'source': 'original',
+                }
+        
+        page.active_palette = palette
+        page.active_palette_colors = applied_colors
+        page.save(update_fields=['active_palette', 'active_palette_colors'])
+        
+        from builder.models import PageColorPalette
+        PageColorPalette.objects.create(
+            page=page,
+            palette=palette,
+            is_active=True,
+            applied_colors=applied_colors,
+            variable_mapping={}
+        )
+        
+        print(f"✅ Fallback: Applied palette {palette.name} directly")
+        
+    except Exception as e:
+        print(f"❌ Fallback failed: {e}")
+
+    
+def map_palette_to_template(palette, template_name):
+    """Map palette colors to template variables"""
+    from builder.utils.color_extractor import TemplateColorExtractor
+    color_map = TemplateColorExtractor.generate_color_map(template_name)
+    variables = color_map.get('variables', {})
+    applied_colors = {}
+    
+    for var_name, var_data in variables.items():
+        matched_color = None
+        for palette_color in palette.colors.all():
+            if palette_color.color_type in var_name.lower():
+                matched_color = palette_color
+                break
+        
+        if matched_color:
+            applied_colors[var_name] = {
+                'hex': matched_color.hex_value,
+                'rgb': matched_color.rgb_value,
+                'source': 'palette'
+            }
+        else:
+            first_color = palette.colors.first()
+            if first_color:
+                applied_colors[var_name] = {
+                    'hex': first_color.hex_value,
+                    'rgb': first_color.rgb_value,
+                    'source': 'palette'
+                }
+    
+    return applied_colors
+
+
+def generate_initial_content(brand_name, heading_font, body_font, description, palette):
+    """Generate initial page content with fonts and colors"""
+    primary_color = '#4361ee'
+    if palette:
+        primary = palette.colors.filter(color_type='primary').first()
+        if primary:
+            primary_color = primary.hex_value
+    
+    return {
+        'home': {
+            'text_contents': {
+                '1': f"Welcome to {brand_name}",
+                '2': description or "Your amazing store is ready to go",
+                '3': "Why Choose Us",
+                '4': "Fast Delivery",
+                '5': "Get your products delivered quickly",
+                '6': "Quality Guarantee",
+                '7': "30-day money back guarantee",
+            },
+            'style_customizations': {
+                '1': {
+                    'font_family': heading_font,
+                    'background_color': primary_color,
+                },
+                '3': {
+                    'font_family': body_font,
+                }
+            }
+        },
+        'products': {
+            'text_contents': {
+                '9': "Our Products",
+                '10': "Discover our amazing collection",
+            }
+        },
+        'about': {
+            'text_contents': {
+                '1': "About Us",
+                '2': f"Welcome to {brand_name}",
+            }
+        },
+        'contact': {
+            'text_contents': {
+                '1': "Contact Us",
+                '2': "We'd love to hear from you",
+            }
+        }
+    }

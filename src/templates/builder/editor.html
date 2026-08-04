@@ -3006,7 +3006,7 @@ body.component-dragging .drop-zone.hovered {
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="{% url 'template_selection' %}" class="menu-item">
+                <a href="{% url 'onboarding' %}" class="menu-item">
                     <i class="fas fa-palette"></i>
                     <span>Templates</span>
                 </a>
@@ -3782,6 +3782,35 @@ loadConfiguration() {
     } else {
         console.warn('⚠️ No editorData found in window');
         this.pageData = {};
+    }
+}
+
+
+// In WebsiteEditor class - add this method
+
+injectBrandName() {
+    // Get brand name from the sidebar (already displayed there)
+    const brandElement = document.querySelector('.sidebar .store-brand-name');
+    if (!brandElement) return;
+    
+    const brandName = brandElement.textContent.trim();
+    if (!brandName) return;
+    
+    // Find the template container
+    const templateContainer = document.getElementById('templateContainer');
+    if (!templateContainer) return;
+    
+    // Find the first editable-text that should show the brand name
+    // Usually data-text="1" is the main heading
+    const heading = templateContainer.querySelector('.editable-text[data-text="1"]');
+    if (heading && !heading.textContent.trim()) {
+        heading.textContent = brandName;
+    }
+    
+    // Also update the page title if it has {brand}
+    const title = templateContainer.querySelector('title');
+    if (title && title.textContent.includes('{brand}')) {
+        title.textContent = title.textContent.replace(/{brand}/g, brandName);
     }
 }
 
@@ -8728,6 +8757,7 @@ async loadTemplateForPage(templateName, pageName) {
             // Setup section controls and apply visibility
             this.setupSectionControls();
             this.applySectionVisibility();
+             this.injectBrandName();
 
             // CRITICAL FIX: Wait for DOM to be fully rendered
             setTimeout(() => {

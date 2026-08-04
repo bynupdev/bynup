@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -51,7 +51,7 @@ def get_client_ip(request):
 # def builder_register(request):
 #     """Registration for website builder users"""
 #     if request.user.is_authenticated:
-#         return redirect('accounts:dashboard')
+#         return redirect('dashboard')
     
 #     if request.method == 'POST':
 #         form = BuilderUserRegistrationForm(request.POST)
@@ -66,7 +66,7 @@ def get_client_ip(request):
 #             login(request, user, backend=backend)
             
 #             messages.success(request, 'Account created successfully! Welcome to SiteBuilder.')
-#             return redirect('accounts:dashboard')
+#             return redirect('dashboard')
 #     else:
 #         form = BuilderUserRegistrationForm()
     
@@ -87,7 +87,12 @@ logger = logging.getLogger(__name__)
 def builder_register(request):
     """Registration for website builder users with Resend Email Integration"""
     if request.user.is_authenticated:
-        return redirect('accounts:dashboard')
+
+        has_store = PublishedPage.objects.filter(user=request.user).exists()
+        if has_store:
+            return redirect('dashboard')
+        else:
+            return redirect('onboarding')
     
     if request.method == 'POST':
         form = BuilderUserRegistrationForm(request.POST)
@@ -132,7 +137,14 @@ def builder_register(request):
             login(request, user, backend=backend)
             
             messages.success(request, 'Account created successfully! Welcome to Bynup.')
-            return redirect('accounts:dashboard')
+            has_store = PublishedPage.objects.filter(user=request.user).exists()
+                    
+            if has_store:
+                try:
+                    return redirect('dashboard')
+                except NoReverseMatch:
+                    return redirect('onboarding')
+            
     else:
         form = BuilderUserRegistrationForm()
     
@@ -357,8 +369,15 @@ def user_login(request):
                 return redirect_to_website_homepage(website)
         
         # Default to dashboard
-        # return redirect('accounts:dashboard')
-        return redirect('template_selection')
+        # return redirect('dashboard')
+        # return redirect('onboarding')
+        has_store = PublishedPage.objects.filter(user=request.user).exists()
+        
+        if has_store:
+            try:
+                return redirect('dashboard')
+            except NoReverseMatch:
+                return redirect('onboarding')
     
     # Store where we came from for redirect after login
     next_url = request.GET.get('next', '')
@@ -393,8 +412,15 @@ def user_login(request):
                 return redirect(next_url)
             
             # 3. Default to dashboard
-            # return redirect('accounts:dashboard')
-            return redirect('template_selection')
+            # return redirect('dashboard')
+            # return redirect('onboarding')
+            has_store = PublishedPage.objects.filter(user=request.user).exists()
+                
+            if has_store:
+                try:
+                    return redirect('dashboard')
+                except NoReverseMatch:
+                    return redirect('onboarding')
     
     else:
         form = UserLoginForm()
@@ -626,7 +652,7 @@ def user_logout(request):
     if current_website:
         return redirect_to_website_homepage(current_website)
     else:
-        return redirect('template_selection')  # Your main site homepage
+        return redirect('onboarding')  # Your main site homepage
 
 @login_required
 def dashboard(request):
@@ -799,7 +825,14 @@ def universal_register(request):
     Universal registration view that detects context and shows appropriate form
     """
     if request.user.is_authenticated:
-        return redirect('accounts:dashboard')
+        # return redirect('dashboard')
+        has_store = PublishedPage.objects.filter(user=request.user).exists()
+            
+        if has_store:
+            try:
+                return redirect('onboarding')
+            except NoReverseMatch:
+                return redirect('dashboard')
     
     context_type, website = detect_registration_context(request)
     

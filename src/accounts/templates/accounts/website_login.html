@@ -175,11 +175,103 @@
             padding: 0.6rem 1.2rem;
             font-weight: 500;
             transition: var(--transition);
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            overflow: hidden;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: var(--secondary-color);
             transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.8;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Button Loading State - Store Style */
+        .btn-primary .btn-text {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary.loading .btn-text {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .btn-primary .btn-spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-primary.loading .btn-spinner {
+            display: block;
+        }
+
+        /* Store-style Spinner - Dots */
+        .store-spinner {
+            width: 28px;
+            height: 28px;
+            position: relative;
+        }
+
+        .store-spinner .spinner-dot {
+            position: absolute;
+            width: 7px;
+            height: 7px;
+            background: white;
+            border-radius: 50%;
+            animation: storeSpin 1.4s ease-in-out infinite;
+        }
+
+        .store-spinner .spinner-dot:nth-child(1) {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            animation-delay: 0s;
+        }
+
+        .store-spinner .spinner-dot:nth-child(2) {
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            animation-delay: 0.2s;
+        }
+
+        .store-spinner .spinner-dot:nth-child(3) {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            animation-delay: 0.4s;
+        }
+
+        .store-spinner .spinner-dot:nth-child(4) {
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            animation-delay: 0.6s;
+        }
+
+        @keyframes storeSpin {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
         }
 
         .btn-outline-primary {
@@ -227,6 +319,16 @@
             .login-container {
                 padding: 0 1rem;
             }
+
+            .store-spinner {
+                width: 24px;
+                height: 24px;
+            }
+
+            .store-spinner .spinner-dot {
+                width: 6px;
+                height: 6px;
+            }
         }
     </style>
 </head>
@@ -259,7 +361,7 @@
                     <p class="mb-0 opacity-75">Access your {{ website.brand_name }} account</p>
                 </div>
                 <div class="card-body p-4">
-                    <form method="post">
+                    <form method="post" id="loginForm">
                         {% csrf_token %}
                         
                         {% if form.website_id %}
@@ -306,8 +408,18 @@
                             </a>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-                            <i class="fas fa-sign-in-alt me-2"></i>Sign In to {{ website.brand_name }}
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="submitBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In to {{ website.brand_name }}
+                            </span>
+                            <span class="btn-spinner">
+                                <span class="store-spinner">
+                                    <span class="spinner-dot"></span>
+                                    <span class="spinner-dot"></span>
+                                    <span class="spinner-dot"></span>
+                                    <span class="spinner-dot"></span>
+                                </span>
+                            </span>
                         </button>
                     </form>
 
@@ -358,6 +470,16 @@
             if (!input.classList.contains('form-check-input')) {
                 input.classList.add('form-control');
             }
+        });
+
+        // Add loading spinner on form submit - ONLY THIS ADDITION
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', function() {
+            // Show loading state on button
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
         });
     });
     </script>

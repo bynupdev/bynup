@@ -358,6 +358,13 @@ def generate_section_styles(style_customizations, start=1, end=1000):
                 normal_css += f"    {css_property}: {value};\n"
             normal_css += "}\n"
             css_rules.append(normal_css)
+
+        # ===== NEW: Generate custom CSS =====
+        custom_css = section_styles.get('custom_css', '')
+        if custom_css and custom_css.strip():
+            # Replace & with the section selector
+            processed_css = custom_css.replace('&', f'#section-{section_id}')
+            css_rules.append(processed_css)
         
         # ===== HANDLE TEXT OPACITY (NEW) =====
         text_opacity = section_styles.get('text_opacity')
