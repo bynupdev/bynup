@@ -1,0 +1,685 @@
+ {% load style_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Categories | Elite Residences</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Categories Page Specific Styles */
+        .categories-container#section-173 {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 4rem 5%;
+            margin-top: 80px;
+        }
+        
+        .categories-header#section-174 {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .categories-title {
+            font-size: 2.5rem;
+            color: var(--heading);
+            margin-bottom: 1rem;
+        }
+        
+        .categories-subtitle {
+            color: var(--text);
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .categories-filters#section-177 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(126, 112, 83, 0.2);
+        }
+        
+        .filter-options {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .filter-btn {
+            padding: 0.8rem 1.5rem;
+            background-color: transparent;
+            color: var(--text);
+            border: 1px solid var(--text);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .filter-btn.active {
+            background-color: var(--text);
+            color: var(--primary);
+        }
+        
+        .filter-btn:hover:not(.active) {
+            background-color: rgba(126, 112, 83, 0.1);
+        }
+        
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.5rem;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            background-color: var(--primary);
+            color: var(--heading);
+            font-size: 0.9rem;
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text);
+        }
+        
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 5rem;
+        }
+        
+        .category-card {
+            background-color: var(--primary);
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            transition: var(--transition);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .category-image {
+            height: 250px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .category-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .category-card:hover .category-image img {
+            transform: scale(1.05);
+        }
+        
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(77, 62, 39, 0.1), rgba(77, 62, 39, 0.5));
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .category-count {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+        
+        .category-content {
+            padding: 1.8rem;
+        }
+        
+        .category-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.8rem;
+            color: var(--heading);
+        }
+        
+        .category-description {
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .category-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .category-feature {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background-color: rgba(169, 161, 188, 0.1);
+            color: var(--accent);
+            font-size: 0.8rem;
+            border-radius: 3px;
+        }
+        
+        .category-actions {
+            display: flex;
+            gap: 0.8rem;
+        }
+        
+        .btn-explore {
+            flex: 2;
+            padding: 0.8rem;
+            background-color: var(--text);
+            color: var(--primary);
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+        
+        .btn-explore:hover {
+            background-color: var(--heading);
+        }
+        
+        .btn-save {
+            width: 40px;
+            background-color: transparent;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            color: var(--heading);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .btn-save:hover {
+            background-color: rgba(169, 161, 188, 0.1);
+            color: var(--accent);
+        }
+        
+        .empty-categories {
+            text-align: center;
+            padding: 4rem 2rem;
+            grid-column: 1 / -1;
+            {% if not categories %}display: block;{% else %}display: none;{% endif %}
+        }
+        
+        .empty-categories i {
+            font-size: 3.5rem;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-categories h3 {
+            margin-bottom: 1rem;
+            color: var(--heading);
+        }
+        
+        .empty-categories p {
+            color: var(--text);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn-create {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background-color: var(--accent);
+            color: var(--primary);
+            border: none;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1.5px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .btn-create:hover {
+            background-color: var(--text);
+            transform: translateY(-3px);
+        }
+        
+        /* Featured Properties Section */
+        .featured-section#section-194 {
+            margin-top: 5rem;
+            padding-top: 3rem;
+            border-top: 1px solid rgba(126, 112, 83, 0.2);
+        }
+        
+        .section-header#section-195 {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            color: var(--heading);
+            margin-bottom: 1rem;
+        }
+        
+        .section-subtitle {
+            color: var(--text);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .featured-card {
+            background-color: var(--primary);
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            transition: var(--transition);
+        }
+        
+        .featured-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        
+        .featured-image {
+            height: 200px;
+            overflow: hidden;
+        }
+        
+        .featured-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .featured-card:hover .featured-image img {
+            transform: scale(1.05);
+        }
+        
+        .featured-info {
+            padding: 1.5rem;
+        }
+        
+        .featured-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--heading);
+        }
+        
+        .featured-price {
+            color: var(--text);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .featured-btn {
+            display: block;
+            width: 100%;
+            padding: 0.8rem;
+            background-color: var(--text);
+            color: var(--primary);
+            border: none;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            transition: var(--transition);
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .featured-btn:hover {
+            background-color: var(--heading);
+        }
+        
+        .empty-featured {
+            text-align: center;
+            padding: 3rem;
+            grid-column: 1 / -1;
+            {% if not featured_properties %}display: block;{% else %}display: none;{% endif %}
+        }
+        
+        .empty-featured i {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-featured h3 {
+            margin-bottom: 1rem;
+            color: var(--heading);
+        }
+        
+        .empty-featured p {
+            color: var(--text);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 173 210 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 173 210 %}
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 2rem;
+            }
+            
+            .featured-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .categories-container#section-173 {
+                padding: 3rem 5%;
+                margin-top: 70px;
+            }
+            
+            .categories-title {
+                font-size: 2rem;
+            }
+            
+            .categories-filters#section-177 {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1.5rem;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .categories-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .filter-options {
+                flex-wrap: wrap;
+            }
+            
+            .featured-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .categories-header#section-174 {
+                margin-bottom: 2rem;
+            }
+            
+            .categories-title {
+                font-size: 1.7rem;
+            }
+            
+            .category-actions {
+                flex-direction: column;
+            }
+            
+            .btn-save {
+                width: 100%;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Categories Content -->
+    <div class="categories-container" id="section-173">
+        <div class="categories-header" id="section-174">
+            <h1 class="categories-title" id="section-175">{{ text_contents.136|default:"Property Categories" }}</h1>
+            <p class="categories-subtitle" id="section-176">{{ text_contents.137|default:"Browse our exclusive collection of luxury properties by category. Each category represents a unique lifestyle and investment opportunity." }}</p>
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '173' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <div class="categories-filters" id="section-177">
+            <div class="filter-options">
+                <button class="filter-btn active" id="section-178">{{ text_contents.138|default:"All Categories" }}</button>
+                <button class="filter-btn" id="section-179">{{ text_contents.139|default:"Most Popular" }}</button>
+                <button class="filter-btn" id="section-180">{{ text_contents.140|default:"New Arrivals" }}</button>
+                <button class="filter-btn" id="section-181">{{ text_contents.141|default:"Premium" }}</button>
+            </div>
+            
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" id="section-182" placeholder="{{ text_contents.142|default:'Search categories...' }}">
+            </div>
+        </div>
+        
+        <div class="categories-grid">
+            {% if categories %}
+                <!-- First category is editable -->
+                {% with category=categories|first %}
+                <div class="category-card" id="section-183">
+                    <div class="category-image">
+                        <img src="{{ category.image_url }}" alt="{{ category.name }}">
+                        <div class="category-overlay">
+                            <div class="category-count" id="section-184">{{ category.count|default:text_contents.143|default:"24 Properties" }}</div>
+                            <h3 id="section-185">{{ category.name|default:text_contents.144|default:"Luxury Villas" }}</h3>
+                        </div>
+                    </div>
+                    <div class="category-content">
+                        <p class="category-description" id="section-186">{{ category.description|default:text_contents.145|default:"Exclusive standalone residences with premium amenities, private grounds, and bespoke architectural designs in sought-after locations worldwide." }}</p>
+                        
+                        <div class="category-features">
+                            {% for feature in category.features|slice:":3" %}
+                            <span class="category-feature">{{ feature }}</span>
+                            {% empty %}
+                            <span class="category-feature" id="section-187">{{ text_contents.146|default:"Private Pools" }}</span>
+                            <span class="category-feature" id="section-188">{{ text_contents.147|default:"Smart Homes" }}</span>
+                            <span class="category-feature" id="section-189">{{ text_contents.148|default:"Gated Security" }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="category-actions">
+                            <button class="btn-explore" id="section-190" onclick="exploreCategory({{ category.id }})">{{ text_contents.149|default:"Explore Collection" }}</button>
+                            <button class="btn-save" onclick="saveCategory({{ category.id }})">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endwith %}
+                
+                <!-- Remaining categories use loop -->
+                {% for category in categories|slice:"1:4" %}
+                <div class="category-card">
+                    <div class="category-image">
+                        <img src="{{ category.image_url }}" alt="{{ category.name }}">
+                        <div class="category-overlay">
+                            <div class="category-count">{{ category.count|default:"0" }} Properties</div>
+                            <h3>{{ category.name }}</h3>
+                        </div>
+                    </div>
+                    <div class="category-content">
+                        <p class="category-description">{{ category.description }}</p>
+                        
+                        <div class="category-features">
+                            {% for feature in category.features|slice:":3" %}
+                            <span class="category-feature">{{ feature }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="category-actions">
+                            <button class="btn-explore" onclick="exploreCategory({{ category.id }})">Explore Collection</button>
+                            <button class="btn-save" onclick="saveCategory({{ category.id }})">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Empty Categories State -->
+                <div class="empty-categories">
+                    <i class="fas fa-layer-group"></i>
+                    <h3 id="section-191">{{ text_contents.150|default:"No Categories Available" }}</h3>
+                    <p id="section-192">{{ text_contents.151|default:"Property categories will be displayed here once they are created. Check back soon or contact our luxury property specialists for personalized recommendations." }}</p>
+                    <button class="btn-create" id="section-193" onclick="contactSpecialist()">{{ text_contents.152|default:"Contact Specialist" }}</button>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '194' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <!-- Featured Properties Section -->
+        <div class="featured-section" id="section-194">
+            <div class="section-header" id="section-195">
+                <h2 class="section-title" id="section-196">{{ text_contents.153|default:"Featured Properties" }}</h2>
+                <p class="section-subtitle" id="section-197">{{ text_contents.154|default:"Discover exceptional properties from our most popular categories" }}</p>
+            </div>
+            
+            <div class="featured-grid">
+                {% if featured_properties %}
+                    <!-- First featured property is editable -->
+                    {% with property=featured_properties|first %}
+                    <div class="featured-card" id="section-198">
+                        <div class="featured-image">
+                            <img src="{{ property.image_url }}" alt="{{ property.name }}">
+                        </div>
+                        <div class="featured-info">
+                            <h3 class="featured-title" id="section-199">{{ property.name|default:text_contents.155|default:"Contemporary Villa" }}</h3>
+                            <div class="featured-price" id="section-200">{{ property.price|default:text_contents.156|default:"$11,300,000" }}</div>
+                            <button class="featured-btn" id="section-201" onclick="viewFeatured({{ property.id }})">{{ text_contents.157|default:"View Details" }}</button>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    
+                    <!-- Remaining featured properties use loop -->
+                    {% for property in featured_properties|slice:"1:4" %}
+                    <div class="featured-card">
+                        <div class="featured-image">
+                            <img src="{{ property.image_url }}" alt="{{ property.name }}">
+                        </div>
+                        <div class="featured-info">
+                            <h3 class="featured-title">{{ property.name }}</h3>
+                            <div class="featured-price">{{ property.price }}</div>
+                            <button class="featured-btn" onclick="viewFeatured({{ property.id }})">View Details</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty Featured State -->
+                    <div class="empty-featured">
+                        <i class="fas fa-star"></i>
+                        <h3 id="section-202">{{ text_contents.158|default:"No Featured Properties" }}</h3>
+                        <p id="section-203">{{ text_contents.159|default:"Featured properties will appear here. Explore our categories to discover premium listings." }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <script>
+        // Categories Functionality
+        function exploreCategory(categoryId) {
+            window.location.href = `?page=shop&category=${categoryId}`;
+        }
+        
+        function saveCategory(categoryId) {
+            // In a real implementation, this would make an API call
+            console.log('Save category:', categoryId);
+            alert('Category saved to your favorites!');
+        }
+        
+        function viewFeatured(propertyId) {
+            window.location.href = `?page=product-details&id=${propertyId}`;
+        }
+        
+        function contactSpecialist() {
+            window.location.href = '?page=contact';
+        }
+        
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // In a real implementation, this would make an API call to filter categories
+                console.log(`Filtered by: ${this.textContent}`);
+            });
+        });
+        
+        // Search functionality
+        const searchInput = document.querySelector('.search-input');
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const categoryCards = document.querySelectorAll('.category-card');
+            
+            categoryCards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('.category-description').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,838 @@
+<!-- builder/public_templates/ModernEcommerce14/cart.html -->
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Bag | SARTOR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Montserrat:wght@200;400;700&display=swap" rel="stylesheet">
+    
+    {% render_icon_data icon_customizations %}
+    
+    <style>
+        :root {
+            --olive-drab: #626616; 
+            --brass-leaf: #e2a970; 
+            --raw-silk: #fbca8a;   
+            --obsidian: #0d0d0d;   
+            --charcoal: #1a1a1a;   
+            --white: #ffffff;
+            --ease-cinematic: cubic-bezier(0.9, 0, 0.1, 1);
+        }
+
+        {% generate_color_variables %}
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--obsidian);
+            color: var(--white);
+            font-family: 'Montserrat', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            padding-top: 140px;
+        }
+
+        /* --- PAGE HEADER --- */
+        .cart-header {
+            padding: 4rem 5% 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .cart-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 300;
+            color: var(--raw-silk);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .cart-header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* --- CART CONTAINER --- */
+        .cart-container {
+            display: grid;
+            grid-template-columns: 1fr 0.8fr;
+            gap: 4rem;
+            padding: 4rem 5%;
+            align-items: start;
+        }
+
+        /* --- CART ITEMS --- */
+        .cart-items {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: 120px 1fr auto;
+            gap: 2rem;
+            padding: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            position: relative;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-image {
+            width: 120px;
+            height: 160px;
+            overflow: hidden;
+            background-color: var(--charcoal);
+        }
+
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.5s var(--ease-cinematic);
+        }
+
+        .cart-item:hover .item-image img {
+            transform: scale(1.05);
+        }
+
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .item-category {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: var(--olive-drab);
+            text-transform: uppercase;
+        }
+
+        .item-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: var(--white);
+            text-decoration: none;
+        }
+
+        .item-variants {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .item-variant span {
+            color: var(--brass-leaf);
+            margin-left: 0.5rem;
+        }
+
+        .item-price {
+            font-size: 1.2rem;
+            color: var(--raw-silk);
+            font-weight: 300;
+        }
+
+        .item-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .quantity-btn {
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            color: var(--white);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity-btn:hover {
+            color: var(--brass-leaf);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .quantity {
+            min-width: 30px;
+            text-align: center;
+            color: var(--white);
+            font-size: 0.9rem;
+        }
+
+        .item-total {
+            font-size: 1.1rem;
+            color: var(--brass-leaf);
+            font-weight: 500;
+        }
+
+        .remove-item {
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .remove-item:hover {
+            color: var(--brass-leaf);
+        }
+
+        /* --- CART SUMMARY --- */
+        .cart-summary {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 2.5rem;
+            position: sticky;
+            top: 160px;
+        }
+
+        .summary-header {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: var(--raw-silk);
+            margin-bottom: 2rem;
+            font-weight: 300;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.2rem;
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .summary-row.total {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 1.3rem;
+            color: var(--white);
+        }
+
+        .summary-row.total span:last-child {
+            color: var(--raw-silk);
+            font-weight: 500;
+        }
+
+        .promo-code {
+            margin: 2rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .promo-input {
+            flex: 1;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--white);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .promo-input::placeholder {
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .promo-input:focus {
+            outline: none;
+            border-color: var(--brass-leaf);
+        }
+
+        .apply-promo {
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 1px solid var(--brass-leaf);
+            color: var(--brass-leaf);
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .apply-promo:hover {
+            background: var(--brass-leaf);
+            color: var(--obsidian);
+        }
+
+        .btn-checkout {
+            width: 100%;
+            padding: 1.5rem;
+            background: var(--raw-silk);
+            color: var(--obsidian);
+            border: none;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-checkout:hover {
+            background: var(--white);
+            transform: translateY(-2px);
+        }
+
+        .continue-shopping {
+            display: block;
+            text-align: center;
+            margin-top: 2rem;
+            color: rgba(255,255,255,0.4);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            transition: 0.3s;
+        }
+
+        .continue-shopping:hover {
+            color: var(--brass-leaf);
+        }
+
+        /* --- EMPTY CART --- */
+        .empty-cart {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 6rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .empty-cart i {
+            font-size: 4rem;
+            color: var(--olive-drab);
+            margin-bottom: 2rem;
+            opacity: 0.5;
+        }
+
+        .empty-cart h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            color: var(--raw-silk);
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        .empty-cart p {
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 3rem;
+            font-size: 1rem;
+        }
+
+        .empty-cart a {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            border: 1px solid var(--raw-silk);
+            color: var(--raw-silk);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: 0.8rem;
+            transition: 0.3s;
+        }
+
+        .empty-cart a:hover {
+            background: var(--raw-silk);
+            color: var(--obsidian);
+        }
+
+        /* --- YOU MAY ALSO LIKE --- */
+        .also-like-section {
+            padding: 6rem 5%;
+            background: linear-gradient(to top, rgba(98, 98, 22, 0.05), transparent);
+        }
+
+        .also-like-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 4rem;
+        }
+
+        .also-like-header h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: var(--raw-silk);
+        }
+
+        .also-like-header a {
+            color: var(--brass-leaf);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .also-like-header a:hover {
+            color: var(--white);
+            gap: 1.2rem;
+        }
+
+        .also-like-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3rem;
+        }
+
+        .like-card {
+            text-decoration: none;
+            color: inherit;
+            transition: 0.3s;
+        }
+
+        .like-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .like-image {
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            background-color: var(--charcoal);
+            margin-bottom: 1.5rem;
+        }
+
+        .like-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.5s var(--ease-cinematic);
+        }
+
+        .like-card:hover .like-image img {
+            transform: scale(1.08);
+        }
+
+        .like-category {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: var(--olive-drab);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .like-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            color: var(--white);
+        }
+
+        .like-price {
+            color: var(--raw-silk);
+            font-size: 0.9rem;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1200px) {
+            .also-like-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .cart-container {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .cart-summary {
+                position: static;
+            }
+
+            .also-like-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 120px;
+            }
+
+            .cart-item {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .item-image {
+                width: 100%;
+                height: 200px;
+            }
+
+            .item-actions {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .also-like-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cart-header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .cart-item {
+                padding: 1.5rem;
+            }
+
+            .promo-code {
+                flex-direction: column;
+            }
+
+            .btn-checkout {
+                padding: 1.2rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        {% generate_section_styles style_customizations 81 100 %}
+        {% generate_background_images background_images 81 100 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce14/snippets/header1.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '81' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Cart Header -->
+    <div class="cart-header" id="section-81">
+        <h1 id="section-82">{{ text_contents.62|default:"Shopping Bag" }}</h1>
+        <p id="section-83">{{ text_contents.63|default:"Review your selections before checkout" }}</p>
+    </div>
+
+    <!-- Cart Container -->
+    {% if cart_items and cart_items|length > 0 %}
+    <div class="cart-container">
+        <!-- Cart Items -->
+        <div class="cart-items">
+            {% for item in cart_items %}
+                {% if forloop.first %}
+                <!-- Editable Cart Item (first item) -->
+                <div class="cart-item" id="section-93" data-item-id="{{ item.id }}">
+                    <div class="item-image">
+                        <img src="{% if item.product.main_image %}{{ item.product.main_image.url }}{% else %}{{ item.image_url|default:'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&q=80&w=200' }}{% endif %}" 
+                             alt="{{ item.product.title }}" 
+                             class="editable-image" 
+                             data-image="11">
+                    </div>
+                    <div class="item-details">
+                        <span class="item-category" id="section-84">{{ text_contents.64|default:item.product.category.name|default:"Tailoring" }}</span>
+                        <h3 class="item-title" id="section-85">{{ text_contents.65|default:item.product.title }}</h3>
+                        <div class="item-variants">
+                            <div class="item-variant">Color: <span>{{ item.selected_color|default:"Obsidian" }}</span></div>
+                            <div class="item-variant">Size: <span>{{ item.selected_size|default:"48" }}</span></div>
+                        </div>
+                        <div class="item-price" id="section-86">{{ text_contents.66|default:item.price|currency:page }}</div>
+                    </div>
+                    <div class="item-actions">
+                        <div class="quantity-control">
+                            <button class="quantity-btn" onclick="updateQuantity(this, {{ item.id }}, -1)">−</button>
+                            <span class="quantity">{{ item.quantity|default:1 }}</span>
+                            <button class="quantity-btn" onclick="updateQuantity(this, {{ item.id }}, 1)">+</button>
+                        </div>
+                        <span class="item-total">{{ item.total|default:item.price|currency:page }}</span>
+                        <button class="remove-item" onclick="removeItem(this, {{ item.id }})">
+                            <i class="fa-regular fa-trash-can" data-icon="9"></i>
+                            Remove
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Non-editable Cart Items -->
+                <div class="cart-item" data-item-id="{{ item.id }}">
+                    <div class="item-image">
+                        <img src="{% if item.product.main_image %}{{ item.product.main_image.url }}{% else %}
+                            {% cycle 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=200' 'https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&q=80&w=200' as product_image %}
+                            {{ product_image }}
+                            {% endcycle %}" 
+                             alt="{{ item.product.title }}">
+                    </div>
+                    <div class="item-details">
+                        <span class="item-category">{{ item.product.category.name|default:"Collection" }}</span>
+                        <h3 class="item-title">{{ item.product.title }}</h3>
+                        <div class="item-variants">
+                            <div class="item-variant">Color: <span>{{ item.selected_color|default:"Brass" }}</span></div>
+                            <div class="item-variant">Size: <span>{{ item.selected_size|default:"50" }}</span></div>
+                        </div>
+                        <div class="item-price">{{ item.price|currency:page }}</div>
+                    </div>
+                    <div class="item-actions">
+                        <div class="quantity-control">
+                            <button class="quantity-btn" onclick="updateQuantity(this, {{ item.id }}, -1)">−</button>
+                            <span class="quantity">{{ item.quantity|default:1 }}</span>
+                            <button class="quantity-btn" onclick="updateQuantity(this, {{ item.id }}, 1)">+</button>
+                        </div>
+                        <span class="item-total">{{ item.total|default:item.price|currency:page }}</span>
+                        <button class="remove-item" onclick="removeItem(this, {{ item.id }})">
+                            <i class="fa-regular fa-trash-can"></i>
+                            Remove
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="cart-summary">
+            <div class="summary-header">Order Summary</div>
+            
+            <div class="summary-row">
+                <span>Subtotal ({{ cart_items|length }} items)</span>
+                <span>{{ cart_subtotal|default:"$5,550.00" }}</span>
+            </div>
+            <div class="summary-row">
+                <span>Shipping</span>
+                <span>Complimentary</span>
+            </div>
+            <div class="summary-row">
+                <span>Tax (Estimated)</span>
+                <span>{{ cart_tax|default:"$444.00" }}</span>
+            </div>
+            
+            <div class="promo-code">
+                <input type="text" class="promo-input" placeholder="Promo Code" id="promoCode">
+                <button class="apply-promo" onclick="applyPromo()">Apply</button>
+            </div>
+            
+            <div class="summary-row total">
+                <span>Total</span>
+                <span>{{ cart_total|default:"$5,994.00" }}</span>
+            </div>
+
+            <button class="btn-checkout" id="section-87" onclick="proceedToCheckout()">
+                <i class="fa-solid fa-lock" data-icon="10"></i>
+                {{ text_contents.67|default:"Proceed to Checkout" }}
+            </button>
+
+            <a href="?page=shop" class="continue-shopping">
+                <i class="fa-regular fa-arrow-left" data-icon="11"></i>
+                Continue Shopping
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty Cart -->
+    <div class="cart-container">
+        <div class="empty-cart">
+            <i class="fa-regular fa-bag-shopping" data-icon="12"></i>
+            <h2>Your Bag is Empty</h2>
+            <p>Discover pieces that speak to your authority.</p>
+            <a href="?page=shop">Explore Collection</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- You May Also Like Section -->
+    {% if related_products %}
+    <div class="also-like-section" id="section-88">
+        <div class="also-like-header">
+            <h2 id="section-89">{{ text_contents.68|default:"You May Also Like" }}</h2>
+            <a href="?page=shop">View All <i class="fa-regular fa-arrow-right" data-icon="13"></i></a>
+        </div>
+
+        <div class="also-like-grid">
+            {% for product in related_products|slice:":4" %}
+                {% if forloop.first %}
+                <!-- Editable Also Like Product (first) -->
+                <a href="/product/{{ product.slug }}/" class="like-card" id="section-94">
+                    <div class="like-image">
+                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=600{% endif %}" 
+                             alt="{{ product.title }}"
+                             class="editable-image"
+                             data-image="12">
+                    </div>
+                    <span class="like-category" id="section-90">{{ text_contents.69|default:product.category.name|default:"Bespoke" }}</span>
+                    <h3 class="like-title" id="section-91">{{ text_contents.70|default:product.title }}</h3>
+                    <span class="like-price" id="section-92">{{ text_contents.71|default:product.price|currency:page }}</span>
+                </a>
+                {% else %}
+                <!-- Non-editable Also Like Products -->
+                <a href="/product/{{ product.slug }}/" class="like-card">
+                    <div class="like-image">
+                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}
+                            {% cycle 'https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1556306535-0f09c5378310?auto=format&fit=crop&q=80&w=600' as product_image %}
+                            {{ product_image }}
+                            {% endcycle %}" 
+                             alt="{{ product.title }}">
+                    </div>
+                    <span class="like-category">{{ product.category.name|default:"Collection" }}</span>
+                    <h3 class="like-title">{{ product.title|truncatechars:25 }}</h3>
+                    <span class="like-price">{{ product.price|currency:page }}</span>
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '88' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce14/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <script>
+        // Update quantity function
+        function updateQuantity(button, itemId, change) {
+            const control = button.closest('.quantity-control');
+            const quantitySpan = control.querySelector('.quantity');
+            let quantity = parseInt(quantitySpan.textContent);
+            
+            quantity = Math.max(1, quantity + change);
+            quantitySpan.textContent = quantity;
+            
+            if (window.cartManager) {
+                window.cartManager.updateCartItem(itemId, quantity);
+            }
+            
+            // Update item total
+            updateCartTotals();
+        }
+
+        // Remove item function
+        function removeItem(button, itemId) {
+            const cartItem = button.closest('.cart-item');
+            
+            if (window.cartManager) {
+                window.cartManager.removeFromCart(itemId);
+            }
+            
+            cartItem.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                cartItem.remove();
+                updateCartTotals();
+                
+                // Check if cart is empty
+                const cartItems = document.querySelector('.cart-items');
+                if (cartItems && cartItems.children.length === 0) {
+                    location.reload(); // Reload to show empty cart
+                }
+            }, 300);
+        }
+
+        // Update cart totals
+        function updateCartTotals() {
+            if (window.cartManager) {
+                window.cartManager.updateCartDisplay();
+            }
+        }
+
+        // Apply promo code
+        function applyPromo() {
+            const input = document.getElementById('promoCode');
+            if (input && input.value.trim()) {
+                if (window.cartManager) {
+                    window.cartManager.applyPromoCode(input.value.trim());
+                } else {
+                    alert('Promo code applied! (Demo functionality)');
+                }
+            } else {
+                alert('Please enter a promo code');
+            }
+        }
+
+        // Proceed to checkout
+        function proceedToCheckout() {
+            if (window.cartManager) {
+                window.cartManager.proceedToCheckout();
+            } else {
+                console.log('Proceeding to checkout');
+                alert('Proceeding to checkout...');
+                // In production, this would redirect to checkout page
+                // window.location.href = '/checkout/';
+            }
+        }
+
+        // Fade out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

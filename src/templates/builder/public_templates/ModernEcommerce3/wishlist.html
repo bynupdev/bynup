@@ -1,0 +1,791 @@
+<!-- builder/public_templates/ModernEcommerce14/wishlist.html -->
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishlist | SARTOR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Montserrat:wght@200;400;700&display=swap" rel="stylesheet">
+    
+    {% render_icon_data icon_customizations %}
+    
+    <style>
+        :root {
+            --text: #626616; 
+            --heading: #e2a970; 
+            --primary: #fbca8a;   
+            --secondary: #0d0d0d;   
+            --background: #1a1a1a;   
+            --accent: #ffffff;
+            --ease-cinematic: cubic-bezier(0.9, 0, 0.1, 1);
+        }
+
+        {% generate_color_variables %}
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--secondary);
+            color: var(--accent);
+            font-family: 'Montserrat', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            padding-top: 140px;
+        }
+
+        /* --- PAGE HEADER --- */
+        .wishlist-header {
+            padding: 4rem 5% 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .wishlist-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 300;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .wishlist-header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .wishlist-count {
+            color: var(--heading);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            padding: 0.5rem 1.5rem;
+            border: 1px solid rgba(226, 169, 112, 0.3);
+            border-radius: 30px;
+        }
+
+        /* --- WISHLIST GRID --- */
+        .wishlist-container {
+            padding: 4rem 5%;
+        }
+
+        .wishlist-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3rem;
+        }
+
+        .wishlist-card {
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .wishlist-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .image-wrapper {
+            position: relative;
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            background-color: var(--background);
+            margin-bottom: 1.5rem;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.8s var(--ease-cinematic);
+            filter: grayscale(30%);
+        }
+
+        .wishlist-card:hover .image-wrapper img {
+            transform: scale(1.08);
+            filter: grayscale(0%);
+        }
+
+        .remove-wishlist {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 40px;
+            height: 40px;
+            background: rgba(13, 13, 13, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+            z-index: 10;
+            font-size: 1rem;
+            backdrop-filter: blur(5px);
+        }
+
+        .remove-wishlist:hover {
+            background: var(--heading);
+            color: var(--secondary);
+            border-color: var(--heading);
+            transform: rotate(90deg);
+        }
+
+        .wishlist-badge {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: var(--text);
+            color: var(--accent);
+            padding: 0.3rem 1rem;
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            z-index: 5;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 13, 13, 0.4);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 2rem;
+            opacity: 0;
+            transition: 0.5s ease;
+        }
+
+        .wishlist-card:hover .card-overlay {
+            opacity: 1;
+        }
+
+        .quick-add {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent);
+            color: var(--secondary);
+            border: none;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: 0.3s;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: 0.5s var(--ease-cinematic);
+        }
+
+        .wishlist-card:hover .quick-add {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .quick-add:hover {
+            background: var(--primary);
+        }
+
+        .item-category {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: var(--text);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .item-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-weight: 300;
+            margin-bottom: 0.3rem;
+            color: var(--accent);
+        }
+
+        .item-price {
+            color: var(--primary);
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .item-compare-price {
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+            text-decoration: line-through;
+            margin-left: 0.5rem;
+            display: inline-block;
+        }
+
+        .stock-status {
+            display: inline-block;
+            margin-left: 1rem;
+            font-size: 0.6rem;
+            color: var(--text);
+            letter-spacing: 1px;
+        }
+
+        .stock-status.out {
+            color: rgba(226, 169, 112, 0.5);
+        }
+
+        /* --- EMPTY WISHLIST --- */
+        .empty-wishlist {
+            text-align: center;
+            padding: 6rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+            grid-column: 1 / -1;
+        }
+
+        .empty-wishlist i {
+            font-size: 4rem;
+            color: var(--text);
+            margin-bottom: 2rem;
+            opacity: 0.5;
+        }
+
+        .empty-wishlist h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        .empty-wishlist p {
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 3rem;
+            font-size: 1rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .empty-wishlist a {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: 0.8rem;
+            transition: 0.3s;
+        }
+
+        .empty-wishlist a:hover {
+            background: var(--primary);
+            color: var(--secondary);
+        }
+
+        /* --- RECENTLY VIEWED SECTION --- */
+        .recently-viewed-section {
+            padding: 6rem 5%;
+            background: linear-gradient(to top, rgba(98, 98, 22, 0.05), transparent);
+            margin-top: 2rem;
+        }
+
+        .recently-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 4rem;
+        }
+
+        .recently-header h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: var(--primary);
+        }
+
+        .recently-header a {
+            color: var(--heading);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .recently-header a:hover {
+            color: var(--accent);
+            gap: 1.2rem;
+        }
+
+        .recently-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2rem;
+        }
+
+        .recent-card {
+            text-decoration: none;
+            color: inherit;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .recent-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .recent-image {
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            background-color: var(--background);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .recent-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.5s var(--ease-cinematic);
+            filter: grayscale(50%);
+        }
+
+        .recent-card:hover .recent-image img {
+            transform: scale(1.08);
+            filter: grayscale(0%);
+        }
+
+        .recent-viewed-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--secondary);
+            color: var(--heading);
+            font-size: 0.6rem;
+            padding: 0.2rem 0.8rem;
+            border: 1px solid rgba(226, 169, 112, 0.3);
+            border-radius: 20px;
+            z-index: 5;
+            backdrop-filter: blur(5px);
+        }
+
+        .recent-category {
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            color: var(--text);
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+            display: block;
+        }
+
+        .recent-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            font-weight: 300;
+            margin-bottom: 0.2rem;
+            color: var(--accent);
+        }
+
+        .recent-price {
+            color: var(--primary);
+            font-size: 0.8rem;
+        }
+
+        /* --- SHARE WISHLIST --- */
+        .share-wishlist {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 2rem;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .share-label {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .share-icons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .share-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+            text-decoration: none;
+        }
+
+        .share-icon:hover {
+            background: var(--heading);
+            color: var(--secondary);
+            transform: translateY(-3px);
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1200px) {
+            .wishlist-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .recently-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .wishlist-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .recently-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 120px;
+            }
+
+            .wishlist-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .wishlist-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+
+            .recently-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .share-wishlist {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .wishlist-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .recently-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .empty-wishlist {
+                padding: 4rem 2rem;
+            }
+
+            .empty-wishlist h2 {
+                font-size: 2rem;
+            }
+        }
+
+        {% generate_section_styles style_customizations 95 110 %}
+        {% generate_background_images background_images 95 110 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce14/snippets/header1.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '95' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Wishlist Header -->
+    <div class="wishlist-header" id="section-95">
+        <div>
+            <h1 id="section-96">{{ text_contents.72|default:"My Wishlist" }}</h1>
+            <p id="section-97">{{ text_contents.73|default:"Curated pieces for your consideration" }}</p>
+        </div>
+        <div class="wishlist-count">{{ wishlist_items|length|default:"0" }} item{{ wishlist_items|length|pluralize }}</div>
+    </div>
+
+    <!-- Wishlist Grid -->
+    <div class="wishlist-container">
+        {% if wishlist_items and wishlist_items|length > 0 %}
+        <div class="wishlist-grid">
+            {% for item in wishlist_items %}
+                {% if forloop.first %}
+                <!-- Editable Wishlist Item (first) -->
+                <div class="wishlist-card" id="section-98" data-item-id="{{ item.id }}">
+                    <div class="image-wrapper">
+                        <img src="{% if item.product.main_image %}{{ item.product.main_image.url }}{% else %}{{ item.image_url|default:'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&q=80&w=600' }}{% endif %}" 
+                             alt="{{ item.product.title }}" 
+                             class="editable-image" 
+                             data-image="13">
+                        <button class="remove-wishlist" onclick="removeFromWishlist(this, {{ item.id }})">
+                            <i class="fa-regular fa-xmark" data-icon="14"></i>
+                        </button>
+                        {% if item.product.is_new %}
+                        <div class="wishlist-badge" id="section-104">{{ text_contents.74|default:"New Arrival" }}</div>
+                        {% endif %}
+                        <div class="card-overlay">
+                            <button class="quick-add" onclick="addToCart({{ item.product.id }}, this)">Add to Bag</button>
+                        </div>
+                    </div>
+                    <div class="item-details">
+                        <span class="item-category" id="section-99">{{ text_contents.75|default:item.product.category.name|default:"Tailoring" }}</span>
+                        <h3 class="item-title" id="section-100">{{ text_contents.76|default:item.product.title }}</h3>
+                        <div>
+                            <span class="item-price" id="section-101">{{ text_contents.77|default:item.product.price|currency:page }}</span>
+                            {% if item.product.in_stock %}
+                            <span class="stock-status">In Stock</span>
+                            {% else %}
+                            <span class="stock-status out">Out of Stock</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Non-editable Wishlist Items -->
+                <div class="wishlist-card" data-item-id="{{ item.id }}">
+                    <div class="image-wrapper">
+                        <img src="{% if item.product.main_image %}{{ item.product.main_image.url }}{% else %}
+                            {% cycle 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1556306535-0f09c5378310?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=600' 'https://images.unsplash.com/photo-1603252109366-409b4c5c6bf0?auto=format&fit=crop&q=80&w=600' as product_image %}
+                            {{ product_image }}
+                            {% endcycle %}
+                        {% endif %}" 
+                             alt="{{ item.product.title }}">
+                        <button class="remove-wishlist" onclick="removeFromWishlist(this, {{ item.id }})">
+                            <i class="fa-regular fa-xmark"></i>
+                        </button>
+                        {% if item.product.is_limited %}
+                        <div class="wishlist-badge">Limited</div>
+                        {% endif %}
+                        <div class="card-overlay">
+                            <button class="quick-add" onclick="addToCart({{ item.product.id }}, this)">Add to Bag</button>
+                        </div>
+                    </div>
+                    <div class="item-details">
+                        <span class="item-category">{{ item.product.category.name|default:"Collection" }}</span>
+                        <h3 class="item-title">{{ item.product.title }}</h3>
+                        <div>
+                            <span class="item-price">{{ item.product.price|currency:page }}</span>
+                            {% if item.product.in_stock %}
+                            <span class="stock-status">In Stock</span>
+                            {% else %}
+                            <span class="stock-status out">Out of Stock</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Share Wishlist -->
+        <div class="share-wishlist">
+            <span class="share-label">Share this wishlist:</span>
+            <div class="share-icons">
+                <a href="#" class="share-icon" onclick="shareWishlist('facebook')"><i class="fa-brands fa-facebook-f" data-icon="15"></i></a>
+                <a href="#" class="share-icon" onclick="shareWishlist('twitter')"><i class="fa-brands fa-twitter" data-icon="16"></i></a>
+                <a href="#" class="share-icon" onclick="shareWishlist('pinterest')"><i class="fa-brands fa-pinterest" data-icon="17"></i></a>
+                <a href="#" class="share-icon" onclick="shareWishlist('email')"><i class="fa-regular fa-envelope" data-icon="18"></i></a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty Wishlist -->
+        <div class="empty-wishlist">
+            <i class="fa-regular fa-heart" data-icon="3"></i>
+            <h2>Your Wishlist Awaits</h2>
+            <p>Save your favorite pieces here. They're waiting to become part of your story.</p>
+            <a href="?page=shop">Discover Collection</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recently Viewed Section -->
+    {% if recently_viewed %}
+    <div class="recently-viewed-section" id="section-102">
+        <div class="recently-header">
+            <h2 id="section-103">{{ text_contents.78|default:"Recently Viewed" }}</h2>
+            <a href="?page=shop">View All <i class="fa-regular fa-arrow-right" data-icon="13"></i></a>
+        </div>
+
+        <div class="recently-grid">
+            {% for product in recently_viewed|slice:":5" %}
+                {% if forloop.first %}
+                <!-- Editable Recently Viewed Item (first) -->
+                <a href="/product/{{ product.slug }}/" class="recent-card" id="section-105">
+                    <div class="recent-image">
+                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=400{% endif %}" 
+                             alt="{{ product.title }}"
+                             class="editable-image"
+                             data-image="14">
+                        <span class="recent-viewed-badge">Just Viewed</span>
+                    </div>
+                    <span class="recent-category" id="section-106">{{ text_contents.79|default:product.category.name|default:"Accessories" }}</span>
+                    <h3 class="recent-title" id="section-107">{{ text_contents.80|default:product.title|truncatechars:20 }}</h3>
+                    <span class="recent-price" id="section-108">{{ text_contents.81|default:product.price|currency:page }}</span>
+                </a>
+                {% else %}
+                <!-- Non-editable Recently Viewed Items -->
+                <a href="/product/{{ product.slug }}/" class="recent-card">
+                    <div class="recent-image">
+                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}
+                            {% cycle 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=400' 'https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&q=80&w=400' 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=400' 'https://images.unsplash.com/photo-1556306535-0f09c5378310?auto=format&fit=crop&q=80&w=400' as product_image %}
+                            {{ product_image }}
+                            {% endcycle %}
+                        {% endif %}" 
+                             alt="{{ product.title }}">
+                    </div>
+                    <span class="recent-category">{{ product.category.name|default:"Collection" }}</span>
+                    <h3 class="recent-title">{{ product.title|truncatechars:20 }}</h3>
+                    <span class="recent-price">{{ product.price|currency:page }}</span>
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '102' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce14/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <script>
+        // Remove from wishlist function
+        function removeFromWishlist(button, itemId) {
+            const card = button.closest('.wishlist-card');
+            
+            if (window.cartManager) {
+                window.cartManager.removeFromWishlist(itemId);
+            }
+            
+            card.style.animation = 'fadeOut 0.3s ease';
+            
+            setTimeout(() => {
+                card.remove();
+                updateWishlistCount();
+                
+                // Check if wishlist is empty
+                const wishlistGrid = document.querySelector('.wishlist-grid');
+                if (wishlistGrid && wishlistGrid.children.length === 0) {
+                    location.reload(); // Reload to show empty wishlist
+                }
+            }, 300);
+        }
+
+        // Add to cart from wishlist
+        function addToCart(productId, button) {
+            if (window.cartManager) {
+                window.cartManager.addToCart(productId, 1);
+            } else {
+                const card = button.closest('.wishlist-card');
+                const title = card.querySelector('.item-title')?.textContent || 'Item';
+                alert(title + ' added to your bag');
+            }
+        }
+
+        // Update wishlist count
+        function updateWishlistCount() {
+            const wishlistItems = document.querySelectorAll('.wishlist-card');
+            const countElement = document.querySelector('.wishlist-count');
+            if (countElement) {
+                const count = wishlistItems.length;
+                countElement.textContent = count + ' item' + (count !== 1 ? 's' : '');
+            }
+        }
+
+        // Share wishlist function
+        function shareWishlist(platform) {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('My SARTOR Wishlist');
+            
+            let shareUrl = '';
+            
+            switch(platform) {
+                case 'facebook':
+                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+                    break;
+                case 'twitter':
+                    shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
+                    break;
+                case 'pinterest':
+                    shareUrl = `https://pinterest.com/pin/create/button/?url=${url}&description=${title}`;
+                    break;
+                case 'email':
+                    shareUrl = `mailto:?subject=${title}&body=${url}`;
+                    break;
+            }
+            
+            if (shareUrl) {
+                window.open(shareUrl, '_blank', 'width=600,height=400');
+            }
+        }
+
+        // Fade out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!-- builder/public_templates/ModernToyShop19/cart.html -->
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | {{ page.brand_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% render_icon_data icon_customizations %}
+    <style>
+        /* Complete CSS - Same as editable */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-leaf: #5c8b39;
+            --terracotta: #c07436;
+            --warm-clay: #bf7f4a;
+            --olive-drab: #636a2f;
+            --deep-forest: #212615;
+            --bg-light: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        {% generate_color_variables %}
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--deep-forest); line-height: 1.4; overflow-x: hidden;  }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .page-header { text-align: center; padding: 2rem 0 3rem; margin-bottom: 1rem; }
+        .page-header h1 { font-size: 3rem; font-weight: 600; color: var(--deep-forest); margin-bottom: 1rem; position: relative; display: inline-block; }
+        .page-header h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, var(--terracotta), var(--warm-clay)); border-radius: 2px; }
+        .page-header p { font-size: 1.1rem; color: var(--deep-forest); opacity: 0.7; max-width: 600px; margin: 1.5rem auto 0; line-height: 1.6; }
+        .cart-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-bottom: 4rem; }
+        .cart-items-container { background: white; border-radius: var(--border-radius-card); box-shadow: var(--card-shadow); overflow: hidden; }
+        .cart-header { display: grid; grid-template-columns: 2fr 1fr 1fr 0.5fr; padding: 1.2rem 1.5rem; background: var(--bg-light); border-bottom: 1px solid rgba(99,106,47,0.1); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--deep-forest); }
+        .cart-item { display: grid; grid-template-columns: 2fr 1fr 1fr 0.5fr; align-items: center; padding: 1.5rem; border-bottom: 1px solid rgba(99,106,47,0.1); transition: var(--transition-smooth); }
+        .cart-item:hover { background: rgba(254,250,245,0.5); }
+        .product-info-cell { display: flex; gap: 1rem; align-items: center; }
+        .cart-product-image { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; background: var(--bg-light); }
+        .cart-product-details h3 { font-size: 1rem; margin-bottom: 0.3rem; font-weight: 600; }
+        .cart-product-category { font-size: 0.7rem; color: var(--terracotta); text-transform: uppercase; letter-spacing: 1px; }
+        .cart-product-variant { font-size: 0.75rem; color: var(--deep-forest); opacity: 0.6; margin-top: 0.3rem; }
+        .cart-product-price { font-weight: 600; color: var(--terracotta); }
+        .quantity-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .quantity-btn { width: 32px; height: 32px; border-radius: 40px; border: 1px solid rgba(99,106,47,0.2); background: white; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .quantity-btn:hover { border-color: var(--terracotta); color: var(--terracotta); transform: translateY(-2px); }
+        .quantity-input { width: 50px; text-align: center; padding: 0.4rem; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; font-size: 0.9rem; }
+        .cart-item-total { font-weight: 700; color: var(--deep-forest); }
+        .remove-item-btn { background: none; border: none; color: var(--deep-forest); opacity: 0.4; cursor: pointer; font-size: 1.1rem; transition: var(--transition-smooth); }
+        .remove-item-btn:hover { opacity: 1; color: var(--terracotta); transform: scale(1.1); }
+        .cart-summary { background: white; border-radius: var(--border-radius-card); box-shadow: var(--card-shadow); padding: 1.5rem; height: fit-content; position: sticky; top: 120px; }
+        .cart-summary h2 { font-size: 1.3rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(99,106,47,0.1); }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.95rem; }
+        .summary-row.total { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(99,106,47,0.1); font-weight: 700; font-size: 1.2rem; color: var(--terracotta); }
+        .promo-code-section { margin: 1.5rem 0; }
+        .promo-code-section h3 { font-size: 0.9rem; margin-bottom: 0.8rem; }
+        .promo-input-group { display: flex; gap: 0.5rem; }
+        .promo-input { flex: 1; padding: 0.7rem 1rem; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; font-size: 0.85rem; }
+        .apply-promo-btn { padding: 0.7rem 1.2rem; background: white; border: 1px solid var(--terracotta); color: var(--terracotta); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-weight: 500; }
+        .apply-promo-btn:hover { background: var(--terracotta); color: white; transform: translateY(-2px); }
+        .checkout-btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--terracotta), var(--warm-clay)); color: white; border: none; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-top: 1rem; }
+        .checkout-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(192,116,54,0.3); }
+        .continue-shopping { text-align: center; margin-top: 1rem; }
+        .continue-shopping a { color: var(--terracotta); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .continue-shopping a:hover { text-decoration: underline; }
+        .empty-cart { text-align: center; padding: 4rem; background: white; border-radius: var(--border-radius-card); grid-column: 1 / -1; }
+        .empty-cart-icon { font-size: 4rem; color: var(--warm-clay); margin-bottom: 1rem; }
+        .empty-cart h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+        .empty-cart p { color: var(--deep-forest); opacity: 0.6; margin-bottom: 2rem; }
+        .shop-now-btn { display: inline-block; padding: 1rem 2rem; background: var(--terracotta); color: white; text-decoration: none; border-radius: 40px; font-weight: 600; transition: var(--transition-smooth); }
+        .shop-now-btn:hover { background: var(--warm-clay); transform: translateY(-3px); }
+        .you-may-also-like { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(99,106,47,0.15); }
+        .you-may-also-like h2 { font-size: 1.8rem; text-align: center; margin-bottom: 2rem; color: var(--deep-forest); }
+        .recommended-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; }
+        .recommended-product-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .recommended-product-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .recommended-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .recommended-product-info { padding: 1rem; }
+        .recommended-product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .recommended-product-price { color: var(--terracotta); font-weight: 500; font-size: 0.9rem; margin-bottom: 0.8rem; }
+        .add-to-cart-recommended { width: 100%; padding: 0.6rem; background: white; border: 1px solid var(--terracotta); color: var(--terracotta); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.8rem; font-weight: 500; }
+        .add-to-cart-recommended:hover { background: var(--terracotta); color: white; }
+        @media (max-width: 992px) { .cart-layout { grid-template-columns: 1fr; gap: 2rem; } .cart-summary { position: static; } .recommended-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { body { padding-top: 80px; } .container { padding: 0 1.5rem; } .cart-header { display: none; } .cart-item { grid-template-columns: 1fr; gap: 1rem; padding: 1rem; position: relative; } .product-info-cell { flex-direction: column; text-align: center; } .cart-product-price, .cart-item-total { text-align: center; } .quantity-controls { justify-content: center; } .remove-item-btn { position: absolute; top: 1rem; right: 1rem; } .recommended-grid { grid-template-columns: 1fr; max-width: 350px; margin: 0 auto; } .page-header h1 { font-size: 2rem; } }
+        @media (max-width: 576px) { .cart-product-image { width: 100px; height: 100px; } .promo-input-group { flex-direction: column; } .apply-promo-btn { width: 100%; } }
+        {% generate_section_styles style_customizations 221 300 %}
+        {% generate_background_images background_images 221 300 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+<!-- Header Snippet -->
+{% include 'builder/public_templates/ModernEcommerce19/snippets/header1.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == '1' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<div class="container">
+    <!-- Page Header - MATCHES section 221-223 -->
+    <div class="page-header" id="section-221">
+        <h1 id="section-222">{{ text_contents.133|default:"Your Shopping Cart" }}</h1>
+        <p id="section-223">{{ text_contents.134|default:"Review your items and proceed to checkout when you're ready to bring these toys home." }}</p>
+    </div>
+
+    {% if cart and cart.items.all %}
+        <div class="cart-layout">
+            <!-- Cart Items Container - MATCHES section 224 -->
+            <div class="cart-items-container" id="section-224">
+                <div class="cart-header" id="section-225">
+                    <span>{{ text_contents.135|default:"Product" }}</span>
+                    <span>{{ text_contents.136|default:"Price" }}</span>
+                    <span>{{ text_contents.137|default:"Quantity" }}</span>
+                    <span>{{ text_contents.138|default:"Total" }}</span>
+                </div>
+                
+                {% for item in cart.items.all %}
+                    <div class="cart-item" id="section-226" data-cart-item-id="{{ item.id }}" data-product-id="{{ item.product.id }}">
+                        <div class="product-info-cell" id="section-227">
+                            {% if item.product.main_image %}
+                                <img src="{{ item.product.main_image.url }}" alt="{{ item.product.title }}" class="cart-product-image" data-image="34" id="section-228">
+                            {% else %}
+                                <div class="cart-product-image" style="background-color: var(--warm-clay); display: flex; align-items: center; justify-content: center;" id="section-228">
+                                    <i class="fas fa-toy" style="font-size: 2rem; color: white;"></i>
+                                </div>
+                            {% endif %}
+                            <div class="cart-product-details" id="section-229">
+                                <h3 id="section-230">{{ item.product.title }}</h3>
+                                <div class="cart-product-category" id="section-231">{{ item.product.category.name|default:"TOYS" }}</div>
+                                {% if item.selected_color or item.selected_size %}
+                                    <div class="cart-product-variant" id="section-232">
+                                        {% if item.selected_color %}Color: {{ item.selected_color }}{% endif %}
+                                        {% if item.selected_size %}{% if item.selected_color %} | {% endif %}Size: {{ item.selected_size }}{% endif %}
+                                    </div>
+                                    <input type="hidden" class="selectedColor" value="{{ item.selected_color }}">
+                                    <input type="hidden" class="selectedSize" value="{{ item.selected_size }}">
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="cart-product-price" id="section-233" data-price="{{ item.product.price }}">{{ item.product.price|currency:page }}</div>
+                        <div class="quantity-controls" id="section-234">
+                            <button class="quantity-btn decrement" data-action="decrement" data-product-id="{{ item.product.id }}" data-icon="45">-</button>
+                            <input type="number" class="quantity-input" id="section-235" value="{{ item.quantity }}" min="1" max="10" data-product-id="{{ item.product.id }}">
+                            <button class="quantity-btn increment" data-action="increment" data-product-id="{{ item.product.id }}" data-icon="46">+</button>
+                        </div>
+                        <div class="cart-item-total" id="section-236">{{ item.total_price|currency:page }}</div>
+                        <button class="remove-item-btn" data-action="remove" data-product-id="{{ item.product.id }}" data-icon="16" id="section-237">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Cart Summary - MATCHES section 246-263 -->
+            <div class="cart-summary" id="section-246">
+                <h2 id="section-247">{{ text_contents.151|default:"Order Summary" }}</h2>
+                <div class="summary-row" id="section-248">
+                    <span>{{ text_contents.152|default:"Subtotal" }}</span>
+                    <span id="cart-subtotal" id="section-249">{{ cart.total_price|currency:page }}</span>
+                </div>
+                <div class="summary-row" id="section-250">
+                    <span>{{ text_contents.154|default:"Shipping" }}</span>
+                    <span id="cart-shipping" style="display: none;" id="section-251">{% if cart.total_price > 50 %}FREE{% else %}{{ page.currency_symbol }}5.00{% endif %}</span>
+                    <span id="section-251">{% if has_shipping_config %} <small>Calculated at Checkout</small> {% else %}Free{% endif %}</span>
+
+                </div>
+                <div class="summary-row" id="section-252">
+                    <span>{{ text_contents.156|default:"Tax" }}</span>
+                    <span id="cart-tax" id="section-253" style="display: none;">{{ cart.tax_amount|currency:page|default:"0.00" }}</span>
+                    <span id="section-253"> <small>---</small></span>
+                </div>
+                <div class="summary-row total" id="section-254">
+                    <span>{{ text_contents.158|default:"Total" }}</span>
+                    <span id="cart-total" id="section-255">{{ cart.final_total|currency:page|default:"0.00" }}</span>
+                </div>
+                
+                <div class="promo-code-section" id="section-256">
+                    <h3 id="section-257">{{ text_contents.160|default:"Promo Code" }}</h3>
+                    <div class="promo-input-group" id="section-258">
+                        <input type="text" class="promo-input" id="section-259" placeholder="{{ text_contents.161|default:'Enter code' }}" id="promo-code-input">
+                        <button class="apply-promo-btn" id="apply-promo" id="section-260">{{ text_contents.162|default:"Apply" }}</button>
+                    </div>
+                </div>
+                
+                <button class="checkout-btn" id="section-261" onclick="redirectCartToPayment()">
+                    <i class="fas fa-lock" data-icon="17"></i> {{ text_contents.163|default:"Proceed to Checkout" }}
+                </button>
+                
+                <div class="continue-shopping" id="section-262">
+                    <a href="?page=products" id="section-263"><i class="fas fa-arrow-left" data-icon="18"></i> {{ text_contents.164|default:"Continue Shopping" }}</a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <!-- Empty Cart State - MATCHES section 264-267 -->
+        <div class="empty-cart" id="section-264">
+            <div class="empty-cart-icon" data-icon="2"><i class="fas fa-shopping-bag"></i></div>
+            <h2 id="section-265">{{ text_contents.165|default:"Your Cart is Empty" }}</h2>
+            <p id="section-266">{{ text_contents.166|default:"Looks like you haven't added any toys to your cart yet." }}</p>
+            <a href="?page=products" class="shop-now-btn" id="section-267">{{ text_contents.167|default:"Start Shopping" }}</a>
+        </div>
+    {% endif %}
+    
+    <!-- You May Also Like - MATCHES section 268-289 -->
+    <div class="you-may-also-like" id="section-268">
+        <h2 id="section-269">{{ text_contents.168|default:"You May Also Like" }}</h2>
+        <div class="recommended-grid">
+            {% for product in recommended_products|slice:":4" %}
+                <div class="recommended-product-card" id="section-270" data-product-id="{{ product.id }}">
+                    {% if product.main_image %}
+                        <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="recommended-product-img" data-image="37" id="section-271">
+                    {% else %}
+                        <div class="recommended-product-img" style="background-color: var(--warm-clay); display: flex; align-items: center; justify-content: center;" id="section-271">
+                            <i class="fas fa-toy" style="font-size: 2rem; color: white;"></i>
+                        </div>
+                    {% endif %}
+                    <div class="recommended-product-info" id="section-272">
+                        <div class="recommended-product-name" id="section-273">{{ product.title|truncatechars:40 }}</div>
+                        <div class="recommended-product-price" id="section-274">{{ product.price|currency:page }}</div>
+                        <button class="add-to-cart-recommended" data-add-to-cart="{{ product.id }}" id="section-275">{{ text_contents.171|default:"Add to Cart" }}</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% for component in components %}
+    {% if component.drop_zone == '268' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<!-- Footer Snippet -->
+{% include 'builder/public_templates/ModernEcommerce19/snippets/footer.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% render_icon_script %}
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+<script>
+    let cartData = { items: [], subtotal: 0, shipping_amount: 0, tax_amount: 0, total_amount: 0 };
+    
+    function initializeCartData() {
+        const cartItems = document.querySelectorAll('.cart-item');
+        cartData.items = [];
+        cartData.subtotal = 0;
+        cartItems.forEach(item => {
+            const productId = item.getAttribute('data-product-id');
+            const title = item.querySelector('.cart-product-details h3').textContent;
+            const price = parseFloat(item.querySelector('.cart-product-price').getAttribute('data-price'));
+            const quantity = parseInt(item.querySelector('.quantity-input').value);
+            // Safe way to get selectedColor and selectedSize with null checking
+            const selectedColorElement = item.querySelector('.selectedColor');
+            const selectedSizeElement = item.querySelector('.selectedSize');
+            const selectedColor = selectedColorElement ? selectedColorElement.value : '';
+            const selectedSize = selectedSizeElement ? selectedSizeElement.value : '';            console.log(`selected color is ${selectedColor} and selected size is ${selectedSize}`)
+
+            const itemTotal = price * quantity;
+            cartData.items.push({ id: productId, title: title, price: price, quantity: quantity, total_price: itemTotal, selected_color: selectedColor, selected_size: selectedSize});
+            cartData.subtotal += itemTotal;
+        });
+        cartData.shipping_amount = 0;
+        cartData.tax_amount = 0;
+        cartData.total_amount = cartData.subtotal + cartData.shipping_amount + cartData.tax_amount;
+        updateCartSummary();
+    }
+    
+    function updateCartSummary() {
+        const currencySymbol = '{{ page.currency_symbol|default:"$" }}';
+        document.getElementById('cart-subtotal').textContent = currencySymbol + cartData.subtotal.toFixed(2);
+        document.getElementById('cart-shipping').textContent = cartData.shipping_amount === 0 ? 'FREE' : currencySymbol + cartData.shipping_amount.toFixed(2);
+        document.getElementById('cart-tax').textContent = currencySymbol + cartData.tax_amount.toFixed(2);
+        document.getElementById('cart-total').textContent = currencySymbol + cartData.total_amount.toFixed(2);
+    }
+    
+    function redirectCartToPayment() {
+        if (cartData.items.length === 0) { alert('Your cart is empty'); return; }
+        const subdomain = document.body.getAttribute('data-page-subdomain') || '{{ page.subdomain }}';
+        const params = new URLSearchParams({ type: 'cart', cart: JSON.stringify(cartData) });
+        window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCartData();
+        
+        document.querySelectorAll('.quantity-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.getAttribute('data-action');
+                const productId = this.getAttribute('data-product-id');
+                const cartItem = this.closest('.cart-item');
+                const input = cartItem.querySelector('.quantity-input');
+                let currentValue = parseInt(input.value);
+                if (action === 'increment' && currentValue < 10) input.value = currentValue + 1;
+                else if (action === 'decrement' && currentValue > 1) input.value = currentValue - 1;
+                if (window.cartManager && action === 'increment') window.cartManager.incrementCartItem(productId, 1);
+                if (window.cartManager && action === 'decrement') window.cartManager.decrementCartItem(productId, 1);
+                const price = parseFloat(cartItem.querySelector('.cart-product-price').getAttribute('data-price'));
+                cartItem.querySelector('.cart-item-total').textContent = '{{ page.currency_symbol|default:"$" }}' + (price * parseInt(input.value)).toFixed(2);
+                initializeCartData();
+            });
+        });
+        
+        document.querySelectorAll('.remove-item-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.getAttribute('data-product-id');
+                if (window.cartManager) window.cartManager.removeFromCart(productId);
+                else location.reload();
+            });
+        });
+        
+        document.getElementById('apply-promo')?.addEventListener('click', function() {
+            const promoInput = document.getElementById('promo-code-input');
+            const promoCode = promoInput ? promoInput.value.trim() : '';
+            if (promoCode === 'WELCOME10') {
+                const discount = cartData.subtotal * 0.1;
+                cartData.subtotal = cartData.subtotal - discount;
+                cartData.tax_amount = cartData.subtotal * 0.08;
+                cartData.total_amount = cartData.subtotal + cartData.shipping_amount + cartData.tax_amount;
+                updateCartSummary();
+                alert('Promo code applied! 10% discount added.');
+                promoInput.value = '';
+            } else if (promoCode === 'FREESHIP') {
+                cartData.shipping_amount = 0;
+                cartData.total_amount = cartData.subtotal + cartData.tax_amount;
+                updateCartSummary();
+                alert('Free shipping applied!');
+                promoInput.value = '';
+            } else if (promoCode) alert('Invalid promo code. Try WELCOME10 or FREESHIP');
+        });
+        
+        document.querySelectorAll('.add-to-cart-recommended').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const productId = this.getAttribute('data-add-to-cart');
+                if (window.cartManager) window.cartManager.addToCart(productId, 1);
+                else alert('Item added to cart!');
+            });
+        });
+    });
+    
+    document.addEventListener('cartUpdated', function() { setTimeout(() => location.reload(), 500); });
+</script>
+</body>
+</html>

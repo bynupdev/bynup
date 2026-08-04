@@ -1,0 +1,641 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --text: #2A3330;
+            --heading: #74B267;
+            --primary: #EBEA8E;
+            --background: #C6CBD1;
+            --secondary: #CB7A81;
+            --accent: #FFFFFF;
+            --success: #2A3330;
+            --warning: #5A6B66;
+            --border: rgba(42, 51, 48, 0.1);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        {% generate_color_variables %}
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--accent);
+            color: var(--success);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .categories-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .categories-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .categories-header h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .categories-header p {
+            color: var(--warning);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .category-card {
+            background: var(--accent);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+        }
+
+        .category-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .category-image-container {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 4 / 3;
+        }
+
+        .category-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .category-card:hover .category-image {
+            transform: scale(1.05);
+        }
+
+        .category-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+            padding: 2rem 1.5rem 1rem;
+            color: white;
+        }
+
+        .category-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Cormorant Garamond', serif;
+            margin-bottom: 0.25rem;
+        }
+
+        .category-count {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .category-info {
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .category-description {
+            color: var(--warning);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .explore-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--heading);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .explore-link:hover {
+            gap: 0.75rem;
+            color: var(--text);
+        }
+
+        .featured-collections {
+            margin-bottom: 4rem;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(42, 51, 48, 0.02) 0%, rgba(116, 178, 103, 0.02) 100%);
+            border-radius: 24px;
+        }
+
+        .featured-collections h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text);
+        }
+
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            padding: 0 1rem;
+        }
+
+        .collection-card {
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+        }
+
+        .collection-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .collection-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--heading);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .collection-card:hover .collection-icon {
+            background: var(--heading);
+            color: white;
+            border-color: var(--heading);
+        }
+
+        .collection-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .collection-count {
+            font-size: 0.8rem;
+            color: var(--warning);
+        }
+
+        .category-highlights {
+            margin-bottom: 4rem;
+        }
+
+        .category-highlights h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+
+        .highlight-card {
+            display: flex;
+            background: var(--accent);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .highlight-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .highlight-image {
+            width: 40%;
+            object-fit: cover;
+        }
+
+        .highlight-content {
+            padding: 1.5rem;
+            flex: 1;
+        }
+
+        .highlight-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--heading);
+            margin-bottom: 0.5rem;
+        }
+
+        .highlight-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .highlight-description {
+            color: var(--warning);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .highlight-link {
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .highlight-link:hover {
+            gap: 0.75rem;
+        }
+
+        .empty-categories {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--accent);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 3rem;
+        }
+
+        .empty-categories-icon {
+            font-size: 4rem;
+            color: var(--background);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-categories h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .empty-categories p {
+            color: var(--warning);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .add-category-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--text);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .add-category-btn:hover {
+            background: var(--heading);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 1024px) {
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .collections-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .highlights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .categories-container {
+                padding: 2rem 1.5rem;
+            }
+            .categories-header h1 {
+                font-size: 2.2rem;
+            }
+            .categories-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto 2rem;
+            }
+            .collections-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            .highlight-card {
+                flex-direction: column;
+            }
+            .highlight-image {
+                width: 100%;
+                aspect-ratio: 16 / 9;
+            }
+            .featured-collections {
+                padding: 2rem 0;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .collections-grid {
+                grid-template-columns: 1fr;
+                max-width: 250px;
+                margin: 0 auto;
+            }
+            .category-name {
+                font-size: 1.25rem;
+            }
+        }
+
+        {% generate_section_styles style_customizations 500 550 %}
+        {% generate_background_images background_images 500 550 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+{% include 'builder/public_templates/ModernEcommerce24/snippets/header1.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == '1' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<div class="categories-container">
+    
+    <!-- Categories Header -->
+    <div class="categories-header" id="section-500">
+        <h1 id="section-501">{{ text_contents.500|default:"Shop by Category" }}</h1>
+        <p id="section-502">{{ text_contents.501|default:"Discover our curated collections, each thoughtfully designed to elevate your living space" }}</p>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '500' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Categories Grid -->
+    {% if categories %}
+    <div class="categories-grid" id="categoriesGrid">
+        {% for category in categories %}
+        <div class="category-card" id="section-503" data-category-id="{{ category.id }}">
+            <div class="category-image-container">
+                {% if category.image %}
+                <img class="category-image" src="{{ category.image.url }}" alt="{{ category.name }}">
+                {% else %}
+                <div class="category-image" style="background: var(--background); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-tag" style="font-size: 3rem; color: var(--heading); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                <div class="category-overlay">
+                    <div class="category-name" id="section-504">{{ category.name }}</div>
+                    <div class="category-count">{{ category.get_active_products_count|default:category.products.count }} products</div>
+                </div>
+            </div>
+            <div class="category-info">
+                <div class="category-description" id="section-505">{{ category.description|default:"Discover our curated collection of timeless pieces." }}</div>
+                <a href="?page=shop&category={{ category.slug }}" class="explore-link" id="section-506">
+                    {{ text_contents.504|default:"Explore Collection" }} <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty Categories State -->
+    <div class="empty-categories">
+        <div class="empty-categories-icon">
+            <i class="fas fa-tags"></i>
+        </div>
+        <h2>{{ text_contents.502|default:"No Categories Available" }}</h2>
+        <p>{{ text_contents.503|default:"There are no product categories to display at the moment. Categories will appear here once they are added to your store." }}</p>
+        <a href="/admin/add-category" class="add-category-btn">{{ text_contents.504|default:"Add Your First Category" }}</a>
+    </div>
+    {% endif %}
+
+    <!-- Featured Collections Section -->
+    <div class="featured-collections" id="section-507">
+        <h2 id="section-508">{{ text_contents.505|default:"Featured Collections" }}</h2>
+        <div class="collections-grid">
+            {% for collection in featured_collections|slice:":4" %}
+            <a href="?page=shop&collection={{ collection.slug }}" class="collection-card">
+                <div class="collection-icon">
+                    <i class="{{ collection.icon|default:'fas fa-star' }}"></i>
+                </div>
+                <div class="collection-name">{{ collection.name }}</div>
+                <div class="collection-count">{{ collection.product_count }} pieces</div>
+            </a>
+            {% empty %}
+            <div class="collection-card">
+                <div class="collection-icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="collection-name">Timeless Classics</div>
+                <div class="collection-count">24 pieces</div>
+            </div>
+            <div class="collection-card">
+                <div class="collection-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="collection-name">Modern Minimalist</div>
+                <div class="collection-count">18 pieces</div>
+            </div>
+            <div class="collection-card">
+                <div class="collection-icon">
+                    <i class="fas fa-leaf"></i>
+                </div>
+                <div class="collection-name">Organic Forms</div>
+                <div class="collection-count">15 pieces</div>
+            </div>
+            <div class="collection-card">
+                <div class="collection-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="collection-name">Statement Pieces</div>
+                <div class="collection-count">12 pieces</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Category Highlights -->
+    <div class="category-highlights" id="section-509">
+        <h2 id="section-510">{{ text_contents.506|default:"Curated Highlights" }}</h2>
+        <div class="highlights-grid">
+            {% for highlight in category_highlights|slice:":2" %}
+            <div class="highlight-card">
+                {% if highlight.image %}
+                <img class="highlight-image" src="{{ highlight.image.url }}" alt="{{ highlight.title }}">
+                {% else %}
+                <div class="highlight-image" style="background: var(--background); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-gem" style="font-size: 2rem; color: var(--heading); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                <div class="highlight-content">
+                    <div class="highlight-category">{{ highlight.category_name|upper }}</div>
+                    <div class="highlight-title">{{ highlight.title }}</div>
+                    <div class="highlight-description">{{ highlight.description }}</div>
+                    <a href="?page=shop&category={{ highlight.category_slug }}" class="highlight-link">Shop Now <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+            {% empty %}
+            <!-- Default highlights -->
+            <div class="highlight-card">
+                <img class="highlight-image" src="https://images.pexels.com/photos/8557242/pexels-photo-8557242.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Featured Vase">
+                <div class="highlight-content">
+                    <div class="highlight-category">VASES</div>
+                    <div class="highlight-title">Hand-Thrown Ceramic Collection</div>
+                    <div class="highlight-description">Each piece is uniquely crafted by artisans, celebrating imperfections and organic beauty.</div>
+                    <a href="?page=shop&category=vases" class="highlight-link">Shop Now <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+            <div class="highlight-card">
+                <img class="highlight-image" src="https://images.pexels.com/photos/949589/pexels-photo-949589.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Featured Lamp">
+                <div class="highlight-content">
+                    <div class="highlight-category">LIGHTING</div>
+                    <div class="highlight-title">Sculptural Lighting Collection</div>
+                    <div class="highlight-description">Where form meets function—lighting that serves as both illumination and art.</div>
+                    <a href="?page=shop&category=lighting" class="highlight-link">Shop Now <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% for component in components %}
+    {% if component.drop_zone == '509' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% include 'builder/public_templates/ModernEcommerce24/snippets/footer.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize cart manager
+        if (window.cartManager) {
+            window.cartManager.loadCartData();
+        }
+        
+        // Animate category cards on scroll
+        const categoryCards = document.querySelectorAll('.category-card');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        categoryCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`;
+            observer.observe(card);
+        });
+        
+        // Collection cards hover effect
+        const collectionCards = document.querySelectorAll('.collection-card');
+        collectionCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('.collection-icon i');
+                if (icon) {
+                    icon.style.transform = 'scale(1.1)';
+                    icon.style.transition = 'transform 0.3s ease';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('.collection-icon i');
+                if (icon) {
+                    icon.style.transform = 'scale(1)';
+                }
+            });
+        });
+        
+        // Highlight cards animation
+        const highlightCards = document.querySelectorAll('.highlight-card');
+        highlightCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = `opacity 0.5s ease ${index * 0.2 + 0.5}s, transform 0.5s ease ${index * 0.2 + 0.5}s`;
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 300);
+        });
+    });
+</script>
+</body>
+</html>

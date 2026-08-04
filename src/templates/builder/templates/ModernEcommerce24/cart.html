@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÆTHER | Shopping Cart</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --text: #2A3330;
+            --heading: #74B267;
+            --primary: #EBEA8E;
+            --secondary: #C6CBD1;
+            --accent: #CB7A81;
+            --background: #FFFFFF;
+            --success: #2A3330;
+            --warning: #5A6B66;
+            --border: rgba(42, 51, 48, 0.1);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--success);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .cart-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Page Header */
+        .cart-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .cart-header h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .cart-header p {
+            color: var(--warning);
+            font-size: 1rem;
+        }
+
+        /* Cart Layout */
+        .cart-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 3rem;
+        }
+
+        /* Cart Items Section */
+        .cart-items-section {
+            background: var(--background);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .cart-items-header {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 0.5fr;
+            padding: 1.25rem 1.5rem;
+            background: var(--secondary);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 0.5fr;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .cart-item:hover {
+            background: rgba(198, 203, 209, 0.05);
+        }
+
+        /* Product Info */
+        .cart-product-info {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .cart-product-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: var(--secondary);
+        }
+
+        .cart-product-details {
+            flex: 1;
+        }
+
+        .cart-product-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .cart-product-category {
+            font-size: 0.75rem;
+            color: var(--heading);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .cart-product-variant {
+            font-size: 0.8rem;
+            color: var(--warning);
+        }
+
+        /* Quantity Controls */
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quantity-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: var(--background);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity-btn:hover {
+            border-color: var(--heading);
+            color: var(--heading);
+        }
+
+        .quantity-input {
+            width: 50px;
+            height: 32px;
+            text-align: center;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Price and Remove */
+        .cart-item-price {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .cart-item-total {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .remove-item {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--warning);
+            font-size: 1.2rem;
+            transition: var(--transition);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-item:hover {
+            color: var(--accent);
+            background: rgba(203, 122, 129, 0.1);
+        }
+
+        /* Cart Summary */
+        .cart-summary {
+            background: var(--background);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            position: sticky;
+            top: 120px;
+            height: fit-content;
+        }
+
+        .cart-summary h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: var(--warning);
+        }
+
+        .summary-row.total {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .summary-row.total .amount {
+            color: var(--accent);
+            font-size: 1.4rem;
+        }
+
+        /* Promo Code */
+        .promo-code-section {
+            margin: 1.5rem 0;
+        }
+
+        .promo-code-section h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            color: var(--success);
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .promo-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .promo-input:focus {
+            outline: none;
+            border-color: var(--heading);
+        }
+
+        .apply-promo-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+        }
+
+        .apply-promo-btn:hover {
+            background: var(--heading);
+        }
+
+        /* Checkout Button */
+        .checkout-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--text) 0%, var(--heading) 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(42, 51, 48, 0.2);
+        }
+
+        .continue-shopping {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            color: var(--warning);
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .continue-shopping:hover {
+            color: var(--heading);
+        }
+
+        /* Empty Cart */
+        .empty-cart {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--background);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .empty-cart-icon {
+            font-size: 4rem;
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-cart h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .empty-cart p {
+            color: var(--warning);
+            margin-bottom: 2rem;
+        }
+
+        .shop-now-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--text);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .shop-now-btn:hover {
+            background: var(--heading);
+            transform: translateY(-2px);
+        }
+
+        /* You May Also Like Section */
+        .you-may-also-like {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .you-may-also-like h2 {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            text-align: center;
+        }
+
+        .recommended-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .recommended-card {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .recommended-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .recommended-image {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .recommended-info {
+            padding: 1rem;
+        }
+
+        .recommended-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .recommended-price {
+            color: var(--accent);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .add-to-cart-small {
+            width: 100%;
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .add-to-cart-small:hover {
+            background: var(--heading);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .cart-layout {
+                grid-template-columns: 1fr;
+            }
+            .cart-summary {
+                position: static;
+            }
+            .recommended-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cart-container {
+                padding: 2rem 1.5rem;
+            }
+            .cart-header h1 {
+                font-size: 2.2rem;
+            }
+            .cart-items-header {
+                display: none;
+            }
+            .cart-item {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                position: relative;
+            }
+            .cart-product-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            .quantity-controls {
+                justify-content: center;
+            }
+            .cart-item-price, .cart-item-total {
+                text-align: center;
+            }
+            .remove-item {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+            }
+            .recommended-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .recommended-grid {
+                grid-template-columns: 1fr;
+                max-width: 320px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cart-container">
+    
+    <!-- Cart Header -->
+    <div class="cart-header editable-section" data-section="300">
+        <h1 class="editable-text editable-section no-drop-zone" data-section="301" data-text="300">Shopping Cart</h1>
+        <p class="editable-text editable-section no-drop-zone" data-section="302" data-text="301">Review and manage the items in your cart before proceeding to checkout</p>
+    </div>
+
+    <!-- Cart Layout -->
+    <div class="cart-layout">
+        
+        <!-- Cart Items Section -->
+        <div class="cart-items-section editable-section" data-section="303">
+            <div class="cart-items-header">
+                <div class="editable-text editable-section no-drop-zone" data-section="304" data-text="302">Product</div>
+                <div class="editable-text editable-section no-drop-zone" data-section="305" data-text="303">Price</div>
+                <div class="editable-text editable-section no-drop-zone" data-section="306" data-text="304">Quantity</div>
+                <div class="editable-text editable-section no-drop-zone" data-section="307" data-text="305">Total</div>
+            </div>
+
+            <!-- Cart Item 1 (Editable) -->
+            <div class="cart-item editable-section no-drop-zone" data-section="308" data-cart-item-id="1">
+                <div class="cart-product-info">
+                    <img class="cart-product-image editable-image" data-image="50" src="https://images.pexels.com/photos/8557242/pexels-photo-8557242.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop" alt="Sculptural ceramic vase">
+                    <div class="cart-product-details">
+                        <div class="cart-product-name editable-text editable-section no-drop-zone" data-section="309" data-text="306">Sculptural ceramic vase</div>
+                        <div class="cart-product-category editable-text editable-section no-drop-zone" data-section="310" data-text="307">VASES</div>
+                        <div class="cart-product-variant editable-text editable-section no-drop-zone" data-section="311" data-text="308">Color: Cream | Size: Medium</div>
+                    </div>
+                </div>
+                <div class="cart-item-price editable-text editable-section no-drop-zone" data-section="312" data-text="309">$189</div>
+                <div class="quantity-controls">
+                    <button class="quantity-btn decrement" data-item-id="1">-</button>
+                    <input type="number" class="quantity-input" value="1" min="1" max="10" data-item-id="1">
+                    <button class="quantity-btn increment" data-item-id="1">+</button>
+                </div>
+                <div class="cart-item-total" data-item-total="1">$189</div>
+                <button class="remove-item" data-item-id="1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Cart Item 2 -->
+            <div class="cart-item" data-cart-item-id="2">
+                <div class="cart-product-info">
+                    <img class="cart-product-image" src="https://images.pexels.com/photos/10248444/pexels-photo-10248444.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop" alt="Contemporary table lamp">
+                    <div class="cart-product-details">
+                        <div class="cart-product-name">Contemporary table lamp</div>
+                        <div class="cart-product-category">LIGHTING</div>
+                        <div class="cart-product-variant">Color: Brass | Size: Standard</div>
+                    </div>
+                </div>
+                <div class="cart-item-price">$275</div>
+                <div class="quantity-controls">
+                    <button class="quantity-btn decrement" data-item-id="2">-</button>
+                    <input type="number" class="quantity-input" value="1" min="1" max="10" data-item-id="2">
+                    <button class="quantity-btn increment" data-item-id="2">+</button>
+                </div>
+                <div class="cart-item-total" data-item-total="2">$275</div>
+                <button class="remove-item" data-item-id="2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Cart Item 3 -->
+            <div class="cart-item" data-cart-item-id="3">
+                <div class="cart-product-info">
+                    <img class="cart-product-image" src="https://images.pexels.com/photos/6707215/pexels-photo-6707215.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop" alt="Linen throw pillow set">
+                    <div class="cart-product-details">
+                        <div class="cart-product-name">Linen throw pillow set</div>
+                        <div class="cart-product-category">TEXTILES</div>
+                        <div class="cart-product-variant">Color: Natural | Size: Set of 2</div>
+                    </div>
+                </div>
+                <div class="cart-item-price">$124</div>
+                <div class="quantity-controls">
+                    <button class="quantity-btn decrement" data-item-id="3">-</button>
+                    <input type="number" class="quantity-input" value="2" min="1" max="10" data-item-id="3">
+                    <button class="quantity-btn increment" data-item-id="3">+</button>
+                </div>
+                <div class="cart-item-total" data-item-total="3">$248</div>
+                <button class="remove-item" data-item-id="3">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="cart-summary editable-section" data-section="313">
+            <h2 class="editable-text editable-section no-drop-zone" data-section="314" data-text="310">Order Summary</h2>
+            <div class="summary-row">
+                <span class="editable-text editable-section no-drop-zone" data-section="315" data-text="311">Subtotal</span>
+                <span id="subtotal">$712</span>
+            </div>
+            <div class="summary-row">
+                <span class="editable-text editable-section no-drop-zone" data-section="316" data-text="312">Shipping</span>
+                <span id="shipping">Free</span>
+            </div>
+            <div class="summary-row">
+                <span class="editable-text editable-section no-drop-zone" data-section="317" data-text="313">Tax</span>
+                <span id="tax">$56.96</span>
+            </div>
+            <div class="summary-row total">
+                <span class="editable-text editable-section no-drop-zone" data-section="318" data-text="314">Total</span>
+                <span class="amount" id="total">$768.96</span>
+            </div>
+
+            <!-- Promo Code -->
+            <div class="promo-code-section">
+                <h3 class="editable-text editable-section no-drop-zone" data-section="319" data-text="315">Promo Code</h3>
+                <div class="promo-input-group">
+                    <input type="text" class="promo-input editable-text editable-section no-drop-zone" data-section="320" data-text="316" placeholder="Enter code">
+                    <button class="apply-promo-btn editable-text editable-section no-drop-zone" data-section="321" data-text="317">Apply</button>
+                </div>
+            </div>
+
+            <!-- Checkout Button -->
+            <button class="checkout-btn editable-text editable-section no-drop-zone" data-section="322" data-text="318">
+                <i class="fas fa-lock"></i> Proceed to Checkout
+            </button>
+
+            <!-- Continue Shopping -->
+            <a href="?page=shop" class="continue-shopping editable-text editable-section no-drop-zone" data-section="323" data-text="319">
+                <i class="fas fa-arrow-left"></i> Continue Shopping
+            </a>
+        </div>
+    </div>
+
+    <!-- You May Also Like Section -->
+    <div class="you-may-also-like editable-section" data-section="324">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="325" data-text="320">You May Also Like</h2>
+        <div class="recommended-grid">
+            <!-- Recommended Product 1 -->
+            <div class="recommended-card">
+                <img class="recommended-image" src="https://images.pexels.com/photos/5506791/pexels-photo-5506791.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Minimalist wall art frame">
+                <div class="recommended-info">
+                    <div class="recommended-name">Minimalist wall art frame</div>
+                    <div class="recommended-price">$320</div>
+                    <button class="add-to-cart-small" data-product-id="4">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+            <!-- Recommended Product 2 -->
+            <div class="recommended-card">
+                <img class="recommended-image" src="https://images.pexels.com/photos/1169104/pexels-photo-1169104.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Oak side table">
+                <div class="recommended-info">
+                    <div class="recommended-name">Oak side table</div>
+                    <div class="recommended-price">$450</div>
+                    <button class="add-to-cart-small" data-product-id="5">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+            <!-- Recommended Product 3 -->
+            <div class="recommended-card">
+                <img class="recommended-image" src="https://images.pexels.com/photos/4145195/pexels-photo-4145195.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Hand-blown glass vessel">
+                <div class="recommended-info">
+                    <div class="recommended-name">Hand-blown glass vessel</div>
+                    <div class="recommended-price">$234</div>
+                    <button class="add-to-cart-small" data-product-id="6">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+            <!-- Recommended Product 4 -->
+            <div class="recommended-card">
+                <img class="recommended-image" src="https://images.pexels.com/photos/949589/pexels-photo-949589.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Brass floor lamp">
+                <div class="recommended-info">
+                    <div class="recommended-name">Brass floor lamp</div>
+                    <div class="recommended-price">$589</div>
+                    <button class="add-to-cart-small" data-product-id="7">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Cart functionality
+    let cartItems = [
+        { id: 1, name: "Sculptural ceramic vase", price: 189, quantity: 1, total: 189 },
+        { id: 2, name: "Contemporary table lamp", price: 275, quantity: 1, total: 275 },
+        { id: 3, name: "Linen throw pillow set", price: 124, quantity: 2, total: 248 }
+    ];
+
+    // Update cart totals
+    function updateCartTotals() {
+        let subtotal = 0;
+        cartItems.forEach(item => {
+            subtotal += item.price * item.quantity;
+        });
+        
+        const shipping = subtotal > 0 ? 0 : 0; // Free shipping
+        const tax = subtotal * 0.08;
+        const total = subtotal + shipping + tax;
+        
+        document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+        document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+        document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+        
+        if (shipping === 0) {
+            document.getElementById('shipping').textContent = 'Free';
+        } else {
+            document.getElementById('shipping').textContent = `$${shipping.toFixed(2)}`;
+        }
+    }
+
+    // Update item display
+    function updateItemDisplay(itemId) {
+        const item = cartItems.find(i => i.id === itemId);
+        if (item) {
+            const quantityInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+            const itemTotal = document.querySelector(`[data-item-total="${itemId}"]`);
+            if (quantityInput) quantityInput.value = item.quantity;
+            if (itemTotal) itemTotal.textContent = `$${(item.price * item.quantity).toFixed(2)}`;
+        }
+        updateCartTotals();
+    }
+
+    // Remove item
+    function removeItem(itemId) {
+        const itemIndex = cartItems.findIndex(i => i.id === itemId);
+        if (itemIndex !== -1) {
+            cartItems.splice(itemIndex, 1);
+            const cartItemElement = document.querySelector(`.cart-item[data-cart-item-id="${itemId}"]`);
+            if (cartItemElement) cartItemElement.remove();
+            updateCartTotals();
+            
+            // Check if cart is empty
+            if (cartItems.length === 0) {
+                showEmptyCart();
+            }
+        }
+    }
+
+    // Show empty cart state
+    function showEmptyCart() {
+        const cartItemsSection = document.querySelector('.cart-items-section');
+        const cartSummary = document.querySelector('.cart-summary');
+        const cartLayout = document.querySelector('.cart-layout');
+        
+        if (cartItemsSection && cartSummary && cartLayout) {
+            const emptyCartHTML = `
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <h2>Your cart is empty</h2>
+                    <p>Looks like you haven't added any items to your cart yet.</p>
+                    <a href="?page=shop" class="shop-now-btn">Start Shopping</a>
+                </div>
+            `;
+            cartLayout.innerHTML = emptyCartHTML;
+        }
+    }
+
+    // Initialize quantity controls
+    document.querySelectorAll('.quantity-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = parseInt(this.getAttribute('data-item-id'));
+            const item = cartItems.find(i => i.id === itemId);
+            if (!item) return;
+            
+            if (this.classList.contains('increment')) {
+                if (item.quantity < 10) {
+                    item.quantity++;
+                    updateItemDisplay(itemId);
+                }
+            } else if (this.classList.contains('decrement')) {
+                if (item.quantity > 1) {
+                    item.quantity--;
+                    updateItemDisplay(itemId);
+                }
+            }
+        });
+    });
+
+    // Manual quantity input change
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const itemId = parseInt(this.getAttribute('data-item-id'));
+            const item = cartItems.find(i => i.id === itemId);
+            if (!item) return;
+            
+            let newQuantity = parseInt(this.value);
+            if (isNaN(newQuantity) || newQuantity < 1) newQuantity = 1;
+            if (newQuantity > 10) newQuantity = 10;
+            
+            item.quantity = newQuantity;
+            updateItemDisplay(itemId);
+        });
+    });
+
+    // Remove item buttons
+    document.querySelectorAll('.remove-item').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = parseInt(this.getAttribute('data-item-id'));
+            removeItem(itemId);
+        });
+    });
+
+    // Add to cart buttons for recommended products
+    document.querySelectorAll('.add-to-cart-small').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.getAttribute('data-product-id');
+            alert(`Product ${productId} added to cart!`);
+            
+            // Visual feedback
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-check"></i> Added';
+            setTimeout(() => {
+                this.innerHTML = originalText;
+            }, 1500);
+        });
+    });
+
+    // Apply promo code
+    const applyPromoBtn = document.querySelector('.apply-promo-btn');
+    if (applyPromoBtn) {
+        applyPromoBtn.addEventListener('click', function() {
+            const promoInput = document.querySelector('.promo-input');
+            const promoCode = promoInput.value.trim();
+            
+            if (promoCode === 'WELCOME10') {
+                alert('10% discount applied!');
+                const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const discount = subtotal * 0.1;
+                const newSubtotal = subtotal - discount;
+                const tax = newSubtotal * 0.08;
+                const total = newSubtotal + tax;
+                
+                document.getElementById('subtotal').textContent = `$${newSubtotal.toFixed(2)}`;
+                document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+                document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+                promoInput.value = '';
+            } else if (promoCode === 'FREESHIP') {
+                alert('Free shipping applied!');
+                document.getElementById('shipping').textContent = 'Free';
+                promoInput.value = '';
+            } else if (promoCode) {
+                alert('Invalid promo code');
+            }
+        });
+    }
+
+    // Checkout button
+    const checkoutBtn = document.querySelector('.checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+            if (cartItems.length === 0) {
+                alert('Your cart is empty. Please add items before checking out.');
+            } else {
+                alert('Proceeding to checkout!');
+                // In production, redirect to checkout page
+            }
+        });
+    }
+
+    // Initialize totals
+    updateCartTotals();
+</script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!-- builder/public_templates/ModernEcommerce19/wishlist.html -->
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wishlist | {{ page.brand_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% render_icon_data icon_customizations %}
+    <style>
+        /* Complete CSS - Same as editable */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-leaf: #5c8b39;
+            --terracotta: #c07436;
+            --warm-clay: #bf7f4a;
+            --olive-drab: #636a2f;
+            --deep-forest: #212615;
+            --bg-light: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        {% generate_color_variables %}
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--deep-forest); line-height: 1.4; overflow-x: hidden; }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .page-header { text-align: center; padding: 2rem 0 3rem; margin-bottom: 1rem; }
+        .page-header h1 { font-size: 3rem; font-weight: 600; color: var(--deep-forest); margin-bottom: 1rem; position: relative; display: inline-block; }
+        .page-header h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, var(--terracotta), var(--warm-clay)); border-radius: 2px; }
+        .page-header p { font-size: 1.1rem; color: var(--deep-forest); opacity: 0.7; max-width: 600px; margin: 1.5rem auto 0; line-height: 1.6; }
+        .wishlist-stats { background: white; border-radius: var(--border-radius-card); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--card-shadow); }
+        .stats-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1.5rem; }
+        .stat-item { text-align: center; flex: 1; min-width: 120px; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--terracotta); margin-bottom: 0.3rem; }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--deep-forest); opacity: 0.6; }
+        .wishlist-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .filter-buttons { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .filter-btn { padding: 0.6rem 1.2rem; background: white; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; font-weight: 500; }
+        .filter-btn:hover, .filter-btn.active { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+        .clear-wishlist-btn { padding: 0.6rem 1.2rem; background: transparent; border: 1px solid rgba(99,106,47,0.3); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+        .clear-wishlist-btn:hover { border-color: var(--terracotta); color: var(--terracotta); transform: translateY(-2px); }
+        .wishlist-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-bottom: 4rem; }
+        .wishlist-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); position: relative; }
+        .wishlist-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .wishlist-image-container { position: relative; overflow: hidden; aspect-ratio: 1 / 1; }
+        .wishlist-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .wishlist-card:hover .wishlist-img { transform: scale(1.05); }
+        .wishlist-badge { position: absolute; top: 1rem; left: 1rem; background: var(--terracotta); color: white; padding: 0.3rem 0.8rem; border-radius: 40px; font-size: 0.7rem; font-weight: 600; z-index: 2; }
+        .wishlist-badge.sale { background: var(--primary-leaf); }
+        .remove-wishlist-btn { position: absolute; top: 1rem; right: 1rem; background: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; color: var(--deep-forest); opacity: 0; z-index: 3; }
+        .wishlist-card:hover .remove-wishlist-btn { opacity: 1; }
+        .remove-wishlist-btn:hover { background: var(--terracotta); color: white; transform: scale(1.1); }
+        .wishlist-info { padding: 1.2rem; }
+        .wishlist-category { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--terracotta); margin-bottom: 0.5rem; }
+        .wishlist-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.3; }
+        .wishlist-price { font-weight: 600; color: var(--terracotta); font-size: 1rem; margin-bottom: 1rem; }
+        .wishlist-price .original-price { text-decoration: line-through; color: var(--olive-drab); font-size: 0.8rem; margin-left: 0.5rem; font-weight: normal; }
+        .wishlist-actions-bottom { display: flex; gap: 0.8rem; }
+        .add-to-cart-wishlist { flex: 1; padding: 0.6rem; background: var(--terracotta); color: white; border: none; border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .add-to-cart-wishlist:hover { background: var(--warm-clay); transform: translateY(-2px); }
+        .view-details-btn { width: 38px; background: white; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; }
+        .view-details-btn:hover { border-color: var(--terracotta); color: var(--terracotta); transform: translateY(-2px); }
+        .empty-wishlist { text-align: center; padding: 4rem; background: white; border-radius: var(--border-radius-card); margin-bottom: 2rem; grid-column: 1 / -1; }
+        .empty-wishlist-icon { font-size: 4rem; color: var(--warm-clay); margin-bottom: 1rem; }
+        .empty-wishlist h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+        .empty-wishlist p { color: var(--deep-forest); opacity: 0.6; margin-bottom: 2rem; }
+        .shop-now-btn { display: inline-block; padding: 1rem 2rem; background: var(--terracotta); color: white; text-decoration: none; border-radius: 40px; font-weight: 600; transition: var(--transition-smooth); }
+        .recently-viewed { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(99,106,47,0.15); }
+        .recently-viewed h2 { font-size: 1.8rem; text-align: center; margin-bottom: 2rem; color: var(--deep-forest); }
+        .recently-viewed-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; }
+        .recent-product-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .recent-product-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .recent-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .recent-product-info { padding: 1rem; }
+        .recent-product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .recent-product-price { color: var(--terracotta); font-weight: 500; font-size: 0.9rem; }
+        @media (max-width: 1200px) { .wishlist-grid, .recently-viewed-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 992px) { .wishlist-grid, .recently-viewed-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { body { padding-top: 80px; } .container { padding: 0 1.5rem; } .wishlist-grid, .recently-viewed-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } .wishlist-actions { flex-direction: column; align-items: stretch; } .filter-buttons { justify-content: center; } .stats-container { flex-direction: column; align-items: center; } .remove-wishlist-btn { opacity: 1; } .page-header h1 { font-size: 2rem; } }
+        @media (max-width: 576px) { .wishlist-actions-bottom { flex-direction: column; } .add-to-cart-wishlist { width: 100%; } .view-details-btn { width: 100%; padding: 0.6rem; } }
+        {% generate_section_styles style_customizations 290 350 %}
+        {% generate_background_images background_images 290 350 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+<!-- Header Snippet -->
+{% include 'builder/public_templates/ModernEcommerce19/snippets/header1.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == '1' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<div class="container">
+    <!-- Page Header - MATCHES section 290-292 -->
+    <div class="page-header" id="section-290">
+        <h1 id="section-291">{{ text_contents.181|default:"My Wishlist" }}</h1>
+        <p id="section-292">{{ text_contents.182|default:"Save your favorite toys and come back to them whenever you're ready to play." }}</p>
+    </div>
+
+    <!-- Wishlist Stats - MATCHES section 293-306 -->
+    <div class="wishlist-stats" id="section-293">
+        <div class="stats-container" id="section-294">
+            <div class="stat-item" id="section-295">
+                <div class="stat-value" id="section-296">{{ wishlist_items|length|default:"0" }}</div>
+                <div class="stat-label" id="section-297">{{ text_contents.184|default:"Items Saved" }}</div>
+            </div>
+            <div class="stat-item" id="section-298">
+                <div class="stat-value" id="section-299">{{ wishlist_items|length|default:"0" }}</div>
+                <div class="stat-label" id="section-300">{{ text_contents.186|default:"On Sale" }}</div>
+            </div>
+            <div class="stat-item" id="section-301">
+                <div class="stat-value" id="section-302">{{ wish_price_total|currency:page|default:"$0" }}</div>
+                <div class="stat-label" id="section-303">{{ text_contents.188|default:"Total Value" }}</div>
+            </div>
+            <div class="stat-item" id="section-304">
+                <div class="stat-value" id="section-305">{{ wishlist_low_stock_count|default:"0" }}</div>
+                <div class="stat-label" id="section-306">{{ text_contents.190|default:"Low in Stock" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wishlist Actions - MATCHES section 307-313 -->
+    <div class="wishlist-actions" id="section-307">
+        <div class="filter-buttons" id="section-308">
+            <button class="filter-btn active" data-filter="all" id="section-309">{{ text_contents.191|default:"All Items" }}</button>
+            <button class="filter-btn" data-filter="sale" id="section-310">{{ text_contents.192|default:"On Sale" }}</button>
+            <button class="filter-btn" data-filter="in-stock" id="section-311">{{ text_contents.193|default:"In Stock" }}</button>
+            <button class="filter-btn" data-filter="new" id="section-312">{{ text_contents.194|default:"New Arrivals" }}</button>
+        </div>
+        <button class="clear-wishlist-btn" id="clear-wishlist-btn" id="section-313">
+            <i class="fas fa-trash-alt" data-icon="16"></i> {{ text_contents.195|default:"Clear All" }}
+        </button>
+    </div>
+
+    <!-- Wishlist Grid - FIRST ITEM MATCHES section 314-322 -->
+    <div class="wishlist-grid" id="wishlist-grid">
+        {% if wishlist_items %}
+            {% for item in wishlist_items %}
+                <div class="wishlist-card" id="section-314" data-product-id="{{ item.product.id }}" data-category="{{ item.product.category.slug|default:'general' }}" data-stock="{% if item.product.quantity > 5 %}in-stock{% elif item.product.quantity > 0 %}low-stock{% else %}out-of-stock{% endif %}" data-badge="{% if item.product.discount_percentage %}sale{% elif forloop.counter == 1 %}new{% endif %}">
+                    <div class="wishlist-image-container" id="section-315">
+                        {% if item.product.main_image %}
+                            <img src="{{ item.product.main_image.url }}" alt="{{ item.product.title }}" class="wishlist-img" data-image="41" >
+                        {% else %}
+                            <div class="wishlist-img" style="background-color: var(--warm-clay); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-toy" style="font-size: 3rem; color: white;"></i>
+                            </div>
+                        {% endif %}
+                        {% if item.product.discount_percentage %}
+                            <div class="wishlist-badge sale" id="section-316">SALE</div>
+                        {% elif forloop.counter == 1 %}
+                            <div class="wishlist-badge new" id="section-316">{{ text_contents.196|default:"NEW" }}</div>
+                        {% endif %}
+                        <button class="remove-wishlist-btn" data-remove-from-wishlist="{{ item.product.id }}" data-icon="5">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="wishlist-info" id="section-317">
+                        <div class="wishlist-category" id="section-318">
+                            
+                                {{ item.product.category.name|default:"TOYS" }}
+                           
+                        </div>
+                        <div class="wishlist-name" id="section-319">
+                            
+                                {{ item.product.title }}
+                           
+                        </div>
+                        <div class="wishlist-price" id="section-320">
+                            {{ item.product.price|currency:page }}
+                            {% if item.product.compare_at_price and item.product.compare_at_price > item.product.price %}
+                                <span class="original-price">{{ item.product.compare_at_price|currency:page }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="wishlist-actions-bottom" id="section-321">
+                            <button class="add-to-cart-wishlist" data-add-to-cart="{{ item.product.id }}" id="section-322">
+                                <i class="fas fa-shopping-bag" data-icon="2"></i> {{ text_contents.200|default:"Add to Cart" }}
+                            </button>
+                            <a href="/product/{{ item.product.slug }}/" class="view-details-btn" data-icon="21">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty Wishlist State - MATCHES section 327-330 -->
+            <div class="empty-wishlist" id="section-323">
+                <div class="empty-wishlist-icon" data-icon="3"><i class="far fa-heart"></i></div>
+                <h2 id="section-324">{{ text_contents.201|default:"Your Wishlist is Empty" }}</h2>
+                <p id="section-325">{{ text_contents.202|default:"Save items you love by clicking the heart icon. Come back here to view them all." }}</p>
+                <a href="?page=products" class="shop-now-btn" id="section-326">{{ text_contents.203|default:"Start Shopping" }}</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recently Viewed Section - MATCHES section 331-332 -->
+    <div class="recently-viewed" id="section-327">
+        <h2 id="section-328">{{ text_contents.204|default:"Recently Viewed" }}</h2>
+        <div class="recently-viewed-grid">
+            {% if recently_viewed_products %}
+                {% for rvp in recently_viewed_products|slice:":4" %}
+                    <a href="/product/{{ rvp.product.slug }}/" class="recent-product-card" id="section-329">
+                        {% if rvp.product.main_image %}
+                            <img src="{{ rvp.product.main_image.url }}" alt="{{ rvp.product.title }}" class="recent-product-img" data-image="42" >
+                        {% else %}
+                            <div class="recent-product-img" style="background-color: var(--warm-clay); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-toy" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                        {% endif %}
+                        <div class="recent-product-info" id="section-330">
+                            <div class="recent-product-name" id="section-331">{{ rvp.product.title|truncatechars:40 }}</div>
+                            <div class="recent-product-price" id="section-332">{{ rvp.product.price|currency:page }}</div>
+                        </div>
+                    </a>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% for component in components %}
+    {% if component.drop_zone == '331' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<!-- Footer Snippet -->
+{% include 'builder/public_templates/ModernEcommerce19/snippets/footer.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% render_icon_script %}
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+<script>
+    let currentFilter = 'all';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        function filterWishlistItems() {
+            const cards = document.querySelectorAll('.wishlist-card');
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const category = card.getAttribute('data-category');
+                const stock = card.getAttribute('data-stock');
+                const badge = card.getAttribute('data-badge');
+                let show = true;
+                if (currentFilter === 'sale') show = badge === 'sale';
+                else if (currentFilter === 'in-stock') show = stock === 'in-stock';
+                else if (currentFilter === 'new') show = badge === 'new';
+                card.style.display = show ? 'block' : 'none';
+                if (show) visibleCount++;
+            });
+            const emptyDiv = document.querySelector('.empty-wishlist');
+            if (visibleCount === 0 && cards.length > 0 && emptyDiv) emptyDiv.style.display = 'block';
+            else if (emptyDiv) emptyDiv.style.display = 'none';
+        }
+        
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.getAttribute('data-filter');
+                filterWishlistItems();
+            });
+        });
+        
+        document.querySelectorAll('.remove-wishlist-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const productId = this.getAttribute('data-remove-from-wishlist');
+                if (window.cartManager) window.cartManager.removeFromWishlist(productId);
+                else location.reload();
+            });
+        });
+        
+        document.getElementById('clear-wishlist-btn')?.addEventListener('click', function() {
+            if (window.cartManager) window.cartManager.clearWishlist();
+            else if (confirm('Clear entire wishlist?')) location.reload();
+        });
+        
+        document.querySelectorAll('.add-to-cart-wishlist').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const productId = this.getAttribute('data-add-to-cart');
+                if (window.cartManager) window.cartManager.addToCart(productId, 1);
+                else alert('Item added to cart!');
+            });
+        });
+    });
+    
+    document.addEventListener('wishlistUpdated', function() { setTimeout(() => location.reload(), 500); });
+</script>
+</body>
+</html>

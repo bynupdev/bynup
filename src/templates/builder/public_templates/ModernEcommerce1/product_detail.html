@@ -1,0 +1,556 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title }} - {{ page.brand_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .product-gallery img {
+            border-radius: 8px;
+        }
+        .product-price {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .quantity-controls .btn {
+            width: 40px;
+            height: 40px;
+        }
+        .review-item {
+            border-bottom: 1px solid #e9ecef;
+            padding: 1.5rem 0;
+        }
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Review System Styles */
+.star-rating-display .stars {
+    color: #ffc107;
+    font-size: 1.2em;
+}
+
+.star-rating-display .star.filled {
+    color: #ffc107;
+}
+
+.star-rating-display .star.half {
+    background: linear-gradient(90deg, #ffc107 50%, #e4e5e9 50%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.star-rating-display .star.empty {
+    color: #e4e5e9;
+}
+
+.star-rating-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.star-rating-input input {
+    display: none;
+}
+
+.star-rating-input label {
+    font-size: 2em;
+    color: #e4e5e9;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.star-rating-input input:checked ~ label,
+.star-rating-input label:hover,
+.star-rating-input label:hover ~ label {
+    color: #ffc107;
+}
+
+.star-rating-input input:checked + label {
+    color: #ffc107;
+}
+
+.review-item {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.5rem 0;
+}
+
+.review-item:last-child {
+    border-bottom: none;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.review-meta {
+    flex: 1;
+}
+
+.review-author {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.review-date {
+    color: #6c757d;
+    font-size: 0.875em;
+}
+
+.review-verified {
+    color: #28a745;
+    font-size: 0.875em;
+}
+
+.review-helpful {
+    margin-top: 1rem;
+}
+
+.rating-bar .progress {
+    height: 8px;
+}
+
+.average-rating-large .rating-number {
+    font-size: 3em;
+    font-weight: bold;
+    color: #2c3e50;
+    display: block;
+    line-height: 1;
+}
+
+.stars-large {
+    color: #ffc107;
+    font-size: 1.5em;
+    margin: 0.5rem 0;
+}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">{{ page.brand_name }}</a>
+            <div class="navbar-nav ms-auto">
+                <!-- Cart & Wishlist icons will be auto-inserted -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Breadcrumb -->
+    <nav class="bg-light py-2">
+        <div class="container">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/products/">Products</a></li>
+                <li class="breadcrumb-item active">{{ product.title }}</li>
+            </ol>
+        </div>
+    </nav>
+
+    <!-- For header/navbar: -->
+{% if show_auth_links %}
+    {% if is_website_member %}
+        <a href="{% url 'accounts:dashboard' %}" class="btn btn-sm btn-outline-light">
+            <i class="fas fa-user me-1"></i>My Account
+        </a>
+    {% else %}
+        <a href="{{ website_register_url }}" class="btn btn-sm btn-primary me-2">
+            <i class="fas fa-user-plus me-1"></i>Join
+        </a>
+        <a href="{{ website_login_url }}" class="btn btn-sm btn-outline-light">
+            <i class="fas fa-sign-in-alt me-1"></i>Login
+        </a>
+    {% endif %}
+{% endif %}
+
+    <!-- Product Detail -->
+    <div class="container py-5">
+        <div class="row">
+            <!-- Product Images -->
+            <div class="col-lg-6">
+                <div class="product-gallery">
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" alt="{{ product.title }}" class="img-fluid w-100 mb-3">
+                    {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <i class="fas fa-image fa-5x text-muted"></i>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+
+            <!-- Product Info -->
+            <div class="col-lg-6">
+                <h1 class="h2">{{ product.title }}</h1>
+
+                <!-- Reviews Section -->
+<div class="reviews-section mt-5">
+    <!-- Rating Summary -->
+    <div class="rating-summary-widget mb-5">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center">
+                <div class="average-rating-large">
+                    <span class="rating-number">{{ average_rating|default:0 }}</span>
+                    <div class="stars-large">
+                        ★★★★★
+                    </div>
+                    <div class="review-count">{{ review_count }} Reviews</div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="rating-bars">
+                    <!-- Rating distribution will be loaded by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+                
+                <!-- Rating -->
+                <div class="product-rating mb-3">
+                    <div class="star-rating-display" 
+                         data-rating="{{ average_rating }}" 
+                         data-review-count="{{ review_count }}">
+                    </div>
+                    <a href="#reviews" class="small ms-2">({{ review_count }} reviews)</a>
+                </div>
+
+                <!-- Price -->
+                <div class="product-price text-success mb-3">{{ product.price|currency:page }}</div>
+
+                <!-- Description -->
+                <div class="product-description mb-4">
+                    <p>{{ product.description }}</p>
+                </div>
+
+                <!-- Product Meta -->
+                <div class="product-meta mb-4">
+                    {% if product.sku %}
+                    <div class="mb-1"><strong>SKU:</strong> {{ product.sku }}</div>
+                    {% endif %}
+                    {% if product.category %}
+                    <div class="mb-1"><strong>Category:</strong> {{ product.category }}</div>
+                    {% endif %}
+                    <div class="mb-1">
+                        <strong>Availability:</strong> 
+                        
+                    </div>
+                </div>
+
+                <!-- Add to Cart -->
+                <div class="add-to-cart-section mb-4">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <label class="form-label"><strong>Quantity:</strong></label>
+                        </div>
+                        <div class="col-auto">
+                            <div class="quantity-controls d-flex align-items-center">
+                                <button class="btn btn-outline-secondary decrement-quantity" 
+                                        data-product-id="{{ product.id }}">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="mx-3 quantity-display" data-product-id="{{ product.id }}">1</span>
+                                <button class="btn btn-outline-secondary increment-quantity" 
+                                        data-product-id="{{ product.id }}">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <button class="btn btn-primary btn-lg w-100 add-to-cart-btn" 
+                                    data-product-id="{{ product.id }}"
+                                    {% if product.stock_quantity <= 0 %}disabled{% endif %}>
+                                <i class="fas fa-cart-plus me-2"></i>
+                                
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wishlist -->
+                <div class="wishlist-section">
+                    <button class="btn btn-outline-danger add-to-wishlist-btn" 
+                            data-product-id="{{ product.id }}">
+                        <i class="fas fa-heart me-2"></i> Add to Wishlist
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Tabs -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="productTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="description-tab" data-bs-toggle="tab" 
+                                data-bs-target="#description" type="button" role="tab">
+                            Description
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" 
+                                data-bs-target="#reviews" type="button" role="tab">
+                            Reviews ({{ review_count }})
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                    <!-- Description Tab -->
+                    <div class="tab-pane fade show active" id="description" role="tabpanel">
+                        <div class="product-full-description">
+                            {{ product.description|linebreaks }}
+                        </div>
+                    </div>
+                    
+                    <!-- Reviews Tab -->
+                    <div class="tab-pane fade" id="reviews" role="tabpanel">
+                        <!-- Rating Summary -->
+                        <div class="rating-summary-widget mb-5" data-product-id="{{ product.id }}"></div>
+                        
+                        <!-- Review Form -->
+                        <div class="review-form-container mb-5">
+                            <h4>Write a Review</h4>
+                            <form class="review-form" data-product-id="{{ product.id }}">
+                                <!-- Star Rating -->
+                                <div class="mb-3">
+                                    <label class="form-label">Your Rating *</label>
+                                    <div class="star-rating-input">
+                                        <input type="radio" id="detail-star5" name="rating" value="5">
+                                        <label for="detail-star5">★</label>
+                                        <input type="radio" id="detail-star4" name="rating" value="4">
+                                        <label for="detail-star4">★</label>
+                                        <input type="radio" id="detail-star3" name="rating" value="3">
+                                        <label for="detail-star3">★</label>
+                                        <input type="radio" id="detail-star2" name="rating" value="2">
+                                        <label for="detail-star2">★</label>
+                                        <input type="radio" id="detail-star1" name="rating" value="1">
+                                        <label for="detail-star1">★</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Review Title -->
+                                <div class="mb-3">
+                                    <label for="reviewTitle" class="form-label">Review Title *</label>
+                                    <input type="text" class="form-control" id="reviewTitle" name="title" 
+                                           placeholder="Summarize your experience" required>
+                                </div>
+                                
+                                <!-- Review Comment -->
+                                <div class="mb-3">
+                                    <label for="reviewComment" class="form-label">Your Review *</label>
+                                    <textarea class="form-control" id="reviewComment" name="comment" 
+                                              rows="4" placeholder="Share details of your experience..." 
+                                              required></textarea>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane me-1"></i> Submit Review
+                                </button>
+                                
+                                <!-- Form Messages -->
+                                <div class="form-messages mt-3" style="display: none;"></div>
+                            </form>
+                        </div>
+                        
+                        <!-- Reviews List -->
+                         <!-- This line is compulsory:<div class="reviews-list-container" data-product-id="{{ product.id }}"> -->
+                            
+                         <div class="reviews-list-container" data-product-id="{{ product.id }}">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h4>Customer Reviews</h4>
+                                <div class="reviews-summary">
+                                    <div class="star-rating-display" 
+                                        data-rating="{{ average_rating|default:0 }}" 
+                                        data-review-count="{{ review_count }}">
+                                        <div class="stars"></div>
+                                        <div class="rating-text small text-muted">
+                                            <span class="average-rating">0</span> out of 5
+                                            <span class="review-count">(0 reviews)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+        
+                            <!-- Reviews Filter/Sort -->
+                            <div class="reviews-controls mb-4">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Sort by:</label>
+                                        <select class="form-select form-select-sm sort-reviews">
+                                            <option value="newest">Newest First</option>
+                                            <option value="oldest">Oldest First</option>
+                                            <option value="highest">Highest Rated</option>
+                                            <option value="lowest">Lowest Rated</option>
+                                            <option value="most_helpful">Most Helpful</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Filter by rating:</label>
+                                        <select class="form-select form-select-sm filter-reviews">
+                                            <option value="all">All Ratings</option>
+                                            <option value="5">5 Stars</option>
+                                            <option value="4">4 Stars</option>
+                                            <option value="3">3 Stars</option>
+                                            <option value="2">2 Stars</option>
+                                            <option value="1">1 Star</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+        
+                            <!-- Reviews List -->
+                            <div class="reviews-list">
+                                <div class="text-center py-4 text-muted">
+                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                    <p>Loading reviews...</p>
+                                </div>
+                            </div>
+        
+                            <!-- Load More Button -->
+                            <div class="text-center mt-4" style="display: none;">
+                                <button class="btn btn-outline-primary load-more-reviews">
+                                    <i class="fas fa-sync me-1"></i> Load More Reviews
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Products -->
+        {% if related_products %}
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3 class="mb-4">Related Products</h3>
+                <div class="row g-4">
+                    {% for related_product in related_products %}
+                    <div class="col-lg-3 col-md-4 col-sm-6">
+                        <div class="product-card card h-100">
+                            <a href="/product/{{ related_product.slug }}/" class="product-image-link">
+                                {% if related_product.image %}
+                                <img src="{{ related_product.image.url }}" class="card-img-top" alt="{{ related_product.title }}">
+                                {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                </div>
+                                {% endif %}
+                            </a>
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h6 class="card-title">
+                                    <a href="/product/{{ related_product.slug }}/" class="text-decoration-none text-dark">
+                                        {{ related_product.title }}
+                                    </a>
+                                </h6>
+                                
+                                <div class="product-rating mb-2">
+                                    <div class="star-rating-display small" 
+                                         data-rating="{{ related_product.get_average_rating }}" 
+                                         data-review-count="{{ related_product.get_review_count }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="price h6 text-success mb-3">{{ related_product.price|currency:page }}</div>
+                                
+                                <div class="mt-auto">
+                                    <a href="/product/{{ related_product.slug }}/" class="btn btn-sm btn-outline-primary w-100">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/review-manager.js' %}"></script>
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        // Initialize product detail page functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Quantity controls
+            document.querySelectorAll('.increment-quantity').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    const display = document.querySelector(`.quantity-display[data-product-id="${productId}"]`);
+                    if (display) {
+                        let quantity = parseInt(display.textContent) + 1;
+                        display.textContent = quantity;
+                    }
+                });
+            });
+
+            document.querySelectorAll('.decrement-quantity').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    const display = document.querySelector(`.quantity-display[data-product-id="${productId}"]`);
+                    if (display) {
+                        let quantity = parseInt(display.textContent) - 1;
+                        if (quantity < 1) quantity = 1;
+                        display.textContent = quantity;
+                    }
+                });
+            });
+
+            // Add to cart with quantity
+            document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    const quantityElement = document.querySelector(`.quantity-display[data-product-id="${productId}"]`);
+                    const quantity = quantityElement ? parseInt(quantityElement.textContent) : 1;
+                    
+                    if (window.cartManager) {
+                        window.cartManager.addToCart(productId, quantity);
+                    }
+                });
+            });
+
+            // Add to wishlist
+            document.querySelectorAll('.add-to-wishlist-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    if (window.cartManager) {
+                        window.cartManager.addToWishlist(productId);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

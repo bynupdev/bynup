@@ -1,0 +1,1331 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Edit Product - {{ product.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.editor-container {
+    min-height: calc(100vh - 200px);
+    background: #f8f9fa;
+}
+
+.editor-header {
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1.5rem 0;
+}
+
+.editor-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin: 2rem auto;
+    max-width: 1200px;
+    min-height: 600px;
+}
+
+/* Tab Styles */
+.product-tabs {
+    border-bottom: 1px solid #dee2e6;
+    padding: 0 2rem;
+    background: #fafbfc;
+}
+
+.product-tabs .nav-link {
+    border: none;
+    padding: 1rem 1.5rem;
+    color: #6c757d;
+    font-weight: 500;
+    border-radius: 0;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.product-tabs .nav-link:hover {
+    color: #4361ee;
+    background: rgba(67, 97, 238, 0.05);
+}
+
+.product-tabs .nav-link.active {
+    color: #4361ee;
+    background: transparent;
+    font-weight: 600;
+}
+
+.product-tabs .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #4361ee;
+}
+
+.tab-pane {
+    display: none;
+    padding: 2rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form Styles */
+.simple-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.simple-form-label {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.simple-form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+}
+
+.simple-form-control:focus {
+    outline: none;
+    border-color: #4361ee;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.form-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.image-preview {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.form-actions {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e1e5e9;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.save-indicator {
+    font-size: 0.875rem;
+    color: #28a745;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.save-indicator.show {
+    opacity: 1;
+}
+.spec-row {
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 6px;
+    background-color: #fff;
+}
+
+.spec-row:hover {
+    background-color: #f8f9fa;
+}
+
+.spec-row .remove-spec-btn {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.spec-row:hover .remove-spec-btn {
+    opacity: 1;
+}
+
+/* Suggested specs badges */
+.badge.bg-secondary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.badge.bg-secondary:hover {
+    background-color: #4361ee !important;
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .product-tabs {
+        padding: 0 1rem;
+    }
+    
+    .product-tabs .nav-link {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .tab-pane {
+        padding: 1rem;
+    }
+}
+
+/* Custom Shipping Section Styles */
+#custom_shipping_settings {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    border: 1px solid #e9ecef;
+}
+
+#custom_shipping_settings hr {
+    margin: 1rem 0;
+}
+
+/* Hide the custom fields when not needed */
+#custom_shipping_settings .form-check {
+    margin-bottom: 0.5rem;
+}
+
+/* Transition effect for smooth showing/hiding */
+#custom_shipping_settings {
+    transition: all 0.3s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-container">
+    <!-- Header -->
+    <div class="editor-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">My Pages</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'manage_products' subdomain=page.subdomain %}">Products</a></li>
+                            <li class="breadcrumb-item active">Edit {{ product.title }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0">Edit Product</h1>
+                    <p class="text-muted mb-0">{{ product.title }}</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'manage_products' subdomain=page.subdomain %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Products
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Editor -->
+    <div class="container">
+        <div class="editor-content">
+            <!-- Tabs Navigation -->
+            <div class="product-tabs">
+                <ul class="nav nav-pills" id="productTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                            <i class="fas fa-info-circle me-2"></i>Basic Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" type="button" role="tab">
+                            <i class="fas fa-tag me-2"></i>Pricing
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="specifications-tab" data-bs-toggle="tab" 
+                                data-bs-target="#specifications" type="button" role="tab">
+                            <i class="fas fa-list-ul me-2"></i>Specifications
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab">
+                            <i class="fas fa-warehouse me-2"></i>Inventory
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="shipping-tab" data-bs-toggle="tab" data-bs-target="#shipping" type="button" role="tab">
+                            <i class="fas fa-shipping-fast me-2"></i>Shipping
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button" role="tab">
+                            <i class="fas fa-search me-2"></i>SEO
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="digital-tab" data-bs-toggle="tab" data-bs-target="#digital" type="button" role="tab">
+                            <i class="fas fa-file-download me-2"></i>Digital
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Single Form for All Tabs -->
+            <form id="productForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+
+                <!-- Basic Info Tab -->
+                <div class="tab-pane active" id="basic" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">Basic Information</div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Product Title *</label>
+                                    <input type="text" class="simple-form-control" name="title" value="{{ product.title }}" required>
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Description</label>
+                                    <textarea class="simple-form-control" name="description" rows="4">{{ product.description }}</textarea>
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Short Description</label>
+                                    <textarea class="simple-form-control" name="short_description" rows="2">{{ product.short_description }}</textarea>
+                                </div>
+
+                                 <div class="simple-form-group">
+                                    <label class="simple-form-label">Available Colors (Use comma seperation) </label>
+                                    <input type="text" class="simple-form-control" name="colors" value="{{ product.colors }}" placeholder="red,black or #20c997, #333">
+                                </div>
+
+                                 <div class="simple-form-group">
+                                    <label class="simple-form-label">Available Sizes (Use comma seperation)</label>
+                                    <input type="text" class="simple-form-control" name="sizes" value="{{ product.sizes }}" >
+                                </div>
+
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Status</label>
+                                    <select class="simple-form-control" name="status">
+                                        <option value="draft" {% if product.status == 'draft' %}selected{% endif %}>Draft</option>
+                                        <option value="active" {% if product.status == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="archived" {% if product.status == 'archived' %}selected{% endif %}>Archived</option>
+                                    </select>
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Product Type</label>
+                                    <select class="simple-form-control" name="type" id="productType">
+                                        <option value="physical" {% if product.type == 'physical' %}selected{% endif %}>Physical Product</option>
+                                        <option value="digital" {% if product.type == 'digital' %}selected{% endif %}>Digital Product</option>
+                                        <option value="service" {% if product.type == 'service' %}selected{% endif %}>Service</option>
+                                    </select>
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Category</label>
+                                    <small><a href="{% url 'manage_product_categories' subdomain=page.subdomain %}">Add New Category</a></small>
+                                    <select class="simple-form-control" name="category">
+                                        <option value="">Uncategorized</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if product.category.id == category.id %}selected{% endif %}>
+                                            {{ category.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Main Image</label>
+                                    <div class="mb-2">
+                                        {% if product.main_image %}
+                                        <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="image-preview">
+                                        {% endif %}
+                                    </div>
+                                    <input type="file" class="simple-form-control" name="main_image" accept="image/*">
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Product Images</label>
+                        
+                                    <input type="file" class="simple-form-control" name="images" multiple accept="image/*">
+                                </div>
+
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Tags</label>
+                                    <input type="text" class="simple-form-control" name="tags" value="{{ product.tags|join:', ' }}" 
+                                           placeholder="tag1, tag2, tag3">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing Tab -->
+                <div class="tab-pane" id="pricing" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">Pricing</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Price ($) *</label>
+                                    <input type="number" class="simple-form-control" name="price" value="{{ product.price }}" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Compare at Price ($)</label>
+                                    <input type="number" class="simple-form-control" name="compare_at_price" value="{{ product.compare_at_price|default:'' }}" step="0.01" min="0">
+                                    <small class="text-muted">Show a "sale" badge when set</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Cost per Item ($)</label>
+                                    <input type="number" class="simple-form-control" name="cost_per_item" value="{{ product.cost_per_item|default:'' }}" step="0.01" min="0">
+                                    <small class="text-muted">For profit calculations</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Charge Tax</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="charge_tax" {% if product.charge_tax %}checked{% endif %}>
+                                        <label class="form-check-label">Charge sales tax on this product</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================= -->
+                <!-- Specifications Tab (Add this as a new tab) -->
+                <!-- ========================================= -->
+                <!-- Specifications Tab -->
+                <!-- ========================================= -->
+                <div class="tab-pane fade" id="specifications" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list-ul me-2"></i>Product Specifications
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Add unlimited specifications for your product (e.g., Material: Cotton, Warranty: 2 Years)
+                            </p>
+                            
+                            <!-- Debug info - remove in production -->
+                            {% if specifications %}
+                            <div class="alert alert-success small py-1 mb-2">
+                                <i class="fas fa-check-circle me-1"></i> {{ specifications|length }} specification(s) loaded
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info small py-1 mb-2">
+                                <i class="fas fa-info-circle me-1"></i> No specifications yet. Add some below.
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Specifications Container -->
+                            <div id="specifications-container">
+                                {% if specifications %}
+                                    {% for spec in specifications %}
+                                    <div class="spec-row mb-2" data-spec-id="{{ spec.id }}" data-display-order="{{ spec.display_order }}">
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <input type="text" 
+                                                    class="form-control form-control-sm spec-title" 
+                                                    name="spec_title[]" 
+                                                    value="{{ spec.title }}"
+                                                    placeholder="e.g., Material">
+                                            </div>
+                                            <div class="col-5">
+                                                <input type="text" 
+                                                    class="form-control form-control-sm spec-value" 
+                                                    name="spec_value[]" 
+                                                    value="{{ spec.value }}"
+                                                    placeholder="e.g., Cotton">
+                                            </div>
+                                            <div class="col-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-spec-btn" title="Remove">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Default empty row -->
+                                    <div class="spec-row mb-2">
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <input type="text" 
+                                                    class="form-control form-control-sm spec-title" 
+                                                    name="spec_title[]" 
+                                                    placeholder="e.g., Material">
+                                            </div>
+                                            <div class="col-5">
+                                                <input type="text" 
+                                                    class="form-control form-control-sm spec-value" 
+                                                    name="spec_value[]" 
+                                                    placeholder="e.g., Cotton">
+                                            </div>
+                                            <div class="col-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-spec-btn" title="Remove">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Add More Button -->
+                            <div class="mt-3 d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-spec-row">
+                                    <i class="fas fa-plus me-1"></i>Add Another Specification
+                                </button>
+                                
+                                {% if specifications %}
+                                <small class="text-muted">
+                                    <i class="fas fa-arrows-alt me-1"></i> Drag to reorder (coming soon)
+                                </small>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Example Suggestions -->
+                            <div class="mt-4 p-3 bg-light rounded">
+                                <small class="text-muted fw-bold d-block mb-2">
+                                    <i class="fas fa-lightbulb me-1"></i>Suggested Specifications:
+                                </small>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Material', 'Cotton/Polyester')">Material</span>
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Warranty', '2 Years')">Warranty</span>
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Weight', '500g')">Weight</span>
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Dimensions', '10x20x5 cm')">Dimensions</span>
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Color', 'Black/White')">Color</span>
+                                    <span class="badge bg-secondary suggestion-badge" onclick="addSuggestedSpec('Country of Origin', 'China')">Country of Origin</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Tab -->
+                <div class="tab-pane" id="inventory" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">Inventory</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">SKU</label>
+                                    <input type="text" class="simple-form-control" name="sku" value="{{ product.sku }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Barcode</label>
+                                    <input type="text" class="simple-form-control" name="barcode" value="{{ product.barcode }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Quantity</label>
+                                    <input type="number" class="simple-form-control" name="quantity" value="{{ product.quantity }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Low Stock Threshold</label>
+                                    <input type="number" class="simple-form-control" name="low_stock_threshold" value="{{ product.low_stock_threshold }}" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Track Quantity</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="track_quantity" {% if product.track_quantity %}checked{% endif %}>
+                                        <label class="form-check-label">Track inventory for this product</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Allow Backorders</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="allow_backorders" {% if product.allow_backorders %}checked{% endif %}>
+                                        <label class="form-check-label">Continue selling when out of stock</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Tab -->
+                <!-- Shipping Tab -->
+                <div class="tab-pane" id="shipping" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">Shipping Settings</div>
+                        
+                        <!-- ========== CUSTOM SHIPPING TOGGLE ========== -->
+                        <div class="simple-form-group">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="use_custom_shipping" id="use_custom_shipping" {% if product.use_custom_shipping %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="use_custom_shipping">
+                                    Use custom shipping rates for this product
+                                </label>
+                            </div>
+                            <small class="text-muted">Override store shipping rates with product-specific rates</small>
+                        </div>
+                        
+                        <!-- Custom Shipping Settings (hidden by default) -->
+                        <div id="custom_shipping_settings" style="{% if not product.use_custom_shipping %}display: none;{% endif %}">
+                            <hr>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="simple-form-group">
+                                        <label class="simple-form-label">Shipping Type</label>
+                                        <select class="simple-form-control" name="custom_shipping_type" id="custom_shipping_type">
+                                            <option value="flat" {% if product.custom_shipping_type == 'flat' %}selected{% endif %}>Flat Rate</option>
+                                            <option value="free" {% if product.custom_shipping_type == 'free' %}selected{% endif %}>Free Shipping</option>
+                                            <option value="per_item" {% if product.custom_shipping_type == 'per_item' %}selected{% endif %}>Per Item</option>
+                                            <option value="calculated" {% if product.custom_shipping_type == 'calculated' %}selected{% endif %}>Calculated by Quantity</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="simple-form-group" id="flat_shipping_fields" style="{% if product.custom_shipping_type != 'flat' and product.custom_shipping_type != 'calculated' %}display: none;{% endif %}">
+                                        <label class="simple-form-label">Shipping Price ($)</label>
+                                        <input type="number" class="simple-form-control" name="custom_shipping_price" id="custom_shipping_price" 
+                                            value="{{ product.custom_shipping_price|default:0 }}" step="0.01" min="0">
+                                        <small class="text-muted">Flat shipping cost for this product</small>
+                                    </div>
+                                    
+                                    <div class="simple-form-group" id="per_item_shipping_fields" style="{% if product.custom_shipping_type != 'per_item' %}display: none;{% endif %}">
+                                        <label class="simple-form-label">Shipping Cost Per Item ($)</label>
+                                        <input type="number" class="simple-form-control" name="shipping_per_item" id="shipping_per_item" 
+                                            value="{{ product.shipping_per_item|default:0 }}" step="0.01" min="0">
+                                        <small class="text-muted">Shipping cost for each individual item</small>
+                                    </div>
+                                    
+                                    <div class="simple-form-group" id="free_shipping_fields" style="{% if product.custom_shipping_type != 'free' %}display: none;{% endif %}">
+                                        <label class="simple-form-label">Free Shipping Minimum Order ($)</label>
+                                        <input type="number" class="simple-form-control" name="custom_free_shipping_min_price" id="custom_free_shipping_min_price" 
+                                            value="{{ product.custom_free_shipping_min_price|default:'' }}" step="0.01" min="0" placeholder="Optional">
+                                        <small class="text-muted">Orders above this amount get free shipping for this product</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="simple-form-group">
+                                <label class="simple-form-label">Shipping Note (Optional)</label>
+                                <textarea class="simple-form-control" name="shipping_note" rows="2" placeholder="e.g., Ships separately, Express shipping available, etc.">{{ product.shipping_note|default:'' }}</textarea>
+                                <small class="text-muted">This note will be shown at checkout for this product</small>
+                            </div>
+                            
+                            <div class="simple-form-group">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="ships_separately" id="ships_separately" {% if product.ships_separately %}checked{% endif %}>
+                                    <label class="form-check-label" for="ships_separately">
+                                        Ships separately
+                                    </label>
+                                </div>
+                                <small class="text-muted">This product ships independently (additional shipping cost)</small>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Original Shipping Fields (unchanged) -->
+                        <div class="simple-form-group">
+                            <label class="simple-form-label">Requires Shipping</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="requires_shipping" id="requires_shipping" {% if product.requires_shipping %}checked{% endif %}>
+                                <label class="form-check-label">This product requires shipping</label>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Weight</label>
+                                    <input type="number" class="simple-form-control" name="weight" value="{{ product.weight }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Weight Unit</label>
+                                    <select class="simple-form-control" name="weight_unit">
+                                        <option value="kg" {% if product.weight_unit == 'kg' %}selected{% endif %}>kg</option>
+                                        <option value="lb" {% if product.weight_unit == 'lb' %}selected{% endif %}>lb</option>
+                                        <option value="oz" {% if product.weight_unit == 'oz' %}selected{% endif %}>oz</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Free Shipping</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="free_shipping" id="free_shipping" {% if product.free_shipping %}checked{% endif %}>
+                                        <label class="form-check-label">Offer free shipping</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Length (cm)</label>
+                                    <input type="number" class="simple-form-control" name="length" value="{{ product.length }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Width (cm)</label>
+                                    <input type="number" class="simple-form-control" name="width" value="{{ product.width }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Height (cm)</label>
+                                    <input type="number" class="simple-form-control" name="height" value="{{ product.height }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEO Tab -->
+                <div class="tab-pane" id="seo" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">SEO Settings</div>
+                        
+                        <div class="simple-form-group">
+                            <label class="simple-form-label">Page Title</label>
+                            <input type="text" class="simple-form-control" name="meta_title" value="{{ product.meta_title }}" 
+                                   placeholder="Usually same as product title">
+                            <small class="text-muted">Appears in search results and browser tab</small>
+                        </div>
+
+                        <div class="simple-form-group">
+                            <label class="simple-form-label">Meta Description</label>
+                            <textarea class="simple-form-control" name="meta_description" rows="3">{{ product.meta_description }}</textarea>
+                            <small class="text-muted">Brief description for search engines (150-160 characters)</small>
+                        </div>
+
+                        <div class="simple-form-group">
+                            <label class="simple-form-label">URL Handle</label>
+                            <input type="text" class="simple-form-control" name="slug" value="{{ product.slug }}" 
+                                   placeholder="auto-generated-from-title">
+                            <small class="text-muted">Custom URL for this product</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Digital Tab -->
+                <div class="tab-pane" id="digital" role="tabpanel">
+                    <div class="form-section">
+                        <div class="form-section-title">Digital Product Settings</div>
+                        
+                        <div class="simple-form-group">
+                            <label class="simple-form-label">Digital Product File</label>
+                            {% if product.digital_file %}
+                            <div class="mb-2">
+                                <i class="fas fa-file me-2"></i>
+                                <span>{{ product.digital_file.name }}</span>
+                                <a href="{{ product.digital_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                            <input type="file" class="simple-form-control" name="digital_file">
+                            <small class="text-muted">File that customers will download after purchase</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Download Limit</label>
+                                    <input type="number" class="simple-form-control" name="download_limit" value="{{ product.download_limit }}" min="1">
+                                    <small class="text-muted">Number of times file can be downloaded</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="simple-form-group">
+                                    <label class="simple-form-label">Download Expiry (Days)</label>
+                                    <input type="number" class="simple-form-control" name="download_expiry" value="{{ product.download_expiry }}" min="1">
+                                    <small class="text-muted">Days until download link expires</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <div class="save-indicator" id="saveIndicator">
+                    <i class="fas fa-check me-1"></i>All changes saved
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveProductBtn" onclick="saveProduct()">
+                        <i class="fas fa-save me-2"></i>Save Product
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Tab functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tabs
+    const tabTriggers = document.querySelectorAll('#productTabs button[data-bs-toggle="tab"]');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    
+    tabTriggers.forEach(trigger => {
+        trigger.addEventListener('click', function() {
+            const target = this.getAttribute('data-bs-target');
+            
+            // Hide all tab panes
+            tabPanes.forEach(pane => {
+                pane.classList.remove('active');
+            });
+            
+            // Show target tab pane
+            document.querySelector(target).classList.add('active');
+            
+            // Update active tab
+            tabTriggers.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Auto-save on field change
+    const form = document.getElementById('productForm');
+    let saveTimeout;
+    
+    form.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(autoSave, 2000); // Save 2 seconds after last input
+    });
+    
+    form.addEventListener('change', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(autoSave, 1000); // Save 1 second after change
+    });
+});
+
+// Auto-save function
+async function autoSave() {
+    const form = document.getElementById('productForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{% url "update_product" subdomain=page.subdomain product_id=product.id %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSaveIndicator();
+        }
+    } catch (error) {
+        console.error('Auto-save failed:', error);
+    }
+}
+
+// Manual save function
+async function saveProduct() {
+    const form = document.getElementById('productForm');
+    const formData = new FormData(form);
+    // const saveBtn = document.querySelector('button[onclick="saveProduct()"]');
+    const saveBtn = document.getElementById('saveProductBtn');
+
+    if (!saveBtn) {
+        console.error('❌ Save button not found');
+        return;
+    }
+    const originalText = saveBtn.innerHTML;
+    
+    // Show loading state
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        const response = await fetch('{% url "update_product" subdomain=page.subdomain product_id=product.id %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Product saved successfully!', 'success');
+            showSaveIndicator();
+            
+            // Redirect after short delay
+            setTimeout(() => {
+                window.location.href = '{% url "manage_products" subdomain=page.subdomain %}';
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Failed to save product');
+        }
+    } catch (error) {
+        showNotification('Error: ' + error.message, 'error');
+    } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+// Show save indicator
+function showSaveIndicator() {
+    const indicator = document.getElementById('saveIndicator');
+    indicator.classList.add('show');
+    
+    setTimeout(() => {
+        indicator.classList.remove('show');
+    }, 3000);
+}
+
+// Show notification
+function showNotification(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Digital product type toggle
+document.getElementById('productType')?.addEventListener('change', function() {
+    const isDigital = this.value === 'digital';
+    const digitalTab = document.getElementById('digital-tab');
+    const shippingTab = document.getElementById('shipping-tab');
+    
+    if (isDigital) {
+        digitalTab.style.display = 'block';
+        shippingTab.style.display = 'none';
+    } else {
+        digitalTab.style.display = 'block';
+        shippingTab.style.display = 'block';
+    }
+});
+
+// Initialize digital tab visibility
+document.addEventListener('DOMContentLoaded', function() {
+    const productType = document.getElementById('productType');
+    if (productType) {
+        productType.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📋 Specifications JS loaded');
+    
+    // Count existing specifications
+    const specRows = document.querySelectorAll('.spec-row');
+    console.log(`📋 Found ${specRows.length} specification rows`);
+    
+    // Add new specification row
+    const addBtn = document.getElementById('add-spec-row');
+    if (addBtn) {
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            addSpecificationRow();
+        });
+        console.log('✅ Add button listener attached');
+    } else {
+        console.warn('⚠️ Add button not found');
+    }
+    
+    // Handle remove buttons (using event delegation)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-spec-btn')) {
+            e.preventDefault();
+            const row = e.target.closest('.spec-row');
+            if (row) {
+                const container = document.getElementById('specifications-container');
+                if (container.children.length > 1) {
+                    row.remove();
+                    console.log('🗑️ Removed specification row');
+                } else {
+                    // Clear fields instead of removing last row
+                    const inputs = row.querySelectorAll('input');
+                    inputs.forEach(input => input.value = '');
+                    console.log('🧹 Cleared last specification row');
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Specifications event listeners attached');
+});
+
+function addSpecificationRow() {
+    const container = document.getElementById('specifications-container');
+    if (!container) {
+        console.error('❌ Specifications container not found');
+        return;
+    }
+    
+    const newRow = document.createElement('div');
+    newRow.className = 'spec-row mb-2';
+    newRow.innerHTML = `
+        <div class="row g-2">
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm spec-title" name="spec_title[]" placeholder="e.g., Material">
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm spec-value" name="spec_value[]" placeholder="e.g., Cotton">
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-spec-btn" title="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(newRow);
+    console.log('➕ Added new specification row');
+}
+
+// Helper function for suggested specs
+function addSuggestedSpec(title, value) {
+    console.log(`💡 Adding suggested spec: ${title} = ${value}`);
+    const container = document.getElementById('specifications-container');
+    
+    // Check if we have an empty row to fill
+    const rows = container.querySelectorAll('.spec-row');
+    let added = false;
+    
+    for (let row of rows) {
+        const titleInput = row.querySelector('.spec-title');
+        const valueInput = row.querySelector('.spec-value');
+        
+        if (titleInput && valueInput && !titleInput.value.trim() && !valueInput.value.trim()) {
+            titleInput.value = title;
+            valueInput.value = value;
+            added = true;
+            console.log('✅ Filled empty row with suggestion');
+            break;
+        }
+    }
+
+    // If no empty row found, create a new one
+    if (!added) {
+        const newRow = document.createElement('div');
+        newRow.className = 'spec-row mb-2';
+        newRow.innerHTML = `
+            <div class="row g-2">
+                <div class="col-5">
+                    <input type="text" class="form-control form-control-sm spec-title" name="spec_title[]" value="${title.replace(/"/g, '&quot;')}">
+                </div>
+                <div class="col-5">
+                    <input type="text" class="form-control form-control-sm spec-value" name="spec_value[]" value="${value.replace(/"/g, '&quot;')}">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-spec-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(newRow);
+        console.log('✅ Created new row with suggestion');
+    }
+}
+
+// Add CSS for better styling
+const style = document.createElement('style');
+style.textContent = `
+    .spec-row {
+        transition: all 0.3s ease;
+        padding: 8px;
+        border-radius: 6px;
+        background-color: #fff;
+        border: 1px solid transparent;
+    }
+    
+    .spec-row:hover {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
+    
+    .spec-row .remove-spec-btn {
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+    
+    .spec-row:hover .remove-spec-btn {
+        opacity: 1;
+    }
+    
+    .suggestion-badge {
+        cursor: pointer;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .suggestion-badge:hover {
+        background-color: #4361ee !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+    }
+`;
+document.head.appendChild(style);
+</script>
+<script>
+     // Custom Shipping Toggle Logic
+document.addEventListener('DOMContentLoaded', function() {
+    const useCustomShipping = document.getElementById('use_custom_shipping');
+    const customShippingSettings = document.getElementById('custom_shipping_settings');
+    const customShippingType = document.getElementById('custom_shipping_type');
+    const flatFields = document.getElementById('flat_shipping_fields');
+    const perItemFields = document.getElementById('per_item_shipping_fields');
+    const freeFields = document.getElementById('free_shipping_fields');
+    
+    // Toggle custom shipping settings visibility
+    if (useCustomShipping) {
+        useCustomShipping.addEventListener('change', function() {
+            if (this.checked) {
+                customShippingSettings.style.display = 'block';
+            } else {
+                customShippingSettings.style.display = 'none';
+            }
+        });
+    }
+    
+    // Toggle shipping type fields
+    if (customShippingType) {
+        customShippingType.addEventListener('change', function() {
+            const type = this.value;
+            
+            // Hide all first
+            if (flatFields) flatFields.style.display = 'none';
+            if (perItemFields) perItemFields.style.display = 'none';
+            if (freeFields) freeFields.style.display = 'none';
+            
+            // Show relevant fields
+            if (type === 'flat' || type === 'calculated') {
+                if (flatFields) flatFields.style.display = 'block';
+            } else if (type === 'per_item') {
+                if (perItemFields) perItemFields.style.display = 'block';
+            } else if (type === 'free') {
+                if (freeFields) freeFields.style.display = 'block';
+            }
+        });
+    }
+    
+    // Free shipping checkbox interaction
+    const freeShippingCheckbox = document.getElementById('free_shipping');
+    const customFreeShippingFields = document.getElementById('free_shipping_fields');
+    
+    if (freeShippingCheckbox && customFreeShippingFields) {
+        freeShippingCheckbox.addEventListener('change', function() {
+            if (this.checked && customShippingType && customShippingType.value === 'free') {
+                // If free shipping is checked and type is free, hide the custom fields
+                customFreeShippingFields.style.display = 'none';
+            } else if (customShippingType && customShippingType.value === 'free') {
+                customFreeShippingFields.style.display = 'block';
+            }
+        });
+    }
+    
+    // Initialize visibility on page load
+    if (useCustomShipping && useCustomShipping.checked) {
+        customShippingSettings.style.display = 'block';
+    }
+    if (customShippingType) {
+        customShippingType.dispatchEvent(new Event('change'));
+    }
+});
+    
+</script>
+
+<script>
+    // Custom Shipping Toggle Logic with Field Clearing
+document.addEventListener('DOMContentLoaded', function() {
+    const useCustomShipping = document.getElementById('use_custom_shipping');
+    const customShippingSettings = document.getElementById('custom_shipping_settings');
+    const customShippingType = document.getElementById('custom_shipping_type');
+    const customShippingPrice = document.getElementById('custom_shipping_price');
+    const shippingPerItem = document.getElementById('shipping_per_item');
+    const freeShippingMinPrice = document.getElementById('custom_free_shipping_min_price');
+    const shippingNote = document.getElementById('shipping_note');
+    const shipsSeparately = document.getElementById('ships_separately');
+    
+    // Store original values when page loads
+    let originalValues = {
+        use_custom_shipping: useCustomShipping ? useCustomShipping.checked : false,
+        custom_shipping_type: customShippingType ? customShippingType.value : 'flat',
+        custom_shipping_price: customShippingPrice ? customShippingPrice.value : 0,
+        shipping_per_item: shippingPerItem ? shippingPerItem.value : 0,
+        custom_free_shipping_min_price: freeShippingMinPrice ? freeShippingMinPrice.value : '',
+        shipping_note: shippingNote ? shippingNote.value : '',
+        ships_separately: shipsSeparately ? shipsSeparately.checked : false
+    };
+    
+    // Function to clear custom shipping fields
+    function clearCustomShippingFields() {
+        if (customShippingType) customShippingType.value = 'flat';
+        if (customShippingPrice) customShippingPrice.value = '0';
+        if (shippingPerItem) shippingPerItem.value = '0';
+        if (freeShippingMinPrice) freeShippingMinPrice.value = '';
+        if (shippingNote) shippingNote.value = '';
+        if (shipsSeparately) shipsSeparately.checked = false;
+    }
+    
+    // Function to restore original values
+    function restoreCustomShippingFields() {
+        if (customShippingType) customShippingType.value = originalValues.custom_shipping_type;
+        if (customShippingPrice) customShippingPrice.value = originalValues.custom_shipping_price;
+        if (shippingPerItem) shippingPerItem.value = originalValues.shipping_per_item;
+        if (freeShippingMinPrice) freeShippingMinPrice.value = originalValues.custom_free_shipping_min_price;
+        if (shippingNote) shippingNote.value = originalValues.shipping_note;
+        if (shipsSeparately) shipsSeparately.checked = originalValues.ships_separately;
+    }
+    
+    // Toggle custom shipping settings visibility
+    if (useCustomShipping) {
+        useCustomShipping.addEventListener('change', function() {
+            if (this.checked) {
+                // Toggle ON - restore original values or keep current
+                customShippingSettings.style.display = 'block';
+                // If we have stored values, restore them
+                if (originalValues.use_custom_shipping) {
+                    restoreCustomShippingFields();
+                }
+                console.log('Custom shipping ENABLED - fields shown');
+            } else {
+                // Toggle OFF - clear all custom shipping fields
+                customShippingSettings.style.display = 'none';
+                clearCustomShippingFields();
+                console.log('Custom shipping DISABLED - fields cleared');
+            }
+        });
+        
+        // Store updated values when fields change
+        const fieldsToWatch = [customShippingType, customShippingPrice, shippingPerItem, freeShippingMinPrice, shippingNote, shipsSeparately];
+        fieldsToWatch.forEach(field => {
+            if (field) {
+                field.addEventListener('change', function() {
+                    if (useCustomShipping.checked) {
+                        originalValues = {
+                            use_custom_shipping: useCustomShipping.checked,
+                            custom_shipping_type: customShippingType ? customShippingType.value : 'flat',
+                            custom_shipping_price: customShippingPrice ? customShippingPrice.value : 0,
+                            shipping_per_item: shippingPerItem ? shippingPerItem.value : 0,
+                            custom_free_shipping_min_price: freeShippingMinPrice ? freeShippingMinPrice.value : '',
+                            shipping_note: shippingNote ? shippingNote.value : '',
+                            ships_separately: shipsSeparately ? shipsSeparately.checked : false
+                        };
+                    }
+                });
+            }
+        });
+    }
+    
+    // Initialize visibility on page load
+    if (useCustomShipping && useCustomShipping.checked) {
+        customShippingSettings.style.display = 'block';
+    } else if (useCustomShipping && !useCustomShipping.checked) {
+        customShippingSettings.style.display = 'none';
+        // Ensure fields are cleared on load if not using custom shipping
+        clearCustomShippingFields();
+    }
+    
+    // Also handle form submission - ensure disabled fields are cleared before submit
+    const productForm = document.getElementById('productForm');
+    if (productForm) {
+        productForm.addEventListener('submit', function(e) {
+            if (useCustomShipping && !useCustomShipping.checked) {
+                // Clear hidden fields when submitting if custom shipping is off
+                if (customShippingType) customShippingType.disabled = true;
+                if (customShippingPrice) customShippingPrice.disabled = true;
+                if (shippingPerItem) shippingPerItem.disabled = true;
+                if (freeShippingMinPrice) freeShippingMinPrice.disabled = true;
+                if (shippingNote) shippingNote.disabled = true;
+                if (shipsSeparately) shipsSeparately.disabled = true;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,219 @@
+<!-- builder/templates/ModernToyShop19/categories.html -->
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop by Category | Nook & Nest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --background: #5c8b39;
+            --text: #c07436;
+            --heading: #bf7f4a;
+            --primary: #636a2f;
+            --secondary: #212615;
+            --accent: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        main { background-color: var(--accent); font-family: 'Inter', sans-serif; color: var(--secondary); line-height: 1.4; overflow-x: hidden;  }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .page-header { text-align: center; padding: 2rem 0 3rem; margin-bottom: 1rem; }
+        .page-header h1 { font-size: 3rem; font-weight: 600; color: var(--secondary); margin-bottom: 1rem; position: relative; display: inline-block; }
+        .page-header h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, var(--text), var(--heading)); border-radius: 2px; }
+        .page-header p { font-size: 1.1rem; color: var(--secondary); opacity: 0.7; max-width: 600px; margin: 1.5rem auto 0; line-height: 1.6; }
+        .category-filter-bar { margin-bottom: 3rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(99,106,47,0.15); }
+        .filter-scroll { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: thin; }
+        .filter-scroll::-webkit-scrollbar { height: 4px; }
+        .filter-scroll::-webkit-scrollbar-track { background: rgba(99,106,47,0.1); border-radius: 4px; }
+        .filter-scroll::-webkit-scrollbar-thumb { background: var(--text); border-radius: 4px; }
+        .category-filter-btn { padding: 0.7rem 1.5rem; background: white; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
+        .category-filter-btn:hover, .category-filter-btn.active { background: var(--text); color: white; border-color: var(--text); }
+        .categories-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-bottom: 4rem; }
+        .category-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); cursor: pointer; text-decoration: none; display: block; color: inherit; }
+        .category-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .category-image-container { position: relative; overflow: hidden; aspect-ratio: 1 / 1; }
+        .category-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .category-card:hover .category-img { transform: scale(1.05); }
+        .category-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(33,38,21,0.8), transparent); padding: 1.5rem; color: white; }
+        .category-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.3rem; }
+        .category-count { font-size: 0.8rem; opacity: 0.9; }
+        .category-info { padding: 1rem; text-align: center; }
+        .category-description { font-size: 0.85rem; color: var(--secondary); opacity: 0.7; line-height: 1.5; margin-bottom: 0.8rem; }
+        .explore-link { display: inline-block; color: var(--text); font-size: 0.8rem; font-weight: 600; text-decoration: none; transition: var(--transition-smooth); }
+        .explore-link:hover { color: var(--heading); transform: translateX(4px); }
+        .featured-collections { margin: 4rem 0; padding: 3rem 0; background: rgba(192,116,54,0.03); border-radius: var(--border-radius-card); }
+        .featured-collections h2 { font-size: 2rem; text-align: center; margin-bottom: 2rem; color: var(--secondary); }
+        .collections-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+        .collection-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .collection-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .collection-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+        .collection-info { padding: 1.2rem; text-align: center; }
+        .collection-name { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .collection-description { font-size: 0.85rem; color: var(--secondary); opacity: 0.7; margin-bottom: 1rem; line-height: 1.5; }
+        .collection-btn { display: inline-block; padding: 0.6rem 1.2rem; background: transparent; border: 1px solid var(--text); color: var(--text); border-radius: 40px; font-size: 0.8rem; font-weight: 500; transition: var(--transition-smooth); }
+        .collection-btn:hover { background: var(--text); color: white; }
+        .empty-categories { text-align: center; padding: 4rem; background: white; border-radius: var(--border-radius-card); margin: 2rem 0; grid-column: 1 / -1; }
+        @media (max-width: 1200px) { .categories-grid { grid-template-columns: repeat(3, 1fr); } .collections-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 992px) { .categories-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {  .container { padding: 0 1.5rem; } .categories-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto 3rem; } .collections-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } .category-filter-bar { margin-bottom: 2rem; } .filter-scroll { gap: 0.8rem; } .category-filter-btn { padding: 0.6rem 1.2rem; font-size: 0.8rem; } .page-header h1 { font-size: 2rem; } .featured-collections { margin: 2rem 0; padding: 2rem 0; } }
+        @media (max-width: 576px) { .category-overlay { padding: 1rem; } .category-name { font-size: 1.1rem; } .featured-collections h2 { font-size: 1.5rem; } }
+    </style>
+</head>
+<body>
+
+<main>
+    <div class="container">
+    <!-- Page Header - EDITABLE -->
+    <div class="page-header editable-section" data-section="500">
+        <h1 class="editable-text editable-section no-drop-zone" data-section="501" data-text="313">Shop by Category</h1>
+        <p class="editable-text editable-section no-drop-zone" data-section="502" data-text="314">Discover our carefully curated toy collections designed to spark imagination and joy.</p>
+    </div>
+
+    <!-- Category Filter Bar - EDITABLE -->
+    <div class="category-filter-bar editable-section no-drop-zone" data-section="503">
+        <div class="filter-scroll editable-section no-drop-zone" data-section="504" id="category-filters">
+            <button class="category-filter-btn active editable-text editable-section no-drop-zone" data-section="505" data-text="315" data-filter="all">All Categories</button>
+            <button class="category-filter-btn editable-text editable-section no-drop-zone" data-section="506" data-text="316" data-filter="wooden">Wooden Toys</button>
+            <button class="category-filter-btn editable-text editable-section no-drop-zone" data-section="507" data-text="317" data-filter="plush">Plush Toys</button>
+            <button class="category-filter-btn editable-text editable-section no-drop-zone" data-section="508" data-text="318" data-filter="puzzles">Puzzles</button>
+            <button class="category-filter-btn editable-text editable-section no-drop-zone" data-section="509" data-text="319" data-filter="activity">Activity Kits</button>
+            <button class="category-filter-btn editable-text editable-section no-drop-zone" data-section="510" data-text="320" data-filter="montessori">Montessori</button>
+        </div>
+    </div>
+
+    <!-- Categories Grid - FIRST CATEGORY EDITABLE -->
+    <div class="categories-grid" id="categories-grid">
+        <!-- Category 1 - EDITABLE -->
+        <div class="category-card editable-section no-drop-zone" data-section="511" data-category="wooden">
+            <div class="category-image-container editable-section no-drop-zone" data-section="512">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="category-img editable-image" data-image="49">
+                <div class="category-overlay">
+                    <div class="category-name editable-text editable-section no-drop-zone" data-section="513" data-text="321">Wooden Toys</div>
+                    <div class="category-count editable-text editable-section no-drop-zone" data-section="514" data-text="322">12 Products</div>
+                </div>
+            </div>
+            <div class="category-info editable-section no-drop-zone" data-section="515">
+                <p class="category-description editable-text editable-section no-drop-zone" data-section="516" data-text="323">Classic wooden toys that stand the test of time. Sustainably sourced and beautifully crafted.</p>
+                <a href="?page=products&category=wooden" class="explore-link editable-text editable-section no-drop-zone" data-section="517" data-text="324">Explore <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+
+        <!-- Category 2 - Sample -->
+        <div class="category-card" data-category="plush">
+            <div class="category-image-container">
+                <img src="{%static 'images/Ecom19/prod7.jpg'%}" class="category-img">
+                <div class="category-overlay">
+                    <div class="category-name">Plush Toys</div>
+                    <div class="category-count">8 Products</div>
+                </div>
+            </div>
+            <div class="category-info">
+                <p class="category-description">Soft, cuddly companions for endless comfort and imaginative play.</p>
+                <a href="?page=products&category=plush" class="explore-link">Explore <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+
+        <!-- Category 3 - Sample -->
+        <div class="category-card" data-category="puzzles">
+            <div class="category-image-container">
+                <img src="{%static 'images/Ecom19/prod3.jpg'%}" class="category-img">
+                <div class="category-overlay">
+                    <div class="category-name">Puzzles</div>
+                    <div class="category-count">15 Products</div>
+                </div>
+            </div>
+            <div class="category-info">
+                <p class="category-description">Challenging and fun puzzles that develop problem-solving skills.</p>
+                <a href="?page=products&category=puzzles" class="explore-link">Explore <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+
+        <!-- Category 4 - Sample -->
+        <div class="category-card" data-category="activity">
+            <div class="category-image-container">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" class="category-img">
+                <div class="category-overlay">
+                    <div class="category-name">Activity Kits</div>
+                    <div class="category-count">10 Products</div>
+                </div>
+            </div>
+            <div class="category-info">
+                <p class="category-description">Hands-on activity kits for creative exploration and learning.</p>
+                <a href="?page=products&category=activity" class="explore-link">Explore <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Collections - EDITABLE -->
+    <div class="featured-collections editable-section" data-section="518">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="519" data-text="325">Featured Collections</h2>
+        <div class="collections-grid">
+            <div class="collection-card editable-section no-drop-zone" data-section="520">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="collection-img editable-image" data-image="50">
+                <div class="collection-info editable-section no-drop-zone" data-section="521">
+                    <div class="collection-name editable-text editable-section no-drop-zone" data-section="522" data-text="326">Classic Wooden Collection</div>
+                    <p class="collection-description editable-text editable-section no-drop-zone" data-section="523" data-text="327">Timeless wooden toys that have been loved for generations. Each piece is crafted from sustainable materials.</p>
+                    <a href="?page=products&collection=classic-wooden" class="collection-btn editable-text editable-section no-drop-zone" data-section="524" data-text="328">Shop Collection</a>
+                </div>
+            </div>
+            <div class="collection-card editable-section no-drop-zone" data-section="525">
+                <img src="{%static 'images/Ecom19/prod7.jpg'%}" class="collection-img editable-image" data-image="51">
+                <div class="collection-info editable-section no-drop-zone" data-section="526">
+                    <div class="collection-name editable-text editable-section no-drop-zone" data-section="527" data-text="329">Cozy Companions</div>
+                    <p class="collection-description editable-text editable-section no-drop-zone" data-section="528" data-text="330">Soft, huggable friends perfect for comfort and imaginative play. Made with premium materials.</p>
+                    <a href="?page=products&collection=cozy-companions" class="collection-btn editable-text editable-section no-drop-zone" data-section="529" data-text="331">Shop Collection</a>
+                </div>
+            </div>
+            <div class="collection-card editable-section no-drop-zone" data-section="530">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" class="collection-img editable-image" data-image="52">
+                <div class="collection-info editable-section no-drop-zone" data-section="531">
+                    <div class="collection-name editable-text editable-section no-drop-zone" data-section="532" data-text="332">Little Learners</div>
+                    <p class="collection-description editable-text editable-section no-drop-zone" data-section="533" data-text="333">Educational toys designed to make learning fun and engaging for curious young minds.</p>
+                    <a href="?page=products&collection=little-learners" class="collection-btn editable-text editable-section no-drop-zone" data-section="534" data-text="334">Shop Collection</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterBtns = document.querySelectorAll('.category-filter-btn');
+        const categoryCards = document.querySelectorAll('.category-card');
+        
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const filterValue = this.getAttribute('data-filter');
+                categoryCards.forEach(card => {
+                    const category = card.getAttribute('data-category');
+                    card.style.display = (filterValue === 'all' || category === filterValue) ? 'block' : 'none';
+                });
+            });
+        });
+        
+        categoryCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!e.target.closest('.explore-link')) {
+                    const category = this.getAttribute('data-category');
+                    window.location.href = `?page=products&category=${category}`;
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

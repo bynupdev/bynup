@@ -1,0 +1,594 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title|default:"Product Details" }} | {{ page.brand_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        /* Same styles as before - keeping for brevity */
+        :root {
+            --background: #F0EFE6;
+            --secondary: #EAEAEA;
+            --primary: #C6C9D2;
+            --heading: #DCCFC1;
+            --accent: #BBAEA8;
+            --text: #393831;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.01);
+            --shadow-hover: 0 20px 32px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            --transition-smooth: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        {% generate_color_variables %}
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .section-title { font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: -0.02em; }
+        .container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+        .breadcrumb { padding: 24px 0 16px; font-size: 0.85rem; color: var(--text); opacity: 0.6; }
+        .breadcrumb a { color: var(--text); text-decoration: none; transition: opacity 0.2s; }
+        .breadcrumb span { margin: 0 8px; }
+        .product-details-container { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin: 24px 0 64px; }
+        .product-gallery { position: relative; }
+        .main-image-container { width: 100%; aspect-ratio: 1 / 1; border-radius: 24px; overflow: hidden; background: var(--secondary); margin-bottom: 20px; }
+        .main-image { width: 100%; height: 100%; object-fit: cover; }
+        .thumbnail-container { display: flex; gap: 12px; flex-wrap: wrap; }
+        .thumbnail { width: 80px; height: 80px; border-radius: 16px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: var(--transition-smooth); background: var(--secondary); }
+        .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+        .thumbnail.active { border-color: var(--text); transform: translateY(-2px); }
+        .product-info { padding: 0; }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+        .product-rating { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .stars { display: flex; gap: 4px; color: #f5b042; }
+        .rating-count { font-size: 0.85rem; color: var(--text); opacity: 0.6; }
+        .product-price { font-size: 2rem; font-weight: 600; color: var(--text); margin-bottom: 20px; }
+        .compare-price { font-size: 1.2rem; color: var(--accent); text-decoration: line-through; margin-left: 12px; font-weight: 400; }
+        .product-description { color: var(--text); opacity: 0.8; line-height: 1.6; margin-bottom: 24px; font-size: 0.95rem; }
+        .variant-section { margin-bottom: 24px; }
+        .variant-title { font-weight: 600; margin-bottom: 12px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .color-options { display: flex; gap: 12px; flex-wrap: wrap; }
+        .color-option { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: var(--transition-smooth); border: 2px solid transparent; }
+        .color-option.active { border-color: var(--text); transform: scale(1.05); }
+        .size-options { display: flex; gap: 12px; flex-wrap: wrap; }
+        .size-option { padding: 8px 20px; border: 1px solid var(--primary); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; background: transparent; }
+        .size-option.active { background: var(--text); color: var(--background); border-color: var(--text); }
+        .product-actions { display: flex; gap: 16px; margin: 32px 0 24px; flex-wrap: wrap; }
+        .buy-now-btn { flex: 2; background: var(--text); color: var(--background); border: none; padding: 14px 28px; border-radius: 40px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .add-to-cart-details-btn { flex: 1; background: transparent; border: 1px solid var(--text); color: var(--text); padding: 14px 24px; border-radius: 40px; font-family: 'Syne', sans-serif; font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .wishlist-details-btn { width: 52px; background: transparent; border: 1px solid var(--primary); border-radius: 40px; color: var(--text); cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; }
+        .product-tabs { margin: 48px 0; }
+        .tab-headers { display: flex; gap: 32px; border-bottom: 1px solid var(--primary); margin-bottom: 24px; }
+        .tab-header { background: none; border: none; padding: 12px 0; font-family: 'Syne', sans-serif; font-weight: 500; font-size: 1rem; color: var(--text); opacity: 0.6; cursor: pointer; transition: var(--transition-smooth); position: relative; }
+        .tab-header.active { opacity: 1; }
+        .tab-header.active::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--text); }
+        .tab-content { display: none; padding: 24px 0; color: var(--text); opacity: 0.8; line-height: 1.6; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .review-form { background: var(--secondary); padding: 28px; border-radius: 24px; margin-bottom: 32px; }
+        .review-form h3 { font-size: 1.3rem; margin-bottom: 20px; }
+        .rating-input { margin-bottom: 20px; }
+        .rating-input label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .star-rating { display: flex; gap: 8px; font-size: 1.5rem; cursor: pointer; }
+        .star-rating i { color: var(--primary); transition: color 0.2s; }
+        .star-rating i.active { color: #f5b042; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--primary); border-radius: 16px; background: var(--background); font-family: 'Inter', sans-serif; font-size: 0.9rem; transition: var(--transition-smooth); }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--text); }
+        .submit-review-btn { background: var(--text); color: var(--background); border: none; padding: 12px 28px; border-radius: 40px; font-family: 'Syne', sans-serif; font-weight: 500; cursor: pointer; transition: var(--transition-smooth); }
+        .submit-review-btn:hover { background: #4f4c45; transform: translateY(-2px); }
+        .customer-reviews { margin-top: 32px; }
+        .customer-reviews h3 { font-size: 1.3rem; margin-bottom: 24px; }
+        .review-item { background: var(--secondary); padding: 20px; border-radius: 20px; margin-bottom: 16px; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .reviewer-name { font-weight: 600; }
+        .review-date { font-size: 0.75rem; opacity: 0.6; }
+        .review-rating i { color: #f5b042; font-size: 0.8rem; }
+        .review-title { font-weight: 600; margin-bottom: 8px; }
+        .review-comment { font-size: 0.9rem; line-height: 1.5; opacity: 0.8; }
+        .no-reviews { text-align: center; padding: 40px; background: var(--secondary); border-radius: 24px; color: var(--text); opacity: 0.7; }
+        .related-products { margin: 64px 0 48px; }
+        .related-products h2 { font-size: 1.8rem; margin-bottom: 32px; text-align: center; }
+        .related-products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        .related-product-card { background: var(--secondary); border-radius: 20px; overflow: hidden; transition: var(--transition-smooth); text-decoration: none; color: inherit; }
+        .related-product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+        .related-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .related-product-info { padding: 16px; }
+        .related-product-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+        .related-product-price { font-size: 0.9rem; font-weight: 500; color: #5a5650; }
+        .no-related-products { text-align: center; padding: 48px; background: var(--secondary); border-radius: 24px; grid-column: 1 / -1; }
+        @media (max-width: 992px) { .product-details-container { grid-template-columns: 1fr; gap: 32px; } .related-products-grid { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 2rem; } }
+        @media (max-width: 768px) { .container { padding: 0 24px; } .related-products-grid { grid-template-columns: 1fr; max-width: 350px; margin: 0 auto; } .product-actions { flex-direction: column; } .buy-now-btn, .add-to-cart-details-btn { width: 100%; } .wishlist-details-btn { width: 100%; height: 52px; } .thumbnail { width: 60px; height: 60px; } }
+        {% generate_section_styles style_customizations 54 80 %}
+        {% generate_background_images background_images 54 80 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}" style="margin-top: 80px;">
+{% include 'builder/public_templates/ModernEcommerce15/snippets/header1.html' %}
+<main>
+    
+    <div class="container">
+        <!-- Breadcrumb -->
+        <div class="breadcrumb" id="section-54">
+            <a href="?page=home">Home</a> <span>/</span>
+            <a href="?page=products">Shop</a> <span>/</span>
+            {% if product.category %}
+            <a href="?page=products&category={{ product.category.slug }}">{{ product.category.name }}</a> <span>/</span>
+            {% endif %}
+            <span>{{ product.title|default:"Product Details" }}</span>
+        </div>
+
+        {% for component in components %}{% if component.drop_zone == '54' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+
+        {% if product %}
+        <div class="product-details-container">
+            <!-- Product Gallery -->
+            <div class="product-gallery" id="section-55">
+                <div class="main-image-container">
+                    <img class="main-image" id="mainProductImage" src="{% if product.main_image %}{{ product.main_image.url }}{% elif product.image_url %}{{ product.image_url }}{% else %}https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&auto=format{% endif %}" alt="{{ product.title }}">
+                </div>
+                <div class="thumbnail-container">
+                    {% if product.main_image %}
+                    <div class="thumbnail active" data-image="{{ product.main_image.url }}">
+                        <img src="{{ product.main_image.url }}" alt="Thumbnail">
+                    </div>
+                    {% endif %}
+                    {% for image in product_images %}
+                    <div class="thumbnail" data-image="{{ image.image.url }}">
+                        <img src="{{ image.image.url }}" alt="Product thumbnail">
+                    </div>
+                    {% empty %}
+                    {% if product.image_gallery %}
+                    {% for image_url in product.image_gallery|slice:":3" %}
+                    <div class="thumbnail" data-image="{{ image_url }}">
+                        <img src="{{ image_url }}" alt="Product thumbnail">
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Product Info -->
+            <div class="product-info" id="section-56">
+                <h1 id="section-57">{{ product.title|default:"Product" }}</h1>
+                
+                <div class="product-rating">
+                    <div class="stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= full_stars %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="rating-count">{{ average_rating|default:"4.5" }} ({{ total_reviews|default:"128" }} reviews)</span>
+                </div>
+
+                <div class="product-price" id="section-58">
+                    {{ product.price|currency:page }}
+                    {% if product.compare_at_price and product.compare_at_price > product.price %}
+                    <span class="compare-price">{{ product.compare_at_price|currency:page }}</span>
+                    {% endif %}
+                </div>
+
+                <p class="product-description" id="section-59">
+                    {{ product.short_description|default:product.description|striptags|truncatewords:50|default:"Premium product crafted with attention to detail." }}
+                </p>
+
+                <!-- Color Variants -->
+                {% if colors %}
+                <div class="variant-section">
+                    <div class="variant-title">Color</div>
+                    <div class="color-options" id="colorOptions">
+                        {% for color in colors %}
+                        <div class="color-option {% if forloop.first %}active{% endif %}" style="background-color: {{ color }};" data-color="{{ color }}"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Size Variants -->
+                {% if sizes %}
+                <div class="variant-section">
+                    <div class="variant-title">Size</div>
+                    <div class="size-options" id="sizeOptions">
+                        {% for size in sizes %}
+                        <div class="size-option {% if forloop.first %}active{% endif %}" data-size="{{ size }}">{{ size }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Product Actions -->
+                <div class="product-actions">
+                    <button class="buy-now-btn" id="section-60" data-product-id="{{ product.id }}" data-product-title="{{ product.title }}" data-product-price="{{ product.price }}" onclick="redirectToPaymentSelection(this)">
+                        <i class="fas fa-bolt" data-icon="20"></i>
+                        {{ text_contents.44|default:"Buy Now" }}
+                    </button>
+                    <button class="add-to-cart-details-btn" id="section-61" data-add-to-cart="{{ product.id }}">
+                        <i class="fas fa-shopping-bag" data-icon="21"></i>
+                        {{ text_contents.45|default:"Add to Cart" }}
+                    </button>
+                    <button class="wishlist-details-btn" data-add-to-wishlist="{{ product.id }}">
+                        <i class="far fa-heart" data-icon="22"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% for component in components %}{% if component.drop_zone == '56' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+
+        <!-- Product Tabs -->
+        <div class="product-tabs" id="section-62">
+            <div class="tab-headers">
+                <button class="tab-header active" data-tab="description">Description</button>
+                <button class="tab-header" data-tab="specifications">Specifications</button>
+                <button class="tab-header" data-tab="reviews">Reviews</button>
+            </div>
+            <div class="tab-content active" id="description-tab">
+                {{ product.description|safe|default:"<p>Product description will appear here.</p>" }}
+            </div>
+            <div class="tab-content" id="specifications-tab">
+                <ul style="list-style: none;">
+                    <li style="margin-bottom: 12px;"><strong>Material:</strong> {{ product.material|default:"Premium quality materials" }}</li>
+                    <li style="margin-bottom: 12px;"><strong>Fit:</strong> Standard fit</li>
+                    <li style="margin-bottom: 12px;"><strong>Origin:</strong> {{ product.vendor|default:"Ethically crafted" }}</li>
+                    {% if product.specifications %}
+                    <li style="margin-bottom: 12px;"><strong>Details:</strong> {{ product.specifications }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div class="tab-content" id="reviews-tab">
+                <!-- Review Form -->
+                <div class="review-form" id="section-63">
+                    <h3 id="section-64">{{ text_contents.46|default:"Write a Review" }}</h3>
+                    <form id="reviewForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <div class="rating-input">
+                            <label>Your Rating</label>
+                            <div class="star-rating" id="starRating">
+                                <i class="far fa-star" data-rating="1"></i>
+                                <i class="far fa-star" data-rating="2"></i>
+                                <i class="far fa-star" data-rating="3"></i>
+                                <i class="far fa-star" data-rating="4"></i>
+                                <i class="far fa-star" data-rating="5"></i>
+                            </div>
+                            <input type="hidden" id="ratingValue" name="rating" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Your Name</label>
+                            <input type="text" name="user_name" id="reviewerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Review Title</label>
+                            <input type="text" name="title" id="reviewTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Your Review</label>
+                            <textarea name="comment" id="reviewComment" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="submit-review-btn" id="submitReviewBtn">{{ text_contents.47|default:"Submit Review" }}</button>
+                    </form>
+                </div>
+
+                <!-- Customer Reviews -->
+                <div class="customer-reviews">
+                    <h3 id="section-66">{{ text_contents.48|default:"Customer Reviews" }}</h3>
+                    {% if reviews %}
+                        {% for review in reviews %}
+                        <div class="review-item">
+                            <div class="review-header">
+                                <span class="reviewer-name">{{ review.author_name|default:"Anonymous" }}</span>
+                                <span class="review-date">{{ review.created_at|date:"F d, Y" }}</span>
+                            </div>
+                            <div class="review-rating">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="review-title">{{ review.title|default:"Great Product" }}</div>
+                            <div class="review-comment">{{ review.comment }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-reviews">
+                            <p>No reviews yet. Be the first to review this product!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Products -->
+        <div class="related-products" id="section-67">
+            <h2 id="section-68">{{ text_contents.49|default:"You May Also Like" }}</h2>
+            {% if related_products %}
+            <div class="related-products-grid">
+                {% for related in related_products|slice:":4" %}
+                <a href="/product/{{ related.slug }}/" class="related-product-card">
+                    <img class="related-product-img" src="{% if related.main_image %}{{ related.main_image.url }}{% else %}https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&auto=format{% endif %}" alt="{{ related.title }}">
+                    <div class="related-product-info">
+                        <div class="related-product-name">{{ related.title|truncatechars:30 }}</div>
+                        <div class="related-product-price">{{ related.price|currency:page }}</div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-related-products">
+                <p>No related products for this item.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% else %}
+        <div class="empty-state">
+            <h3>Product Not Found</h3>
+            <p>The product you're looking for doesn't exist or has been removed.</p>
+            <a href="?page=products">Return to Shop</a>
+        </div>
+        {% endif %}
+
+        {% for component in components %}{% if component.drop_zone == '67' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+    </div>
+</main>
+{% include 'builder/public_templates/ModernEcommerce15/snippets/footer.html' %}
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+{% render_icon_script %}
+
+<script>
+    // Image Gallery Thumbnail Switcher
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const mainImage = document.getElementById('mainProductImage');
+    
+    if(thumbnails.length && mainImage) {
+        thumbnails.forEach(thumb => {
+            thumb.addEventListener('click', () => {
+                thumbnails.forEach(t => t.classList.remove('active'));
+                thumb.classList.add('active');
+                const newImage = thumb.dataset.image;
+                if(newImage) mainImage.src = newImage;
+            });
+        });
+    }
+    
+    // Color Variant Selection
+    const colorOptions = document.querySelectorAll('.color-option');
+    colorOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            colorOptions.forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+        });
+    });
+    
+    // Size Variant Selection
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            sizeOptions.forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+        });
+    });
+    
+    // Tab Switching
+    const tabHeaders = document.querySelectorAll('.tab-header');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const tabId = header.dataset.tab;
+            tabHeaders.forEach(h => h.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            header.classList.add('active');
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+        });
+    });
+    
+    // Star Rating for Review Form
+    const stars = document.querySelectorAll('#starRating i');
+    const ratingInput = document.getElementById('ratingValue');
+    
+    if(stars.length) {
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = parseInt(star.dataset.rating);
+                ratingInput.value = rating;
+                stars.forEach((s, index) => {
+                    if(index < rating) {
+                        s.classList.remove('far');
+                        s.classList.add('fas');
+                        s.classList.add('active');
+                    } else {
+                        s.classList.remove('fas');
+                        s.classList.add('far');
+                        s.classList.remove('active');
+                    }
+                });
+            });
+        });
+    }
+    
+    // Review Form Submission - FIXED
+    const reviewForm = document.getElementById('reviewForm');
+    const submitBtn = document.getElementById('submitReviewBtn');
+    
+    if(reviewForm && submitBtn) {
+        reviewForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get form data
+            const rating = ratingInput.value;
+            const name = document.getElementById('reviewerName').value;
+            const title = document.getElementById('reviewTitle').value;
+            const comment = document.getElementById('reviewComment').value;
+            const productId = document.querySelector('input[name="product_id"]').value;
+            
+            // Validate
+            if(rating === '0') {
+                alert('Please select a rating');
+                return;
+            }
+            if(!name || !title || !comment) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Disable button and show loading
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+            submitBtn.disabled = true;
+            
+            // Prepare data
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('rating', rating);
+            formData.append('user_name', name);
+            formData.append('title', title);
+            formData.append('comment', comment);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+            
+            try {
+                // Submit to backend
+                const response = await fetch(`/builder/reviews/add/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if(data.success) {
+                    alert('Thank you for your review! It will appear after approval.');
+                    reviewForm.reset();
+                    // Reset stars
+                    stars.forEach(s => {
+                        s.classList.remove('fas', 'active');
+                        s.classList.add('far');
+                    });
+                    ratingInput.value = '0';
+                } else {
+                    alert(data.error || 'Something went wrong. Please try again.');
+                }
+            } catch(error) {
+                console.error('Error:', error);
+                alert('Network error. Please check your connection and try again.');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+    
+    // Helper functions for variants
+    function getSelectedColor() {
+        const activeColor = document.querySelector('.color-option.active');
+        return activeColor ? activeColor.dataset.color : '';
+    }
+    
+    function getSelectedSize() {
+        const activeSize = document.querySelector('.size-option.active');
+        return activeSize ? activeSize.dataset.size : '';
+    }
+    
+    // Add to Cart (handled by cart-manager.js)
+    document.querySelectorAll('[data-add-to-cart]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = btn.dataset.addToCart;
+            if(window.cartManager) {
+                window.cartManager.addToCart(productId, 1);
+            }
+        });
+    });
+    
+    // Wishlist
+    document.querySelectorAll('[data-add-to-wishlist]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = btn.dataset.addToWishlist;
+            if(window.cartManager) {
+                window.cartManager.addToWishlist(productId);
+            }
+        });
+    });
+    
+    // Buy Now functionality
+    window.redirectToPaymentSelection = function(button) {
+        const productId = button.dataset.productId;
+        const productTitle = button.dataset.productTitle;
+        const productPrice = parseFloat(button.dataset.productPrice);
+        const selectedColor = getSelectedColor();
+        const selectedSize = getSelectedSize();
+        
+        const cartData = {
+            items: [{
+                id: productId,
+                title: productTitle,
+                price: productPrice,
+                quantity: 1,
+                selected_color: selectedColor,
+                selected_size: selectedSize,
+                total_price: productPrice
+            }],
+            subtotal: productPrice,
+            shipping_amount: 5.00,
+            tax_amount: productPrice * 0.08,
+            total_amount: productPrice + 5.00 + (productPrice * 0.08),
+            is_buy_now: true
+        };
+        
+        const subdomain = document.body.dataset.subdomain || '{{ page.subdomain }}';
+        const params = new URLSearchParams({
+            type: 'instant',
+            product: JSON.stringify(cartData.items[0])
+        });
+        
+        window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+    };
+    
+    // CSRF helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if(document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for(let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if(cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+</body>
+</html>

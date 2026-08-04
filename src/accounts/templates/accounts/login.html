@@ -1,0 +1,223 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}
+    {% if website %}
+        Sign In to {{ website.brand_name }} - bynUp
+    {% else %}
+        Sign In - bynUp
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header {% if website %}bg-success{% else %}bg-primary{% endif %} text-white text-center py-4">
+                    <i class="fas fa-{% if website %}store{% else %}lock{% endif %} fa-3x mb-3"></i>
+                    <h3 class="fw-bold mb-0">
+                        {% if website %}
+                            Sign In to {{ website.brand_name }}
+                        {% else %}
+                            Welcome Back
+                        {% endif %}
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {% if website %}
+                            Access your account to shop and manage orders
+                        {% else %}
+                            Sign in to your bynUp account
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Back to Website Button (Only for website context) -->
+                    <!-- {% if website %}
+                    <div class="mb-4">
+                        <a href="{{ website_homepage_url }}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-arrow-left me-2"></i>Back to {{ website.brand_name }}
+                        </a>
+                    </div>
+                    {% endif %} -->
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="website_subdomain" value="{{ website.subdomain }}">
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- {% if website and not is_website_member %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Member Login</strong><br>
+                            Log in with your account for <strong>{{ website.brand_name }}</strong>.
+                            {% if not is_authenticated %}
+                            Don't have an account? <a href="{% url 'accounts:website_register' website.subdomain %}" class="alert-link">Register here</a>
+                            {% endif %}
+                        </div>
+                        {% endif %} -->
+
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-user me-2"></i>Username or Email
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-key me-2"></i>Password
+                            </label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">{{ form.password.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                {{ form.remember_me }}
+                                <label class="form-check-label" for="{{ form.remember_me.id_for_label }}">
+                                    Remember me
+                                </label>
+                            </div>
+                            <a href="{% url 'password_reset' %}" class="text-decoration-none small">Forgot password?</a>
+                        </div>
+
+                        <button type="submit" class="btn {% if website %}btn-success{% else %}btn-primary{% endif %} w-100 py-2 fw-bold">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            {% if website %}Sign In to {{ website.brand_name }}{% else %}Sign In to bynUp{% endif %}
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Different registration options based on context -->
+                    {% if website %}
+                        <!-- Website Member Registration -->
+                        <div class="text-center">
+                            <p class="mb-3">New to {{ website.brand_name }}?</p>
+                            <a href="{% url 'accounts:website_register' website.subdomain %}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-user-plus me-2"></i>Create {{ website.brand_name }} Account
+                            </a>
+                        </div>
+                        
+                        <!-- Builder Account Option -->
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                Are you a website owner? 
+                                <a href="{% url 'accounts:builder_register' %}" class="text-decoration-none">
+                                    Create bynUp account
+                                </a>
+                            </small>
+                        </div>
+                    {% else %}
+                        <!-- Builder Account Registration -->
+                        <div class="text-center">
+                            <p class="mb-3">Don't have a bynUp account yet?</p>
+                            <a href="{% url 'accounts:builder_register' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Create bynUp Account
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    By signing in, you agree to our 
+                    <a href="#" class="text-decoration-none">Terms of Service</a> and 
+                    <a href="#" class="text-decoration-none">Privacy Policy</a>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden fields for context detection -->
+<input type="hidden" id="website-id" value="{{ website.id }}">
+<input type="hidden" id="website-subdomain" value="{{ website.subdomain }}">
+<input type="hidden" id="website-brand" value="{{ website.brand_name }}">
+<input type="hidden" id="is-website-member" value="{{ is_website_member|yesno:'true,false' }}">
+<input type="hidden" id="is-authenticated" value="{{ is_authenticated|yesno:'true,false' }}">
+
+<script>
+// Store website context for JavaScript
+window.websiteContext = {
+    id: {{ website.id|default:'null' }},
+    subdomain: "{{ website.subdomain|default:'' }}",
+    brandName: "{{ website.brand_name|default:'' }}",
+    homepageUrl: "{{ website_homepage_url|default:'' }}",
+    isWebsiteMember: {{ is_website_member|yesno:'true,false' }},
+    isAuthenticated: {{ is_authenticated|yesno:'true,false' }}
+};
+
+// Optional: Add dynamic behavior
+document.addEventListener('DOMContentLoaded', function() {
+    // If user is already authenticated and is a website member, show a different message
+    if (window.websiteContext.isAuthenticated && window.websiteContext.isWebsiteMember) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning mt-3';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            You are already logged in as a member of <strong>${window.websiteContext.brandName}</strong>.
+            <a href="${window.websiteContext.homepageUrl}" class="alert-link">Go to homepage</a>
+        `;
+        document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('form'));
+    }
+    
+    // Add back button functionality for mobile
+    const backButton = document.querySelector('.btn-outline-secondary');
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            if (window.websiteContext.homepageUrl) {
+                window.location.href = window.websiteContext.homepageUrl;
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
+
+<!-- Add custom CSS for better visual separation -->
+<style>
+    .card-header.bg-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    }
+    
+    .btn-outline-success:hover {
+        background: #28a745;
+        color: white;
+    }
+    
+    .alert-info {
+        background-color: #e7f3ff;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .alert-warning {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.6rem;
+        }
+    }
+</style>
+
+{% endblock %}

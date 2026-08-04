@@ -1,0 +1,1097 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Shipping Settings - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .shipping-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .zone-card {
+        border: 1px solid #e1e5eb;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        background: white;
+        transition: all 0.3s ease;
+    }
+    
+    .zone-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .zone-header {
+        padding: 20px 24px;
+        background: #f8f9fa;
+        border-radius: 12px 12px 0 0;
+        border-bottom: 1px solid #e1e5eb;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .zone-header:hover {
+        background: #f1f3f5;
+    }
+    
+    .zone-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #212529;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .zone-badge {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 20px;
+        background: #e7f0ff;
+        color: #4361ee;
+    }
+    
+    .zone-content {
+        padding: 20px 24px;
+        display: none;
+    }
+    
+    .zone-content.expanded {
+        display: block;
+    }
+    
+    .rate-item {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .rate-info {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .rate-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .rate-details {
+        font-size: 13px;
+        color: #6c757d;
+    }
+    
+    .rate-price {
+        font-weight: 600;
+        color: #28a745;
+        margin-right: 16px;
+        min-width: 80px;
+    }
+    
+    .rate-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .country-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    
+    .country-tag {
+        background: #e9ecef;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #495057;
+    }
+    
+    .modal-lg-custom {
+        max-width: 700px;
+    }
+    
+    .tier-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .tier-row input {
+        flex: 1;
+        min-width: 100px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 48px;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #dee2e6;
+        margin-bottom: 16px;
+    }
+    
+    .shipping-rate-option {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .shipping-rate-option:hover {
+        border-color: #4361ee;
+        background-color: #f8f9ff;
+    }
+    .shipping-rate-option.selected {
+        border-color: #4361ee;
+        background-color: #f0f4ff;
+    }
+    .shipping-rate-radio {
+        display: none;
+    }
+    .shipping-rate-label {
+        display: block;
+        padding: 1rem;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .container.py-5 {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+        }
+        
+        .zone-header {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        
+        .rate-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .rate-price {
+            margin-right: 0;
+        }
+        
+        .tier-row {
+            flex-direction: column;
+        }
+        
+        .tier-row input {
+            width: 100%;
+        }
+        
+        .modal-lg-custom {
+            margin: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='shipping' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='shipping' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <div class="shipping-container">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                    <div>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                                <li class="breadcrumb-item"><a href="{% url 'manage_products' page.subdomain %}">{{ page.brand_name }}</a></li>
+                                <li class="breadcrumb-item active">Shipping Settings</li>
+                            </ol>
+                        </nav>
+                        <h1 class="fw-bold text-primary mb-2">Shipping Settings</h1>
+                        <p class="text-muted">Manage shipping zones and rates for your store</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addZoneModal">
+                            <i class="fas fa-plus me-2"></i>Add Shipping Zone
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Shipping Zones -->
+                <div id="zones-container">
+                    {% if zones %}
+                        {% for zone in zones %}
+                        <div class="zone-card" data-zone-id="{{ zone.id }}">
+                            <div class="zone-header" onclick="toggleZone({{ zone.id }})">
+                                <div class="zone-title">
+                                    <i class="fas fa-globe"></i>
+                                    {{ zone.name }}
+                                    <span class="zone-badge">{{ zone.get_zone_type_display }}</span>
+                                    {% if not zone.is_active %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <span class="badge bg-light text-dark">{{ zone.rates.count }} rate(s)</span>
+                                    <i class="fas fa-chevron-down" id="zone-chevron-{{ zone.id }}"></i>
+                                </div>
+                            </div>
+                            <div class="zone-content" id="zone-content-{{ zone.id }}">
+                                <!-- Zone Details -->
+                                <div class="mb-4">
+                                    <h6 class="fw-bold mb-3">Zone Details</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="text-muted small">Countries</label>
+                                            <div class="country-tags" id="countries-{{ zone.id }}">
+                                                {% for country in zone.get_country_names %}
+                                                <span class="country-tag">{{ country }}</span>
+                                                {% empty %}
+                                                <span class="text-muted small">All countries</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="editZone({{ zone.id }})">
+                                                <i class="fas fa-edit me-1"></i>Edit Zone
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteZone({{ zone.id }})">
+                                                <i class="fas fa-trash me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Shipping Rates -->
+                                <div class="mt-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                        <h6 class="fw-bold mb-0">Shipping Rates</h6>
+                                        <button class="btn btn-sm btn-primary" onclick="addRate({{ zone.id }})">
+                                            <i class="fas fa-plus me-1"></i>Add Rate
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="rates-container-{{ zone.id }}">
+                                        {% for rate in zone.rates.all %}
+                                        <div class="rate-item" data-rate-id="{{ rate.id }}">
+                                            <div class="rate-info">
+                                                <div class="rate-name">
+                                                    {{ rate.name }}
+                                                    {% if not rate.is_active %}
+                                                    <span class="badge bg-secondary ms-2">Inactive</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="rate-details">
+                                                    {{ rate.get_rate_type_display }}
+                                                    {% if rate.rate_type == 'flat' %}
+                                                        - ${{ rate.price }}
+                                                    {% elif rate.rate_type == 'free' %}
+                                                        - Free Shipping
+                                                    {% endif %}
+                                                    {% if rate.delivery_min_days %}
+                                                        • Delivers in {{ rate.get_delivery_estimate }}
+                                                    {% endif %}
+                                                    {% if rate.carrier %}
+                                                        • {{ rate.carrier }}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="rate-price">
+                                                {% if rate.rate_type != 'free' %}
+                                                ${{ rate.price }}
+                                                {% else %}
+                                                Free
+                                                {% endif %}
+                                            </div>
+                                            <div class="rate-actions">
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="editRate({{ rate.id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRate({{ rate.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% empty %}
+                                        <div class="text-center py-4 text-muted">
+                                            <i class="fas fa-truck fa-2x mb-2"></i>
+                                            <p>No shipping rates added yet</p>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="addRate({{ zone.id }})">
+                                                Add your first rate
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-truck"></i>
+                            <h5>No Shipping Zones Yet</h5>
+                            <p class="text-muted">Create your first shipping zone to start offering shipping rates</p>
+                            <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addZoneModal">
+                                <i class="fas fa-plus me-2"></i>Create Shipping Zone
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Zone Modal -->
+<!-- Add/Edit Zone Modal - Simpler Version -->
+<div class="modal fade" id="zoneModal" tabindex="-1" aria-labelledby="zoneModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg-custom">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="zoneModalTitle">Add Shipping Zone</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="zoneForm">
+                    <input type="hidden" id="zoneId" value="">
+                    <div class="mb-3">
+                        <label class="form-label">Zone Name *</label>
+                        <input type="text" class="form-control" id="zoneName" required>
+                        <div class="form-text">e.g., Domestic, International, Europe</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Zone Type</label>
+                        <select class="form-select" id="zoneType">
+                            <option value="domestic">Domestic</option>
+                            <option value="regional">Regional</option>
+                            <option value="international">International</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Countries</label>
+                        <select class="form-select" id="zoneCountries" multiple size="8">
+                            {% for country in countries %}
+                            <option value="{{ country.code }}">{{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Hold Ctrl/Cmd to select multiple countries</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="zoneDescription" rows="2"></textarea>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="zoneActive" checked>
+                        <label class="form-check-label">Active</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveZoneBtn">Create Zone</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add/Edit Rate Modal -->
+<div class="modal fade" id="rateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg-custom">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rateModalTitle">Add Shipping Rate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rateForm">
+                    <input type="hidden" id="rateId" value="">
+                    <input type="hidden" id="rateZoneId" value="">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Rate Name</label>
+                        <input type="text" class="form-control" id="rateName" required>
+                        <div class="form-text">e.g., Standard Shipping, Express, Free Shipping</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Rate Type</label>
+                        <select class="form-select" id="rateType" onchange="toggleRateFields()">
+                            <option value="flat">Flat Rate</option>
+                            <option value="calculated">Calculated by Weight/Price</option>
+                            <option value="free">Free Shipping</option>
+                            <option value="local_pickup">Local Pickup</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Flat Rate Fields -->
+                    <div id="flatRateFields" class="mb-3">
+                        <label class="form-label">Price</label>
+                        <input type="number" class="form-control" id="ratePrice" step="0.01" min="0">
+                    </div>
+                    
+                    <!-- Calculated Rate Fields -->
+                    <div id="calculatedRateFields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Calculate By</label>
+                            <select class="form-select" id="rateConditionType" onchange="toggleTiers()">
+                                <option value="price">Order Price</option>
+                                <option value="weight">Order Weight</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tiers</label>
+                            <div id="tiersContainer"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addTier()">
+                                <i class="fas fa-plus me-1"></i>Add Tier
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Free Shipping Fields -->
+                    <div id="freeShippingFields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Minimum Order Price (Optional)</label>
+                            <input type="number" class="form-control" id="freeMinPrice" step="0.01" min="0">
+                            <div class="form-text">Free shipping applies when order total reaches this amount</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Minimum Order Weight (kg) (Optional)</label>
+                            <input type="number" class="form-control" id="freeMinWeight" step="0.01" min="0">
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Delivery Estimate (days)</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="deliveryMin" placeholder="Min" value="3">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="deliveryMax" placeholder="Max" value="7">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Carrier (Optional)</label>
+                            <input type="text" class="form-control" id="rateCarrier" placeholder="e.g., USPS, FedEx">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="rateDescription" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="rateActive" checked>
+                        <label class="form-check-label">Active</label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="rateTaxable" checked>
+                        <label class="form-check-label">Taxable (apply tax to shipping)</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveRate()">Save Rate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Zone Management Functions
+let currentZoneId = null;
+
+function toggleZone(zoneId) {
+    const content = document.getElementById(`zone-content-${zoneId}`);
+    const chevron = document.getElementById(`zone-chevron-${zoneId}`);
+    
+    if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        chevron.className = 'fas fa-chevron-down';
+    } else {
+        content.classList.add('expanded');
+        chevron.className = 'fas fa-chevron-up';
+    }
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// ============ ZONE FUNCTIONS ============
+
+function openZoneModal(zoneId = null) {
+    currentZoneId = zoneId;
+    const modalElement = document.getElementById('zoneModal');
+    
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+    
+    // Reset form
+    document.getElementById('zoneForm').reset();
+    document.getElementById('zoneId').value = '';
+    document.getElementById('zoneActive').checked = true;
+    
+    if (zoneId) {
+        // Edit mode - populate form with existing data
+        document.getElementById('zoneModalTitle').textContent = 'Edit Shipping Zone';
+        const zoneCard = document.querySelector(`.zone-card[data-zone-id="${zoneId}"]`);
+        
+        if (zoneCard) {
+            const zoneName = zoneCard.querySelector('.zone-title').childNodes[0].nodeValue.trim();
+            const zoneBadge = zoneCard.querySelector('.zone-badge')?.textContent || '';
+            
+            // Get countries from the zone
+            const countryTags = document.querySelectorAll(`#countries-${zoneId} .country-tag`);
+            const selectedCountries = Array.from(countryTags).map(tag => tag.textContent);
+            
+            // Map country names back to codes
+            const countrySelect = document.getElementById('zoneCountries');
+            const options = Array.from(countrySelect.options);
+            const countryCodes = options
+                .filter(opt => selectedCountries.includes(opt.text))
+                .map(opt => opt.value);
+            
+            document.getElementById('zoneName').value = zoneName;
+            
+            // Set zone type
+            const typeMap = {'Domestic': 'domestic', 'Regional': 'regional', 'International': 'international', 'Custom': 'custom'};
+            const zoneTypeSelect = document.getElementById('zoneType');
+            zoneTypeSelect.value = typeMap[zoneBadge] || 'custom';
+            
+            // Set selected countries
+            Array.from(countrySelect.options).forEach(opt => {
+                opt.selected = countryCodes.includes(opt.value);
+            });
+        }
+    } else {
+        document.getElementById('zoneModalTitle').textContent = 'Add Shipping Zone';
+    }
+    
+    // Show modal using Bootstrap
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+async function saveZone() {
+    const zoneId = document.getElementById('zoneId').value;
+    const isEdit = zoneId !== '';
+    
+    const zoneData = {
+        name: document.getElementById('zoneName').value.trim(),
+        zone_type: document.getElementById('zoneType').value,
+        countries: Array.from(document.getElementById('zoneCountries').selectedOptions).map(opt => opt.value),
+        description: document.getElementById('zoneDescription').value,
+        is_active: document.getElementById('zoneActive').checked,
+    };
+    
+    if (!zoneData.name) {
+        alert('Please enter a zone name');
+        return;
+    }
+    
+    const url = isEdit 
+        ? `/payments/shipping/zone/update/{{ page.subdomain }}/${zoneId}/`
+        : `/payments/shipping/zone/add/{{ page.subdomain }}/`;
+    
+    // Show loading state on the save button
+    const saveBtn = document.getElementById('saveZoneBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify(zoneData),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Close modal
+            const modalElement = document.getElementById('zoneModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+            // Reload page to show new zone
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred: ' + error.message);
+    } finally {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+async function deleteZone(zoneId) {
+    if (!confirm('Are you sure you want to delete this shipping zone? All rates in this zone will also be deleted.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/payments/shipping/zone/delete/{{ page.subdomain }}/${zoneId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred: ' + error.message);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get the Add Zone button and attach click handler
+    const addZoneBtn = document.querySelector('[data-bs-target="#addZoneModal"]');
+    if (addZoneBtn) {
+        // Replace the existing modal trigger
+        addZoneBtn.removeAttribute('data-bs-target');
+        addZoneBtn.removeAttribute('data-bs-toggle');
+        addZoneBtn.onclick = function(e) {
+            e.preventDefault();
+            openZoneModal();
+        };
+    }
+    
+    // Attach save button handler
+    const saveZoneBtn = document.getElementById('saveZoneBtn');
+    if (saveZoneBtn) {
+        saveZoneBtn.onclick = saveZone;
+    }
+    
+    // Expand zones that have rates
+    {% for zone in zones %}
+        {% if zone.rates.exists %}
+            toggleZone({{ zone.id }});
+        {% endif %}
+    {% endfor %}
+});
+function toggleRateFields() {
+    const rateType = document.getElementById('rateType').value;
+    
+    document.getElementById('flatRateFields').style.display = 'none';
+    document.getElementById('calculatedRateFields').style.display = 'none';
+    document.getElementById('freeShippingFields').style.display = 'none';
+    
+    if (rateType === 'flat') {
+        document.getElementById('flatRateFields').style.display = 'block';
+    } else if (rateType === 'calculated') {
+        document.getElementById('calculatedRateFields').style.display = 'block';
+    } else if (rateType === 'free') {
+        document.getElementById('freeShippingFields').style.display = 'block';
+    }
+}
+
+function toggleTiers() {
+    // Will be implemented for tiered pricing
+}
+
+function addTier() {
+    const container = document.getElementById('tiersContainer');
+    const tierCount = container.children.length;
+    const conditionType = document.getElementById('rateConditionType').value;
+    const unit = conditionType === 'price' ? '$' : 'kg';
+    
+    const tierDiv = document.createElement('div');
+    tierDiv.className = 'tier-row';
+    tierDiv.innerHTML = `
+        <input type="number" class="form-control" placeholder="Min ${unit}" name="tier_min_${tierCount}" step="0.01">
+        <span>-</span>
+        <input type="number" class="form-control" placeholder="Max ${unit}" name="tier_max_${tierCount}" step="0.01">
+        <input type="number" class="form-control" placeholder="Price" name="tier_price_${tierCount}" step="0.01" style="width: 100px;">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(tierDiv);
+}
+
+function collectTiers() {
+    const tiers = [];
+    const rows = document.querySelectorAll('#tiersContainer .tier-row');
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs[0].value && inputs[2].value) {
+            tiers.push({
+                min: parseFloat(inputs[0].value),
+                max: inputs[1].value ? parseFloat(inputs[1].value) : null,
+                price: parseFloat(inputs[2].value)
+            });
+        }
+    });
+    return tiers;
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// ============ ZONE FUNCTIONS ============
+
+function editZone(zoneId) {
+    // Fetch zone details and populate modal for editing
+    const zoneCard = document.querySelector(`.zone-card[data-zone-id="${zoneId}"]`);
+    const zoneName = zoneCard.querySelector('.zone-title').childNodes[0].nodeValue.trim();
+    const zoneBadge = zoneCard.querySelector('.zone-badge').textContent;
+    
+    // Get countries from the zone
+    const countryTags = document.querySelectorAll(`#countries-${zoneId} .country-tag`);
+    const selectedCountries = Array.from(countryTags).map(tag => tag.textContent);
+    
+    // Map country names back to codes (simplified - in production you'd store the codes)
+    const countrySelect = document.getElementById('zoneCountries');
+    const options = Array.from(countrySelect.options);
+    const countryCodes = options
+        .filter(opt => selectedCountries.includes(opt.text))
+        .map(opt => opt.value);
+    
+    // Populate modal
+    document.getElementById('zoneModalTitle').textContent = 'Edit Shipping Zone';
+    document.getElementById('zoneId').value = zoneId;
+    document.getElementById('zoneName').value = zoneName;
+    
+    // Set zone type
+    const zoneTypeSelect = document.getElementById('zoneType');
+    const typeMap = {'Domestic': 'domestic', 'Regional': 'regional', 'International': 'international', 'Custom': 'custom'};
+    zoneTypeSelect.value = typeMap[zoneBadge] || 'custom';
+    
+    // Set selected countries
+    Array.from(countrySelect.options).forEach(opt => {
+        opt.selected = countryCodes.includes(opt.value);
+    });
+    
+    // Get description and active status (you'd need to store these in data attributes)
+    const description = zoneCard.querySelector('.zone-content .mb-4')?.dataset.description || '';
+    document.getElementById('zoneDescription').value = description;
+    document.getElementById('zoneActive').checked = true;
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('zoneModal')).show();
+}
+
+
+// ============ RATE FUNCTIONS ============
+
+function addRate(zoneId) {
+    currentZoneId = zoneId;
+    document.getElementById('rateModalTitle').textContent = 'Add Shipping Rate';
+    document.getElementById('rateForm').reset();
+    document.getElementById('rateId').value = '';
+    document.getElementById('rateZoneId').value = zoneId;
+    document.getElementById('tiersContainer').innerHTML = '';
+    toggleRateFields();
+    
+    new bootstrap.Modal(document.getElementById('rateModal')).show();
+}
+
+function editRate(rateId) {
+    // Find the rate element and extract its data
+    const rateElement = document.querySelector(`.rate-item[data-rate-id="${rateId}"]`);
+    if (!rateElement) {
+        console.error('Rate element not found for ID:', rateId);
+        return;
+    }
+    
+    // Get the zone ID from the parent zone card
+    const zoneCard = rateElement.closest('.zone-card');
+    const zoneId = zoneCard.dataset.zoneId;
+    
+    // Extract rate details from the displayed element
+    const rateName = rateElement.querySelector('.rate-name').childNodes[0].nodeValue.trim();
+    const rateDetails = rateElement.querySelector('.rate-details').textContent;
+    const ratePriceSpan = rateElement.querySelector('.rate-price');
+    let ratePrice = ratePriceSpan ? ratePriceSpan.textContent.replace('$', '').replace('Free', '0').trim() : '0';
+    
+    // Parse rate type from details
+    let rateType = 'flat';
+    if (rateDetails.includes('Free Shipping')) rateType = 'free';
+    else if (rateDetails.includes('Calculated')) rateType = 'calculated';
+    else if (rateDetails.includes('Local Pickup')) rateType = 'local_pickup';
+    
+    // Get delivery estimate from rate details
+    let deliveryMin = 3;
+    let deliveryMax = 7;
+    const deliveryMatch = rateDetails.match(/Delivers in (\d+)-(\d+) business days/);
+    if (deliveryMatch) {
+        deliveryMin = parseInt(deliveryMatch[1]);
+        deliveryMax = parseInt(deliveryMatch[2]);
+    }
+    
+    // Get carrier from rate details
+    let carrier = '';
+    const carrierMatch = rateDetails.match(/• (USPS|FedEx|UPS|DHL|Canada Post)/);
+    if (carrierMatch) {
+        carrier = carrierMatch[1];
+    }
+    
+    // Populate the modal with basic info
+    document.getElementById('rateModalTitle').textContent = 'Edit Shipping Rate';
+    document.getElementById('rateId').value = rateId;
+    document.getElementById('rateZoneId').value = zoneId;
+    document.getElementById('rateName').value = rateName;
+    document.getElementById('rateType').value = rateType;
+    document.getElementById('deliveryMin').value = deliveryMin;
+    document.getElementById('deliveryMax').value = deliveryMax;
+    document.getElementById('rateCarrier').value = carrier;
+    
+    // Now fetch the full rate details from the server to get tiers
+    fetchRateDetails(rateId);
+    
+    toggleRateFields();
+    new bootstrap.Modal(document.getElementById('rateModal')).show();
+}
+
+async function fetchRateDetails(rateId) {
+    try {
+        const response = await fetch(`/payments/shipping/rate/details/{{ page.subdomain }}/${rateId}/`);
+        const result = await response.json();
+        
+        if (result.success && result.rate) {
+            const rate = result.rate;
+            
+            // Populate fields with fetched data
+            if (rate.rate_type === 'flat') {
+                document.getElementById('ratePrice').value = rate.price;
+            } else if (rate.rate_type === 'free') {
+                document.getElementById('freeMinPrice').value = rate.free_shipping_min_price || '';
+                document.getElementById('freeMinWeight').value = rate.free_shipping_min_weight || '';
+            } else if (rate.rate_type === 'calculated') {
+                document.getElementById('rateConditionType').value = rate.condition_type || 'price';
+                
+                // Populate tiers
+                const tiers = rate.condition_type === 'price' ? rate.price_tiers : rate.weight_tiers;
+                if (tiers && tiers.length > 0) {
+                    populateTiers(tiers);
+                }
+            }
+            
+            // Set description
+            if (rate.description) {
+                document.getElementById('rateDescription').value = rate.description;
+            }
+            
+            // Set active and taxable
+            document.getElementById('rateActive').checked = rate.is_active;
+            document.getElementById('rateTaxable').checked = rate.taxable;
+            
+            // Trigger field visibility
+            toggleRateFields();
+        }
+    } catch (error) {
+        console.error('Error fetching rate details:', error);
+    }
+}
+
+function populateTiers(tiers) {
+    const container = document.getElementById('tiersContainer');
+    container.innerHTML = '';
+    
+    tiers.forEach(tier => {
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'tier-row';
+        tierDiv.innerHTML = `
+            <input type="number" class="form-control" placeholder="Min" value="${tier.min}" step="0.01">
+            <span>-</span>
+            <input type="number" class="form-control" placeholder="Max" value="${tier.max || ''}" step="0.01">
+            <input type="number" class="form-control" placeholder="Price" value="${tier.price}" step="0.01" style="width: 100px;">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        container.appendChild(tierDiv);
+    });
+}
+
+async function saveRate() {
+    const rateId = document.getElementById('rateId').value;
+    const isEdit = rateId !== '';
+    const zoneId = document.getElementById('rateZoneId').value;
+    
+    const rateData = {
+        name: document.getElementById('rateName').value,
+        rate_type: document.getElementById('rateType').value,
+        description: document.getElementById('rateDescription').value,
+        delivery_min_days: document.getElementById('deliveryMin').value,
+        delivery_max_days: document.getElementById('deliveryMax').value,
+        carrier: document.getElementById('rateCarrier').value,
+        is_active: document.getElementById('rateActive').checked,
+        taxable: document.getElementById('rateTaxable').checked,
+    };
+    
+    if (rateData.rate_type === 'flat') {
+        rateData.price = document.getElementById('ratePrice').value;
+    } else if (rateData.rate_type === 'free') {
+        rateData.free_shipping_min_price = document.getElementById('freeMinPrice').value || null;
+        rateData.free_shipping_min_weight = document.getElementById('freeMinWeight').value || null;
+    } else if (rateData.rate_type === 'calculated') {
+        rateData.condition_type = document.getElementById('rateConditionType').value;
+        if (rateData.condition_type === 'price') {
+            rateData.price_tiers = collectTiers();
+            console.log('📊 Saving price tiers:', rateData.price_tiers);
+        } else {
+            rateData.weight_tiers = collectTiers();
+            console.log('⚖️ Saving weight tiers:', rateData.weight_tiers);
+        }
+    }
+    
+    console.log('📦 Saving rate data:', rateData);
+    
+    const url = isEdit 
+        ? `/payments/shipping/rate/update/{{ page.subdomain }}/${rateId}/`
+        : `/payments/shipping/rate/add/{{ page.subdomain }}/${zoneId}/`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify(rateData),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred');
+    }
+}
+
+async function deleteRate(rateId) {
+    if (!confirm('Are you sure you want to delete this shipping rate?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/payments/shipping/rate/delete/{{ page.subdomain }}/${rateId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred');
+    }
+}
+
+// Expand zones that have rates
+document.addEventListener('DOMContentLoaded', function() {
+    {% for zone in zones %}
+        {% if zone.rates.exists %}
+            toggleZone({{ zone.id }});
+        {% endif %}
+    {% endfor %}
+    
+    // Reset zone modal when opened for adding (not editing)
+    const zoneModal = document.getElementById('zoneModal');
+    if (zoneModal) {
+        zoneModal.addEventListener('show.bs.modal', function(event) {
+            if (!event.relatedTarget || !event.relatedTarget.closest('.btn')) {
+                // Reset for add
+                document.getElementById('zoneModalTitle').textContent = 'Add Shipping Zone';
+                document.getElementById('zoneId').value = '';
+                document.getElementById('zoneForm').reset();
+                document.getElementById('zoneActive').checked = true;
+            }
+        });
+    }
+    
+    // Add modal ID reference for the add zone button
+    const addZoneModal = document.getElementById('addZoneModal');
+    if (addZoneModal) {
+        addZoneModal.id = 'addZoneModal';
+    }
+});
+</script>
+{% endblock %}

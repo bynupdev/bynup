@@ -1,0 +1,262 @@
+<!-- payments/templates/payments/configure_stripe.html -->
+
+
+{% extends 'payments/base_payments.html' %}
+
+{% block payment_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>Configure Stripe
+                </h5>
+                <div>
+                    {% if stripe_gateway.is_active %}
+                        <span class="badge bg-success me-2">Active</span>
+                    {% endif %}
+                    {% if stripe_gateway.is_test_mode %}
+                        <span class="badge bg-warning">Test Mode</span>
+                    {% else %}
+                        <span class="badge bg-success">Live Mode</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post" id="stripeConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Mode Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_test_mode" name="is_test_mode" 
+                                       {% if stripe_gateway.is_test_mode %}checked{% endif %}>
+                                <label class="form-check-label" for="is_test_mode">
+                                    <strong>Test Mode</strong>
+                                    <small class="text-muted d-block">
+                                        Use test credentials. Disable when ready for real payments.
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Credentials -->
+                    <div class="test-credentials {% if not stripe_gateway.is_test_mode %}d-none{% endif %}">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-vial me-2"></i>Test Credentials
+                        </h6>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="test_public_key" class="form-label">Test Publishable Key</label>
+                                <input type="text" class="form-control api-key-field" id="test_public_key" 
+                                       name="test_public_key" value="{{ stripe_gateway.test_public_key|default:'' }}"
+                                       placeholder="pk_test_...">
+                                <div class="form-text">
+                                    Find this in your Stripe dashboard under Developers → API keys
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="test_secret_key" class="form-label">Test Secret Key</label>
+                                <input type="password" class="form-control api-key-field" id="test_secret_key" 
+                                       name="test_secret_key" value="{{ stripe_gateway.test_secret_key|default:'' }}"
+                                       placeholder="sk_test_...">
+                                <div class="form-text">
+                                    Keep this secret! Never share or commit to version control.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Credentials -->
+                    <div class="live-credentials {% if stripe_gateway.is_test_mode %}d-none{% endif %}">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-globe me-2"></i>Live Credentials
+                        </h6>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Warning:</strong> Live credentials will process real payments. Test thoroughly first.
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="live_public_key" class="form-label">Live Publishable Key</label>
+                                <input type="text" class="form-control api-key-field" id="live_public_key" 
+                                       name="live_public_key" value="{{ stripe_gateway.live_public_key|default:'' }}"
+                                       placeholder="pk_live_...">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="live_secret_key" class="form-label">Live Secret Key</label>
+                                <input type="password" class="form-control api-key-field" id="live_secret_key" 
+                                       name="live_secret_key" value="{{ stripe_gateway.live_secret_key|default:'' }}"
+                                       placeholder="sk_live_...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Webhook Configuration -->
+                    <h6 class="border-bottom pb-2 mb-3">
+                        <i class="fas fa-bell me-2"></i>Webhook Configuration
+                    </h6>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Webhooks are required for proper payment status updates. Configure this in your Stripe dashboard.
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label for="webhook_secret" class="form-label">Webhook Secret</label>
+                            <input type="password" class="form-control api-key-field" id="webhook_secret" 
+                                   name="webhook_secret" value="{{ stripe_gateway.webhook_secret|default:'' }}"
+                                   placeholder="whsec_...">
+                            <div class="form-text">
+                                Get this from Stripe dashboard → Developers → Webhooks → Your endpoint
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Webhook URL (Copy this to Stripe):</label>
+                        <div class="webhook-url">
+                            https://{{ request.get_host }}{% url 'payments:stripe_webhook' page.subdomain %}
+                        </div>
+                        <div class="form-text">
+                            In Stripe dashboard, add this as a webhook endpoint for these events:
+                            <code>payment_intent.succeeded</code>, <code>payment_intent.payment_failed</code>
+                        </div>
+                    </div>
+
+                    <!-- Activation Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                       {% if stripe_gateway.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <strong>Activate Stripe Payments</strong>
+                                    <small class="text-muted d-block">
+                                        Enable to accept payments through Stripe on your website
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'payments:manage_gateways' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                        {% if stripe_gateway.is_active %}
+                        <a href="{% url 'payments:create_checkout' page.subdomain %}?test=true" class="btn btn-success" target="_blank">
+                            <i class="fas fa-bolt me-2"></i>Test Checkout
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Information -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Stripe Setup Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">
+                        <strong>Create Stripe Account:</strong> 
+                        <a href="https://dashboard.stripe.com/register" target="_blank">Sign up at Stripe</a>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Get API Keys:</strong> 
+                        Go to Developers → API keys in your Stripe dashboard
+                    </li>
+                    <li class="mb-2">
+                        <strong>Configure Webhooks:</strong> 
+                        Add the webhook URL above and select required events
+                    </li>
+                    <li class="mb-2">
+                        <strong>Test Payments:</strong> 
+                        Use test card numbers to verify everything works
+                    </li>
+                    <li>
+                        <strong>Go Live:</strong> 
+                        Switch to live mode when ready for real customers
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testModeToggle = document.getElementById('is_test_mode');
+    const testCredentials = document.querySelector('.test-credentials');
+    const liveCredentials = document.querySelector('.live-credentials');
+    
+    testModeToggle.addEventListener('change', function() {
+        if (this.checked) {
+            testCredentials.classList.remove('d-none');
+            liveCredentials.classList.add('d-none');
+        } else {
+            testCredentials.classList.add('d-none');
+            liveCredentials.classList.remove('d-none');
+        }
+    });
+    
+    // Form validation
+    document.getElementById('stripeConfigForm').addEventListener('submit', function(e) {
+        const isActive = document.getElementById('is_active').checked;
+        const isTestMode = document.getElementById('is_test_mode').checked;
+        
+        if (isActive) {
+            if (isTestMode) {
+                const testPubKey = document.getElementById('test_public_key').value;
+                const testSecKey = document.getElementById('test_secret_key').value;
+                
+                if (!testPubKey || !testPubKey.startsWith('pk_test_')) {
+                    alert('Please enter a valid test publishable key (starts with pk_test_)');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!testSecKey || !testSecKey.startsWith('sk_test_')) {
+                    alert('Please enter a valid test secret key (starts with sk_test_)');
+                    e.preventDefault();
+                    return;
+                }
+            } else {
+                const livePubKey = document.getElementById('live_public_key').value;
+                const liveSecKey = document.getElementById('live_secret_key').value;
+                
+                if (!livePubKey || !livePubKey.startsWith('pk_live_')) {
+                    alert('Please enter a valid live publishable key (starts with pk_live_)');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!liveSecKey || !liveSecKey.startsWith('sk_live_')) {
+                    alert('Please enter a valid live secret key (starts with sk_live_)');
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

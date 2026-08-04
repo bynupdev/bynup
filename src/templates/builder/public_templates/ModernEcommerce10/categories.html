@@ -1,0 +1,946 @@
+{% load style_filters %}
+{% load static %}
+{% load color_filters %}
+{% load currency_filters %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Inherit all base styles */
+        :root {
+            --text: #fdf0ec;
+            --background: #aee1f9;
+            --heading: #bde3fb;
+            --primary: #92bcfa;
+            --secondary: #333333;
+            --accent: #666666;
+            --shadow: rgba(146, 188, 250, 0.1);
+            --transition: all 0.3s ease;
+        }
+        {% generate_color_variables %}
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--secondary);
+            background-color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            /* padding: 0 20px; */
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Categories Header */
+        .categories-header {
+            padding-top: 150px;
+            padding-bottom: 60px;
+            background: linear-gradient(to right, var(--text) 0%, rgba(253, 240, 236, 0.9) 100%);
+        }
+
+        .categories-header-content {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .categories-header h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+        }
+
+        .categories-header p {
+            font-size: 18px;
+            color: var(--accent);
+            margin-bottom: 30px;
+        }
+
+        /* Categories Section */
+        .categories-section {
+            background-color: var(--nav-text, white);
+            padding: 60px 0 100px;
+        }
+
+        /* Categories Filter */
+        .categories-filter {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 60px;
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            background-color: var(--text);
+            border: 1px solid var(--heading);
+            border-radius: 50px;
+            color: var(--secondary);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(146, 188, 250, 0.3);
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .category-card {
+            background-color: var(--nav-text, white);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .category-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 20px 40px rgba(146, 188, 250, 0.25);
+        }
+
+        .category-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 280px;
+        }
+
+        .category-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .category-card:hover .category-image {
+            transform: scale(1.1);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4));
+            z-index: 1;
+        }
+
+        .category-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            color: var(--nav-text, white);
+            z-index: 2;
+        }
+
+        .category-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+            background-color: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .category-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--nav-text, white);
+        }
+
+        .category-count {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .category-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            background-color: var(--nav-text, white);
+            color: var(--primary);
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .category-btn:hover {
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Featured Products Section */
+        .featured-products {
+            background-color: var(--background);
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--accent);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .product-card {
+            background-color: var(--nav-text, white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(146, 188, 250, 0.2);
+        }
+
+        .product-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 250px;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-info h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .product-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            flex: 1;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .btn-small:hover {
+            background-color: var(--heading);
+        }
+
+        .wishlist-btn-small {
+            width: 40px;
+            background-color: var(--text);
+            border: 1px solid var(--heading);
+            border-radius: 8px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wishlist-btn-small:hover {
+            background-color: var(--background);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background-color: var(--nav-text, white);
+            border-radius: 12px;
+            margin: 40px 0;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: var(--heading);
+            margin-bottom: 30px;
+        }
+
+        .empty-state h3 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+        }
+
+        .empty-state p {
+            color: var(--accent);
+            margin-bottom: 30px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 18px;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .categories-grid,
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .categories-header h1 {
+                font-size: 42px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .categories-grid,
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .categories-header h1 {
+                font-size: 36px;
+            }
+            
+            .section-header h2 {
+                font-size: 32px;
+            }
+            
+            .category-image-container {
+                height: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .categories-header {
+                padding-top: 120px;
+            }
+            
+            .categories-grid,
+            .products-grid {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .categories-header h1 {
+                font-size: 32px;
+            }
+            
+            .section-header h2 {
+                font-size: 28px;
+            }
+            
+            .category-image-container {
+                height: 280px;
+            }
+            
+            .product-actions {
+                flex-direction: column;
+            }
+            
+            .wishlist-btn-small {
+                width: 100%;
+                height: 40px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .categories-filter {
+                justify-content: flex-start;
+                overflow-x: auto;
+                padding-bottom: 15px;
+            }
+            
+            .filter-btn {
+                flex-shrink: 0;
+            }
+            
+            .category-content {
+                padding: 20px;
+            }
+            
+            .category-title {
+                font-size: 20px;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 168 189 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 168 189 %}
+        /* Generate keyframes for animations */
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <!-- Include Header -->
+    {%include 'builder/public_templates/ModernEcommerce10/snippets/header1.html'%}
+
+    <!-- Categories Header -->
+    <section class="categories-header" id="section-168">
+        <div class="container">
+            <div class="categories-header-content">
+                <h1 id="section-169">{{ text_contents.130|default:"Shop by Category" }}</h1>
+                <p id="section-170">{{ text_contents.131|default:"Discover our curated collections organized by room, style, and material" }}</p>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '168' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Categories Section -->
+    <section class="categories-section" id="section-171">
+        <div class="container">
+            {% if categories %}
+            <!-- Categories Filter - All data from backend -->
+            <div class="categories-filter" id="section-172">
+                <!-- "All Categories" button -->
+                <button class="filter-btn active" 
+                        id="section-173" 
+                        data-filter-type="all" 
+                        data-filter-value="all">
+                    {{ text_contents.132|default:"All Categories" }}
+                </button>
+                
+                <!-- Parent categories as filter options -->
+                {% for parent_category in parent_categories %}
+                <button class="filter-btn" 
+                        id="section-{{ 173|add:forloop.counter }}" 
+                        data-filter-type="parent" 
+                        data-filter-value="{{ parent_category.slug }}">
+                    {{ parent_category.name }}
+                </button>
+                {% endfor %}
+                
+                <!-- Additional filter types from backend data -->
+                {% if category_types %}
+                    {% for type in category_types %}
+                    <button class="filter-btn" 
+                            id="section-{{ 173|add:forloop.counter|add:parent_categories|length }}" 
+                            data-filter-type="type" 
+                            data-filter-value="{{ type.slug|default:type }}">
+                        {{ type.name|default:type }}
+                    </button>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Categories Grid -->
+            <div class="categories-grid" id="categories-grid">
+                {% for category in categories %}
+                <!-- Category Template -->
+                <div class="category-card" 
+                     id="section-178"
+                     data-category-id="{{ category.id }}"
+                     data-category-slug="{{ category.slug }}"
+                     data-category-name="{{ category.name }}"
+                     data-parent-category="{% if category.parent %}{{ category.parent.slug }}{% else %}{{ category.slug }}{% endif %}"
+                     data-product-count="{{ category.get_total_products_count }}">
+                    
+                    <div class="category-image-container">
+                        {% if category.image %}
+                        <img src="{{ category.image.url }}" 
+                             alt="{{ category.name }}" 
+                             class="category-image">
+                        {% elif category.background_image %}
+                        <img src="{{ category.background_image.url }}" 
+                             alt="{{ category.name }}" 
+                             class="category-image">
+                        {% else %}
+                        <div class="category-image" style="background-color: {% cycle '#aee1f9' '#bde3fb' '#92bcfa' '#fdf0ec' %};"></div>
+                        {% endif %}
+                        <div class="category-overlay"></div>
+                        <div class="category-content">
+                            <div class="category-icon">
+                                <i class="fas fa-gem" data-icon="25"></i>
+                            </div>
+                            <h3 class="category-title" id="{% if forloop.first %}section-179{% endif %}">
+                                {{ category.name }}
+                            </h3>
+                            <div class="category-count" id="{% if forloop.first %}section-180{% endif %}">
+                                {{ category.get_active_products_count }} Products
+                            </div>
+                            <a href="?page=products&category={{ category.slug }}" 
+                               class="category-btn" 
+                               id="{% if forloop.first %}section-181{% endif %}">
+                                {{ text_contents.139|default:"Shop Collection" }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty Categories State -->
+            <div class="empty-state">
+                <i class="fas fa-layer-group"></i>
+                <h3>No Categories Available</h3>
+                <p>Start by creating categories to organize your luxury home accessories.</p>
+                <a href="?page=products" class="btn-small" style="display: inline-block; width: auto; padding: 15px 40px;">
+                    <i class="fas fa-store"></i> Browse All Products
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '171' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Featured Products Section -->
+    <section class="featured-products" id="section-182">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-183">{{ text_contents.140|default:"Featured Products" }}</h2>
+                <p id="section-184">{{ text_contents.141|default:"Discover our most sought-after luxury home accessories" }}</p>
+            </div>
+            
+            {% if products %}
+            <div class="products-grid">
+                {% for product in products|slice:":8" %}
+                {% if product.featured or forloop.counter <= 4 %}
+                <!-- Featured Product Template -->
+                <div class="product-card" 
+                     id="{% if forloop.first %}section-185{% endif %}"
+                     data-product-id="{{ product.id }}"
+                     data-product-title="{{ product.title }}"
+                     data-product-price="{{ product.price }}"
+                     data-product-category="{{ product.category.slug|default:'uncategorized' }}"
+                     data-product-featured="{{ product.featured|yesno:'true,false' }}"
+                     data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}">
+                    
+                    <div class="product-image-container">
+                        {% if product.is_on_sale %}
+                        <div class="product-badge" id="{% if forloop.first %}section-186{% endif %}">
+                            SALE {{ product.discount_percentage }}%
+                        </div>
+                        {% elif product.featured %}
+                        <div class="product-badge" id="{% if forloop.first %}section-186{% endif %}">
+                            {{ text_contents.142|default:"FEATURED" }}
+                        </div>
+                        {% endif %}
+                        
+                        <a href="/product/{{ product.slug }}/" class="product-image-link">
+                            {% if product.main_image %}
+                            <img src="{{ product.main_image.url }}" 
+                                 alt="{{ product.title }}" 
+                                 class="product-image">
+                            {% else %}
+                            <div class="product-image" style="background-color: {% cycle '#aee1f9' '#bde3fb' '#92bcfa' '#fdf0ec' %};"></div>
+                            {% endif %}
+                        </a>
+                    </div>
+                    
+                    <div class="product-info">
+                        <h3 id="{% if forloop.first %}section-187{% endif %}">
+                            <a href="/product/{{ product.slug }}/">
+                                {{ product.title|truncatechars:30 }}
+                            </a>
+                        </h3>
+                        <div class="product-price" id="{% if forloop.first %}section-188{% endif %}">
+                            {{ product.price|currency:page }}
+                            {% if product.compare_at_price and product.compare_at_price > product.price %}
+                            <span style="font-size: 14px; color: var(--accent); text-decoration: line-through; margin-left: 8px;">
+                                {{ product.compare_at_price|currency:page }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="product-actions">
+                            <button class="btn-small add-to-cart-btn" 
+                                    id="{% if forloop.first %}section-189{% endif %}" 
+                                    data-add-to-cart="{{ product.id }}">
+                                <i class="fas fa-cart-plus" data-icon="26"></i> 
+                                {{ text_contents.145|default:"Add to Cart" }}
+                            </button>
+                            <button class="wishlist-btn-small add-to-wishlist-btn" 
+                                    data-add-to-wishlist="{{ product.id }}">
+                                {% if product in wishlist_items %}
+                                <i class="fas fa-heart" data-icon="27"></i>
+                                {% else %}
+                                <i class="far fa-heart"></i>
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty Featured Products State -->
+            <div class="empty-state">
+                <i class="fas fa-star"></i>
+                <h3>No Featured Products</h3>
+                <p>Mark some of your products as featured to showcase them on the categories page.</p>
+                <a href="?page=products" class="btn-small" style="display: inline-block; width: auto; padding: 15px 40px;">
+                    <i class="fas fa-store"></i> Browse All Products
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '182' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Include Footer -->
+    {%include 'builder/public_templates/ModernEcommerce10/snippets/footer.html'%}
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <!-- Custom JavaScript for Categories Page -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Cart Manager if not already initialized
+            if (!window.cartManager) {
+                const subdomain = document.body.dataset.subdomain || 
+                                (window.location.hostname.includes('localhost') ? 
+                                 document.body.dataset.pageSubdomain : 
+                                 window.location.hostname.split('.')[0]);
+                
+                window.cartManager = new CartManager(subdomain, {
+                    autoDiscover: true,
+                    autoCreateButtons: true
+                });
+            }
+
+            // Category filter functionality using backend data
+            document.querySelectorAll('.filter-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    const filterType = this.getAttribute('data-filter-type');
+                    const filterValue = this.getAttribute('data-filter-value');
+                    const filterText = this.textContent;
+                    
+                    // Filter categories based on selection
+                    filterCategories(filterType, filterValue, filterText);
+                });
+            });
+
+            // Function to filter categories
+            function filterCategories(filterType, filterValue, filterText) {
+                const allCategories = document.querySelectorAll('.category-card');
+                const categoriesGrid = document.getElementById('categories-grid');
+                
+                // Show loading state
+                categoriesGrid.style.opacity = '0.5';
+                
+                // Simulate API call (in real implementation, this would be an AJAX call)
+                setTimeout(() => {
+                    if (filterType === 'all' || filterValue === 'all') {
+                        // Show all categories
+                        allCategories.forEach(category => {
+                            category.style.display = 'block';
+                            category.style.opacity = '1';
+                            category.style.transform = 'translateY(0)';
+                        });
+                    } else if (filterType === 'parent') {
+                        // Filter by parent category
+                        allCategories.forEach(category => {
+                            const parentSlug = category.getAttribute('data-parent-category');
+                            const categorySlug = category.getAttribute('data-category-slug');
+                            
+                            // Show if it matches the parent or is the parent itself
+                            if (parentSlug === filterValue || categorySlug === filterValue) {
+                                category.style.display = 'block';
+                                category.style.opacity = '1';
+                                category.style.transform = 'translateY(0)';
+                            } else {
+                                category.style.display = 'none';
+                            }
+                        });
+                    } else if (filterType === 'type') {
+                        // Filter by category type (you would need to implement this in your model)
+                        // For now, show all categories
+                        allCategories.forEach(category => {
+                            category.style.display = 'block';
+                            category.style.opacity = '1';
+                            category.style.transform = 'translateY(0)';
+                        });
+                        
+                        console.log(`Filtering by type: ${filterText}`);
+                    }
+                    
+                    // Restore grid opacity
+                    categoriesGrid.style.opacity = '1';
+                    
+                    // Update URL without reloading page
+                    const newUrl = new URL(window.location);
+                    if (filterType === 'all') {
+                        newUrl.searchParams.delete('filter');
+                    } else {
+                        newUrl.searchParams.set('filter', filterValue);
+                    }
+                    window.history.replaceState({}, '', newUrl);
+                    
+                }, 300); // Simulated API delay
+            }
+
+            // Check for filter in URL on page load
+            function checkUrlFilter() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const filterValue = urlParams.get('filter');
+                
+                if (filterValue) {
+                    // Find and click the corresponding filter button
+                    const filterButton = document.querySelector(`.filter-btn[data-filter-value="${filterValue}"]`);
+                    if (filterButton) {
+                        filterButton.click();
+                    }
+                }
+            }
+
+            // Category card hover enhancement
+            document.querySelectorAll('.category-card').forEach(card => {
+                // Add animation on scroll
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                
+                // Observe for intersection
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }
+                    });
+                }, {
+                    threshold: 0.1
+                });
+                
+                observer.observe(card);
+            });
+
+            // Add to Cart functionality for featured products
+            document.querySelectorAll('.add-to-cart-btn[data-add-to-cart]').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const productId = this.getAttribute('data-add-to-cart');
+                    
+                    if (window.cartManager && window.cartManager.addToCart) {
+                        window.cartManager.addToCart(productId, 1);
+                    }
+                });
+            });
+
+            // Add to Wishlist functionality for featured products
+            document.querySelectorAll('.add-to-wishlist-btn[data-add-to-wishlist]').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const productId = this.getAttribute('data-add-to-wishlist');
+                    const heartIcon = this.querySelector('i');
+                    
+                    if (window.cartManager && window.cartManager.addToWishlist) {
+                        window.cartManager.addToWishlist(productId);
+                        
+                        // Update heart icon
+                        if (heartIcon.classList.contains('far')) {
+                            heartIcon.classList.remove('far');
+                            heartIcon.classList.add('fas');
+                            this.style.backgroundColor = 'var(--background)';
+                        }
+                    }
+                });
+            });
+
+            // Product card animation
+            const productCards = document.querySelectorAll('.product-card');
+            productCards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }
+                    });
+                }, {
+                    threshold: 0.1
+                });
+                
+                observer.observe(card);
+            });
+
+            // Category link click tracking
+            document.querySelectorAll('.category-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const categoryName = this.closest('.category-card').getAttribute('data-category-name');
+                    console.log(`Navigating to category: ${categoryName}`);
+                    
+                    // You could add analytics tracking here
+                    /*
+                    fetch('/api/analytics/category-click/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            category_name: categoryName,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+                    */
+                });
+            });
+
+            // Helper function to get CSRF token (for custom API calls if needed)
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Check URL for filter on page load
+            checkUrlFilter();
+        });
+    </script>
+</body>
+</html>

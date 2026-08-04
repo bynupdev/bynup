@@ -1,0 +1,639 @@
+{% extends 'builder/base.html' %}
+{% load payment_tags %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% block title %}Order Dashboard - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .stat-card {
+        border-radius: 10px;
+        transition: transform 0.3s ease;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .revenue-chart {
+        height: 300px;
+        position: relative;
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+    }
+    .order-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .order-timeline::before {
+        content: '';
+        position: absolute;
+        left: 11px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -1.9rem;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 3px solid white;
+        z-index: 1;
+    }
+    .product-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .container-fluid {
+            padding: 0 !important;
+        }
+        
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        
+        .revenue-chart {
+            height: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='orders' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='orders' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0 text-primary">
+                        <i class="fas fa-chart-line me-2"></i>Order Dashboard
+                    </h1>
+                    <p class="text-muted">Analytics and overview for {{ page.brand_name }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'payments:order_list' page.subdomain %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>View All Orders
+                    </a>
+                    <a href="{% url 'payments:export_orders' page.subdomain %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-download me-2"></i>Export CSV
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Orders
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_orders }}</div>
+                                    <div class="mt-2 mb-0 text-muted text-xs">
+                                        <span class="text-success mr-2">
+                                            <i class="fas fa-arrow-up"></i> All Time
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Total Revenue
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_revenue|currency:page }}</div>
+                                    <div class="mt-2 mb-0 text-muted text-xs">
+                                        <span>Completed orders only</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                                        <i class="fas fa-dollar-sign"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Average Order Value
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {% if total_orders > 0 %}
+                                            {{ total_revenue|div:total_orders|currency:page }}
+                                        {% else %}
+                                            {{ 0|currency:page }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="mt-2 mb-0 text-muted text-xs">
+                                        <span>Revenue per order</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="stat-icon bg-info bg-opacity-10 text-info">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Pending Orders
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {% for status in status_distribution %}
+                                            {% if status.status == 'pending' %}
+                                                {{ status.count }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <div class="mt-2 mb-0 text-muted text-xs">
+                                        <span>Awaiting processing</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Info (remove in production) -->
+            {% if debug %}
+            <div class="alert alert-info">
+                <strong>Debug Info:</strong><br>
+                Daily Revenue Data: {{ daily_revenue|length }} items<br>
+                {% for day in daily_revenue %}
+                    {{ day.day|date:"M d" }}: {{ day.revenue|currency:page }}<br>
+                {% empty %}
+                    No daily revenue data available
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Charts and Analytics -->
+            <div class="row mb-4">
+                <!-- Revenue Chart -->
+                <div class="col-xl-8 col-lg-7">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                            <h6 class="m-0 font-weight-bold text-primary">Revenue Last 30 Days</h6>
+                            <div class="dropdown no-arrow">
+                                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" 
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow animated--fade-in">
+                                    <li><a class="dropdown-item" href="#">Last 7 days</a></li>
+                                    <li><a class="dropdown-item" href="#">Last 30 days</a></li>
+                                    <li><a class="dropdown-item" href="#">Last 90 days</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="revenue-chart">
+                                {% if daily_revenue %}
+                                    <canvas id="revenueChart"></canvas>
+                                {% else %}
+                                    <div class="d-flex align-items-center justify-content-center h-100">
+                                        <div class="text-center">
+                                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">No revenue data available for the last 30 days</p>
+                                            <p class="text-small text-muted">Total Revenue: {{ total_revenue|currency:page }}</p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Distribution -->
+                <div class="col-xl-4 col-lg-5">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Order Status Distribution</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-pie pt-4" style="height: 200px; position: relative;">
+                                {% if status_distribution %}
+                                    <canvas id="statusPieChart"></canvas>
+                                {% else %}
+                                    <div class="d-flex align-items-center justify-content-center h-100">
+                                        <p class="text-muted">No order data available</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="mt-4 text-center small">
+                                {% for status in status_distribution %}
+                                <span class="mr-2 d-inline-block mb-2">
+                                    <i class="fas fa-circle" style="color: 
+                                        {% if status.status == 'completed' %}#1cc88a
+                                        {% elif status.status == 'pending' %}#f6c23e
+                                        {% elif status.status == 'processing' %}#36b9cc
+                                        {% elif status.status == 'cancelled' %}#e74a3b
+                                        {% elif status.status == 'refunded' %}#858796
+                                        {% else %}#4e73df{% endif %}"></i>
+                                    {{ status.status|title }} ({{ status.count }})
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders & Top Products -->
+            <div class="row">
+                <!-- Recent Orders -->
+                <div class="col-lg-8 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+                            <a href="{% url 'payments:order_list' page.subdomain %}" class="btn btn-sm btn-primary">
+                                View All
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Order #</th>
+                                            <th>Customer</th>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for order in recent_orders %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ order.order_number }}</strong>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span>{{ order.customer_name }}</span>
+                                                    <small class="text-muted">{{ order.customer_email }}</small>
+                                                </div>
+                                            </td>
+                                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                                            <td>{{ order.total_amount|currency:page }}</td>
+                                            <td>
+                                                <span class="badge status-badge bg-{{ order.get_status_display_class }}">
+                                                    {{ order.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'payments:order_detail' page.subdomain order.id %}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
+                                                <p class="text-muted">No orders yet</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Products -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Top Selling Products</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                {% for product in top_products %}
+                                <div class="list-group-item d-flex align-items-center px-0">
+                                    <div class="flex-shrink-0 me-3">
+                                        {% if product.product_image %}
+                                        <img src="{{ product.product_image }}" alt="{{ product.product_title }}" 
+                                             class="product-image">
+                                        {% else %}
+                                        <div class="product-image bg-light d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-box text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ product.product_title }}</h6>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">{{ product.quantity }} sold</small>
+                                            <strong class="text-primary">{{ product.revenue|currency:page }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-chart-pie fa-2x text-muted mb-3"></i>
+                                    <p class="text-muted">No product data available</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Revenue Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Monthly Revenue Overview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Orders</th>
+                                            <th>Revenue</th>
+                                            <th>Average Order</th>
+                                            <th>Growth</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for month in monthly_revenue %}
+                                        <tr>
+                                            <td>{{ month.month|date:"F Y" }}</td>
+                                            <td>{{ month.orders }}</td>
+                                            <td>{{ month.revenue|currency:page }}</td>
+                                            <td>{{ month.revenue|div:month.orders|default:0|currency:page }}</td>
+                                            <td>
+                                                {% if not forloop.last and monthly_revenue|length > 1 %}
+                                                    {% with prev_month=monthly_revenue|slice:forloop.counter|first %}
+                                                        {% if prev_month.revenue > 0 %}
+                                                            {% with growth=month.revenue|div:prev_month.revenue|add:-100|floatformat:1 %}
+                                                                {% if growth|floatformat:'0'|first != '-' %}
+                                                                    <span class="text-success">
+                                                                        <i class="fas fa-arrow-up"></i> {{ growth }}%
+                                                                    </span>
+                                                                {% else %}
+                                                                    <span class="text-danger">
+                                                                        <i class="fas fa-arrow-down"></i> {{ growth|slice:'1:' }}%
+                                                                    </span>
+                                                                {% endif %}
+                                                            {% endwith %}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {% else %}
+                                                <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">
+                                                No monthly data available
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" value="{{ page.currency_symbol }}" id="currency-symbol">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // SIMPLE REVENUE CHART - GUARANTEED TO WORK
+    const revenueCanvas = document.getElementById('revenueChart');
+    
+    if (revenueCanvas) {
+        // Get data
+        const labels = [
+            {% for day in daily_revenue %}
+                "{{ day.day|date:'M d' }}",
+            {% endfor %}
+        ];
+        
+        const values = [
+            {% for day in daily_revenue %}
+                {{ day.revenue|default:0 }},
+            {% endfor %}
+        ];
+        
+        console.log('Data received:', labels, values);
+        
+        // DESTROY existing chart
+        const existingChart = Chart.getChart(revenueCanvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        const currencySymbol = document.getElementById('currency-symbol').value;
+        // FORCE canvas dimensions
+        revenueCanvas.style.width = '100%';
+        revenueCanvas.style.height = '300px';
+        revenueCanvas.style.display = 'block';
+        
+        // SIMPLE chart configuration
+        new Chart(revenueCanvas, {
+            type: 'bar', // USING BAR CHART - MORE RELIABLE
+            data: {
+                labels: labels.length ? labels : ['No Data'],
+                datasets: [{
+                    label: 'Revenue ' + '(' + currencySymbol + ')',
+                    data: values.length ? values : [0],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return currencySymbol + value;
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+        
+        console.log('✓ Revenue chart created');
+    }
+
+    // STATUS PIE CHART
+    const statusCanvas = document.getElementById('statusPieChart');
+    if (statusCanvas) {
+        const labels = [
+            {% for status in status_distribution %}
+                "{{ status.status|title }}",
+            {% endfor %}
+        ];
+        
+        const data = [
+            {% for status in status_distribution %}
+                {{ status.count }},
+            {% endfor %}
+        ];
+        
+        console.log('Status data:', labels, data);
+        
+        const existingChart = Chart.getChart(statusCanvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        statusCanvas.style.width = '100%';
+        statusCanvas.style.height = '200px';
+        
+        if (data.length && data.some(v => v > 0)) {
+            new Chart(statusCanvas, {
+                type: 'pie', // SIMPLE PIE CHART
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#4e73df', '#1cc88a', '#36b9cc', 
+                            '#f6c23e', '#e74a3b', '#858796'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            console.log('✓ Status chart created');
+        }
+    }
+});
+</script>
+{% endblock %}

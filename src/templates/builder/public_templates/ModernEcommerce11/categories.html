@@ -1,0 +1,867 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{page.brand_name}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Variables for Color Palette */
+        :root {
+            --text: #B0988B;
+            --heading: #4D8581;
+            --primary: #ABDED7;
+            --background: #DBCBBE;
+            --secondary: #EEE7DF;
+            --accent: #333333;
+            --border: #555555;
+            --success: #FFFFFF;
+            --shadow: rgba(0, 0, 0, 0.05);
+        }
+        {% generate_color_variables %}
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--secondary);
+            color: var(--accent);
+            line-height: 1.6;
+            padding-top: 100px; /* For fixed header */
+        }
+
+        h1, h2, h3, h4 {
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        p {
+            color: var(--border);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--heading);
+            color: var(--success);
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background-color: var(--text);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--heading);
+            border: 1px solid var(--heading);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(77, 133, 129, 0.1);
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Categories Header */
+        .categories-header {
+            padding: 40px 0 20px;
+            border-bottom: 1px solid var(--background);
+            margin-bottom: 40px;
+        }
+
+        .categories-header h1 {
+            font-size: 36px;
+            color: var(--heading);
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        /* Categories Grid Section */
+        .categories-section {
+            padding: 40px 0;
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .category-card {
+            background-color: var(--success);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px var(--shadow);
+            position: relative;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-image {
+            height: 300px;
+            width: 100%;
+            object-fit: cover;
+            background-color: var(--background);
+            transition: transform 0.5s ease;
+        }
+
+        .category-card:hover .category-image {
+            transform: scale(1.05);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 30px;
+            color: var(--success);
+        }
+
+        .category-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .category-title {
+            font-size: 28px;
+            color: var(--success);
+            margin-bottom: 10px;
+            font-weight: 400;
+        }
+
+        .category-count {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 20px;
+        }
+
+        .category-btn {
+            background-color: var(--success);
+            color: var(--heading);
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .category-btn:hover {
+            background-color: var(--heading);
+            color: var(--success);
+            transform: translateY(-2px);
+        }
+
+        /* Featured Categories */
+        .featured-categories-section {
+            padding: 60px 0;
+            background-color: var(--primary);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 36px;
+            color: var(--heading);
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        .featured-categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .featured-category {
+            background-color: var(--success);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .featured-category:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .featured-category-icon {
+            font-size: 40px;
+            color: var(--heading);
+            margin-bottom: 20px;
+            height: 80px;
+            width: 80px;
+            background-color: var(--background);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .featured-category h3 {
+            font-size: 18px;
+            color: var(--heading);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .featured-category p {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: var(--border);
+        }
+
+        .featured-category-link {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .featured-category-link:hover {
+            color: var(--heading);
+            transform: translateX(5px);
+        }
+
+        /* Age Categories */
+        .age-categories-section {
+            padding: 60px 0;
+            background-color: var(--success);
+        }
+
+        .age-categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+        }
+
+        .age-category {
+            text-align: center;
+            padding: 30px 20px;
+            background-color: var(--secondary);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .age-category:hover {
+            background-color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .age-category-icon {
+            font-size: 32px;
+            color: var(--heading);
+            margin-bottom: 15px;
+        }
+
+        .age-category h3 {
+            font-size: 20px;
+            color: var(--heading);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .age-category p {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .age-category-link {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .age-category-link:hover {
+            color: var(--heading);
+            text-decoration: underline;
+        }
+
+        /* Shop by Occasion */
+        .occasion-section {
+            padding: 60px 0;
+            background-color: var(--primary);
+        }
+
+        .occasion-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .occasion-card {
+            background-color: var(--success);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .occasion-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .occasion-image {
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .occasion-content {
+            padding: 25px;
+            text-align: center;
+        }
+
+        .occasion-content h3 {
+            font-size: 20px;
+            color: var(--heading);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .occasion-content p {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: var(--border);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background-color: var(--success);
+            border-radius: 12px;
+            box-shadow: 0 5px 20px var(--shadow);
+            margin: 40px 0;
+        }
+
+        .empty-state i {
+            font-size: 72px;
+            color: var(--primary);
+            margin-bottom: 25px;
+        }
+
+        .empty-state h3 {
+            font-size: 28px;
+            color: var(--heading);
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        .empty-state p {
+            margin-bottom: 30px;
+            color: var(--border);
+            font-size: 16px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .featured-categories-grid,
+            .age-categories-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .categories-header h1 {
+                font-size: 32px;
+            }
+            
+            .occasion-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .category-title {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .categories-grid,
+            .featured-categories-grid,
+            .age-categories-grid,
+            .occasion-grid {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+            
+            .category-image {
+                height: 250px;
+            }
+            
+            .section-title h2 {
+                font-size: 28px;
+            }
+            
+            .categories-header h1 {
+                font-size: 28px;
+            }
+            
+            section {
+                padding: 60px 0;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .btn {
+                padding: 12px 24px;
+                font-size: 15px;
+            }
+            
+            .category-overlay {
+                padding: 20px;
+            }
+            
+            .category-title {
+                font-size: 22px;
+            }
+            
+            .featured-category {
+                padding: 20px;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 201 230 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 201 230 %}
+        /* Generate keyframes for animations */
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+     {%include 'builder/public_templates/ModernEcommerce11/snippets/header1.html'%}
+    <!-- Categories Header -->
+    <section class="categories-header" id="section-201">
+        <div class="container">
+            <h1 id="section-202">{{ text_contents.148|default:"Browse Categories" }}</h1>
+            <p id="section-203">{{ text_contents.149|default:"Discover our collections by category" }}</p>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '201' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Main Categories Grid -->
+    <section class="categories-section" id="section-204">
+        <div class="container">
+            {% if categories %}
+            <div class="categories-grid">
+                {% for category in categories|slice:":6" %}
+                <div class="category-card" {% if forloop.first %}id="section-205"{% endif %}
+                     data-category-id="{{ category.id }}"
+                     data-category-slug="{{ category.slug }}">
+                    
+                    <!-- Category Image -->
+                    {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image" {% if forloop.first %}data-image="9"{% endif %}>
+                    {% elif category.products.first and category.products.first.main_image %}
+                    <!-- Use first product's image as fallback -->
+                    <img src="{{ category.products.first.main_image.url }}" alt="{{ category.name }}" class="category-image" {% if forloop.first %}data-image="9"{% endif %}>
+                    {% else %}
+                    <!-- Fallback placeholder -->
+                    <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" 
+                         alt="{{ category.name }}" class="category-image" {% if forloop.first %}data-image="9"{% endif %}>
+                    {% endif %}
+                    
+                    <div class="category-overlay">
+                        <div class="category-content">
+                            <h2 class="category-title" {% if forloop.first %}id="section-206"{% endif %}>
+                                {{ category.name }}
+                            </h2>
+                            <p class="category-count" {% if forloop.first %}id="section-207"{% endif %}>
+                                {{ category.get_active_products_count|default:category.products.count }} Items
+                                {% if category.subcategories.exists %}
+                                    <br><small>{{ category.subcategories.count }} Subcategories</small>
+                                {% endif %}
+                            </p>
+                            <a href="?page=products&category={{ category.slug }}" 
+                               class="category-btn" 
+                               {% if forloop.first %}id="section-208"{% endif %}
+                               data-category-link="true">
+                                {{ text_contents.152|default:"Shop Now" }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Show All Categories Button -->
+            {% if categories.count > 6 %}
+            <div style="text-align: center; margin-top: 40px;">
+                <a href="#all-categories" class="btn btn-secondary" onclick="showAllCategories()">
+                    View All {{ categories.count }} Categories
+                </a>
+            </div>
+            
+            <!-- Hidden All Categories Grid -->
+            <div id="all-categories" style="display: none; margin-top: 40px;">
+                <div class="categories-grid">
+                    {% for category in categories %}
+                    <div class="category-card">
+                        {% if category.image %}
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                        {% elif category.products.first and category.products.first.main_image %}
+                        <img src="{{ category.products.first.main_image.url }}" alt="{{ category.name }}" class="category-image">
+                        {% else %}
+                        <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" 
+                             alt="{{ category.name }}" class="category-image">
+                        {% endif %}
+                        <div class="category-overlay">
+                            <div class="category-content">
+                                <h2 class="category-title">{{ category.name }}</h2>
+                                <p class="category-count">
+                                    {{ category.get_active_products_count|default:category.products.count }} Items
+                                </p>
+                                <a href="?page=products&category={{ category.slug }}" class="category-btn">
+                                    Shop Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-tags" data-icon="37"></i>
+                <h3>No Categories Available</h3>
+                <p>We're currently organizing our collections. Please check back soon!</p>
+                <a href="?page=products" class="btn">Browse All Products</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '204' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+   
+
+     {%include 'builder/public_templates/ModernEcommerce11/snippets/header1.html'%}
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    <script>
+        // Show all categories function
+        function showAllCategories() {
+            const allCategoriesSection = document.getElementById('all-categories');
+            if (allCategoriesSection) {
+                if (allCategoriesSection.style.display === 'none' || allCategoriesSection.style.display === '') {
+                    allCategoriesSection.style.display = 'block';
+                    allCategoriesSection.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    allCategoriesSection.style.display = 'none';
+                }
+            }
+        }
+
+        // Category Card Hover Effects
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const image = this.querySelector('.category-image');
+                if (image) {
+                    image.style.transform = 'scale(1.05)';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const image = this.querySelector('.category-image');
+                if (image) {
+                    image.style.transform = 'scale(1)';
+                }
+            });
+        });
+
+        // Featured Category Hover Effects
+        document.querySelectorAll('.featured-category').forEach(category => {
+            category.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('.featured-category-icon');
+                if (icon) {
+                    icon.style.backgroundColor = 'var(--heading)';
+                    icon.style.color = 'var(--success)';
+                    icon.style.transform = 'rotate(5deg)';
+                }
+            });
+            
+            category.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('.featured-category-icon');
+                if (icon) {
+                    icon.style.backgroundColor = 'var(--background)';
+                    icon.style.color = 'var(--heading)';
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
+        // Age Category Hover Effects
+        document.querySelectorAll('.age-category').forEach(category => {
+            category.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('.age-category-icon');
+                if (icon) {
+                    icon.style.transform = 'scale(1.2)';
+                    icon.style.color = 'var(--text)';
+                }
+            });
+            
+            category.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('.age-category-icon');
+                if (icon) {
+                    icon.style.transform = 'scale(1)';
+                    icon.style.color = 'var(--heading)';
+                }
+            });
+        });
+
+        // Category Click Tracking and Analytics
+        document.querySelectorAll('[data-category-link="true"], .category-btn, .featured-category-link, .age-category-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const categoryName = this.textContent.replace('→', '').replace('Shop Now', '').replace('Browse', '').trim();
+                const categoryId = this.closest('[data-category-id]')?.dataset.categoryId;
+                
+                // Track category view for analytics
+                if (categoryId) {
+                    trackCategoryView(categoryId, categoryName, this.href);
+                }
+                
+                // Optional: Add visual feedback
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 200);
+            });
+        });
+
+        // Track category views
+        function trackCategoryView(categoryId, categoryName, url) {
+            const csrfToken = getCookie('csrftoken');
+            const subdomain = document.body.dataset.pageSubdomain || '{{ page.subdomain }}';
+            
+            fetch(`/builder/categories/track-view/${subdomain}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ 
+                    category_id: categoryId,
+                    category_name: categoryName,
+                    url: url,
+                    timestamp: new Date().toISOString()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`Tracked view for category: ${categoryName}`);
+                }
+            })
+            .catch(error => {
+                console.error('Category tracking error:', error);
+            });
+        }
+
+        // Initialize Cart Manager for Add to Cart buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize cart manager if not already initialized
+            if (typeof window.cartManager === 'undefined') {
+                const subdomain = document.body.dataset.pageSubdomain || '{{ page.subdomain }}';
+                
+                // Pass products data for cart functionality
+                window.productsData = [
+                    {% for product in products|slice:":10" %}
+                    {
+                        id: "{{ product.id }}",
+                        title: "{{ product.title|escapejs }}",
+                        price: {{ product.price }},
+                        image_url: "{% if product.main_image %}{{ product.main_image.url }}{% endif %}",
+                        category: "{{ product.category.name|default:'Uncategorized'|escapejs }}",
+                        slug: "{{ product.slug|escapejs }}"
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ];
+                
+                // Initialize cart manager
+                window.cartManager = new CartManager(subdomain, {
+                    autoDiscover: true,
+                    autoCreateButtons: true
+                });
+            }
+            
+            // Add product cards to cart manager
+            document.querySelectorAll('.product-card').forEach(card => {
+                const productId = card.dataset.productId;
+                if (productId && window.cartManager) {
+                    const productData = {
+                        id: productId,
+                        title: card.dataset.productTitle,
+                        price: parseFloat(card.dataset.productPrice) || 0,
+                        image: card.dataset.productImage || null,
+                        element: card
+                    };
+                    window.cartManager.addProduct(productData);
+                }
+            });
+        });
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const targetElement = document.querySelector(href);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ 
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+
+        // Category filtering functionality
+        function filterCategories(searchTerm) {
+            const categories = document.querySelectorAll('.category-card, .featured-category, .age-category');
+            let visibleCount = 0;
+            
+            categories.forEach(category => {
+                const categoryName = category.querySelector('.category-title, h3')?.textContent.toLowerCase() || '';
+                const categoryDescription = category.querySelector('p')?.textContent.toLowerCase() || '';
+                
+                if (categoryName.includes(searchTerm.toLowerCase()) || 
+                    categoryDescription.includes(searchTerm.toLowerCase())) {
+                    category.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+            
+            // Show message if no categories match
+            const emptyState = document.querySelector('.empty-state');
+            if (emptyState && searchTerm) {
+                if (visibleCount === 0) {
+                    emptyState.style.display = 'block';
+                    emptyState.querySelector('h3').textContent = 'No categories found';
+                    emptyState.querySelector('p').textContent = `No categories match "${searchTerm}"`;
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        }
+
+        // Add search functionality if needed
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search categories...';
+        searchInput.style.cssText = `
+            padding: 12px 20px;
+            border: 1px solid var(--background);
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            display: block;
+            font-size: 16px;
+        `;
+        
+        searchInput.addEventListener('input', function() {
+            filterCategories(this.value);
+        });
+
+        // Add search to header if wanted
+        const header = document.querySelector('.categories-header .container');
+        if (header && categories.length > 10) {
+            header.appendChild(searchInput);
+        }
+    </script>
+</body>
+</html>

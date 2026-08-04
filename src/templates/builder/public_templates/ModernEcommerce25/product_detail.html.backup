@@ -1,0 +1,1150 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title|default:"Product Details" }} | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    {% render_icon_data icon_customizations %}
+    
+    <style>
+        :root {
+            --golden-glow: #FBC867;
+            --soft-peach: #FCA994;
+            --rich-ebony: #250B06;
+            --rose-brick: #C25D61;
+            --vibrant-ember: #ED760B;
+            --spacing-xl: 6rem;
+            --spacing-lg: 4rem;
+            --spacing-md: 2rem;
+            --spacing-sm: 1rem;
+            --border-radius: 12px;
+            --transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        
+        {% generate_color_variables %}
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--rich-ebony);
+            color: #FFFFFF;
+            overflow-x: hidden;
+            line-height: 1.6;
+            padding-top: 100px;
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            padding: var(--spacing-sm) 0;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .breadcrumb a {
+            color: var(--soft-peach);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        
+        .breadcrumb a:hover {
+            color: var(--golden-glow);
+        }
+        
+        .breadcrumb span {
+            margin: 0 0.5rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* Product Details Layout */
+        .product-details-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        /* Product Images Gallery */
+        .product-gallery {
+            position: relative;
+        }
+        
+        .main-image-container {
+            width: 100%;
+            height: 500px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-bottom: var(--spacing-sm);
+            background: rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+        
+        .main-image {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .thumbnail-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        .thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--border-radius);
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            opacity: 0.7;
+        }
+        
+        .thumbnail:hover {
+            opacity: 1;
+            transform: translateY(-3px);
+        }
+        
+        .thumbnail.active {
+            border-color: var(--golden-glow);
+            opacity: 1;
+        }
+        
+        /* Product Info */
+        .product-info {
+            padding: 0;
+        }
+        
+        .product-category {
+            color: var(--soft-peach);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+        
+        h1.product-title {
+            font-size: 2.8rem;
+            color: var(--golden-glow);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stars {
+            color: var(--golden-glow);
+            font-size: 1rem;
+            letter-spacing: 2px;
+        }
+        
+        .stars i {
+            margin-right: 2px;
+        }
+        
+        .rating-count {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+        
+        .product-price {
+            font-size: 2.5rem;
+            color: var(--golden-glow);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .product-description {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: var(--spacing-md);
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+        
+        /* Product Variants */
+        .product-variants {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .variant-title {
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--soft-peach);
+            font-size: 1rem;
+        }
+        
+        .variant-options {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .variant-option {
+            padding: 0.7rem 1.5rem;
+            border: 1px solid rgba(252, 169, 148, 0.3);
+            border-radius: 40px;
+            background: transparent;
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+        
+        .variant-option:hover {
+            border-color: var(--golden-glow);
+            color: var(--golden-glow);
+        }
+        
+        .variant-option.active {
+            border-color: var(--golden-glow);
+            background: rgba(251, 200, 103, 0.1);
+            color: var(--golden-glow);
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.active {
+            border-color: var(--golden-glow);
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px rgba(251, 200, 103, 0.3);
+        }
+        
+        /* Product Actions */
+        .product-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+        
+        .buy-now-btn {
+            flex: 2;
+            background: linear-gradient(135deg, var(--vibrant-ember), var(--soft-peach));
+            color: var(--rich-ebony);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .buy-now-btn:hover {
+            background: linear-gradient(135deg, var(--golden-glow), var(--vibrant-ember));
+            transform: translateY(-2px);
+        }
+        
+        .add-to-cart-btn {
+            flex: 1;
+            background: transparent;
+            color: var(--soft-peach);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: 1px solid var(--soft-peach);
+            border-radius: 40px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .add-to-cart-btn:hover {
+            background: rgba(252, 169, 148, 0.1);
+            border-color: var(--golden-glow);
+            color: var(--golden-glow);
+        }
+        
+        .wishlist-btn {
+            width: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(252, 169, 148, 0.3);
+            border-radius: 40px;
+            color: var(--soft-peach);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .wishlist-btn:hover {
+            background: rgba(252, 169, 148, 0.2);
+            color: var(--golden-glow);
+            border-color: var(--golden-glow);
+        }
+        
+        /* Product Tabs */
+        .product-tabs {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .tab-headers {
+            display: flex;
+            border-bottom: 1px solid rgba(252, 169, 148, 0.2);
+            margin-bottom: var(--spacing-md);
+            gap: 2rem;
+        }
+        
+        .tab-header {
+            padding: 1rem 0;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+        
+        .tab-header:hover {
+            color: var(--golden-glow);
+        }
+        
+        .tab-header.active {
+            color: var(--golden-glow);
+        }
+        
+        .tab-header.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--golden-glow), var(--soft-peach));
+        }
+        
+        .tab-content {
+            display: none;
+            padding: var(--spacing-md) 0;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.8;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Reviews Section */
+        .review-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            border: 1px solid rgba(252, 169, 148, 0.2);
+        }
+        
+        .review-form h3 {
+            font-size: 1.5rem;
+            color: var(--golden-glow);
+            margin-bottom: 1.5rem;
+        }
+        
+        .rating-input {
+            margin-bottom: 1.5rem;
+        }
+        
+        .rating-input label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--soft-peach);
+        }
+        
+        .star-rating-input {
+            display: flex;
+            gap: 0.5rem;
+            font-size: 1.8rem;
+            cursor: pointer;
+        }
+        
+        .star-rating-input .star {
+            color: rgba(255, 255, 255, 0.2);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .star-rating-input .star:hover,
+        .star-rating-input .star.active {
+            color: var(--golden-glow);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--soft-peach);
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(252, 169, 148, 0.3);
+            border-radius: var(--border-radius);
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--golden-glow);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .submit-review-btn {
+            background: linear-gradient(135deg, var(--vibrant-ember), var(--soft-peach));
+            color: var(--rich-ebony);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .submit-review-btn:hover {
+            background: linear-gradient(135deg, var(--golden-glow), var(--vibrant-ember));
+            transform: translateY(-2px);
+        }
+        
+        .customer-reviews {
+            margin-top: var(--spacing-lg);
+        }
+        
+        .customer-reviews h3 {
+            font-size: 1.5rem;
+            color: var(--golden-glow);
+            margin-bottom: 1.5rem;
+        }
+        
+        .review-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(252, 169, 148, 0.2);
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .reviewer-name {
+            font-weight: 600;
+            color: var(--golden-glow);
+        }
+        
+        .review-date {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+        }
+        
+        .review-rating {
+            color: var(--golden-glow);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .review-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #FFFFFF;
+        }
+        
+        .review-text {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+        
+        /* Related Products */
+        .related-products {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid rgba(252, 169, 148, 0.2);
+        }
+        
+        .related-products h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            color: var(--golden-glow);
+        }
+        
+        .related-products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+        
+        .related-product-card {
+            background: rgba(37, 11, 6, 0.75);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            border: 1px solid rgba(252, 169, 148, 0.2);
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+        }
+        
+        .related-product-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--golden-glow);
+        }
+        
+        .related-product-img {
+            height: 220px;
+            width: 100%;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .related-product-info {
+            padding: 1rem;
+        }
+        
+        .related-product-name {
+            font-size: 1rem;
+            color: #FFFFFF;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .related-product-price {
+            color: var(--golden-glow);
+            font-weight: 600;
+        }
+        
+        .empty-related {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(252, 169, 148, 0.2);
+            grid-column: 1 / -1;
+        }
+        
+        .empty-related p {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .product-details-container {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-md);
+            }
+            .main-image-container {
+                height: 400px;
+            }
+            .related-products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 80px;
+            }
+            h1.product-title {
+                font-size: 2rem;
+            }
+            .product-price {
+                font-size: 2rem;
+            }
+            .product-actions {
+                flex-direction: column;
+            }
+            .buy-now-btn, .add-to-cart-btn {
+                width: 100%;
+            }
+            .wishlist-btn {
+                width: 100%;
+                padding: 1rem;
+            }
+            .related-products-grid {
+                grid-template-columns: 1fr;
+                max-width: 350px;
+                margin: 0 auto;
+            }
+            .tab-headers {
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .main-image-container {
+                height: 300px;
+            }
+            .thumbnail {
+                width: 60px;
+                height: 60px;
+            }
+        }
+        
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 61 80 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 61 80 %}
+        
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce25/snippets/header1.html' %}
+    
+    {% for component in components %}
+        {% if component.drop_zone == '1' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+    
+    <!-- Breadcrumb -->
+    <div class="container">
+        <div class="breadcrumb" id="section-61">
+            <a href="/?page=home">Home</a> <span>/</span>
+            <a href="/?page=products">Shop</a> <span>/</span>
+            {% if product.category %}
+                <a href="/?page=products&category={{ product.category.slug }}">{{ product.category.name }}</a> <span>/</span>
+            {% endif %}
+            <span class="current-product">{{ product.title|default:"Product Details" }}</span>
+        </div>
+    </div>
+    
+    {% for component in components %}
+        {% if component.drop_zone == '61' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+    
+    <!-- Product Details -->
+    <div class="container">
+        {% if product %}
+        <div class="product-details-container">
+            <!-- Product Gallery -->
+            <div class="product-gallery" id="section-62">
+                <div class="main-image-container">
+                    <div class="main-image" id="mainImage" style="background-image: url('{% if product.main_image %}{{ product.main_image.url }}{% elif product.image_url %}{{ product.image_url }}{% else %}https://images.pexels.com/photos/2129794/pexels-photo-2129794.jpeg?auto=compress&cs=tinysrgb&w=800{% endif %}')"></div>
+                </div>
+                <div class="thumbnail-container" id="thumbnailContainer">
+                    {% if product.main_image %}
+                    <div class="thumbnail active" style="background-image: url('{{ product.main_image.url }}')" data-image="{{ product.main_image.url }}"></div>
+                    {% endif %}
+                    {% for image in product_images %}
+                    <div class="thumbnail" style="background-image: url('{{ image.image.url }}')" data-image="{{ image.image.url }}"></div>
+                    {% endfor %}
+                    {% if product.image_gallery %}
+                        {% for image_url in product.image_gallery|slice:":3" %}
+                        <div class="thumbnail" style="background-image: url('{{ image_url }}')" data-image="{{ image_url }}"></div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Product Info -->
+            <div class="product-info" id="section-63">
+                <div class="product-category" id="section-64">
+                    {{ product.category.name|default:"LIGHTING"|upper }}
+                </div>
+                <h1 class="product-title" id="section-65">{{ product.title|default:"Aether Pendant" }}</h1>
+                
+                <div class="product-rating">
+                    <div class="stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= full_stars %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="rating-count">({{ total_reviews|default:"0" }} Reviews)</span>
+                </div>
+                
+                <div class="product-price" id="section-66">
+                    {{ product.price|currency:page }}
+                    {% if product.compare_at_price and product.compare_at_price > product.price %}
+                        <span style="text-decoration: line-through; color: var(--soft-peach); font-size: 1.5rem; margin-left: 1rem;">{{ product.compare_at_price|currency:page }}</span>
+                    {% endif %}
+                </div>
+                
+                <p class="product-description" id="section-67">
+                    {{ product.short_description|default:product.description|striptags|truncatewords:50|default:"The Aether Pendant is a stunning architectural lighting piece that combines modern minimalism with warm, ambient illumination. Crafted from premium materials, this pendant features a delicate balance of form and function, creating a soft, diffused glow that transforms any space." }}
+                </p>
+                
+                <!-- Color Variants -->
+                {% if colors %}
+                <div class="product-variants">
+                    <div class="variant-title">Color</div>
+                    <div class="variant-options" id="colorOptions">
+                        {% for color in colors %}
+                        <div class="color-option {% if forloop.first %}active{% endif %}" style="background-color: {{ color }};" data-color="{{ color }}"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Size Variants -->
+                {% if sizes %}
+                <div class="product-variants">
+                    <div class="variant-title">Size / Diameter</div>
+                    <div class="variant-options" id="sizeOptions">
+                        {% for size in sizes %}
+                        <div class="variant-option {% if forloop.first %}active{% endif %}" data-size="{{ size }}">{{ size }}"</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Product Actions -->
+                <div class="product-actions">
+                    <button class="buy-now-btn" id="buyNowBtn" data-product-id="{{ product.id }}" data-product-title="{{ product.title }}" data-product-price="{{ product.price }}">
+                        <i class="fas fa-bolt"></i> Buy Now
+                    </button>
+                    <button class="add-to-cart-btn" id="addToCartBtn" data-add-to-cart="{{ product.id }}">
+                        <i class="fas fa-shopping-cart"></i> Add to Cart
+                    </button>
+                    <button class="wishlist-btn" id="wishlistBtn" data-add-to-wishlist="{{ product.id }}">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Tabs -->
+        <div class="product-tabs" id="section-68">
+            <div class="tab-headers">
+                <button class="tab-header active" data-tab="description">Description</button>
+                <button class="tab-header" data-tab="specifications">Specifications</button>
+                <button class="tab-header" data-tab="shipping">Shipping & Returns</button>
+                <button class="tab-header" data-tab="reviews">Reviews ({{ total_reviews|default:"0" }})</button>
+            </div>
+            
+            <div class="tab-content active" id="description-tab">
+                <h3>Product Description</h3>
+                <div class="description-content">
+                    {{ product.description|safe|default:"<p>The Aether Pendant represents the pinnacle of modern lighting design. Inspired by the ethereal quality of light itself, this pendant features a hand-blown glass shade that diffuses light beautifully, creating a warm and inviting atmosphere. The sleek metal hardware is available in multiple finishes to complement any interior style.</p><p>Each pendant is meticulously crafted by skilled artisans, ensuring exceptional quality and attention to detail. The integrated LED technology provides energy-efficient illumination that lasts for years. Whether suspended over a dining table, in a living room, or as a statement piece in an entryway, the Aether Pendant elevates any space with its timeless elegance.</p>" }}
+                </div>
+            </div>
+            
+            <div class="tab-content" id="specifications-tab">
+                <h3>Technical Specifications</h3>
+                <div class="specifications-content">
+                    {% if product.specifications %}
+                        {{ product.specifications|safe }}
+                    {% else %}
+                        <ul style="margin-left: 1.5rem;">
+                            <li><strong>Material:</strong> Premium hand-blown glass, brushed metal</li>
+                            <li><strong>Finish:</strong> Available in multiple finishes</li>
+                            <li><strong>Light Source:</strong> Integrated LED</li>
+                            <li><strong>Color Temperature:</strong> 2700K (Warm White)</li>
+                            <li><strong>Dimmable:</strong> Yes</li>
+                            <li><strong>Voltage:</strong> 120V</li>
+                            <li><strong>UL Listed:</strong> Yes</li>
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="tab-content" id="shipping-tab">
+                <h3>Shipping & Returns</h3>
+                <div class="shipping-content">
+                    {% if product.shipping_info %}
+                        {{ product.shipping_info|safe }}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="tab-content" id="reviews-tab">
+                <!-- Review Form -->
+                <div class="review-form" id="section-69">
+                    <h3 id="section-70">{{ text_contents.56|default:"Write a Review" }}</h3>
+                    <form id="reviewForm" method="POST" action="{% url 'submit_review' page.subdomain %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <div class="rating-input">
+                            <label>Your Rating</label>
+                            <div class="star-rating-input" id="starRating">
+                                <span class="star" data-rating="1">★</span>
+                                <span class="star" data-rating="2">★</span>
+                                <span class="star" data-rating="3">★</span>
+                                <span class="star" data-rating="4">★</span>
+                                <span class="star" data-rating="5">★</span>
+                            </div>
+                            <input type="hidden" id="ratingValue" name="rating" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="reviewerName">Your Name</label>
+                            <input type="text" id="reviewerName" name="user_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reviewTitle">Review Title</label>
+                            <input type="text" id="reviewTitle" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reviewText">Your Review</label>
+                            <textarea id="reviewText" name="comment" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="submit-review-btn">Submit Review</button>
+                    </form>
+                </div>
+                
+                <!-- Customer Reviews -->
+                <div class="customer-reviews">
+                    <h3>Customer Reviews</h3>
+                    {% if reviews %}
+                        {% for review in reviews %}
+                        <div class="review-item">
+                            <div class="review-header">
+                                <span class="reviewer-name">{{ review.author_name|default:"Anonymous" }}</span>
+                                <span class="review-date">{{ review.created_at|date:"F d, Y" }}</span>
+                            </div>
+                            <div class="review-rating">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="review-title">{{ review.title|default:"Great Product" }}</div>
+                            <div class="review-text">{{ review.comment }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="review-item">
+                            <p style="color: rgba(255, 255, 255, 0.6);">No reviews yet. Be the first to review this product!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Products -->
+        <div class="related-products" id="section-71">
+            <h2 id="section-72">{{ text_contents.57|default:"You May Also Like" }}</h2>
+            {% if related_products %}
+                <div class="related-products-grid">
+                    {% for related in related_products|slice:":4" %}
+                        <a href="/product/{{ related.slug }}/" class="related-product-card">
+                            <div class="related-product-img" style="background-image: url('{% if related.main_image %}{{ related.main_image.url }}{% elif related.image_url %}{{ related.image_url }}{% else %}https://images.pexels.com/photos/2129794/pexels-photo-2129794.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}')"></div>
+                            <div class="related-product-info">
+                                <div class="related-product-name">{{ related.title|truncatechars:30 }}</div>
+                                <div class="related-product-price">{{ related.price|currency:page }}</div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-related">
+                    <p>No related products available for this item. Check back soon for new collections!</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% else %}
+        <!-- Product Not Found -->
+        <div class="empty-state" style="text-align: center; padding: 4rem;">
+            <h3 style="color: var(--golden-glow); margin-bottom: 1rem;">Product Not Found</h3>
+            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 2rem;">The product you're looking for doesn't exist or has been removed.</p>
+            <a href="?page=products" class="buy-now-btn" style="display: inline-block; text-decoration: none;">Return to Shop</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% for component in components %}
+        {% if component.drop_zone == '71' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+    
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce25/snippets/footer.html' %}
+    
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+    
+    {% render_icon_script %}
+    
+    <input type="hidden" id="page-subdomain" value="{{ page.subdomain }}">
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        // Image Gallery Thumbnail Switcher
+        const thumbnails = document.querySelectorAll('.thumbnail');
+        const mainImage = document.getElementById('mainImage');
+        
+        if (thumbnails.length > 0 && mainImage) {
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function() {
+                    thumbnails.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    const newImage = this.getAttribute('data-image');
+                    if (newImage) {
+                        mainImage.style.backgroundImage = `url('${newImage}')`;
+                    }
+                });
+            });
+        }
+        
+        // Color Variant Selection
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                colorOptions.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Size Variant Selection
+        const sizeOptions = document.querySelectorAll('.variant-option');
+        sizeOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                sizeOptions.forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Tab Switching
+        const tabHeaders = document.querySelectorAll('.tab-header');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabHeaders.forEach(header => {
+            header.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                tabHeaders.forEach(h => h.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+        
+        // Star Rating System
+        const stars = document.querySelectorAll('.star-rating-input .star');
+        const ratingValue = document.getElementById('ratingValue');
+        
+        if (stars.length > 0) {
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    ratingValue.value = rating;
+                    stars.forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.add('active');
+                        } else {
+                            s.classList.remove('active');
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Add to Cart
+        const addToCartBtn = document.getElementById('addToCartBtn');
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const productId = this.getAttribute('data-add-to-cart');
+                if (window.cartManager) {
+                    window.cartManager.addToCart(productId, 1);
+                } else {
+                    alert('Item added to cart!');
+                }
+            });
+        }
+        
+        // Buy Now
+        const buyNowBtn = document.getElementById('buyNowBtn');
+        if (buyNowBtn) {
+            buyNowBtn.addEventListener('click', function() {
+                const productId = this.getAttribute('data-product-id');
+                const productTitle = this.getAttribute('data-product-title');
+                const productPrice = parseFloat(this.getAttribute('data-product-price'));
+                const selectedColor = document.querySelector('.color-option.active')?.getAttribute('data-color') || '';
+                const selectedSize = document.querySelector('.variant-option.active')?.getAttribute('data-size') || '';
+                
+                const cartData = {
+                    items: [{
+                        id: productId,
+                        title: productTitle,
+                        price: productPrice,
+                        quantity: 1,
+                        selected_color: selectedColor,
+                        selected_size: selectedSize,
+                        total_price: productPrice
+                    }],
+                    subtotal: productPrice,
+                    shipping_amount: productPrice > 0 ? 5.00 : 0,
+                    tax_amount: productPrice * 0.08,
+                    total_amount: productPrice + (productPrice > 0 ? 5.00 : 0) + (productPrice * 0.08),
+                    is_buy_now: true
+                };
+                
+                const subdomain = document.getElementById('page-subdomain')?.value || '{{ page.subdomain }}';
+                const params = new URLSearchParams({
+                    type: 'instant',
+                    product: JSON.stringify(cartData.items[0])
+                });
+                window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+            });
+        }
+        
+        // Wishlist
+        const wishlistBtn = document.getElementById('wishlistBtn');
+        if (wishlistBtn) {
+            wishlistBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const productId = this.getAttribute('data-add-to-wishlist');
+                if (window.cartManager) {
+                    window.cartManager.addToWishlist(productId);
+                } else {
+                    alert('Added to wishlist!');
+                }
+            });
+        }
+        
+        // Review Form Submission
+        const reviewForm = document.getElementById('reviewForm');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const rating = ratingValue?.value;
+                if (rating === '0') {
+                    alert('Please select a rating');
+                    return;
+                }
+                
+                const formData = new FormData(reviewForm);
+                const submitBtn = reviewForm.querySelector('.submit-review-btn');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Submitting...';
+                submitBtn.disabled = true;
+                
+                try {
+                    const response = await fetch(reviewForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('Thank you for your review!');
+                        reviewForm.reset();
+                        if (stars) stars.forEach(s => s.classList.remove('active'));
+                        if (ratingValue) ratingValue.value = '0';
+                    } else {
+                        alert(data.error || 'Error submitting review');
+                    }
+                } catch (error) {
+                    alert('Network error. Please try again.');
+                } finally {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

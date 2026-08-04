@@ -1,0 +1,1281 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title|default:"Product Details" }} | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --background: #F2E7E2;
+            --heading: #F4E6CB;
+            --text: #F9D0BE;
+            --primary: #E1C6D6;
+            --secondary: #2c2a2a;
+            --accent: #5e5a5a;
+            --border: #FFB6C1;
+            --spacing-xl: 6rem;
+            --spacing-lg: 4rem;
+            --spacing-md: 2rem;
+            --spacing-sm: 1rem;
+            --border-radius: 24px;
+            --transition: all 0.3s ease;
+        }
+
+        {% generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background);
+            color: var(--secondary);
+            overflow-x: hidden;
+            line-height: 1.6;
+            padding-top: 90px;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            padding: var(--spacing-sm) 0;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .breadcrumb a {
+            color: var(--secondary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .breadcrumb a:hover {
+            color: #b27d6a;
+        }
+
+        .breadcrumb span {
+            margin: 0 0.5rem;
+            color: var(--accent);
+        }
+
+        /* Product Details Layout */
+        .product-details-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        /* Product Images Section */
+        .product-images {
+            position: relative;
+        }
+
+        .main-image-container {
+            width: 100%;
+            border-radius: 28px;
+            overflow: hidden;
+            margin-bottom: var(--spacing-sm);
+            background-color: #fffbf8;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .main-image {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .main-image:hover {
+            transform: scale(1.02);
+        }
+
+        .thumbnail-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            background-color: #fffbf8;
+        }
+
+        .thumbnail:hover {
+            transform: translateY(-3px);
+            border-color: var(--text);
+        }
+
+        .thumbnail.active {
+            border-color: #b27d6a;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Product Info Section */
+        .product-info {
+            padding: var(--spacing-sm) 0;
+        }
+
+        h1.product-title {
+            font-size: 2.5rem;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stars {
+            display: flex;
+            gap: 0.2rem;
+            color: var(--border);
+            font-size: 1.1rem;
+        }
+
+        .rating-count {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .product-price {
+            font-size: 2rem;
+            color: #b27d6a;
+            font-weight: 500;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .product-description {
+            color: var(--accent);
+            margin-bottom: var(--spacing-md);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        /* Product Variants */
+        .product-variants {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .variant-title {
+            font-weight: 500;
+            margin-bottom: 0.8rem;
+            color: var(--secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .variant-options {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .variant-option {
+            padding: 0.7rem 1.5rem;
+            border: 1px solid rgba(44, 42, 42, 0.2);
+            border-radius: 50px;
+            background: white;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .variant-option:hover {
+            border-color: #b27d6a;
+            transform: translateY(-2px);
+        }
+
+        .variant-option.active {
+            border-color: #b27d6a;
+            background: rgba(249, 208, 190, 0.2);
+            color: #b27d6a;
+            font-weight: 500;
+        }
+
+        .color-option {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 2px var(--text);
+        }
+
+        /* Quantity Selector */
+        .quantity-selector {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .quantity-title {
+            font-weight: 500;
+            margin-bottom: 0.8rem;
+            color: var(--secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quantity-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(44, 42, 42, 0.2);
+            background: white;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity-btn:hover {
+            border-color: #b27d6a;
+            background: rgba(249, 208, 190, 0.1);
+        }
+
+        .quantity-input {
+            width: 60px;
+            height: 40px;
+            text-align: center;
+            border: 1px solid rgba(44, 42, 42, 0.2);
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+        }
+
+        /* Product Actions */
+        .product-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+
+        .btn-buy-now {
+            flex: 2;
+            background: linear-gradient(135deg, #2c2a2a, #4a3b35);
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-buy-now:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-add-to-cart {
+            flex: 1;
+            background: white;
+            color: #b27d6a;
+            padding: 1rem 2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border-radius: 50px;
+            border: 1px solid #b27d6a;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-add-to-cart:hover {
+            background: #b27d6a;
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        .btn-wishlist {
+            width: 50px;
+            background: white;
+            border: 1px solid rgba(44, 42, 42, 0.2);
+            border-radius: 50px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .btn-wishlist:hover {
+            background: rgba(249, 208, 190, 0.2);
+            color: #b27d6a;
+            border-color: #b27d6a;
+        }
+
+        /* Product Tabs */
+        .product-tabs {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .tab-headers {
+            display: flex;
+            border-bottom: 1px solid rgba(44, 42, 42, 0.1);
+            margin-bottom: var(--spacing-md);
+            gap: 2rem;
+        }
+
+        .tab-header {
+            padding: 1rem 0;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1rem;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .tab-header:hover {
+            color: #b27d6a;
+        }
+
+        .tab-header.active {
+            color: #b27d6a;
+            font-weight: 500;
+        }
+
+        .tab-header.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #b27d6a;
+        }
+
+        .tab-content {
+            display: none;
+            padding: var(--spacing-md) 0;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Reviews Section */
+        .review-form {
+            background: white;
+            padding: var(--spacing-md);
+            border-radius: 28px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .review-form h3 {
+            font-size: 1.5rem;
+            margin-bottom: var(--spacing-md);
+            color: var(--secondary);
+        }
+
+        .rating-input {
+            margin-bottom: 1.5rem;
+        }
+
+        .rating-input label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .star-rating-input {
+            display: flex;
+            gap: 0.5rem;
+            font-size: 1.8rem;
+            color: rgba(44, 42, 42, 0.2);
+            cursor: pointer;
+        }
+
+        .star-rating-input .star {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .star-rating-input .star:hover,
+        .star-rating-input .star:hover ~ .star {
+            color: var(--border);
+        }
+
+        .star-rating-input .star.selected {
+            color: var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid rgba(44, 42, 42, 0.2);
+            border-radius: 16px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #b27d6a;
+            box-shadow: 0 0 0 3px rgba(249, 208, 190, 0.2);
+        }
+
+        .btn-submit-review {
+            background: linear-gradient(135deg, var(--text), var(--primary));
+            color: var(--secondary);
+            padding: 1rem 2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-submit-review:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(249, 208, 190, 0.4);
+        }
+
+        /* Customer Reviews */
+        .customer-reviews {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .customer-reviews h3 {
+            font-size: 1.5rem;
+            margin-bottom: var(--spacing-md);
+            color: var(--secondary);
+        }
+
+        .review-item {
+            background: white;
+            padding: var(--spacing-md);
+            border-radius: 24px;
+            margin-bottom: var(--spacing-sm);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.02);
+            transition: var(--transition);
+        }
+
+        .review-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .reviewer-name {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .review-date {
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+
+        .review-rating {
+            color: var(--border);
+            margin-bottom: 0.8rem;
+        }
+
+        .review-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+        }
+
+        .review-text {
+            color: var(--accent);
+            line-height: 1.7;
+        }
+
+        /* Related Products */
+        .related-products {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid rgba(44, 42, 42, 0.1);
+        }
+
+        .related-products h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            color: var(--secondary);
+        }
+
+        .related-products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .related-product-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.02);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .related-product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.1);
+        }
+
+        .related-product-img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .related-product-card:hover .related-product-img {
+            transform: scale(1.02);
+        }
+
+        .related-product-info {
+            padding: 1rem;
+        }
+
+        .related-product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+
+        .related-product-price {
+            color: #b27d6a;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .empty-related {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 28px;
+            color: var(--accent);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1024px) {
+            .product-details-container {
+                gap: var(--spacing-md);
+            }
+            .related-products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .product-details-container {
+                grid-template-columns: 1fr;
+            }
+            .related-products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .tab-headers {
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            .thumbnail {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .related-products-grid {
+                grid-template-columns: 1fr;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+            .product-actions {
+                flex-direction: column;
+            }
+            .btn-buy-now, .btn-add-to-cart, .btn-wishlist {
+                width: 100%;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 54 100 %}
+        {% generate_background_images background_images 54 100 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce17/snippets/header1.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '1' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb" id="section-54">
+        <div class="container">
+            <a href="/?page=home">Home</a> <span>/</span>
+            <a href="/?page=products">Shop</a> <span>/</span>
+            {% if product.category %}
+                <a href="/?page=products&category={{ product.category.slug }}">{{ product.category.name }}</a> <span>/</span>
+            {% endif %}
+            <span class="current-product">{{ product.title|default:"Product Details" }}</span>
+        </div>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '54' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Product Details -->
+    <div class="container">
+        {% if product %}
+            <div class="product-details-container">
+                <!-- Product Images -->
+                <div class="product-images" id="section-55">
+                    <div class="main-image-container">
+                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% elif product.image_url %}{{ product.image_url }}{% else %}https://images.unsplash.com/photo-1620916566390-2f2e2c6e6b0f?w=600&auto=format{% endif %}" 
+                             alt="{{ product.title }}" 
+                             class="main-image" 
+                             id="mainImage">
+                    </div>
+                    <div class="thumbnail-container">
+                        {% if product.main_image %}
+                            <img src="{{ product.main_image.url }}?w=100&auto=format" 
+                                 alt="Thumbnail" 
+                                 class="thumbnail active" 
+                                 data-image="{{ product.main_image.url }}">
+                        {% endif %}
+                        {% for image in product_images %}
+                            <img src="{{ image.image.url }}?w=100&auto=format" 
+                                 alt="Thumbnail" 
+                                 class="thumbnail" 
+                                 data-image="{{ image.image.url }}">
+                        {% endfor %}
+                        {% if product.image_gallery %}
+                            {% for image_url in product.image_gallery|slice:":3" %}
+                                <img src="{{ image_url }}?w=100&auto=format" 
+                                     alt="Thumbnail" 
+                                     class="thumbnail" 
+                                     data-image="{{ image_url }}">
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Product Info -->
+                <div class="product-info" id="section-56">
+                    <h1 class="product-title" id="section-57">{{ product.title|default:"Radiance Renewal Serum" }}</h1>
+                    
+                    <div class="product-rating">
+                        <div class="stars">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= full_stars %}
+                                    <i class="fas fa-star"></i>
+                                {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                                    <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <span class="rating-count">{{ average_rating|default:"4.5" }} ({{ total_reviews|default:"128" }} Reviews)</span>
+                    </div>
+
+                    <div class="product-price" id="section-59">
+                        {{ product.price|currency:page }}
+                        {% if product.compare_at_price and product.compare_at_price > product.price %}
+                            <span style="text-decoration: line-through; color: var(--accent); font-size: 1.2rem; margin-left: 0.5rem;">
+                                {{ product.compare_at_price|currency:page }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="product-description" id="section-60">
+                        {{ product.short_description|default:product.description|striptags|truncatewords:40|default:"A potent yet gentle serum formulated with hyaluronic acid, vitamin C, and botanical extracts." }}
+                    </p>
+
+                    <!-- Color Variants -->
+                    {% if colors %}
+                        <div class="product-variants">
+                            <div class="variant-title">Color</div>
+                            <div class="variant-options">
+                                {% for color in colors %}
+                                    <div class="color-option {% if forloop.first %}active{% endif %}" 
+                                         style="background-color: {{ color }};" 
+                                         data-color="{{ color }}"
+                                         title="{{ color|title }}"></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Size Variants -->
+                    {% if sizes %}
+                        <div class="product-variants">
+                            <div class="variant-title">Size</div>
+                            <div class="variant-options">
+                                {% for size in sizes %}
+                                    <div class="variant-option {% if forloop.first %}active{% endif %}" 
+                                         data-size="{{ size }}">
+                                        {{ size }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Quantity Selector -->
+                    <div class="quantity-selector">
+                        <div class="quantity-title">Quantity</div>
+                        <div class="quantity-control">
+                            <button class="quantity-btn" id="decrementQty">-</button>
+                            <input type="number" class="quantity-input" id="quantity" value="1" min="1" max="10">
+                            <button class="quantity-btn" id="incrementQty">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Product Actions -->
+                    <div class="product-actions">
+                        <button class="btn-buy-now" id="section-61" data-product-id="{{ product.id }}" data-product-title="{{ product.title }}" data-product-price="{{ product.price }}">
+                            <i class="fas fa-bolt" data-icon="15"></i> Buy Now
+                        </button>
+                        <button class="btn-add-to-cart" id="section-62" data-add-to-cart="{{ product.id }}">
+                            <i class="fas fa-shopping-bag" data-icon="12"></i> Add to Cart
+                        </button>
+                        <button class="btn-wishlist" data-add-to-wishlist="{{ product.id }}">
+                            <i class="far fa-heart" data-icon="13"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Tabs -->
+            <div class="product-tabs" id="section-63">
+                <div class="tab-headers">
+                    <button class="tab-header active" data-tab="description">Description</button>
+                    <button class="tab-header" data-tab="ingredients">Ingredients</button>
+                    <button class="tab-header" data-tab="how-to-use">How to Use</button>
+                    <button class="tab-header" data-tab="reviews">Reviews</button>
+                </div>
+
+                <div class="tab-content active" id="description-tab">
+                    <h3>Product Description</h3>
+                    <div class="description-content">
+                        {{ product.description|safe|default:"<p>Our Radiance Renewal Serum is a powerhouse formula designed to transform dull, tired skin into a luminous, youthful complexion. Formulated with the highest concentration of active ingredients, this serum delivers visible results in just 14 days.</p><br><p><strong>Key Benefits:</strong></p><ul><li>Brightens and evens skin tone</li><li>Deeply hydrates for plump, dewy skin</li><li>Reduces appearance of fine lines and wrinkles</li><li>Strengthens skin barrier</li><li>Protects against environmental stressors</li></ul>" }}
+                    </div>
+                </div>
+
+                <div class="tab-content" id="ingredients-tab">
+                    <h3>Ingredients</h3>
+                    <div class="ingredients-content">
+                        {% if product.material %}
+                            {{ product.material|safe }}
+                        {% else %}
+                            <p>Water (Aqua), Glycerin, Hyaluronic Acid, Vitamin C (Ascorbic Acid), Niacinamide, Ferulic Acid, Jojoba Oil, Shea Butter, Vitamin E, Green Tea Extract, Aloe Vera, Rosemary Extract.</p>
+                            <br>
+                            <p><strong>Free From:</strong> Parabens, Sulfates, Phthalates, Synthetic Fragrance, Mineral Oil, Animal Testing</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="tab-content" id="how-to-use-tab">
+                    <h3>How to Use</h3>
+                    <div class="how-to-use-content">
+                        {% if product.specifications %}
+                            {{ product.specifications|safe }}
+                        {% else %}
+                            <p>Apply 2-3 drops to clean, dry skin morning and night. Gently massage into face, neck, and décolletage until fully absorbed. Follow with moisturizer. For best results, use consistently and always wear SPF during the day.</p>
+                            <br>
+                            <p><strong>Pro Tip:</strong> For enhanced results, apply while skin is slightly damp from your toner to lock in maximum hydration.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="tab-content" id="reviews-tab">
+                    <!-- Review Form -->
+                    <div class="review-form">
+                        <h3>Write a Review</h3>
+                        <form id="reviewForm" method="POST" action="{% url 'submit_review' page.subdomain %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="product_id" value="{{ product.id }}">
+                            <div class="rating-input">
+                                <label>Your Rating</label>
+                                <div class="star-rating-input" id="starRating">
+                                    <span class="star" data-rating="1">★</span>
+                                    <span class="star" data-rating="2">★</span>
+                                    <span class="star" data-rating="3">★</span>
+                                    <span class="star" data-rating="4">★</span>
+                                    <span class="star" data-rating="5">★</span>
+                                </div>
+                                <input type="hidden" id="ratingValue" name="rating" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="reviewerName">Your Name</label>
+                                <input type="text" id="reviewerName" name="user_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reviewTitle">Review Title</label>
+                                <input type="text" id="reviewTitle" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reviewText">Your Review</label>
+                                <textarea id="reviewText" name="comment" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn-submit-review">Submit Review</button>
+                        </form>
+                    </div>
+
+                    <!-- Customer Reviews -->
+                    <div class="customer-reviews">
+                        <h3>Customer Reviews</h3>
+                        {% if reviews %}
+                            {% for review in reviews %}
+                                <div class="review-item">
+                                    <div class="review-header">
+                                        <span class="reviewer-name">{{ review.author_name|default:"Anonymous" }}</span>
+                                        <span class="review-date">{{ review.created_at|date:"F d, Y" }}</span>
+                                    </div>
+                                    <div class="review-rating">
+                                        {% for i in "12345"|make_list %}
+                                            {% if forloop.counter <= review.rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <div class="review-title">{{ review.title|default:"Great Product" }}</div>
+                                    <div class="review-text">{{ review.comment }}</div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state" style="text-align: center; padding: 2rem;">
+                                <p>No reviews yet. Be the first to review this product!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Products -->
+            <div class="related-products">
+                <h2>You May Also Like</h2>
+                {% if related_products %}
+                    <div class="related-products-grid">
+                        {% for related in related_products|slice:":4" %}
+                            <a href="/product/{{ related.slug }}/" class="related-product-card">
+                                {% if related.main_image %}
+                                    <img src="{{ related.main_image.url }}" alt="{{ related.title }}" class="related-product-img">
+                                {% else %}
+                                    <div class="related-product-img" style="background-color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-leaf" style="font-size: 2rem; color: var(--text);"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="related-product-info">
+                                    <div class="related-product-name">{{ related.title|truncatechars:30 }}</div>
+                                    <div class="related-product-price">{{ related.price|currency:page }}</div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-related">
+                        <p>No related products for this product.</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="empty-state" style="text-align: center; padding: 4rem;">
+                <h3>Product Not Found</h3>
+                <p>The product you're looking for doesn't exist or has been removed.</p>
+                <p><a href="?page=products" style="color: #b27d6a;">Return to Shop</a></p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '69' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce17/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    <script>
+        // Image Thumbnail Switcher
+        const thumbnails = document.querySelectorAll('.thumbnail');
+        const mainImage = document.getElementById('mainImage');
+
+        if (thumbnails.length > 0 && mainImage) {
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function() {
+                    thumbnails.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    const newImage = this.getAttribute('data-image');
+                    if (newImage) {
+                        mainImage.src = newImage;
+                    }
+                });
+            });
+        }
+
+        // Color Variant Selection
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                colorOptions.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Size Variant Selection
+        const sizeOptions = document.querySelectorAll('.variant-option');
+        sizeOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                const parentSection = this.closest('.product-variants');
+                if (parentSection) {
+                    parentSection.querySelectorAll('.variant-option').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                }
+                this.classList.add('active');
+            });
+        });
+
+        // Quantity Controls
+        const quantityInput = document.getElementById('quantity');
+        const decrementBtn = document.getElementById('decrementQty');
+        const incrementBtn = document.getElementById('incrementQty');
+
+        if (decrementBtn && incrementBtn && quantityInput) {
+            decrementBtn.addEventListener('click', () => {
+                let value = parseInt(quantityInput.value);
+                if (value > 1) {
+                    quantityInput.value = value - 1;
+                }
+            });
+
+            incrementBtn.addEventListener('click', () => {
+                let value = parseInt(quantityInput.value);
+                if (value < 10) {
+                    quantityInput.value = value + 1;
+                }
+            });
+
+            quantityInput.addEventListener('change', () => {
+                let value = parseInt(quantityInput.value);
+                if (isNaN(value) || value < 1) quantityInput.value = 1;
+                if (value > 10) quantityInput.value = 10;
+            });
+        }
+
+        // Tab Switching
+        const tabHeaders = document.querySelectorAll('.tab-header');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabHeaders.forEach(header => {
+            header.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                tabHeaders.forEach(h => h.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+
+        // Star Rating System for Review Form
+        const stars = document.querySelectorAll('.star-rating-input .star');
+        const ratingValue = document.getElementById('ratingValue');
+
+        if (stars.length > 0 && ratingValue) {
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    ratingValue.value = rating;
+                    stars.forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.add('selected');
+                        } else {
+                            s.classList.remove('selected');
+                        }
+                    });
+                });
+            });
+        }
+
+        // Add to Cart Functionality
+        function addToCart(productId) {
+            const quantity = document.getElementById('quantity')?.value || 1;
+            const selectedColor = document.querySelector('.color-option.active')?.getAttribute('data-color') || '';
+            const selectedSize = document.querySelector('.variant-option.active')?.getAttribute('data-size') || '';
+
+            if (window.cartManager) {
+                window.cartManager.addToCart(productId, parseInt(quantity), selectedColor, selectedSize);
+            } else {
+                console.log('Added to cart:', { productId, quantity, selectedColor, selectedSize });
+                alert('Item added to cart!');
+            }
+        }
+
+        // Wishlist Functionality
+        function toggleWishlist(productId) {
+            if (window.cartManager) {
+                window.cartManager.addToWishlist(productId);
+            } else {
+                console.log('Added to wishlist:', productId);
+                alert('Added to wishlist!');
+            }
+        }
+
+        // Buy Now Functionality
+        function buyNow(productId, productTitle, productPrice) {
+            const quantity = document.getElementById('quantity')?.value || 1;
+            const selectedColor = document.querySelector('.color-option.active')?.getAttribute('data-color') || '';
+            const selectedSize = document.querySelector('.variant-option.active')?.getAttribute('data-size') || '';
+
+            const cartData = {
+                items: [{
+                    id: productId,
+                    title: productTitle,
+                    price: productPrice,
+                    quantity: quantity,
+                    selected_color: selectedColor,
+                    selected_size: selectedSize,
+                    total_price: productPrice * quantity
+                }],
+                subtotal: productPrice * quantity,
+                shipping_amount: 5.00,
+                tax_amount: (productPrice * quantity) * 0.08,
+                total_amount: (productPrice * quantity) + 5.00 + ((productPrice * quantity) * 0.08),
+                is_buy_now: true
+            };
+
+            const hostname = window.location.hostname;
+            const page_domain = document.body.getAttribute('data-page-subdomain');
+            const subdomain = hostname.includes('localhost') ? page_domain : hostname.split('.')[0];
+
+            const params = new URLSearchParams({
+                type: 'instant',
+                product: JSON.stringify(cartData.items[0])
+            });
+
+            window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+        }
+
+        // Attach event listeners
+        document.querySelector('.btn-add-to-cart')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.getAttribute('data-add-to-cart');
+            addToCart(productId);
+        });
+
+        document.querySelector('.btn-buy-now')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.getAttribute('data-product-id');
+            const productTitle = this.getAttribute('data-product-title');
+            const productPrice = parseFloat(this.getAttribute('data-product-price'));
+            buyNow(productId, productTitle, productPrice);
+        });
+
+        document.querySelector('.btn-wishlist')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.getAttribute('data-add-to-wishlist');
+            toggleWishlist(productId);
+            
+            // Visual feedback
+            const icon = this.querySelector('i');
+            if (icon.classList.contains('far')) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                icon.style.color = '#b27d6a';
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                icon.style.color = '';
+            }
+        });
+
+        // Review Form Submission
+        const reviewForm = document.getElementById('reviewForm');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const submitBtn = this.querySelector('.btn-submit-review');
+                const originalText = submitBtn.textContent;
+                
+                submitBtn.textContent = 'Submitting...';
+                submitBtn.disabled = true;
+                
+                try {
+                    const formData = new FormData(this);
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        if (window.BackendMessages) {
+                            window.BackendMessages.showBackendMessage('success', 'Success', 'Thank you for your review!');
+                        } else {
+                            alert('Thank you for your review!');
+                        }
+                        this.reset();
+                        if (ratingValue) ratingValue.value = '0';
+                        stars.forEach(s => s.classList.remove('selected'));
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        if (window.BackendMessages) {
+                            window.BackendMessages.showBackendMessage('error', 'Error', data.error || 'Something went wrong.');
+                        } else {
+                            alert(data.error || 'Something went wrong.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    if (window.BackendMessages) {
+                        window.BackendMessages.showBackendMessage('error', 'Error', 'Network error. Please try again.');
+                    } else {
+                        alert('Network error. Please try again.');
+                    }
+                } finally {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

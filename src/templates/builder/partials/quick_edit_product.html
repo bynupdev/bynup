@@ -1,0 +1,315 @@
+<ul class="nav nav-tabs product-edit-tabs" id="productEditTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button">
+            <i class="fas fa-info-circle me-2"></i>Basic Info
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" type="button">
+            <i class="fas fa-tag me-2"></i>Pricing
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button">
+            <i class="fas fa-warehouse me-2"></i>Inventory
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="shipping-tab" data-bs-toggle="tab" data-bs-target="#shipping" type="button">
+            <i class="fas fa-shipping-fast me-2"></i>Shipping
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button">
+            <i class="fas fa-search me-2"></i>SEO
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content p-4" id="productEditTabsContent">
+    <!-- Basic Info Tab -->
+    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+        <form id="basicInfoForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Product Title *</label>
+                        <input type="text" class="simple-form-control" name="title" 
+                               value="{{ product.title }}" required>
+                    </div>
+
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Description</label>
+                        <textarea class="simple-form-control" name="description" rows="4">{{ product.description }}</textarea>
+                    </div>
+
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Short Description</label>
+                        <textarea class="simple-form-control" name="short_description" rows="2">{{ product.short_description }}</textarea>
+                        <small class="text-muted">Brief description for product listings</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Status</label>
+                        <select class="simple-form-control" name="status">
+                            <option value="draft" {% if product.status == 'draft' %}selected{% endif %}>Draft</option>
+                            <option value="active" {% if product.status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="archived" {% if product.status == 'archived' %}selected{% endif %}>Archived</option>
+                        </select>
+                    </div>
+
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Category</label>
+                        <select class="simple-form-control" name="category">
+                            <option value="">Uncategorized</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if product.category.id == category.id %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Product Image</label>
+                        <div class="mb-2">
+                            {% if product.main_image %}
+                            <img src="{{ product.main_image.url }}" alt="{{ product.title }}" 
+                                 class="product-image-preview" style="width: 100px; height: 100px;">
+                            {% endif %}
+                        </div>
+                        <input type="file" class="simple-form-control" name="main_image" accept="image/*">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Pricing Tab -->
+    <div class="tab-pane fade" id="pricing" role="tabpanel">
+        <form id="pricingForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Price ($) *</label>
+                        <input type="number" class="simple-form-control" name="price" 
+                               value="{{ product.price }}" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Compare at Price ($)</label>
+                        <input type="number" class="simple-form-control" name="compare_at_price" 
+                               value="{{ product.compare_at_price|default:'' }}" step="0.01" min="0">
+                        <small class="text-muted">Show a "sale" badge when set</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Cost per Item ($)</label>
+                        <input type="number" class="simple-form-control" name="cost_per_item" 
+                               value="{{ product.cost_per_item|default:'' }}" step="0.01" min="0">
+                        <small class="text-muted">For profit calculations</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Charge Tax</label>
+                        <div class="mt-2">
+                            <input type="checkbox" name="charge_tax" {% if product.charge_tax %}checked{% endif %}>
+                            <label class="form-check-label ms-2">Charge sales tax on this product</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Inventory Tab -->
+    <div class="tab-pane fade" id="inventory" role="tabpanel">
+        <form id="inventoryForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">SKU</label>
+                        <input type="text" class="simple-form-control" name="sku" 
+                               value="{{ product.inventory.sku|default:'' }}" placeholder="Auto-generated">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Quantity</label>
+                        <input type="number" class="simple-form-control" name="quantity" 
+                               value="{{ product.inventory.quantity|default:0 }}" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Track Quantity</label>
+                        <div class="mt-2">
+                            <input type="checkbox" name="track_quantity" 
+                                   {% if product.inventory.track_quantity %}checked{% endif %}>
+                            <label class="form-check-label ms-2">Track inventory for this product</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Low Stock Threshold</label>
+                        <input type="number" class="simple-form-control" name="low_stock_threshold" 
+                               value="{{ product.inventory.low_stock_threshold|default:5 }}" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="simple-form-group">
+                <label class="simple-form-label">Allow Backorders</label>
+                <div class="mt-2">
+                    <input type="checkbox" name="allow_backorders" 
+                           {% if product.inventory.allow_backorders %}checked{% endif %}>
+                    <label class="form-check-label ms-2">Continue selling when out of stock</label>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Shipping Tab -->
+    <div class="tab-pane fade" id="shipping" role="tabpanel">
+        <form id="shippingForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="simple-form-group">
+                <label class="simple-form-label">Shipping</label>
+                <div class="mt-2">
+                    <input type="checkbox" name="requires_shipping" 
+                           {% if product.shipping.requires_shipping %}checked{% endif %}>
+                    <label class="form-check-label ms-2">This product requires shipping</label>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Weight</label>
+                        <input type="number" class="simple-form-control" name="weight" 
+                               value="{{ product.shipping.weight|default:0 }}" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Weight Unit</label>
+                        <select class="simple-form-control" name="weight_unit">
+                            <option value="kg" {% if product.shipping.weight_unit == 'kg' %}selected{% endif %}>kg</option>
+                            <option value="lb" {% if product.shipping.weight_unit == 'lb' %}selected{% endif %}>lb</option>
+                            <option value="oz" {% if product.shipping.weight_unit == 'oz' %}selected{% endif %}>oz</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="simple-form-group">
+                        <label class="simple-form-label">Free Shipping</label>
+                        <div class="mt-2">
+                            <input type="checkbox" name="free_shipping" 
+                                   {% if product.shipping.free_shipping %}checked{% endif %}>
+                            <label class="form-check-label ms-2">Offer free shipping</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- SEO Tab -->
+    <div class="tab-pane fade" id="seo" role="tabpanel">
+        <form id="seoForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <div class="simple-form-group">
+                <label class="simple-form-label">Page Title</label>
+                <input type="text" class="simple-form-control" name="meta_title" 
+                       value="{{ product.seo.meta_title|default:'' }}" 
+                       placeholder="Usually same as product title">
+                <small class="text-muted">Appears in search results and browser tab</small>
+            </div>
+
+            <div class="simple-form-group">
+                <label class="simple-form-label">Meta Description</label>
+                <textarea class="simple-form-control" name="meta_description" rows="3">{{ product.seo.meta_description|default:'' }}</textarea>
+                <small class="text-muted">Brief description for search engines (150-160 characters)</small>
+            </div>
+
+            <div class="simple-form-group">
+                <label class="simple-form-label">URL Handle</label>
+                <input type="text" class="simple-form-control" name="slug" 
+                       value="{{ product.slug|default:'' }}" 
+                       placeholder="auto-generated-from-title">
+                <small class="text-muted">Custom URL for this product</small>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="form-actions">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        Cancel
+    </button>
+    <button type="button" class="btn btn-primary" onclick="saveAllProductTabs()">
+        <i class="fas fa-save me-2"></i>Save Changes
+    </button>
+</div>
+
+<script>
+function saveAllProductTabs() {
+    // Collect data from all forms
+    const forms = ['basicInfoForm', 'pricingForm', 'inventoryForm', 'shippingForm', 'seoForm'];
+    const formData = new FormData();
+    
+    forms.forEach(formName => {
+        const form = document.getElementById(formName);
+        if (form) {
+            const formDataObj = new FormData(form);
+            for (let [key, value] of formDataObj.entries()) {
+                formData.append(key, value);
+            }
+        }
+    });
+    
+    // Send to server
+    fetch('{% url "update_product" subdomain=page.subdomain product_id=product.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Product updated successfully!', 'success');
+            $('#quickEditModal').modal('hide');
+            location.reload();
+        } else {
+            showNotification('Error updating product', 'error');
+        }
+    });
+}
+</script>

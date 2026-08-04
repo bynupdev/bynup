@@ -1,0 +1,227 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Website Memberships - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 fw-bold text-primary mb-1">
+                        <i class="fas fa-users me-2"></i>My Website Memberships
+                    </h1>
+                    <p class="text-muted mb-0">
+                        Websites you've joined as a member
+                    </p>
+                </div>
+                <div>
+                    <span class="badge bg-primary fs-6">{{ memberships|length }} memberships</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if memberships %}
+    <div class="row">
+        {% for membership in memberships %}
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ membership.website.brand_name }}</h5>
+                    <span class="badge bg-{{ membership.is_active|yesno:'success,secondary' }}">
+                        {{ membership.is_active|yesno:'Active,Inactive' }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Website URL</small>
+                        <p class="mb-1">
+                            <a href="{{ membership.website.get_absolute_url }}" target="_blank" class="text-decoration-none">
+                                <i class="fas fa-external-link-alt me-2"></i>
+                                Visit Website
+                            </a>
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Your Role</small>
+                        <p class="mb-1">
+                            <span class="badge bg-info">{{ membership.get_role_display }}</span>
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Member Since</small>
+                        <p class="mb-1">{{ membership.registered_at|date:"F j, Y" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Last Activity</small>
+                        <p class="mb-1">
+                            {% with last_activity=user.activities.filter|first %}
+                                {% if last_activity %}
+                                    {{ last_activity.timestamp|timesince }} ago
+                                {% else %}
+                                    No recent activity
+                                {% endif %}
+                            {% endwith %}
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100">
+                        <a href="{{ membership.website.get_absolute_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye me-1"></i>Visit
+                        </a>
+                        <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#membershipDetails{{ membership.id }}">
+                            <i class="fas fa-info-circle me-1"></i>Details
+                        </button>
+                        {% if membership.is_active %}
+                        <button class="btn btn-outline-warning btn-sm" onclick="leaveWebsite({{ membership.id }})">
+                            <i class="fas fa-sign-out-alt me-1"></i>Leave
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Membership Details Modal -->
+        <div class="modal fade" id="membershipDetails{{ membership.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ membership.website.brand_name }} Membership</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Status:</strong><br>
+                                <span class="badge bg-{{ membership.is_active|yesno:'success,secondary' }}">
+                                    {{ membership.is_active|yesno:'Active,Inactive' }}
+                                </span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Role:</strong><br>
+                                <span class="badge bg-info">{{ membership.get_role_display }}</span>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Joined:</strong><br>
+                                {{ membership.registered_at|date:"M j, Y" }}
+                            </div>
+                            <div class="col-6">
+                                <strong>Member for:</strong><br>
+                                {{ membership.registered_at|timesince }}
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-12">
+                                <strong>Website Information:</strong><br>
+                                <small class="text-muted">
+                                    Template: {{ membership.website.template.title }}<br>
+                                    Created: {{ membership.website.created_at|date:"M j, Y" }}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        {% if membership.website_specific_data %}
+                        <hr>
+                        <div class="row">
+                            <div class="col-12">
+                                <strong>Website-specific Data:</strong><br>
+                                <pre class="small bg-light p-2 mt-2"><code>{{ membership.website_specific_data|pprint }}</code></pre>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <a href="{{ membership.website.get_absolute_url }}" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>Visit Website
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-user-plus fa-4x text-muted mb-4"></i>
+                    <h3 class="text-muted">No Website Memberships</h3>
+                    <p class="text-muted mb-4">
+                        You haven't joined any websites yet. When you register on websites built with SiteBuilder, 
+                        they'll appear here.
+                    </p>
+                    <div class="row justify-content-center">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5>How to join websites:</h5>
+                                    <ul class="text-start">
+                                        <li>Visit websites built with SiteBuilder</li>
+                                        <li>Look for registration or sign-up forms</li>
+                                        <li>Use your existing account or create a new one</li>
+                                        <li>Your memberships will appear here automatically</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function leaveWebsite(membershipId) {
+    if (confirm('Are you sure you want to leave this website? You will lose access to member-only content.')) {
+        // Implement leave functionality
+        fetch(`/accounts/api/membership/${membershipId}/leave/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error leaving website');
+        });
+    }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}
+
+
+
+

@@ -1,0 +1,104 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Payment Pending - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark text-center">
+                    <i class="fas fa-clock fa-3x mb-3"></i>
+                    <h2 class="card-title mb-0">Cryptocurrency Payment Pending</h2>
+                </div>
+                <div class="card-body text-center py-5">
+                    <h4 class="text-warning mb-3">Waiting for Confirmation</h4>
+                    <p class="lead mb-4">
+                        Your cryptocurrency payment is being processed. This usually takes 10-30 minutes for blockchain confirmation.
+                    </p>
+                    
+                    <div class="alert alert-info text-start mb-4">
+                        <strong>Order Number:</strong> {{ order_number }}<br>
+                        <strong>Payment ID:</strong> {{ payment_uuid }}<br>
+                        <strong>Status:</strong> Pending blockchain confirmation
+                    </div>
+                    
+                    <div class="qr-display mb-4" id="qrCodeContainer">
+                        <!-- QR code will be loaded here -->
+                    </div>
+                    
+                    <div class="alert alert-light">
+                        <h6><i class="fas fa-info-circle me-2"></i>What's happening?</h6>
+                        <ul class="mb-0 small text-start">
+                            <li>Transaction submitted to blockchain network</li>
+                            <li>Waiting for network confirmations (typically 3+ confirmations)</li>
+                            <li>You'll be notified automatically when payment is complete</li>
+                            <li>Page will auto-refresh to check status</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-center mt-4">
+                        <button id="checkStatusBtn" class="btn btn-primary">
+                            <i class="fas fa-sync-alt me-2"></i>Check Status Now
+                        </button>
+                        <a href="{% url 'payments:checkout_cancel' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel Payment
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentUuid = "{{ payment_uuid }}";
+    const checkStatusBtn = document.getElementById('checkStatusBtn');
+    let checkInterval;
+    
+    // Function to check payment status
+    async function checkPaymentStatus() {
+        try {
+            checkStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+            checkStatusBtn.disabled = true;
+            
+            const response = await fetch(`/payments/check-cryptomus/{{ page.subdomain }}/${paymentUuid}/`);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.status === 'paid') {
+                    // Payment successful, redirect to success page
+                    clearInterval(checkInterval);
+                    window.location.href = `{% url 'payments:checkout_success' page.subdomain %}?order_number={{ order_number }}`;
+                } else if (data.status === 'expired') {
+                    // Payment expired
+                    clearInterval(checkInterval);
+                    alert('Payment has expired. Please try again.');
+                    window.location.href = `{% url 'payments:checkout_cancel' page.subdomain %}`;
+                } else {
+                    // Still pending, update button
+                    checkStatusBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Still Pending - Check Again';
+                    checkStatusBtn.disabled = false;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking status:', error);
+            checkStatusBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Check Status Now';
+            checkStatusBtn.disabled = false;
+        }
+    }
+    
+    // Check status on button click
+    checkStatusBtn.addEventListener('click', checkPaymentStatus);
+    
+    // Auto-check every 30 seconds
+    checkInterval = setInterval(checkPaymentStatus, 30000);
+    
+    // Initial check after 5 seconds
+    setTimeout(checkPaymentStatus, 5000);
+});
+</script>
+{% endblock %}

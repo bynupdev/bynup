@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | Elysian</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Inherit all base styles */
+        :root {
+            --text: #fdf0ec;
+            --background: #aee1f9;
+            --heading: #bde3fb;
+            --primary: #92bcfa;
+            --secondary: #333333;
+            --accent: #666666;
+            --shadow: rgba(146, 188, 250, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--secondary);
+            background-color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Cart Header */
+        .cart-header {
+            padding-top: 150px;
+            padding-bottom: 60px;
+            background: linear-gradient(to right, var(--text) 0%, rgba(253, 240, 236, 0.9) 100%);
+        }
+
+        .cart-header-content {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cart-header h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+        }
+
+        .cart-header p {
+            font-size: 18px;
+            color: var(--accent);
+            margin-bottom: 30px;
+        }
+
+        /* Cart Section */
+        .cart-section {
+            background-color: white;
+            padding: 60px 0 100px;
+        }
+
+        .cart-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+        }
+
+        /* Cart Items */
+        .cart-items {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: 120px 1fr auto;
+            gap: 25px;
+            padding: 25px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px var(--shadow);
+            border: 1px solid rgba(146, 188, 250, 0.2);
+            transition: var(--transition);
+        }
+
+        .cart-item:hover {
+            box-shadow: 0 10px 30px rgba(146, 188, 250, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .cart-item-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .cart-item-details {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .cart-item-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .cart-item-category {
+            font-size: 14px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .cart-item-variant {
+            font-size: 14px;
+            color: var(--accent);
+            margin-bottom: 15px;
+        }
+
+        .cart-item-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--text);
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .quantity-temp-btn {
+            width: 32px;
+            height: 32px;
+            background-color: white;
+            border: 1px solid var(--heading);
+            border-radius: 6px;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity-temp-btn:hover {
+            background-color: var(--background);
+        }
+
+        .quantity-input {
+            width: 50px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--secondary);
+        }
+
+        .quantity-input:focus {
+            outline: none;
+        }
+
+        .remove-temp-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .remove-temp-btn:hover {
+            color: #ff4444;
+        }
+
+        .cart-item-price {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+
+        .item-total {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .item-unit-price {
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        /* Cart Summary */
+        .cart-summary {
+            background-color: var(--text);
+            padding: 30px;
+            border-radius: 12px;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+            box-shadow: 0 5px 20px var(--shadow);
+        }
+
+        .summary-title {
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: var(--secondary);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(146, 188, 250, 0.2);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            color: var(--secondary);
+        }
+
+        .summary-value {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .summary-total {
+            font-size: 22px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .checkout-temp-btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 18px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 16px;
+            margin-top: 25px;
+        }
+
+        .checkout-temp-btn:hover {
+            background-color: var(--heading);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(146, 188, 250, 0.3);
+        }
+
+        .continue-shopping {
+            display: block;
+            text-align: center;
+            color: var(--primary);
+            text-decoration: none;
+            margin-top: 20px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .continue-shopping:hover {
+            color: var(--heading);
+            text-decoration: underline;
+        }
+
+        /* Empty Cart State */
+        .empty-cart {
+            text-align: center;
+            padding: 80px 20px;
+            background-color: white;
+            border-radius: 12px;
+            margin: 40px 0;
+            grid-column: 1 / -1;
+        }
+
+        .empty-cart i {
+            font-size: 64px;
+            color: var(--heading);
+            margin-bottom: 30px;
+        }
+
+        .empty-cart h3 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+        }
+
+        .empty-cart p {
+            color: var(--accent);
+            margin-bottom: 30px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 18px;
+        }
+
+        /* Related Products Section */
+        .related-products {
+            background-color: var(--background);
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--accent);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .product-card {
+            background-color: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(146, 188, 250, 0.2);
+        }
+
+        .product-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 250px;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-info h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .product-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .temp-btn-small {
+            flex: 1;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .temp-btn-small:hover {
+            background-color: var(--heading);
+        }
+
+        .wishlist-small {
+            width: 40px;
+            background-color: var(--text);
+            border: 1px solid var(--heading);
+            border-radius: 8px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wishlist-small:hover {
+            background-color: var(--background);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .cart-header h1 {
+                font-size: 42px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .cart-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .cart-summary {
+                position: static;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .cart-header h1 {
+                font-size: 36px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cart-header {
+                padding-top: 120px;
+            }
+            
+            .cart-item {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .cart-item-image {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .cart-item-price {
+                align-items: center;
+            }
+            
+            .section-header h2 {
+                font-size: 28px;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .cart-header h1 {
+                font-size: 32px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .cart-item-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .remove-temp-btn {
+                margin-top: 10px;
+            }
+            
+            .product-actions {
+                flex-direction: column;
+            }
+            
+            .wishlist-small {
+                width: 100%;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cart Header -->
+    <section class="cart-header editable-section" data-section="120">
+        <div class="container">
+            <div class="cart-header-content">
+                <h1 class="editable-text editable-section no-drop-zone" data-section="121" data-text="93">Your Shopping Cart</h1>
+                <p class="editable-text editable-section no-drop-zone" data-section="122" data-text="94">Review your selected luxury home accessories before proceeding to checkout</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cart Section -->
+    <section class="cart-section editable-section" data-section="123">
+        <div class="container">
+            <div class="cart-container">
+                <!-- Cart Items -->
+                <div class="cart-items">
+                    <!-- Cart Item 1 (Editable) -->
+                    <div class="cart-item editable-section no-drop-zone" data-section="124">
+                        <img src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80" 
+                             alt="Marble Tray" 
+                             class="cart-item-image editable-image"
+                             data-image="6">
+                        
+                        <div class="cart-item-details">
+                            <div>
+                                <h3 class="cart-item-title editable-text editable-section no-drop-zone" data-section="125" data-text="95">Marble & Brass Serving Tray</h3>
+                                <div class="cart-item-category editable-text editable-section no-drop-zone" data-section="126" data-text="96">Dining & Entertaining</div>
+                                <div class="cart-item-variant editable-text editable-section no-drop-zone" data-section="127" data-text="97">Color: White Marble | Size: Medium</div>
+                            </div>
+                            
+                            <div class="cart-item-actions">
+                                <div class="quantity-control">
+                                    <button class="quantity-temp-btn minus">
+                                        <i class="fas fa-minus editable-icon" data-icon="41" data-default-class="fas fa-minus"></i>
+                                    </button>
+                                    <input type="text" class="quantity-input" value="1" readonly>
+                                    <button class="quantity-temp-btn plus">
+                                        <i class="fas fa-plus editable-icon" data-icon="42" data-default-class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <button class="remove-temp-btn">
+                                    <i class="fas fa-trash-alt editable-icon" data-icon="43" data-default-class="fas fa-trash-alt"></i>
+                                    <span class="editable-text editable-section no-drop-zone" data-section="128" data-text="98">Remove</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="cart-item-price">
+                            <div class="item-total editable-text editable-section no-drop-zone" data-section="129" data-text="99">$249.00</div>
+                            <div class="item-unit-price editable-text editable-section no-drop-zone" data-section="130" data-text="100">$249.00 each</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Item 2 -->
+                    <div class="cart-item">
+                        <img src="https://images.unsplash.com/photo-1583845112205-5c72b7709567?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80" 
+                             alt="Crystal Vase" 
+                             class="cart-item-image">
+                        
+                        <div class="cart-item-details">
+                            <div>
+                                <h3 class="cart-item-title">Crystal Bud Vase Set</h3>
+                                <div class="cart-item-category">Tabletop & Decor</div>
+                                <div class="cart-item-variant">Color: Clear Crystal | Set of 3</div>
+                            </div>
+                            
+                            <div class="cart-item-actions">
+                                <div class="quantity-control">
+                                    <button class="quantity-temp-btn minus">-</button>
+                                    <input type="text" class="quantity-input" value="1" readonly>
+                                    <button class="quantity-temp-btn plus">+</button>
+                                </div>
+                                <button class="remove-temp-btn">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span>Remove</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="cart-item-price">
+                            <div class="item-total">$189.00</div>
+                            <div class="item-unit-price">$189.00 each</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Item 3 -->
+                    <div class="cart-item">
+                        <img src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80" 
+                             alt="Ceramic Lamp" 
+                             class="cart-item-image">
+                        
+                        <div class="cart-item-details">
+                            <div>
+                                <h3 class="cart-item-title">Artisan Ceramic Table Lamp</h3>
+                                <div class="cart-item-category">Lighting</div>
+                                <div class="cart-item-variant">Color: White Glaze | Bulb: Included</div>
+                            </div>
+                            
+                            <div class="cart-item-actions">
+                                <div class="quantity-control">
+                                    <button class="quantity-temp-btn minus">-</button>
+                                    <input type="text" class="quantity-input" value="1" readonly>
+                                    <button class="quantity-temp-btn plus">+</button>
+                                </div>
+                                <button class="remove-temp-btn">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span>Remove</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="cart-item-price">
+                            <div class="item-total">$329.00</div>
+                            <div class="item-unit-price">$329.00 each</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cart Summary -->
+                <div class="cart-summary editable-section no-drop-zone" data-section="131">
+                    <h3 class="summary-title editable-text editable-section no-drop-zone" data-section="132" data-text="101">Order Summary</h3>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="133" data-text="102">Subtotal</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="134" data-text="103">$767.00</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="135" data-text="104">Shipping</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="136" data-text="105">$15.00</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="137" data-text="106">Tax</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="138" data-text="107">$61.36</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="139" data-text="108">Total</span>
+                        <span class="summary-value summary-total editable-text editable-section no-drop-zone" data-section="140" data-text="109">$843.36</span>
+                    </div>
+                    
+                    <button class="checkout-temp-btn editable-text editable-section no-drop-zone" data-section="141" data-text="110">
+                        <i class="fas fa-lock editable-icon" data-icon="44" data-default-class="fas fa-lock"></i> Proceed to Checkout
+                    </button>
+                    
+                    <a href="?page=shop" class="continue-shopping editable-text editable-section no-drop-zone" data-section="142" data-text="111">Continue Shopping</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Related Products -->
+    <section class="related-products editable-section" data-section="143">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="editable-text editable-section no-drop-zone" data-section="144" data-text="112">You May Also Like</h2>
+                <p class="editable-text editable-section no-drop-zone" data-section="145" data-text="113">Complete your luxury home collection with these exquisite pieces</p>
+            </div>
+            
+            <div class="products-grid">
+                <!-- Related Product 1 (Editable) -->
+                <div class="product-card editable-section no-drop-zone" data-section="146">
+                    <div class="product-image-container">
+                        <img src="https://images.unsplash.com/photo-1536922246289-88c42f957773?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+                             alt="Scented Candle" 
+                             class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <h3 class="editable-text editable-section no-drop-zone" data-section="147" data-text="114">Black Fig & Sandalwood Candle</h3>
+                        <div class="product-price editable-text editable-section no-drop-zone" data-section="148" data-text="115">$89.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-small editable-text editable-section no-drop-zone" data-section="149" data-text="116">
+                                <i class="fas fa-cart-plus editable-icon" data-icon="45" data-default-class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="wishlist-small">
+                                <i class="far fa-heart editable-icon" data-icon="46" data-default-class="far fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 2 -->
+                <div class="product-card">
+                    <div class="product-image-container">
+                        <img src="https://images.unsplash.com/photo-1578500494198-246f612d3b3d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+                             alt="Decorative Bowl" 
+                             class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <h3>Hand-Blown Glass Bowl</h3>
+                        <div class="product-price">$179.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-small">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="wishlist-small">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 3 -->
+                <div class="product-card">
+                    <div class="product-image-container">
+                        <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+                             alt="Brass Sculpture" 
+                             class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <h3>Abstract Brass Sculpture</h3>
+                        <div class="product-price">$299.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-small">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="wishlist-small">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 4 -->
+                <div class="product-card">
+                    <div class="product-image-container">
+                        <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+                             alt="Velvet Pillow" 
+                             class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <h3>Velvet Accent Pillow</h3>
+                        <div class="product-price">$129.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-small">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="wishlist-small">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Quantity controls
+        document.querySelectorAll('.quantity-temp-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const isPlus = this.classList.contains('plus');
+                const input = this.parentElement.querySelector('.quantity-input');
+                let value = parseInt(input.value);
+                
+                if (isPlus) {
+                    value++;
+                } else if (value > 1) {
+                    value--;
+                }
+                
+                input.value = value;
+                updateCartTotals();
+            });
+        });
+        
+        // Remove item
+        document.querySelectorAll('.remove-temp-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const cartItem = this.closest('.cart-item');
+                cartItem.style.opacity = '0';
+                cartItem.style.transform = 'translateX(-20px)';
+                
+                setTimeout(() => {
+                    cartItem.remove();
+                    updateCartTotals();
+                    
+                    // Check if cart is empty
+                    if (document.querySelectorAll('.cart-item').length === 0) {
+                        showEmptyCartState();
+                    }
+                }, 300);
+            });
+        });
+        
+        // Update cart totals
+        function updateCartTotals() {
+            let subtotal = 0;
+            
+            document.querySelectorAll('.cart-item').forEach(item => {
+                const priceText = item.querySelector('.item-unit-price').textContent;
+                const price = parseFloat(priceText.replace('$', '').replace(' each', ''));
+                const quantity = parseInt(item.querySelector('.quantity-input').value);
+                const total = price * quantity;
+                
+                item.querySelector('.item-total').textContent = `$${total.toFixed(2)}`;
+                subtotal += total;
+            });
+            
+            const shipping = 15.00;
+            const tax = subtotal * 0.08; // 8% tax
+            const total = subtotal + shipping + tax;
+            
+            // Update summary
+            document.querySelector('.summary-row:nth-child(1) .summary-value').textContent = `$${subtotal.toFixed(2)}`;
+            document.querySelector('.summary-row:nth-child(3) .summary-value').textContent = `$${tax.toFixed(2)}`;
+            document.querySelector('.summary-total').textContent = `$${total.toFixed(2)}`;
+        }
+        
+        // Show empty cart state
+        function showEmptyCartState() {
+            const cartContainer = document.querySelector('.cart-container');
+            const emptyCartHTML = `
+                <div class="empty-cart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h3>Your Cart is Empty</h3>
+                    <p>Add some luxury home accessories to your cart and they'll appear here.</p>
+                    <a href="?page=shop" class="checkout-temp-btn" style="display: inline-block; width: auto; padding: 15px 40px;">
+                        <i class="fas fa-arrow-left"></i> Continue Shopping
+                    </a>
+                </div>
+            `;
+            
+            cartContainer.innerHTML = emptyCartHTML;
+        }
+        
+        // Proceed to checkout
+        document.querySelector('.checkout-temp-btn').addEventListener('click', function() {
+            alert('Proceeding to checkout...');
+            // In real implementation: window.location.href = '/checkout/';
+        });
+        
+        // Related products Add to Cart
+        document.querySelectorAll('.temp-btn-small').forEach(button => {
+            button.addEventListener('click', function() {
+                const productCard = this.closest('.product-card');
+                const productName = productCard.querySelector('h3').textContent;
+                const productPrice = productCard.querySelector('.product-price').textContent;
+                
+                alert(`Added ${productName} (${productPrice}) to cart!`);
+                
+                // Update cart badge in header
+                const cartBadge = document.querySelector('header .header-actions .icon-temp-btn:nth-child(3) .badge');
+                if (cartBadge) {
+                    let currentCount = parseInt(cartBadge.textContent) || 0;
+                    cartBadge.textContent = currentCount + 1;
+                }
+            });
+        });
+        
+        // Related products Wishlist
+        document.querySelectorAll('.wishlist-small').forEach(button => {
+            button.addEventListener('click', function() {
+                const heartIcon = this.querySelector('i');
+                if (heartIcon.classList.contains('far')) {
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                    this.style.backgroundColor = 'var(--background)';
+                    
+                    // Update wishlist badge in header
+                    const wishlistBadge = document.querySelector('header .header-actions .icon-temp-btn:nth-child(2) .badge');
+                    if (wishlistBadge) {
+                        let currentCount = parseInt(wishlistBadge.textContent) || 0;
+                        wishlistBadge.textContent = currentCount + 1;
+                    }
+                } else {
+                    heartIcon.classList.remove('fas');
+                    heartIcon.classList.add('far');
+                    this.style.backgroundColor = 'var(--text)';
+                    
+                    // Update wishlist badge in header
+                    const wishlistBadge = document.querySelector('header .header-actions .icon-temp-btn:nth-child(2) .badge');
+                    if (wishlistBadge) {
+                        let currentCount = parseInt(wishlistBadge.textContent) || 0;
+                        if (currentCount > 0) {
+                            wishlistBadge.textContent = currentCount - 1;
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Initialize cart totals
+        updateCartTotals();
+    </script>
+</body>
+</html>

@@ -1,0 +1,446 @@
+<!-- payments/templates/payments/manage_pod_orders.html -->
+{% extends 'payments/base_payments.html' %}
+
+{% block title %}Manage Pay on Delivery Orders - {{ page.brand_name }}{% endblock %}
+
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% block extra_css %}
+<style>
+.pod-order-card {
+    border-left: 4px solid #ffc107;
+    transition: all 0.3s ease;
+}
+.pod-order-card.confirmed {
+    border-left-color: #28a745;
+}
+.pod-order-card.cancelled {
+    border-left-color: #dc3545;
+}
+.order-actions {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.pod-order-card:hover .order-actions {
+    opacity: 1;
+}
+.status-badge-pod {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+}
+.customer-info {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block payment_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'payments:manage_gateways' page.subdomain %}">Payment Gateways</a></li>
+                            <li class="breadcrumb-item active">Pay on Delivery Orders</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0 text-success">
+                        <i class="fas fa-truck me-2"></i>Pay on Delivery Orders
+                    </h1>
+                    <p class="text-muted">Manage orders that require payment upon delivery</p>
+                </div>
+                <a href="{% url 'payments:configure_pod' page.subdomain %}" class="btn btn-outline-success">
+                    <i class="fas fa-cog me-2"></i>Configure POD
+                </a>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-warning bg-opacity-10 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-warning">Pending Payment</h6>
+                                    <h3 class="mb-0">{{ pending_transactions.count }}</h3>
+                                </div>
+                                <i class="fas fa-clock fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success bg-opacity-10 border-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-success">Completed</h6>
+                                    <h3 class="mb-0">{{ completed_transactions.count }}</h3>
+                                </div>
+                                <i class="fas fa-check-circle fa-2x text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info bg-opacity-10 border-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-info">Total Value</h6>
+                                    <h3 class="mb-0">{{page.currency_symbol}}{{ total_pending_value}}</h3>
+                                </div>
+                                <i class="fas fa-dollar-sign fa-2x text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Orders -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>Pending Pay on Delivery Orders
+                        <span class="badge bg-light text-dark ms-2">{{ pending_transactions.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in pending_transactions %}
+                                    <tr class="pod-order-card" id="transaction-{{ transaction.id }}">
+                                        <td>
+                                            <strong>{{ transaction.order.order_number }}</strong><br>
+                                            <small class="text-muted">ID: {{ transaction.id }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="customer-info">
+                                                <strong>{{ transaction.order.customer_name }}</strong><br>
+                                                {{ transaction.order.customer_email }}<br>
+                                                {{ transaction.order.customer_phone|default:"No phone" }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <h5 class="mb-0">{{ transaction.amount|currency:page }}</h5>
+                                        </td>
+                                        <td>
+                                            {{ transaction.created_at|date:"M d, Y" }}<br>
+                                            <small>{{ transaction.created_at|time:"g:i A" }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge status-badge-pod bg-warning">
+                                                Pending Payment
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="order-actions">
+                                                <button class="btn btn-sm btn-success confirm-payment-btn" 
+                                                        data-transaction-id="{{ transaction.id }}"
+                                                        data-order-number="{{ transaction.order.order_number }}">
+                                                    <i class="fas fa-check me-1"></i>Confirm Payment
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger cancel-order-btn"
+                                                        data-transaction-id="{{ transaction.id }}">
+                                                    <i class="fas fa-times me-1"></i>Cancel
+                                                </button>
+                                                <a href="{% url 'admin:payments_order_change' transaction.order.id %}" 
+                                                   class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                    <i class="fas fa-external-link-alt me-1"></i>View
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-success">No Pending Orders</h5>
+                            <p class="text-muted">All Pay on Delivery orders have been processed.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recently Completed -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Recently Completed
+                        <span class="badge bg-light text-success ms-2">{{ completed_transactions.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if completed_transactions %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Amount</th>
+                                        <th>Payment Date</th>
+                                        <th>Confirmed By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in completed_transactions %}
+                                    <tr class="pod-order-card confirmed">
+                                        <td>{{ transaction.order.order_number }}</td>
+                                        <td>{{ transaction.order.customer_name }}</td>
+                                        <td>{{ transaction.amount|currency:page }}</td>
+                                        <td>
+                                            {{ transaction.processed_at|date:"M d, Y" }}<br>
+                                            <small>{{ transaction.processed_at|time:"g:i A" }}</small>
+                                        </td>
+                                        <td>
+                                            {{ transaction.gateway_response.confirmed_by|default:"System" }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted">No completed Pay on Delivery orders yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>Confirm Payment Received
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to confirm that payment has been received for order <strong id="confirmOrderNumber"></strong>?</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This will mark the order as completed and update inventory.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmPaymentFinal">Yes, Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancellation Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle me-2"></i>Cancel Order
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please provide a reason for cancelling this order:</p>
+                <textarea class="form-control" id="cancelReason" rows="3" 
+                          placeholder="e.g., Customer requested cancellation, Delivery failed, etc."></textarea>
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This action cannot be undone. The customer will be notified.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="cancelOrderFinal">Cancel Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentTransactionId = null;
+    const csrfToken = getCSRFToken();
+    
+    // Confirm payment buttons
+    document.querySelectorAll('.confirm-payment-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentTransactionId = this.dataset.transactionId;
+            document.getElementById('confirmOrderNumber').textContent = this.dataset.orderNumber;
+            new bootstrap.Modal(document.getElementById('confirmPaymentModal')).show();
+        });
+    });
+    
+    // Cancel order buttons
+    document.querySelectorAll('.cancel-order-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentTransactionId = this.dataset.transactionId;
+            new bootstrap.Modal(document.getElementById('cancelOrderModal')).show();
+        });
+    });
+    
+    // Final confirmation for payment
+    document.getElementById('confirmPaymentFinal').addEventListener('click', async function() {
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Confirming...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch(`/payments/confirm-pod-payment/{{ page.subdomain }}/${currentTransactionId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove row from table
+                const row = document.getElementById(`transaction-${currentTransactionId}`);
+                if (row) row.remove();
+                
+                // Show success message
+                showToast('Payment confirmed successfully!', 'success');
+                
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('confirmPaymentModal')).hide();
+            } else {
+                throw new Error(data.error || 'Confirmation failed');
+            }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'danger');
+        } finally {
+            this.innerHTML = 'Yes, Confirm Payment';
+            this.disabled = false;
+        }
+    });
+    
+    // Final cancellation
+    document.getElementById('cancelOrderFinal').addEventListener('click', async function() {
+        const reason = document.getElementById('cancelReason').value.trim();
+        
+        if (!reason) {
+            showToast('Please provide a cancellation reason', 'warning');
+            return;
+        }
+        
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Cancelling...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch(`/payments/cancel-pod-order/{{ page.subdomain }}/${currentTransactionId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ reason: reason })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove row from table
+                const row = document.getElementById(`transaction-${currentTransactionId}`);
+                if (row) row.remove();
+                
+                // Show success message
+                showToast('Order cancelled successfully', 'success');
+                
+                // Close modal and clear reason
+                document.getElementById('cancelReason').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('cancelOrderModal')).hide();
+            } else {
+                throw new Error(data.error || 'Cancellation failed');
+            }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'danger');
+        } finally {
+            this.innerHTML = 'Cancel Order';
+            this.disabled = false;
+        }
+    });
+    
+    // Helper functions
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+    
+    function showToast(message, type = 'info') {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.id = toastId;
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Show toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remove toast after it's hidden
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+});
+</script>
+{% endblock %}

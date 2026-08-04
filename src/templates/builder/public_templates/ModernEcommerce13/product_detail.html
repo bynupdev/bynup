@@ -1,0 +1,1509 @@
+{% load static %}
+{% load style_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title|default:"Property Details" }} | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="{% static 'builder/js/cart-operations.js' %}" defer></script>
+    <style>
+        /* Product Details Specific Styles */
+        .product-details-container#section-107 {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 4rem 5%;
+            margin-top: 80px;
+        }
+        
+        .product-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            margin-bottom: 5rem;
+        }
+        
+        .product-gallery#section-108 {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+        
+        .main-image {
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(126, 112, 83, 0.1);
+        }
+        
+        .main-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.3s ease;
+        }
+        
+        .image-thumbnails {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+        
+        .thumbnail {
+            height: 100px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .thumbnail.active {
+            border-color: #7E7053;
+        }
+        
+        .thumbnail:hover {
+            border-color: #A9A1BC;
+        }
+        
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .product-info {
+            padding: 1rem 0;
+        }
+        
+        .product-badge {
+            display: inline-block;
+            background-color: #A9A1BC;
+            color: #FFFFFF;
+            padding: 0.3rem 1rem;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+        
+        .product-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+        
+        .product-location {
+            color: #7E7053;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .product-location i {
+            color: #A9A1BC;
+        }
+        
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stars {
+            color: #FFD700;
+        }
+        
+        .rating-count {
+            color: #7E7053;
+            font-size: 0.9rem;
+        }
+        
+        .product-price {
+            font-size: 2.2rem;
+            color: #2C2C2C;
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+        
+        .product-description {
+            margin-bottom: 2.5rem;
+            line-height: 1.8;
+            color: #2C2C2C;
+        }
+        
+        .product-features#section-115 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+            padding: 1.5rem;
+            background-color: rgba(214, 215, 210, 0.3);
+            border-radius: 5px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        
+        .feature-item i {
+            color: #A9A1BC;
+            font-size: 1.2rem;
+        }
+        
+        .variants-section#section-122, .variants-section#section-127 {
+            margin-bottom: 2.5rem;
+        }
+        
+        .variant-title {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+        
+        .variant-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+        
+        .variant-btn {
+            padding: 0.7rem 1.5rem;
+            background-color: #FFFFFF;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            color: #2C2C2C;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .variant-btn.active {
+            background-color: #7E7053;
+            color: #FFFFFF;
+            border-color: #7E7053;
+        }
+        
+        .variant-btn:hover:not(.active) {
+            background-color: rgba(126, 112, 83, 0.1);
+        }
+        
+        .action-buttons#section-132 {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+        
+        .btn-buy-now {
+            flex: 2;
+            padding: 1.2rem;
+            background-color: #7E7053;
+            color: #FFFFFF;
+            border: none;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-buy-now:hover {
+            background-color: #2C2C2C;
+            transform: translateY(-2px);
+        }
+        
+        .btn-add-cart {
+            flex: 1;
+            padding: 1.2rem;
+            background-color: transparent;
+            color: #7E7053;
+            border: 1px solid #7E7053;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-add-cart:hover {
+            background-color: rgba(126, 112, 83, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .wishlist-btn {
+            width: 60px;
+            background-color: transparent;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            color: #2C2C2C;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .wishlist-btn:hover {
+            background-color: rgba(169, 161, 188, 0.1);
+            color: #A9A1BC;
+        }
+        
+        .reviews-section#section-135 {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 1px solid rgba(126, 112, 83, 0.2);
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: #2C2C2C;
+        }
+        
+        .review-form#section-137 {
+            background-color: rgba(214, 215, 210, 0.3);
+            padding: 2rem;
+            border-radius: 5px;
+            margin-bottom: 3rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #2C2C2C;
+        }
+        
+        .star-rating {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        
+        .star-rating i {
+            color: #ddd;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .star-rating i:hover,
+        .star-rating i.active {
+            color: #FFD700;
+        }
+        
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            background-color: #FFFFFF;
+            font-family: inherit;
+        }
+        
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .btn-submit {
+            padding: 0.8rem 2rem;
+            background-color: #7E7053;
+            color: #FFFFFF;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background-color: #2C2C2C;
+        }
+        
+        .reviews-list#section-144 {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .review-item {
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(126, 112, 83, 0.1);
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+        
+        .reviewer-name {
+            font-weight: 500;
+            color: #2C2C2C;
+        }
+        
+        .review-date {
+            color: #7E7053;
+            font-size: 0.9rem;
+        }
+        
+        .review-content {
+            color: #2C2C2C;
+            line-height: 1.6;
+        }
+        
+        .related-products#section-149 {
+            margin-top: 5rem;
+        }
+        
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .related-card {
+            background-color: #FFFFFF;
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .related-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        
+        .related-image {
+            height: 200px;
+            overflow: hidden;
+        }
+        
+        .related-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.3s ease;
+        }
+        
+        .related-card:hover .related-image img {
+            transform: scale(1.05);
+        }
+        
+        .related-info {
+            padding: 1.5rem;
+        }
+        
+        .related-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #2C2C2C;
+        }
+        
+        .related-price {
+            color: #7E7053;
+            font-size: 1.1rem;
+        }
+        
+        .empty-related {
+            text-align: center;
+            padding: 3rem;
+            grid-column: 1 / -1;
+            {% if not related_products %}display: block;{% else %}display: none;{% endif %}
+        }
+        
+        .empty-related i {
+            font-size: 2.5rem;
+            color: #A9A1BC;
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-related h3 {
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+        
+        .empty-related p {
+            color: #7E7053;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 107 160 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 107 160 %}
+        
+        /* Universal Buy Now Button */
+        .universal-buy-now-btn {
+            background-color: #7E7053;
+            color: #FFFFFF;
+            border: 1px solid #7E7053;
+            padding: 1.2rem;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 2;
+        }
+        
+        .universal-buy-now-btn:hover {
+            background-color: #2C2C2C;
+            transform: translateY(-2px);
+        }
+        
+        /* Success Popup */
+        .popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #7E7053;
+            color: var(--nav-text, white);
+            padding: 20px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(126, 112, 83, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .popup.show {
+            transform: translateX(0);
+        }
+        
+        .popup-icon {
+            font-size: 1.5em;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .product-details-grid {
+                gap: 3rem;
+            }
+            
+            .main-image {
+                height: 450px;
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .product-details-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+            
+            .product-gallery#section-108 {
+                position: static;
+            }
+            
+            .main-image {
+                height: 500px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .product-details-container#section-107 {
+                padding: 3rem 5%;
+                margin-top: 70px;
+            }
+            
+            .main-image {
+                height: 400px;
+            }
+            
+            .product-title {
+                font-size: 2rem;
+            }
+            
+            .product-price {
+                font-size: 1.8rem;
+            }
+            
+            .action-buttons#section-132 {
+                flex-direction: column;
+            }
+            
+            .wishlist-btn {
+                width: 100%;
+                height: 50px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .main-image {
+                height: 350px;
+            }
+            
+            .image-thumbnails {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .thumbnail {
+                height: 120px;
+            }
+            
+            .product-features#section-115 {
+                grid-template-columns: 1fr;
+            }
+            
+            .variant-options {
+                justify-content: center;
+            }
+            
+            .related-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-image {
+                height: 300px;
+            }
+            
+            .product-title {
+                font-size: 1.7rem;
+            }
+            
+            .product-price {
+                font-size: 1.6rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}" style="margin-top: 50px;">
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce2/snippets/header2.html' %}
+    
+    <!-- Success Popup -->
+    <div class="popup" id="successPopup">
+        <span class="popup-icon">✓</span>
+        <span class="popup-message">Review submitted successfully!</span>
+    </div>
+
+    <!-- Product Details Content -->
+    <div class="product-details-container" id="section-107">
+        <div class="product-details-grid">
+            <!-- Product Gallery -->
+            <div class="product-gallery" id="section-108">
+                <div class="main-image">
+                    <img id="mainProductImage" src="{% if product.main_image %}{{ product.main_image.url }}{% elif product.image_url %}{{ product.image_url }}{% else %}https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80{% endif %}" alt="{{ product.title }}">
+                </div>
+                
+                <div class="image-thumbnails">
+                    {% if product.main_image %}
+                        <div class="thumbnail active" data-image="{{ product.main_image.url }}">
+                            <img src="{{ product.main_image.url }}" alt="{{ product.title }}">
+                        </div>
+                    {% endif %}
+                    
+                    {% for image in product_images %}
+                        <div class="thumbnail" data-image="{{ image.image.url }}">
+                            <img src="{{ image.image.url }}" alt="{{ product.title }} - Image {{ forloop.counter }}">
+                        </div>
+                    {% empty %}
+                        <!-- Default thumbnails -->
+                        {% if product.main_image %}
+                            <div class="thumbnail active" data-image="{{ product.main_image.url }}">
+                                <img src="{{ product.main_image.url }}" alt="{{ product.title }}">
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            {% for component in components %}
+            {% if component.drop_zone == '107' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+            {% endif %}
+            {% endfor %}
+            
+            <!-- Product Information -->
+            <div class="product-info">
+                <div class="product-badge" id="section-109">{{ text_contents.42|default:"FEATURED PROPERTY" }}</div>
+                
+                <h1 class="product-title" id="section-110">{{ product.title }}</h1>
+                
+                <div class="product-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="section-111">
+                        {% if product.location %}{{ product.location }}{% else %}{{ text_contents.44|default:"Premium Location" }}{% endif %}
+                    </span>
+                </div>
+                
+                <div class="product-rating star-rating-display" 
+                     data-rating="{{ average_rating|default:0 }}"
+                     data-review-count="{{ review_count }}">
+                    <div class="stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= full_stars %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="rating-count" id="section-112">
+                        ({{ average_rating|default:"4.7" }} from {{ review_count }} reviews)
+                    </span>
+                </div>
+                
+                <div class="product-price" id="section-113">
+                    ${{ product.price }}
+                    {% if product.compare_at_price and product.compare_at_price > product.price %}
+                        <span style="text-decoration: line-through; color: #7E7053; font-size: 1.4rem; margin-left: 10px;">
+                            ${{ product.compare_at_price }}
+                        </span>
+                    {% endif %}
+                </div>
+                
+                <p class="product-description" id="section-114">
+                    {{ product.description|striptags|default:"An exceptional property offering premium features and luxurious amenities. Designed with attention to detail and crafted for comfort and elegance." }}
+                </p>
+                
+                <div class="product-features" id="section-115">
+                    <!-- Customizable features based on product data -->
+                    {% if product.bedrooms or text_contents.48 %}
+                    <div class="feature-item">
+                        <i class="fas fa-bed"></i>
+                        <span id="section-116">{{ product.bedrooms|default:text_contents.48|default:"Bedrooms" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.bathrooms or text_contents.49 %}
+                    <div class="feature-item">
+                        <i class="fas fa-bath"></i>
+                        <span id="section-117">{{ product.bathrooms|default:text_contents.49|default:"Bathrooms" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.square_feet or text_contents.50 %}
+                    <div class="feature-item">
+                        <i class="fas fa-ruler-combined"></i>
+                        <span id="section-118">{{ product.square_feet|default:text_contents.50|default:"Square Feet" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.garage or text_contents.51 %}
+                    <div class="feature-item">
+                        <i class="fas fa-car"></i>
+                        <span id="section-119">{{ product.garage|default:text_contents.51|default:"Garage" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.pool or text_contents.52 %}
+                    <div class="feature-item">
+                        <i class="fas fa-swimming-pool"></i>
+                        <span id="section-120">{{ product.pool|default:text_contents.52|default:"Pool" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.beach_access or text_contents.53 %}
+                    <div class="feature-item">
+                        <i class="fas fa-umbrella-beach"></i>
+                        <span id="section-121">{{ product.beach_access|default:text_contents.53|default:"Beach Access" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Property Variations -->
+                {% if colors %}
+                <div class="variants-section" id="section-122">
+                    <h3 class="variant-title" id="section-123">{{ text_contents.54|default:"Color Options" }}</h3>
+                    <div class="variant-options">
+                        {% for color in colors %}
+                            <button class="variant-btn {% if forloop.first %}active{% endif %}" 
+                                    onclick="selectColor(this, '{{ color }}')"
+                                    data-color="{{ color }}">
+                                {{ color }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Property Size Variations -->
+                {% if sizes %}
+                <div class="variants-section" id="section-127">
+                    <h3 class="variant-title" id="section-128">{{ text_contents.58|default:"Size Options" }}</h3>
+                    <div class="variant-options">
+                        {% for size in sizes %}
+                            <button class="variant-btn {% if forloop.first %}active{% endif %}" 
+                                    onclick="selectSize(this)"
+                                    data-size="{{ size }}">
+                                {{ size }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Action Buttons -->
+                <div class="action-buttons" id="section-132">
+                    <button class="universal-buy-now-btn" 
+                            data-product-id="{{ product.id }}"
+                            data-product-title="{{ product.title }}"
+                            data-product-price="{{ product.price }}"
+                            data-product-description="{{ product.description|truncatewords:20 }}"
+                            onclick="redirectToPaymentSelection(this)">
+                        <i class="fas fa-bolt"></i> {{ text_contents.62|default:"Buy Now" }} - ${{ product.price }}
+                    </button>
+                    
+                    <button class="btn-add-cart" id="addToCartBtn" 
+                            data-add-to-cart="{{ product.id }}">
+                        {{ text_contents.63|default:"Add to Cart" }}
+                    </button>
+                    
+                    <button class="wishlist-btn" onclick="toggleWishlist()">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '135' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <!-- Reviews Section -->
+        <div class="reviews-section" id="section-135">
+            <h2 class="section-title" id="section-136">{{ text_contents.64|default:"Customer Reviews" }}</h2>
+            
+            <!-- Review Form -->
+            <div class="review-form" id="section-137">
+                <h3 id="section-138">{{ text_contents.65|default:"Share Your Experience" }}</h3>
+                
+                <form id="reviewForm" method="POST" action="{% url 'submit_review' page.subdomain %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    
+                    <div class="form-group">
+                        <label class="form-label" id="section-139">{{ text_contents.66|default:"Your Rating" }}</label>
+                        <div class="star-rating-input">
+                            <input type="radio" id="star5" name="rating" value="5">
+                            <label for="star5">★</label>
+                            <input type="radio" id="star4" name="rating" value="4">
+                            <label for="star4">★</label>
+                            <input type="radio" id="star3" name="rating" value="3">
+                            <label for="star3">★</label>
+                            <input type="radio" id="star2" name="rating" value="2">
+                            <label for="star2">★</label>
+                            <input type="radio" id="star1" name="rating" value="1">
+                            <label for="star1">★</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" id="section-140">{{ text_contents.67|default:"Your Name" }}</label>
+                        <input type="text" class="form-input" name="user_name" placeholder="Enter your name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" id="section-141">{{ text_contents.68|default:"Your Review" }}</label>
+                        <textarea class="form-textarea" id="section-142" name="comment" placeholder="{{ text_contents.69|default:'Share your experience with this property...' }}" required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit submitBtn" id="section-143">{{ text_contents.70|default:"Submit Review" }}</button>
+                </form>
+            </div>
+            
+            <!-- Reviews List -->
+            <div class="reviews-list" id="section-144">
+                {% if reviews %}
+                    {% for review in reviews %}
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="reviewer-name">{{ review.author_name|default:"Anonymous" }}</div>
+                            <div class="review-date">{{ review.created_at|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="stars" style="margin-bottom: 0.5rem;">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <h4 style="margin-bottom: 0.5rem;">{{ review.title|default:"Great Property" }}</h4>
+                        <div class="review-content">{{ review.comment }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Default reviews if none in database -->
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="reviewer-name" id="section-145">{{ text_contents.71|default:"Satisfied Customer" }}</div>
+                            <div class="review-date">{{ "now"|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="stars" style="margin-bottom: 0.5rem;">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h4 style="margin-bottom: 0.5rem;">{{ text_contents.72|default:"Excellent Experience" }}</h4>
+                        <div class="review-content" id="section-146">{{ text_contents.73|default:"This property exceeded all expectations. The attention to detail and quality are exceptional." }}</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '149' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <!-- Related Products -->
+        <div class="related-products" id="section-149">
+            <h2 class="section-title" id="section-150">{{ text_contents.75|default:"Related Properties" }}</h2>
+            
+            <div class="related-grid">
+                {% if related_products %}
+                    {% for related in related_products %}
+                    <div class="related-card">
+                        <a href="/product/{{ related.slug }}/">
+                            <div class="related-image">
+                                {% if related.main_image %}
+                                    <img src="{{ related.main_image.url }}" alt="{{ related.title }}">
+                                {% elif related.image_url %}
+                                    <img src="{{ related.image_url }}" alt="{{ related.title }}">
+                                {% else %}
+                                    <img src="https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=870&q=80" alt="{{ related.title }}">
+                                {% endif %}
+                            </div>
+                            <div class="related-info">
+                                <h3 class="related-title">{{ related.title|truncatewords:4 }}</h3>
+                                <div class="related-price">${{ related.price }}</div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State -->
+                    <div class="empty-related">
+                        <i class="fas fa-home"></i>
+                        <h3 id="section-154">{{ text_contents.78|default:"No Related Properties" }}</h3>
+                        <p id="section-155">{{ text_contents.79|default:"There are currently no related properties available. Check back soon for new luxury listings." }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce2/snippets/footer.html' %}
+    
+    <!-- Hidden field for subdomain -->
+    <input type="hidden" id="page-subdomain" value="{{ page.subdomain }}">
+    
+    <!-- JavaScript Files -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    <script src="{% static 'js/review-manager.js' %}"></script>
+    
+        <script>
+        // Variants data from backend
+        const VARIANTS = [
+            {% for variant in variants %}
+            {
+                product_id: "{{ variant.product_id }}",
+                option1: "{{ variant.option1|escapejs }}",
+                cj_vid: "{{ variant.cj_vid }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        // ADD THE MISSING FUNCTION DEFINITIONS FROM YOUR SAMPLE DOCUMENT
+        /* ======================================================
+           BUY NOW CHECKOUT HANDLER
+        ====================================================== */
+        window.redirectToPaymentSelection = function(button) {
+            // Get product data from button attributes
+            const productId = button.dataset.productId;
+            const productTitle = button.dataset.productTitle;
+            const productPrice = parseFloat(button.dataset.productPrice);
+            const productDescription = button.dataset.productDescription;
+            
+            // Find the product variant from the VARIANTS array
+            const productVariants = VARIANTS.filter(
+                v => String(v.product_id) === String(productId)
+            );
+            
+            // If no variants exist for this product, use default
+            if (!productVariants.length) {
+                // Create cart data with default values
+                const cartData = createBuyNowCartData({
+                    id: productId,
+                    title: productTitle,
+                    description: productDescription,
+                    price: productPrice,
+                    quantity: 1,
+                    selected_color: getSelectedColor(),
+                    selected_size: getSelectedSize(),
+                    cj_vid: ''
+                });
+                
+                redirectToPayment(cartData);
+                return;
+            }
+            
+            // If only one variant, use it directly
+            if (productVariants.length === 1) {
+                const variant = productVariants[0];
+                const { color, size } = parseVariantOption(variant.option1);
+                
+                const cartData = createBuyNowCartData({
+                    id: productId,
+                    title: productTitle,
+                    description: productDescription,
+                    price: productPrice,
+                    quantity: 1,
+                    selected_color: color,
+                    selected_size: size,
+                    cj_vid: variant.cj_vid
+                });
+                
+                redirectToPayment(cartData);
+                return;
+            }
+            
+            // Show variant selection modal if multiple variants exist
+            showVariantSelectionModal({
+                productId,
+                productTitle,
+                productPrice,
+                productDescription,
+                variants: productVariants
+            });
+        };
+        
+        /* ======================================================
+           VARIANT OPTION PARSER
+        ====================================================== */
+        function parseVariantOption(option1) {
+            if (!option1) return { color: '', size: '' };
+            // Normalize separators and spacing
+            const normalized = option1
+                .replace(/\//g, '-')     // White/XL → White-XL
+                .replace(/\s*-\s*/g, '-') // cleanup spaces around hyphen
+                .trim();
+            const parts = normalized.split('-');
+            if (parts.length < 2) return { color: '', size: '' };
+            // Always read from RIGHT → size is last, color before it
+            const size = parts.pop().trim();
+            const color = parts.pop().trim();
+            return { color, size };
+        }
+        
+        /* ======================================================
+           CREATE BUY NOW CART DATA
+        ====================================================== */
+        function createBuyNowCartData(itemData) {
+            const items = [{
+                title: itemData.title,
+                description: itemData.description,
+                id: itemData.id,
+                cj_vid: itemData.cj_vid || '',
+                price: itemData.price,
+                quantity: itemData.quantity || 1,
+                selected_color: itemData.selected_color || '',
+                selected_size: itemData.selected_size || '',
+                total_price: itemData.price * (itemData.quantity || 1)
+            }];
+            
+            const subtotal = items[0].total_price;
+            const shipping = subtotal > 0 ? 5.00 : 0;
+            const tax = subtotal * 0.08;
+            const total = subtotal + shipping + tax;
+            
+            return {
+                items,
+                subtotal: parseFloat(subtotal.toFixed(2)),
+                shipping_amount: parseFloat(shipping.toFixed(2)),
+                tax_amount: parseFloat(tax.toFixed(2)),
+                total_amount: parseFloat(total.toFixed(2)),
+                is_buy_now: true // This flag tells redirectToPayment() how to format the URL
+            };
+        }
+        
+        /* ======================================================
+           REDIRECT TO PAYMENT (SHARED FUNCTION)
+        ====================================================== */
+        function redirectToPayment(cartData) {
+            if (!cartData.items.length) {
+                alert('No items to checkout');
+                return;
+            }
+            
+            const hostname = window.location.hostname;
+            const page_domain = document.getElementById('page-subdomain').value;
+            
+            const subdomain = hostname.includes('localhost')
+                ? page_domain
+                : hostname.split('.')[0];
+            
+            // Determine checkout type and prepare parameters
+            let urlParams;
+            
+            if (cartData.is_buy_now) {
+                // For buy now, send as "instant" type with "product" parameter
+                // Extract the first item (since buy now has only one product)
+                const product = cartData.items[0];
+                urlParams = new URLSearchParams({
+                    type: 'instant',
+                    product: JSON.stringify({
+                        title: product.title,
+                        description: product.description,
+                        id: product.id,
+                        cj_vid: product.cj_vid,
+                        price: product.price,
+                        quantity: product.quantity,
+                        selected_color: product.selected_color,
+                        selected_size: product.selected_size,
+                        total_price: product.total_price
+                    })
+                });
+            } else {
+                // For cart, send as "cart" type with "cart" parameter
+                const cartDataForURL = {
+                    items: cartData.items,
+                    subtotal: cartData.subtotal,
+                    shipping_amount: cartData.shipping_amount,
+                    tax_amount: cartData.tax_amount,
+                    total_amount: cartData.total_amount
+                };
+                
+                urlParams = new URLSearchParams({
+                    type: 'cart',
+                    cart: JSON.stringify(cartDataForURL)
+                });
+            }
+            
+            window.location.href = `/payments/select-payment/${subdomain}/?${urlParams.toString()}`;
+        }
+        
+        /* ======================================================
+           HELPER FUNCTIONS FOR SELECTED VARIANTS
+        ====================================================== */
+        function getSelectedColor() {
+            const selectedColorBtn = document.querySelector('.variants-section .variant-btn.active[data-color]');
+            return selectedColorBtn ? selectedColorBtn.getAttribute('data-color') : '';
+        }
+        
+        function getSelectedSize() {
+            const selectedSizeBtn = document.querySelector('.variants-section .variant-btn.active[data-size]');
+            return selectedSizeBtn ? selectedSizeBtn.getAttribute('data-size') : '';
+        }
+        
+        /* ======================================================
+           VARIANT SELECTION MODAL (FOR BUY NOW)
+        ====================================================== */
+        function showVariantSelectionModal(productData) {
+            const { productId, productTitle, productPrice, productDescription, variants } = productData;
+            
+            // Extract unique colors and sizes
+            const colorSet = new Set();
+            const sizeSet = new Set();
+            const variantMap = new Map(); // Store cj_vid by color-size combination
+            
+            variants.forEach(v => {
+                if (!v.option1) return;
+                
+                const { color, size } = parseVariantOption(v.option1);
+                
+                if (color && size) {
+                    colorSet.add(color);
+                    sizeSet.add(size);
+                    const key = `${color}-${size}`.toLocaleLowerCase().trim();
+                    variantMap.set(key, v.cj_vid);
+                }
+            });
+            
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 9998;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            `;
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: #fff;
+                border-radius: 14px;
+                padding: 24px;
+                width: 90%;
+                max-width: 500px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+                font-family: system-ui;
+            `;
+            
+            // Generate options HTML
+            const colorsHTML = Array.from(colorSet).map(color =>
+                `<option value="${color}">${color}</option>`
+            ).join('');
+            
+            const sizesHTML = Array.from(sizeSet).map(size =>
+                `<option value="${size}">${size}</option>`
+            ).join('');
+            
+            modal.innerHTML = `
+                <h3 style="margin-top: 0; margin-bottom: 16px;">Select Variant</h3>
+                <p style="margin-bottom: 20px; color: #666;">${productTitle}</p>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">Color:</label>
+                    <select id="buyNowColorSelect"
+                            style="width: 100%; padding: 10px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 16px;">
+                        <option value="">Select Color</option>
+                        ${colorsHTML}
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">Size:</label>
+                    <select id="buyNowSizeSelect"
+                            style="width: 100%; padding: 10px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 16px;">
+                        <option value="">Select Size</option>
+                        ${sizesHTML}
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">Quantity:</label>
+                    <input type="number" id="buyNowQuantity"
+                           value="1" min="1" max="10"
+                           style="width: 100%; padding: 10px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 16px;">
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="cancelBuyNow"
+                            style="padding: 10px 18px; background: #f0f0f0; color: #333; border: none; border-radius: 8px; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button id="proceedBuyNow"
+                            style="padding: 10px 18px; background: #111; color: #fff; border: none; border-radius: 8px; cursor: pointer;">
+                        Proceed to Checkout
+                    </button>
+                </div>
+            `;
+            
+            // Event handlers
+            modal.querySelector('#cancelBuyNow').onclick = () => {
+                overlay.remove();
+                modal.remove();
+            };
+            
+            modal.querySelector('#proceedBuyNow').onclick = () => {
+                const selectedColor = modal.querySelector('#buyNowColorSelect').value;
+                const selectedSize = modal.querySelector('#buyNowSizeSelect').value;
+                const quantity = parseInt(modal.querySelector('#buyNowQuantity').value) || 1;
+                
+                if (!selectedColor || !selectedSize) {
+                    alert('Please select both color and size');
+                    return;
+                }
+                
+                const combinationKey = `${selectedColor}-${selectedSize}`.toLowerCase().trim();
+                const cjVid = variantMap.get(combinationKey);
+                
+                if (!cjVid) {
+                    // Show error if combination doesn't exist
+                    alert(`The combination ${selectedColor}/${selectedSize} is not available. Please select another.`);
+                    return;
+                }
+                
+                // Create cart data
+                const cartData = createBuyNowCartData({
+                    id: productId,
+                    title: productTitle,
+                    description: productDescription,
+                    price: productPrice,
+                    quantity: quantity,
+                    selected_color: selectedColor,
+                    selected_size: selectedSize,
+                    cj_vid: cjVid
+                });
+                
+                // Clean up modal
+                overlay.remove();
+                modal.remove();
+                
+                // Redirect to payment
+                redirectToPayment(cartData);
+            };
+            
+            // Add to DOM
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            
+            // Focus on first select
+            modal.querySelector('#buyNowColorSelect').focus();
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Image Gallery Functionality
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            const mainImage = document.getElementById('mainProductImage');
+            
+            thumbnails.forEach(thumbnail => {
+                thumbnail.addEventListener('click', function() {
+                    // Remove active class from all thumbnails
+                    thumbnails.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked thumbnail
+                    this.classList.add('active');
+                    
+                    // Change main image
+                    const newImageSrc = this.getAttribute('data-image');
+                    if (newImageSrc) {
+                        mainImage.src = newImageSrc;
+                    }
+                });
+            });
+            
+            // Star Rating Functionality
+            const stars = document.querySelectorAll('.star-rating-input label');
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = this.getAttribute('for').replace('star', '');
+                    
+                    // Update stars display
+                    stars.forEach((s, index) => {
+                        if (5 - index <= rating) {
+                            s.style.color = '#FFD700';
+                        } else {
+                            s.style.color = '#ddd';
+                        }
+                    });
+                });
+            });
+            
+            // Variant Selection
+            const variantButtons = document.querySelectorAll('.variant-btn');
+            variantButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons in this group
+                    const parentSection = this.closest('.variants-section');
+                    if (parentSection) {
+                        parentSection.querySelectorAll('.variant-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                    }
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                });
+            });
+            
+            // Add to Cart functionality
+            const addToCartBtn = document.getElementById('addToCartBtn');
+            if (addToCartBtn) {
+                addToCartBtn.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-add-to-cart');
+                    const quantity = 1;
+                    
+                    // Get selected variants
+                    let selectedColor = getSelectedColor();
+                    let selectedSize = getSelectedSize();
+                    
+                    // Use cartManager if available
+                    if (window.cartManager) {
+                        window.cartManager.addToCart(productId, quantity);
+                    } else {
+                        // Fallback to direct fetch
+                        fetch(`/builder/cart/add/{{ page.subdomain }}/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                product_id: productId,
+                                quantity: quantity,
+                                selected_color: selectedColor,
+                                selected_size: selectedSize
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Property added to cart!');
+                                updateCartCounter(data.cart_items_count || data.cart_count || 1);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Wishlist functionality
+            window.toggleWishlist = function() {
+                const productId = {{ product.id }};
+                
+                if (window.cartManager) {
+                    window.cartManager.addToWishlist(productId);
+                } else {
+                    fetch(`/builder/wishlist/add/{{ page.subdomain }}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ product_id: productId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Added to wishlist!');
+                            const wishlistBtn = document.querySelector('.wishlist-btn i');
+                            if (wishlistBtn.classList.contains('far')) {
+                                wishlistBtn.classList.remove('far');
+                                wishlistBtn.classList.add('fas');
+                                wishlistBtn.style.color = '#A9A1BC';
+                            }
+                        }
+                    });
+                }
+            };
+            
+            // Helper functions for variant selection
+            window.selectColor = function(element, color) {
+                const parentSection = element.closest('.variants-section');
+                parentSection.querySelectorAll('.variant-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                element.classList.add('active');
+            };
+            
+            window.selectSize = function(element) {
+                const parentSection = element.closest('.variants-section');
+                parentSection.querySelectorAll('.variant-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                element.classList.add('active');
+            };
+            
+            // Helper function to update cart counter
+            function updateCartCounter(count) {
+                const counters = document.querySelectorAll('.cart-counter');
+                counters.forEach(counter => {
+                    counter.textContent = count;
+                    counter.style.display = count > 0 ? 'inline' : 'none';
+                });
+            }
+            
+            // CSRF helper function
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            // Initialize review form submission
+            const reviewForm = document.getElementById('reviewForm');
+            if (reviewForm) {
+                reviewForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const submitBtn = this.querySelector('.submitBtn');
+                    const originalText = submitBtn.textContent;
+                    
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Submitting...';
+                    
+                    const formData = new FormData(this);
+                    
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success popup
+                            const popup = document.getElementById('successPopup');
+                            popup.classList.add('show');
+                            
+                            // Reset form
+                            this.reset();
+                            
+                            // Reset stars
+                            document.querySelectorAll('.star-rating-input label').forEach(star => {
+                                star.style.color = '#ddd';
+                            });
+                            
+                            // Reload page after delay
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            alert(data.error || 'Error submitting review');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Network error. Please try again.');
+                    })
+                    .finally(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

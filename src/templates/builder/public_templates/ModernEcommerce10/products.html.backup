@@ -1,0 +1,1092 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% render_icon_data icon_customizations %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop | {{ page.brand_name|default:"Elysian" }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Inherit all base styles from home page */
+        :root {
+            --cream: #fdf0ec;
+            --light-blue: #aee1f9;
+            --medium-blue: #bde3fb;
+            --deep-blue: #92bcfa;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(146, 188, 250, 0.1);
+            --transition: all 0.3s ease;
+        }
+        {% generate_color_variables %}
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            background-color: var(--cream);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            /* padding: 0 20px; */
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Shop Header Section */
+        .shop-header {
+            padding-top: 150px;
+            padding-bottom: 60px;
+            background: linear-gradient(to right, var(--cream) 0%, rgba(253, 240, 236, 0.9) 100%);
+        }
+
+        .shop-header-content {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .shop-header h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .shop-header p {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 30px;
+        }
+
+        /* Filter and Sort Section */
+        .shop-controls {
+            background-color: var(--nav-text, white);
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(146, 188, 250, 0.2);
+        }
+
+        .controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .filter-btn, .sort-select, .category-select {
+            padding: 12px 24px;
+            background-color: var(--nav-text, white);
+            border: 1px solid var(--medium-blue);
+            border-radius: 8px;
+            color: var(--text-dark);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-btn:hover, .sort-select:hover, .category-select:hover {
+            background-color: var(--light-blue);
+            border-color: var(--deep-blue);
+        }
+
+        .shop-stats {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .category-select {
+            min-width: 200px;
+        }
+
+        .clear-filters-btn {
+            padding: 8px 16px;
+            background-color: transparent;
+            border: 1px solid var(--text-light);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .clear-filters-btn:hover {
+            background-color: var(--light-blue);
+            border-color: var(--deep-blue);
+            color: var(--text-dark);
+        }
+
+        .active-filters {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .filter-tag {
+            background-color: var(--light-blue);
+            color: var(--text-dark);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-tag-remove {
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Products Grid */
+        .products-section {
+            background-color: var(--nav-text, white);
+            padding: 60px 0 100px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .product-card {
+            background-color: var(--nav-text, white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(146, 188, 250, 0.2);
+        }
+
+        .product-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 300px;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: var(--deep-blue);
+            color: var(--nav-text, white);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .sale-badge {
+            background-color: #ff6b6b;
+        }
+
+        .product-info {
+            padding: 25px;
+        }
+
+        .product-category {
+            font-size: 12px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .product-info h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+        }
+
+        .product-description {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .product-price {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--deep-blue);
+            margin-bottom: 20px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background-color: var(--deep-blue);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--medium-blue);
+        }
+
+        .btn-wishlist {
+            width: 44px;
+            height: 44px;
+            background-color: var(--cream);
+            border: 1px solid var(--medium-blue);
+            border-radius: 8px;
+            color: var(--deep-blue);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-wishlist:hover {
+            background-color: var(--light-blue);
+        }
+
+        /* Categories Link Section */
+        .categories-link-section {
+            background-color: var(--light-blue);
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .categories-link-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .categories-link-content h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .categories-link-content p {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 30px;
+        }
+
+        .btn-outline {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: transparent;
+            color: var(--deep-blue);
+            border: 2px solid var(--deep-blue);
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--deep-blue);
+            color: var(--nav-text, white);
+            transform: translateY(-3px);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background-color: var(--cream);
+            border-radius: 12px;
+            margin: 40px 0;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: var(--medium-blue);
+            margin-bottom: 30px;
+        }
+
+        .empty-state h3 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .empty-state p {
+            color: var(--text-light);
+            margin-bottom: 30px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 18px;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .shop-header h1 {
+                font-size: 42px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 25px;
+            }
+            
+            .controls-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .shop-stats {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .shop-header h1 {
+                font-size: 36px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .shop-header {
+                padding-top: 120px;
+            }
+            
+            .shop-header h1 {
+                font-size: 32px;
+            }
+            
+            .categories-link-content h2 {
+                font-size: 28px;
+            }
+            
+            .product-image-container {
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .product-actions {
+                flex-direction: column;
+            }
+            
+            .btn-wishlist {
+                width: 100%;
+            }
+            
+            .shop-controls {
+                padding: 20px 0;
+            }
+            
+            .filter-btn, .sort-select, .category-select {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .active-filters {
+                justify-content: center;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 55 73 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 55 73 %}
+        /* Generate keyframes for animations */
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    
+    <!-- Include Header -->
+    {%include 'builder/public_templates/ModernEcommerce10/snippets/header1.html'%}
+    
+    <!-- Shop Header -->
+    <section class="shop-header" id="section-55">
+        <div class="container">
+            <div class="shop-header-content">
+                <h1 id="section-56">{{ text_contents.44|default:"Shop Luxury Home Accessories" }}</h1>
+                <p id="section-57">{{ text_contents.45|default:"Discover our curated collection of premium home décor pieces, each meticulously crafted to bring elegance and sophistication to your living spaces." }}</p>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '55' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Shop Controls -->
+    <section class="shop-controls" id="section-58">
+        <div class="container">
+            <div class="controls-container">
+                <div style="display: flex; gap: 10px;">
+                    <select class="category-select" id="categorySelect" onchange="filterByCategory(this.value)">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.slug }}" {% if current_category and current_category.slug == category.slug %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="shop-stats">
+                    <span id="section-60">
+                        {% if filtered_products %}
+                            {{ text_contents.47|default:"Showing" }} {{ filtered_products|length }} {{ text_contents.47_2|default:"of" }} {{ all_products_count|default:products|length }} {{ text_contents.47_3|default:"products" }}
+                        {% elif products %}
+                            {{ text_contents.47|default:"Showing" }} {{ products|length }} {{ text_contents.47_2|default:"of" }} {{ all_products_count|default:products|length }} {{ text_contents.47_3|default:"products" }}
+                        {% else %}
+                            {{ text_contents.47_empty|default:"No products available" }}
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <select class="sort-select" id="sortSelect" onchange="sortProducts(this.value)">
+                    <option value="">Sort by: Featured</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="newest">Newest Arrivals</option>
+                    <option value="popular">Most Popular</option>
+                </select>
+            </div>
+            
+            <!-- Active Filters Display -->
+            {% if current_category %}
+            <div class="active-filters" id="activeFilters">
+                <div class="filter-tag">
+                    Category: {{ current_category.name }}
+                    <button class="filter-tag-remove" onclick="clearCategoryFilter()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <button class="clear-filters-btn" onclick="clearAllFilters()">
+                    Clear All Filters
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '58' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Products Grid -->
+    <section class="products-section" id="section-62">
+        <div class="container">
+            <div class="products-grid" id="productsGrid">
+                {% if filtered_products %}
+                    {% for product in filtered_products %}
+                    <!-- Product Template with Backend Data -->
+                    <div class="product-card" 
+                         id="section-63"
+                         data-product-id="{{ product.id }}"
+                         data-product-title="{{ product.title }}"
+                         data-product-price="{{ product.price }}"
+                         data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}"
+                         data-product-category="{{ product.category.slug|default:'' }}">
+                        
+                        <a href="/product/{{ product.slug }}/" class="product-image-link">
+                            <div class="product-image-container">
+                                {% if forloop.first %}
+                                    <span class="product-badge" id="section-64">{{ text_contents.49|default:"New" }}</span>
+                                {% elif product.is_on_sale %}
+                                    <span class="product-badge sale-badge">Sale {{ product.discount_percentage }}%</span>
+                                {% elif product.badge %}
+                                    <span class="product-badge">{{ product.badge }}</span>
+                                {% endif %}
+                                
+                                {% if product.main_image %}
+                                <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="product-image">
+                                {% else %}
+                                <div class="product-image" style="background-color: var(--light-blue);"></div>
+                                {% endif %}
+                            </div>
+                        </a>
+                        
+                        <div class="product-info">
+                            <div class="product-category" id="section-65">
+                                
+                                    {{ product.category.name}}
+                                
+                            </div>
+                            
+                            <a href="/product/{{ product.slug }}/" style="text-decoration: none; color: inherit;">
+                                <h3 id="section-66">
+                                    
+                                        {{ product.title|truncatechars:50 }}
+                                    
+                                </h3>
+                            </a>
+                            
+                            <p class="product-description" id="section-67">
+                                
+                                    {{ product.short_description|default:product.description|striptags|truncatechars:100|default:"Premium home accessory crafted with attention to detail." }}
+                                
+                            </p>
+                            
+                            <div class="product-price" id="section-68">
+                                {% if product.is_on_sale %}
+                                    <span style="text-decoration: line-through; color: var(--text-light); margin-right: 10px;">
+                                        {{ product.compare_at_price|currency:page  }}
+                                    </span>
+                                {% endif %}
+                                {{ product.price|currency:page }}
+                            </div>
+                            
+                            <div class="product-actions">
+                                {% if product.is_in_stock %}
+                                <button class="btn-primary add-to-cart-btn" 
+                                        {% if forloop.first %}id="section-69"{% endif %} 
+                                        data-add-to-cart="{{ product.id }}"
+                                        data-product-id="{{ product.id }}">
+                                    <i class="fas fa-cart-plus"></i> 
+                                    {% if forloop.first %}
+                                        {{ text_contents.54|default:"Add to Cart" }}
+                                    {% else %}
+                                        Add to Cart
+                                    {% endif %}
+                                </button>
+                                {% else %}
+                                <button class="btn-primary" style="background-color: var(--text-light); cursor: not-allowed;" disabled>
+                                    <i class="fas fa-times-circle"></i> 
+                                    Out of Stock
+                                </button>
+                                {% endif %}
+                                
+                                <button class="btn-wishlist add-to-wishlist-btn" 
+                                        data-add-to-wishlist="{{ product.id }}">
+                                    <i class="far fa-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% elif products %}
+                    {% for product in products %}
+                    <!-- Product Template with Backend Data -->
+                    <div class="product-card" 
+                         {% if forloop.first %}id="section-63"{% endif %}
+                         data-product-id="{{ product.id }}"
+                         data-product-title="{{ product.title }}"
+                         data-product-price="{{ product.price }}"
+                         data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}"
+                         data-product-category="{{ product.category.slug|default:'' }}">
+                        
+                        <a href="/product/{{ product.slug }}/" class="product-image-link">
+                            <div class="product-image-container">
+                                {% if forloop.first %}
+                                    <span class="product-badge" id="section-64">{{ text_contents.49|default:"New" }}</span>
+                                {% elif product.is_on_sale %}
+                                    <span class="product-badge sale-badge">Sale {{ product.discount_percentage }}%</span>
+                                {% elif product.badge %}
+                                    <span class="product-badge">{{ product.badge }}</span>
+                                {% endif %}
+                                
+                                {% if product.main_image %}
+                                <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="product-image">
+                                {% else %}
+                                <div class="product-image" style="background-color: var(--light-blue);"></div>
+                                {% endif %}
+                            </div>
+                        </a>
+                        
+                        <div class="product-info">
+                            <div class="product-category" id="section-65">
+                                
+                                    {{ product.category.name|default:"Category" }}
+                                
+                            </div>
+                            
+                            <a href="/product/{{ product.slug }}/" style="text-decoration: none; color: inherit;">
+                                <h3 id="section-66">
+                                    
+                                        {{ product.title|truncatechars:50 }}
+                                    
+                                </h3>
+                            </a>
+                            
+                            <p class="product-description" id="section-67">
+                                
+                                    {{ product.short_description|default:product.description|striptags|truncatechars:100|default:"Premium home accessory crafted with attention to detail." }}
+                                
+                            </p>
+                            
+                            <div class="product-price" id="section-68">
+                                {% if product.is_on_sale %}
+                                    <span style="text-decoration: line-through; color: var(--text-light); margin-right: 10px;">
+                                        {{ product.compare_at_price|currency:page }}
+                                    </span>
+                                {% endif %}
+                                {{ product.price|currency:page }}
+                            </div>
+                            
+                            <div class="product-actions">
+                                {% if product.is_in_stock %}
+                                <button class="btn-primary add-to-cart-btn" 
+                                        id="section-69"
+                                        data-add-to-cart="{{ product.id }}"
+                                        data-product-id="{{ product.id }}">
+                                    <i class="fas fa-cart-plus" data-icon="14"></i> 
+                                    
+                                        {{ text_contents.54|default:"Add to Cart" }}
+                                    
+                                </button>
+                                {% else %}
+                                <button class="btn-primary" style="background-color: var(--text-light); cursor: not-allowed;" disabled>
+                                    <i class="fas fa-times-circle"></i> 
+                                    Out of Stock
+                                </button>
+                                {% endif %}
+                                
+                                <button class="btn-wishlist add-to-wishlist-btn" 
+                                        data-add-to-wishlist="{{ product.id }}">
+                                    <i class="far fa-heart" data-icon="15"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State for Products -->
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <i class="fas fa-box-open"></i>
+                        <h3>No Products Available</h3>
+                        <p>Start by adding your first luxury home accessory to showcase in your shop.</p>
+                        <a href="{{ SITE_DOMAIN }}/manage-products/{{ page.subdomain }}/" class="btn-outline">Add Your First Product</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '62' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Categories Link Section -->
+    <section class="categories-link-section" id="section-70">
+        <div class="container">
+            <div class="categories-link-content">
+                <h2 id="section-71">{{ text_contents.55|default:"Shop by Category" }}</h2>
+                <p id="section-72">{{ text_contents.56|default:"Explore our curated collections organized by room, style, and material to find the perfect pieces for your home." }}</p>
+                <a href="?page=categories" class="btn-outline" id="section-73">{{ text_contents.57|default:"Browse All Categories" }}</a>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '70' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Include Footer -->
+    {% include 'builder/public_templates/ModernEcommerce10/snippets/footer.html' %}
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+    {% render_icon_script %}
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <!-- JavaScript for product page -->
+    <script>
+        // Product card hover animation
+        const productCards = document.querySelectorAll('.product-card');
+        productCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-10px)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+        
+        // Get current URL parameters
+        function getCurrentUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const paramsObj = {};
+            for (const [key, value] of params.entries()) {
+                paramsObj[key] = value;
+            }
+            return paramsObj;
+        }
+        
+        // Build URL with parameters
+        function buildUrlWithParams(baseUrl, params) {
+            const urlParams = new URLSearchParams();
+            
+            // Add all existing parameters except 'category' and 'page' 
+            // (we'll handle these specially)
+            const currentParams = getCurrentUrlParams();
+            Object.entries(currentParams).forEach(([key, value]) => {
+                if (key !== 'category' && key !== 'page') {
+                    urlParams.set(key, value);
+                }
+            });
+            
+            // Add new category parameter if provided
+            if (params.category) {
+                urlParams.set('category', params.category);
+            }
+            
+            // Always include page=products to stay on products page
+            urlParams.set('page', 'products');
+            
+            return baseUrl + '?' + urlParams.toString();
+        }
+        
+        // Filter by category using proper URL structure
+        function filterByCategory(categorySlug) {
+            const currentPath = window.location.pathname;
+            const baseUrl = currentPath;
+            
+            let url;
+            if (categorySlug) {
+                url = buildUrlWithParams(baseUrl, { category: categorySlug });
+            } else {
+                // If no category selected, remove category parameter but keep page=products
+                const urlParams = new URLSearchParams();
+                urlParams.set('page', 'products');
+                
+                // Keep other existing parameters
+                const currentParams = getCurrentUrlParams();
+                Object.entries(currentParams).forEach(([key, value]) => {
+                    if (key !== 'category') {
+                        urlParams.set(key, value);
+                    }
+                });
+                
+                url = baseUrl + '?' + urlParams.toString();
+            }
+            
+            console.log('Redirecting to:', url);
+            window.location.href = url;
+        }
+        
+        // Clear category filter
+        function clearCategoryFilter() {
+            const currentPath = window.location.pathname;
+            const urlParams = new URLSearchParams();
+            urlParams.set('page', 'products');
+            
+            // Keep other existing parameters except 'category'
+            const currentParams = getCurrentUrlParams();
+            Object.entries(currentParams).forEach(([key, value]) => {
+                if (key !== 'category') {
+                    urlParams.set(key, value);
+                }
+            });
+            
+            const url = currentPath + '?' + urlParams.toString();
+            console.log('Clearing category filter, redirecting to:', url);
+            window.location.href = url;
+        }
+        
+        // Clear all filters (category and sort)
+        function clearAllFilters() {
+            const currentPath = window.location.pathname;
+            // Just go to products page with no filters
+            const url = currentPath + '?page=products';
+            console.log('Clearing all filters, redirecting to:', url);
+            window.location.href = url;
+        }
+        
+        // Sort products using client-side JavaScript
+        function sortProducts(sortValue) {
+            const productsGrid = document.getElementById('productsGrid');
+            const products = Array.from(productsGrid.querySelectorAll('.product-card'));
+            
+            if (!sortValue || products.length === 0) {
+                // If no sort value selected, update URL to remove sort parameter
+                updateUrlWithSort('');
+                return;
+            }
+            
+            productsGrid.innerHTML = '';
+            
+            // Sort the products array based on the selected option
+            switch(sortValue) {
+                case 'price_asc':
+                    products.sort((a, b) => {
+                        const priceA = parseFloat(a.getAttribute('data-product-price')) || 0;
+                        const priceB = parseFloat(b.getAttribute('data-product-price')) || 0;
+                        return priceA - priceB;
+                    });
+                    break;
+                    
+                case 'price_desc':
+                    products.sort((a, b) => {
+                        const priceA = parseFloat(a.getAttribute('data-product-price')) || 0;
+                        const priceB = parseFloat(b.getAttribute('data-product-price')) || 0;
+                        return priceB - priceA;
+                    });
+                    break;
+                    
+                case 'newest':
+                    // Assuming newer products have higher IDs (since ID auto-increments)
+                    products.sort((a, b) => {
+                        const idA = parseInt(a.getAttribute('data-product-id')) || 0;
+                        const idB = parseInt(b.getAttribute('data-product-id')) || 0;
+                        return idB - idA;
+                    });
+                    break;
+                    
+                case 'popular':
+                    // For popularity, we could use data attributes if available
+                    // Since we don't have view_count in the template, we'll randomize for demo
+                    products.sort(() => Math.random() - 0.5);
+                    break;
+            }
+            
+            // Re-append sorted products
+            products.forEach((product, index) => {
+                // Update IDs for the first product if needed
+                if (index === 0) {
+                    const elements = product.querySelectorAll('[id^="section-"]');
+                    elements.forEach(el => {
+                        if (el.id) {
+                            el.id = el.id.replace(/section-\d+/, 'section-63');
+                        }
+                    });
+                }
+                productsGrid.appendChild(product);
+            });
+            
+            // Update URL with sort parameter
+            updateUrlWithSort(sortValue);
+            
+            // Reinitialize product card interactions
+            initializeProductCards();
+        }
+        
+        // Update URL with sort parameter
+        function updateUrlWithSort(sortValue) {
+            const currentPath = window.location.pathname;
+            const urlParams = new URLSearchParams();
+            
+            // Always include page=products
+            urlParams.set('page', 'products');
+            
+            // Add category parameter if it exists
+            const currentParams = getCurrentUrlParams();
+            if (currentParams.category) {
+                urlParams.set('category', currentParams.category);
+            }
+            
+            // Add sort parameter if provided
+            if (sortValue) {
+                urlParams.set('sort', sortValue);
+            }
+            
+            const newUrl = currentPath + '?' + urlParams.toString();
+            
+            // Update browser URL without reloading page
+            window.history.pushState({}, '', newUrl);
+            
+            // Update sort select value
+            document.getElementById('sortSelect').value = sortValue || '';
+        }
+        
+        // Initialize product cards with event listeners
+        function initializeProductCards() {
+            // Add to Cart buttons
+            document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const productId = this.getAttribute('data-product-id');
+                    const quantity = 1;
+                    
+                    if (window.cartManager) {
+                        window.cartManager.addToCart(productId, quantity);
+                    } else {
+                        const productCard = this.closest('.product-card');
+                        const productName = productCard.querySelector('h3').textContent;
+                        const productPrice = productCard.querySelector('.product-price').textContent;
+                        alert(`Added ${productName} (${productPrice}) to cart!`);
+                    }
+                });
+            });
+            
+            // Wishlist buttons
+            document.querySelectorAll('.add-to-wishlist-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const productId = this.getAttribute('data-add-to-wishlist');
+                    
+                    if (window.cartManager) {
+                        window.cartManager.addToWishlist(productId);
+                        
+                        // Visual feedback
+                        const heartIcon = this.querySelector('i');
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        this.style.backgroundColor = 'var(--light-blue)';
+                    } else {
+                        const productCard = this.closest('.product-card');
+                        const productName = productCard.querySelector('h3').textContent;
+                        
+                        const heartIcon = this.querySelector('i');
+                        if (heartIcon.classList.contains('far')) {
+                            heartIcon.classList.remove('far');
+                            heartIcon.classList.add('fas');
+                            this.style.backgroundColor = 'var(--light-blue)';
+                            alert(`Added ${productName} to wishlist!`);
+                        } else {
+                            heartIcon.classList.remove('fas');
+                            heartIcon.classList.add('far');
+                            this.style.backgroundColor = 'var(--cream)';
+                        }
+                    }
+                });
+            });
+            
+            // Reinitialize hover animations
+            const newProductCards = document.querySelectorAll('.product-card');
+            newProductCards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-10px)';
+                });
+                
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                });
+            });
+            
+            // Reinitialize CartManager product data
+            if (window.cartManager) {
+                window.cartManager.products.clear();
+                
+                document.querySelectorAll('.product-card').forEach(card => {
+                    const productId = card.getAttribute('data-product-id');
+                    const productData = {
+                        id: productId,
+                        title: card.getAttribute('data-product-title'),
+                        price: parseFloat(card.getAttribute('data-product-price')) || 0,
+                        image: card.getAttribute('data-product-image'),
+                        element: card
+                    };
+                    
+                    window.cartManager.products.set(productId, productData);
+                });
+                
+                console.log(`📦 Cart Manager reinitialized with ${window.cartManager.products.size} products`);
+            }
+        }
+        
+        // Backend-Integrated JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeProductCards();
+            
+            // Set initial sort value based on URL parameter if present
+            const urlParams = new URLSearchParams(window.location.search);
+            const sortParam = urlParams.get('sort');
+            if (sortParam) {
+                document.getElementById('sortSelect').value = sortParam;
+            }
+            
+            // Handle browser back/forward buttons for sort
+            window.addEventListener('popstate', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const sortParam = urlParams.get('sort');
+                document.getElementById('sortSelect').value = sortParam || '';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Checkout - Gemma Bag Shop</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Order Page Styles */
+.checkout-header {
+    padding: 40px 0;
+    background: linear-gradient(135deg, var(--primary) 0%, #d62a78 100%);
+    color: var(--accent);
+    text-align: center;
+}
+
+.checkout-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.checkout-steps {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    opacity: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+    background: var(--accent);
+    color: var(--primary);
+}
+
+.step-label {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Checkout Content */
+.checkout-content {
+    padding: 60px 0;
+    background-color: #f8f9fa;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 40px;
+    align-items: start;
+}
+
+/* Checkout Form */
+.checkout-form-section {
+    background: var(--accent);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-section {
+    padding: 30px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: var(--accent);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(232, 62, 140, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Shipping Options */
+.shipping-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.shipping-option.active {
+    border-color: var(--primary);
+    background: rgba(232, 62, 140, 0.05);
+}
+
+.shipping-option:hover {
+    border-color: var(--primary);
+}
+
+.shipping-option input[type="radio"] {
+    margin: 0;
+}
+
+.option-content {
+    flex: 1;
+}
+
+.option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.option-title {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.option-price {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.option-desc {
+    font-size: 14px;
+    color: var(--secondary);
+}
+
+/* Payment Methods */
+.payment-methods {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.payment-method {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.payment-method.active {
+    border-color: var(--primary);
+    background: rgba(232, 62, 140, 0.05);
+}
+
+.payment-method:hover {
+    border-color: var(--primary);
+}
+
+.payment-method input[type="radio"] {
+    margin: 0;
+}
+
+.method-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.payment-method i {
+    font-size: 24px;
+    color: var(--primary);
+}
+
+.method-name {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* Card Form */
+.card-form {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.card-form .form-group {
+    position: relative;
+}
+
+.card-form .form-group i {
+    position: absolute;
+    right: 15px;
+    top: 40px;
+    color: var(--secondary);
+    font-size: 16px;
+}
+
+.card-form .form-group i.fa-question-circle {
+    cursor: help;
+}
+
+/* Order Summary */
+.order-summary-section {
+    position: sticky;
+    top: 20px;
+}
+
+.summary-card {
+    background: var(--accent);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.summary-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--dark);
+    text-align: center;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #eee;
+}
+
+/* Order Items */
+.order-items {
+    margin-bottom: 25px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--dark);
+}
+
+.item-variant,
+.item-quantity {
+    font-size: 12px;
+    color: var(--secondary);
+    margin-bottom: 2px;
+}
+
+.item-price {
+    font-weight: 700;
+    color: var(--dark);
+    font-size: 14px;
+}
+
+/* Order Totals */
+.order-totals {
+    margin: 25px 0;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.total-row.grand-total {
+    border-bottom: none;
+    border-top: 2px solid var(--primary);
+    margin-top: 10px;
+    padding-top: 15px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.total-row .label {
+    color: var(--secondary);
+    font-size: 14px;
+}
+
+.total-row .value {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.total-row.grand-total .value {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.total-divider {
+    height: 1px;
+    background: #eee;
+    margin: 15px 0;
+}
+
+/* Security Badge */
+.security-badge {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin: 25px 0;
+    border: 1px solid #eee;
+}
+
+.security-badge i {
+    font-size: 24px;
+    color: var(--success);
+    flex-shrink: 0;
+}
+
+.security-title {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 5px;
+}
+
+.security-desc {
+    font-size: 12px;
+    color: var(--secondary);
+}
+
+/* Buttons */
+.btn-place-order {
+    width: 100%;
+    background: var(--primary);
+    color: var(--accent);
+    border: none;
+    padding: 18px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.btn-place-order:hover {
+    background: #d62a78;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(232, 62, 140, 0.3);
+}
+
+.return-cart {
+    text-align: center;
+}
+
+.btn-return {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 12px 25px;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.btn-return:hover {
+    background: var(--primary);
+    color: var(--accent);
+    transform: translateY(-2px);
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .order-summary-section {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .checkout-steps {
+        gap: 20px;
+    }
+    
+    .step-label {
+        font-size: 12px;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .payment-methods {
+        flex-direction: column;
+    }
+    
+    .shipping-option {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .option-header {
+        width: 100%;
+    }
+    
+    .form-section {
+        padding: 20px;
+    }
+    
+    .summary-card {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .checkout-header h1 {
+        font-size: 28px;
+    }
+    
+    .checkout-steps {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .step {
+        flex-direction: row;
+        gap: 15px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .item-details {
+        text-align: center;
+    }
+}
+
+/* Form Validation Styles */
+.form-group.error input,
+.form-group.error select,
+.form-group.error textarea {
+    border-color: #dc3545;
+}
+
+.form-group .error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+}
+
+.form-group.error .error-message {
+    display: block;
+}
+
+/* Loading State */
+.btn-place-order.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-place-order.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+    </style>
+</head>
+<body>
+    <!-- Checkout Header -->
+    <section class="checkout-header editable-section" data-section="442">
+        <div class="container">
+            <h1 class="editable-text editable-section no-drop-zone" data-section="443" data-text="225">Checkout</h1>
+            <div class="checkout-steps editable-section no-drop-zone" data-section="444">
+                <div class="step active editable-section no-drop-zone" data-section="445">
+                    <div class="step-number editable-text editable-section no-drop-zone" data-section="446" data-text="226">1</div>
+                    <div class="step-label editable-text editable-section no-drop-zone" data-section="447" data-text="227">Shipping</div>
+                </div>
+                <div class="step editable-section no-drop-zone" data-section="448">
+                    <div class="step-number editable-text editable-section no-drop-zone" data-section="449" data-text="228">2</div>
+                    <div class="step-label editable-text editable-section no-drop-zone" data-section="450" data-text="229">Payment</div>
+                </div>
+                <div class="step editable-section no-drop-zone" data-section="451">
+                    <div class="step-number editable-text editable-section no-drop-zone" data-section="452" data-text="230">3</div>
+                    <div class="step-label editable-text editable-section no-drop-zone" data-section="453" data-text="231">Confirmation</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Checkout Content -->
+    <section class="checkout-content editable-section" data-section="454">
+        <div class="container">
+            <div class="checkout-layout editable-section no-drop-zone" data-section="455">
+                <!-- Checkout Form -->
+                <div class="checkout-form-section editable-section no-drop-zone" data-section="456">
+                    <!-- Shipping Information -->
+                    <div class="form-section editable-section no-drop-zone" data-section="457">
+                        <h2 class="section-title editable-text editable-section no-drop-zone" data-section="458" data-text="232">Shipping Information</h2>
+                        
+                        <div class="form-grid editable-section no-drop-zone" data-section="459">
+                            <div class="form-group editable-section no-drop-zone" data-section="460">
+                                <label class="editable-text editable-section no-drop-zone" data-section="461" data-text="233">First Name</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="462" placeholder="Enter your first name">
+                            </div>
+                            <div class="form-group editable-section no-drop-zone" data-section="463">
+                                <label class="editable-text editable-section no-drop-zone" data-section="464" data-text="234">Last Name</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="465" placeholder="Enter your last name">
+                            </div>
+                        </div>
+
+                        <div class="form-group editable-section no-drop-zone" data-section="466">
+                            <label class="editable-text editable-section no-drop-zone" data-section="467" data-text="235">Email Address</label>
+                            <input type="email" class="editable-section no-drop-zone" data-section="468" placeholder="Enter your email">
+                        </div>
+
+                        <div class="form-group editable-section no-drop-zone" data-section="469">
+                            <label class="editable-text editable-section no-drop-zone" data-section="470" data-text="236">Phone Number</label>
+                            <input type="tel" class="editable-section no-drop-zone" data-section="471" placeholder="Enter your phone number">
+                        </div>
+
+                        <div class="form-group editable-section no-drop-zone" data-section="472">
+                            <label class="editable-text editable-section no-drop-zone" data-section="473" data-text="237">Street Address</label>
+                            <input type="text" class="editable-section no-drop-zone" data-section="474" placeholder="Enter your street address">
+                        </div>
+
+                        <div class="form-grid editable-section no-drop-zone" data-section="475">
+                            <div class="form-group editable-section no-drop-zone" data-section="476">
+                                <label class="editable-text editable-section no-drop-zone" data-section="477" data-text="238">City</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="478" placeholder="Enter your city">
+                            </div>
+                            <div class="form-group editable-section no-drop-zone" data-section="479">
+                                <label class="editable-text editable-section no-drop-zone" data-section="480" data-text="239">State/Province</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="481" placeholder="Enter state/province">
+                            </div>
+                        </div>
+
+                        <div class="form-grid editable-section no-drop-zone" data-section="482">
+                            <div class="form-group editable-section no-drop-zone" data-section="483">
+                                <label class="editable-text editable-section no-drop-zone" data-section="484" data-text="240">ZIP/Postal Code</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="485" placeholder="Enter ZIP code">
+                            </div>
+                            <div class="form-group editable-section no-drop-zone" data-section="486">
+                                <label class="editable-text editable-section no-drop-zone" data-section="487" data-text="241">Country</label>
+                                <select class="editable-section no-drop-zone" data-section="488">
+                                    <option class="editable-text editable-section no-drop-zone" data-section="489" data-text="242">United States</option>
+                                    <option class="editable-text editable-section no-drop-zone" data-section="490" data-text="243">Canada</option>
+                                    <option class="editable-text editable-section no-drop-zone" data-section="491" data-text="244">United Kingdom</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipping Method -->
+                    <div class="form-section editable-section no-drop-zone" data-section="492">
+                        <h2 class="section-title editable-text editable-section no-drop-zone" data-section="493" data-text="245">Shipping Method</h2>
+                        
+                        <div class="shipping-options editable-section no-drop-zone" data-section="494">
+                            <div class="shipping-option active editable-section no-drop-zone" data-section="495">
+                                <input type="radio" name="shipping" checked class="editable-section no-drop-zone" data-section="496">
+                                <div class="option-content editable-section no-drop-zone" data-section="497">
+                                    <div class="option-header editable-section no-drop-zone" data-section="498">
+                                        <span class="option-title editable-text editable-section no-drop-zone" data-section="499" data-text="246">Standard Shipping</span>
+                                        <span class="option-price editable-text editable-section no-drop-zone" data-section="500" data-text="247">Free</span>
+                                    </div>
+                                    <span class="option-desc editable-text editable-section no-drop-zone" data-section="501" data-text="248">5-7 business days</span>
+                                </div>
+                            </div>
+                            <div class="shipping-option editable-section no-drop-zone" data-section="502">
+                                <input type="radio" name="shipping" class="editable-section no-drop-zone" data-section="503">
+                                <div class="option-content editable-section no-drop-zone" data-section="504">
+                                    <div class="option-header editable-section no-drop-zone" data-section="505">
+                                        <span class="option-title editable-text editable-section no-drop-zone" data-section="506" data-text="249">Express Shipping</span>
+                                        <span class="option-price editable-text editable-section no-drop-zone" data-section="507" data-text="250">$9.99</span>
+                                    </div>
+                                    <span class="option-desc editable-text editable-section no-drop-zone" data-section="508" data-text="251">2-3 business days</span>
+                                </div>
+                            </div>
+                            <div class="shipping-option editable-section no-drop-zone" data-section="509">
+                                <input type="radio" name="shipping" class="editable-section no-drop-zone" data-section="510">
+                                <div class="option-content editable-section no-drop-zone" data-section="511">
+                                    <div class="option-header editable-section no-drop-zone" data-section="512">
+                                        <span class="option-title editable-text editable-section no-drop-zone" data-section="513" data-text="252">Next Day Delivery</span>
+                                        <span class="option-price editable-text editable-section no-drop-zone" data-section="514" data-text="253">$19.99</span>
+                                    </div>
+                                    <span class="option-desc editable-text editable-section no-drop-zone" data-section="515" data-text="254">Next business day</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="form-section editable-section no-drop-zone" data-section="516">
+                        <h2 class="section-title editable-text editable-section no-drop-zone" data-section="517" data-text="255">Payment Information</h2>
+                        
+                        <div class="payment-methods editable-section no-drop-zone" data-section="518">
+                            <div class="payment-method active editable-section no-drop-zone" data-section="519">
+                                <input type="radio" name="payment" checked class="editable-section no-drop-zone" data-section="520">
+                                <div class="method-content editable-section no-drop-zone" data-section="521">
+                                    <i class="fab fa-cc-visa"></i>
+                                    <span class="method-name editable-text editable-section no-drop-zone" data-section="522" data-text="256">Credit/Debit Card</span>
+                                </div>
+                            </div>
+                            <div class="payment-method editable-section no-drop-zone" data-section="523">
+                                <input type="radio" name="payment" class="editable-section no-drop-zone" data-section="524">
+                                <div class="method-content editable-section no-drop-zone" data-section="525">
+                                    <i class="fab fa-paypal"></i>
+                                    <span class="method-name editable-text editable-section no-drop-zone" data-section="526" data-text="257">PayPal</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-form editable-section no-drop-zone" data-section="527">
+                            <div class="form-group editable-section no-drop-zone" data-section="528">
+                                <label class="editable-text editable-section no-drop-zone" data-section="529" data-text="258">Card Number</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="530" placeholder="1234 5678 9012 3456">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+
+                            <div class="form-grid editable-section no-drop-zone" data-section="531">
+                                <div class="form-group editable-section no-drop-zone" data-section="532">
+                                    <label class="editable-text editable-section no-drop-zone" data-section="533" data-text="259">Expiry Date</label>
+                                    <input type="text" class="editable-section no-drop-zone" data-section="534" placeholder="MM/YY">
+                                </div>
+                                <div class="form-group editable-section no-drop-zone" data-section="535">
+                                    <label class="editable-text editable-section no-drop-zone" data-section="536" data-text="260">CVV</label>
+                                    <input type="text" class="editable-section no-drop-zone" data-section="537" placeholder="123">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group editable-section no-drop-zone" data-section="538">
+                                <label class="editable-text editable-section no-drop-zone" data-section="539" data-text="261">Cardholder Name</label>
+                                <input type="text" class="editable-section no-drop-zone" data-section="540" placeholder="Enter name as on card">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Notes -->
+                    <div class="form-section editable-section no-drop-zone" data-section="541">
+                        <h2 class="section-title editable-text editable-section no-drop-zone" data-section="542" data-text="262">Additional Information</h2>
+                        
+                        <div class="form-group editable-section no-drop-zone" data-section="543">
+                            <label class="editable-text editable-section no-drop-zone" data-section="544" data-text="263">Order Notes (Optional)</label>
+                            <textarea class="editable-section no-drop-zone" data-section="545" placeholder="Any special instructions for your order..." rows="4"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary-section editable-section no-drop-zone" data-section="546">
+                    <div class="summary-card editable-section no-drop-zone" data-section="547">
+                        <h3 class="summary-title editable-text editable-section no-drop-zone" data-section="548" data-text="264">Order Summary</h3>
+                        
+                        <!-- Order Items -->
+                        <div class="order-items editable-section no-drop-zone" data-section="549">
+                            <!-- Order Item 1 (Model Item) -->
+                            <div class="order-item editable-section no-drop-zone" data-section="550">
+                                <div class="item-image editable-section no-drop-zone" data-section="551">
+                                    <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Premium Leather Tote">
+                                </div>
+                                <div class="item-details editable-section no-drop-zone" data-section="552">
+                                    <h4 class="item-name editable-text editable-section no-drop-zone" data-section="553" data-text="265">Premium Leather Tote</h4>
+                                    <div class="item-variant editable-text editable-section no-drop-zone" data-section="554" data-text="266">Color: Brown</div>
+                                    <div class="item-quantity editable-text editable-section no-drop-zone" data-section="555" data-text="267">Qty: 1</div>
+                                </div>
+                                <div class="item-price editable-text editable-section no-drop-zone" data-section="556" data-text="268">$89.99</div>
+                            </div>
+                            <!-- Order Item 2 -->
+                            <div class="order-item">
+                                <div class="item-image">
+                                    <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Elegant Crossbody Bag">
+                                </div>
+                                <div class="item-details">
+                                    <h4 class="item-name">Elegant Crossbody Bag</h4>
+                                    <div class="item-variant">Color: Black</div>
+                                    <div class="item-quantity">Qty: 2</div>
+                                </div>
+                                <div class="item-price">$131.98</div>
+                            </div>
+                        </div>
+
+                        <!-- Order Totals -->
+                        <div class="order-totals editable-section no-drop-zone" data-section="557">
+                            <div class="total-row editable-section no-drop-zone" data-section="558">
+                                <span class="label editable-text editable-section no-drop-zone" data-section="559" data-text="269">Subtotal</span>
+                                <span class="value editable-text editable-section no-drop-zone" data-section="560" data-text="270">$221.97</span>
+                            </div>
+                            <div class="total-row editable-section no-drop-zone" data-section="561">
+                                <span class="label editable-text editable-section no-drop-zone" data-section="562" data-text="271">Shipping</span>
+                                <span class="value editable-text editable-section no-drop-zone" data-section="563" data-text="272">Free</span>
+                            </div>
+                            <div class="total-row editable-section no-drop-zone" data-section="564">
+                                <span class="label editable-text editable-section no-drop-zone" data-section="565" data-text="273">Tax</span>
+                                <span class="value editable-text editable-section no-drop-zone" data-section="566" data-text="274">$17.76</span>
+                            </div>
+                            <div class="total-divider editable-section no-drop-zone" data-section="567"></div>
+                            <div class="total-row grand-total editable-section no-drop-zone" data-section="568">
+                                <span class="label editable-text editable-section no-drop-zone" data-section="569" data-text="275">Total</span>
+                                <span class="value editable-text editable-section no-drop-zone" data-section="570" data-text="276">$239.73</span>
+                            </div>
+                        </div>
+
+                        <!-- Security Badge -->
+                        <div class="security-badge editable-section no-drop-zone" data-section="571">
+                            <i class="fas fa-shield-alt"></i>
+                            <div class="security-text editable-section no-drop-zone" data-section="572">
+                                <div class="security-title editable-text editable-section no-drop-zone" data-section="573" data-text="277">Secure Checkout</div>
+                                <div class="security-desc editable-text editable-section no-drop-zone" data-section="574" data-text="278">Your payment information is encrypted and secure</div>
+                            </div>
+                        </div>
+
+                        <!-- Place Order Button -->
+                        <button class="btn-place-order editable-text editable-section no-drop-zone" data-section="575" data-text="279"><i class="fas fa-lock"></i> Place Order</button>
+
+                        <!-- Return to Cart -->
+                        <div class="return-cart editable-section no-drop-zone" data-section="576">
+                            <a href="?page=cart" class="btn-return editable-text editable-section no-drop-zone" data-section="577" data-text="280"><i class="fas fa-arrow-left"></i> Return to Cart</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+     <script>
+        // Mobile menu toggle
+        document.querySelector('.mobile-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-menu').classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('.nav-menu a').forEach(link => {
+            link.addEventListener('click', function() {
+                document.querySelector('.nav-menu').classList.remove('active');
+            });
+        });
+
+        // Add to cart functionality (basic)
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', function() {
+                const productTitle = this.closest('.product-card').querySelector('.product-title').textContent;
+                alert(`${productTitle} added to cart!`);
+                
+                // Update cart count
+                const cartCount = document.querySelector('.cart-count');
+                let count = parseInt(cartCount.textContent);
+                cartCount.textContent = count + 1;
+            });
+        });
+
+        // Add to wishlist functionality (basic)
+        document.querySelectorAll('.add-to-wishlist').forEach(button => {
+            button.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('far')) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    icon.style.color = '#e83e8c';
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    icon.style.color = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Profile - {{ user.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+.avatar-upload {
+    position: relative;
+    display: inline-block;
+}
+.avatar-upload .avatar-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 4px solid white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    background-size: cover;
+    background-position: center;
+}
+.avatar-upload .upload-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #4361ee;
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.tab-pane {
+    padding: 2rem 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div class="avatar-upload">
+                    <div class="avatar-preview" 
+                         style="background-image: url('{% if user.profile.avatar %}{{ user.profile.avatar.url }}{% else %}https://via.placeholder.com/150/4361ee/ffffff?text={{ user.first_name|first|default:user.username|first|upper }}{% endif %}')">
+                    </div>
+                    <div class="upload-btn" onclick="document.getElementById('avatarUpload').click()">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <form id="avatarForm" enctype="multipart/form-data" style="display: none;">
+                        {% csrf_token %}
+                        <input type="file" id="avatarUpload" name="avatar" accept="image/*">
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <h1 class="display-6 fw-bold mb-1">{{ user.get_full_name|default:user.username }}</h1>
+                <p class="mb-1 opacity-75">
+                    <i class="fas fa-user-tag me-2"></i>{{ user.profile.user_type.name }}
+                </p>
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-envelope me-2"></i>{{ user.email }}
+                </p>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-light text-dark fs-6">
+                    Member since {{ user.date_joined|date:"M Y" }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-3">
+            <!-- Profile Navigation -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="#personal" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
+                            <i class="fas fa-user me-3"></i>Personal Info
+                        </a>
+                        <a href="#account" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                            <i class="fas fa-cog me-3"></i>Account Settings
+                        </a>
+                        <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                            <i class="fas fa-shield-alt me-3"></i>Security
+                        </a>
+                        <a href="{% url 'accounts:memberships' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-users me-3"></i>Website Memberships
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Profile Completion</h6>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="width: 75%"></div>
+                    </div>
+                    <small class="text-muted">Complete your profile to unlock all features</small>
+                    
+                    <div class="mt-3">
+                        <small class="d-block">
+                            <i class="fas {% if user.profile.phone %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            Phone Number
+                        </small>
+                        <small class="d-block mt-1">
+                            <i class="fas {% if user.profile.bio %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            Bio
+                        </small>
+                        <small class="d-block mt-1">
+                            <i class="fas {% if user.profile.company %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            Company
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Personal Info Tab -->
+                        <div class="tab-pane fade show active" id="personal">
+                            <h4 class="card-title mb-4">
+                                <i class="fas fa-user me-2 text-primary"></i>Personal Information
+                            </h4>
+                            
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">First Name</label>
+                                            {{ user_form.first_name }}
+                                            {% if user_form.first_name.errors %}
+                                                <div class="text-danger small">{{ user_form.first_name.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Last Name</label>
+                                            {{ user_form.last_name }}
+                                            {% if user_form.last_name.errors %}
+                                                <div class="text-danger small">{{ user_form.last_name.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Email Address</label>
+                                    {{ user_form.email }}
+                                    {% if user_form.email.errors %}
+                                        <div class="text-danger small">{{ user_form.email.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        {% if user.profile.email_verified %}
+                                            <span class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>Email verified
+                                            </span>
+                                        {% else %}
+                                            <span class="text-warning">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>Email not verified
+                                            </span>
+                                            <a href="#" class="ms-2">Resend verification</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Phone Number</label>
+                                            {{ profile_form.phone }}
+                                            {% if profile_form.phone.errors %}
+                                                <div class="text-danger small">{{ profile_form.phone.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Date of Birth</label>
+                                            {{ profile_form.date_of_birth }}
+                                            {% if profile_form.date_of_birth.errors %}
+                                                <div class="text-danger small">{{ profile_form.date_of_birth.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Company</label>
+                                    {{ profile_form.company }}
+                                    {% if profile_form.company.errors %}
+                                        <div class="text-danger small">{{ profile_form.company.errors }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Website</label>
+                                    {{ profile_form.website }}
+                                    {% if profile_form.website.errors %}
+                                        <div class="text-danger small">{{ profile_form.website.errors }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Bio</label>
+                                    {{ profile_form.bio }}
+                                    {% if profile_form.bio.errors %}
+                                        <div class="text-danger small">{{ profile_form.bio.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Tell us a bit about yourself</div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                    <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Account Settings Tab -->
+                        <div class="tab-pane fade" id="account">
+                            <h4 class="card-title mb-4">
+                                <i class="fas fa-cog me-2 text-primary"></i>Account Settings
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Account Type</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ user.profile.user_type.name }}</strong>
+                                                    <p class="small text-muted mb-0">{{ user.profile.user_type.description }}</p>
+                                                </div>
+                                                <span class="badge bg-primary">Current</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Member Since</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <strong>{{ user.date_joined|date:"F j, Y" }}</strong>
+                                            <p class="small text-muted mb-0">
+                                                {{ user.date_joined|timesince }} ago
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Account Actions</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group list-group-flush">
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>Download Data</strong>
+                                                <p class="small text-muted mb-0">Export your personal data</p>
+                                            </div>
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-download me-1"></i>Export
+                                            </button>
+                                        </div>
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>Delete Account</strong>
+                                                <p class="small text-muted mb-0">Permanently delete your account</p>
+                                            </div>
+                                            <button class="btn btn-outline-danger btn-sm" disabled>
+                                                <i class="fas fa-trash me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Security Tab -->
+                        <div class="tab-pane fade" id="security">
+                            <h4 class="card-title mb-4">
+                                <i class="fas fa-shield-alt me-2 text-primary"></i>Security Settings
+                            </h4>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Change Password</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form>
+                                        <div class="mb-3">
+                                            <label class="form-label">Current Password</label>
+                                            <input type="password" class="form-control" placeholder="Enter current password">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">New Password</label>
+                                            <input type="password" class="form-control" placeholder="Enter new password">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Confirm New Password</label>
+                                            <input type="password" class="form-control" placeholder="Confirm new password">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" disabled>
+                                            <i class="fas fa-key me-2"></i>Update Password
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Login Activity</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted">Recent account activity</p>
+                                    <div class="list-group list-group-flush">
+                                        {% for activity in user.activities.all|slice:":3" %}
+                                        <div class="list-group-item px-0">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <strong>{{ activity.activity_type|title }}</strong>
+                                                    <p class="small text-muted mb-0">
+                                                        {{ activity.timestamp|timesince }} ago
+                                                        {% if activity.ip_address %}
+                                                        • From {{ activity.ip_address }}
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                                <!-- activity.activity_type == 'login'|yesno:'success,info' -->
+
+                                                {%if activity.activity_type == 'login' %}
+                                                <span class="badge bg-sucess">
+                                                    {{ activity.activity_type }}
+                                                </span>
+
+                                                {%else%}
+
+                                                <span class="badge bg-info">
+                                                    {{ activity.activity_type }}
+                                                </span>
+                                                {%endif%}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="text-center mt-3">
+                                        <a href="#" class="btn btn-outline-primary btn-sm">View All Activity</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Avatar upload
+    const avatarUpload = document.getElementById('avatarUpload');
+    if (avatarUpload) {
+        avatarUpload.addEventListener('change', function() {
+            const formData = new FormData(document.getElementById('avatarForm'));
+            
+            fetch('{% url "accounts:update_avatar" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update avatar preview
+                    const avatarPreview = document.querySelector('.avatar-preview');
+                    avatarPreview.style.backgroundImage = `url('${data.avatar_url}')`;
+                    
+                    // Show success message
+                    showNotification('Avatar updated successfully!', 'success');
+                } else {
+                    showNotification('Error updating avatar: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error updating avatar', 'error');
+            });
+        });
+    }
+    
+    // Tab functionality
+    const tabLinks = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            // Update active states
+            tabLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    
+    function showNotification(message, type) {
+        // Simple notification implementation
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

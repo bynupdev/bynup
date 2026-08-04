@@ -1,0 +1,362 @@
+{% extends 'payments/base_payments.html' %}
+
+{% block title %}Configure Cryptomus - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.cryptomus-setup-steps {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    color: white;
+}
+.step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+.step-number {
+    background: white;
+    color: #764ba2;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+.crypto-features {
+    background: #e6f7ff;
+    border: 1px solid #91d5ff;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.crypto-currency-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+.crypto-badge {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.api-key-field {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+.qr-display {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block payment_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Setup Steps -->
+        <div class="cryptomus-setup-steps">
+            <h5 class="mb-3"><i class="fas fa-coins me-2"></i>Cryptomus Setup Steps</h5>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Create Cryptomus Account</strong>
+                    <p class="mb-0 small opacity-75">Sign up at Cryptomus Dashboard</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Get API Credentials</strong>
+                    <p class="mb-0 small opacity-75">Go to API → API Keys to get credentials</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Configure Webhooks</strong>
+                    <p class="mb-0 small opacity-75">Add webhook URL for payment notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="crypto-features">
+            <h6><i class="fas fa-check-circle text-success me-2"></i>Cryptomus Features</h6>
+            <div class="row small">
+                <div class="col-md-6">
+                    <ul>
+                        <li>Accept 20+ Cryptocurrencies</li>
+                        <li>Automatic Conversion to Fiat</li>
+                        <li>No Chargebacks</li>
+                        <li>Low Transaction Fees (0.4%)</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul>
+                        <li>Instant Settlements</li>
+                        <li>Multi-currency Wallets</li>
+                        <li>Advanced Security</li>
+                        <li>24/7 Support</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="crypto-currency-list">
+                <span class="crypto-badge"><i class="fab fa-bitcoin"></i> Bitcoin</span>
+                <span class="crypto-badge"><i class="fab fa-ethereum"></i> Ethereum</span>
+                <span class="crypto-badge"><i class="fas fa-coins"></i> USDT</span>
+                <span class="crypto-badge">BNB</span>
+                <span class="crypto-badge">SOL</span>
+                <span class="crypto-badge">XRP</span>
+                <span class="crypto-badge">DOGE</span>
+                <span class="crypto-badge">LTC</span>
+                <span class="crypto-badge">+12 more</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header text-white d-flex justify-content-between align-items-center"
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-coins me-2"></i>Configure Cryptomus
+                </h5>
+                <div>
+                    {% if cryptomus_gateway.is_active %}
+                        <span class="badge bg-success me-2">Active</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post" id="cryptomusConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Note about test mode -->
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Cryptomus uses separate test and live API keys. 
+                        Use test keys for testing and switch to live keys for production.
+                    </div>
+                    
+                    <!-- Credentials -->
+                    <h6 class="border-bottom pb-2 mb-3">
+                        <i class="fas fa-key me-2"></i>API Credentials
+                    </h6>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="cryptomus_api_key" class="form-label">API Key *</label>
+                            <input type="text" class="form-control api-key-field" id="cryptomus_api_key"
+                                   name="cryptomus_api_key" value="{{ cryptomus_gateway.cryptomus_api_key|default:'' }}"
+                                   placeholder="Paste your API key here...">
+                            <div class="form-text">
+                                Get this from Cryptomus Dashboard → API → API Keys
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cryptomus_merchant_uuid" class="form-label">Merchant UUID *</label>
+                            <input type="text" class="form-control api-key-field" id="cryptomus_merchant_uuid"
+                                   name="cryptomus_merchant_uuid" value="{{ cryptomus_gateway.cryptomus_merchant_uuid|default:'' }}"
+                                   placeholder="Paste your Merchant UUID here...">
+                            <div class="form-text">
+                                Find this in Cryptomus Dashboard → API → Merchant Settings
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Webhook Configuration -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">
+                        <i class="fas fa-bell me-2"></i>Webhook Configuration
+                    </h6>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Webhooks are required for automatic payment status updates.
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="cryptomus_webhook_secret" class="form-label">Webhook Secret *</label>
+                            <input type="password" class="form-control api-key-field" id="cryptomus_webhook_secret"
+                                   name="cryptomus_webhook_secret" value="{{ cryptomus_gateway.cryptomus_webhook_secret|default:'' }}"
+                                   placeholder="Paste your webhook secret here...">
+                            <div class="form-text">
+                                Get this from Cryptomus Dashboard → API → Webhooks → Payment Key
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Webhook URL (Copy this to Cryptomus):</label>
+                        <div class="webhook-url">
+                            https://{{ request.get_host }}{% url 'payments:cryptomus_webhook' page.subdomain %}
+                        </div>
+                        <div class="form-text">
+                            In Cryptomus Dashboard, add this as a webhook endpoint
+                        </div>
+                    </div>
+                    
+                    <!-- Supported Currencies -->
+                    <div class="mb-4">
+                        <label class="form-label">Supported Cryptocurrencies:</label>
+                        <div class="alert alert-light small">
+                            <div class="row">
+                                {% for currency, networks in supported_cryptocurrencies.items %}
+                                <div class="col-md-4 mb-2">
+                                    <strong>{{ currency }}:</strong>
+                                    <small class="text-muted">{{ networks|join:", " }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activation Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                       {% if cryptomus_gateway.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <strong>Activate Cryptomus Payments</strong>
+                                    <small class="text-muted d-block">
+                                        Enable to accept cryptocurrency payments on your website
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'payments:manage_gateways' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-primary"
+                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Information -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Cryptomus Setup Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Getting Started:</h6>
+                        <ol class="small">
+                            <li class="mb-2">
+                                <strong>Sign up:</strong>
+                                <a href="https://cryptomus.com/register" target="_blank">Cryptomus Registration</a>
+                            </li>
+                            <li class="mb-2">
+                                <strong>Complete Verification:</strong>
+                                Verify your email and complete KYC if needed
+                            </li>
+                            <li class="mb-2">
+                                <strong>Get API Keys:</strong>
+                                Dashboard → API → API Keys → Create New Key
+                            </li>
+                            <li class="mb-2">
+                                <strong>Configure Webhooks:</strong>
+                                Dashboard → API → Webhooks → Add Webhook
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Testing:</h6>
+                        <ol class="small">
+                            <li class="mb-2">
+                                <strong>Use Test API Keys:</strong>
+                                Cryptomus provides separate test keys
+                            </li>
+                            <li class="mb-2">
+                                <strong>Test Payments:</strong>
+                                Use small amounts to test the flow
+                            </li>
+                            <li class="mb-2">
+                                <strong>Check Webhooks:</strong>
+                                Verify webhooks are being received
+                            </li>
+                            <li class="mb-2">
+                                <strong>Go Live:</strong>
+                                Switch to live API keys when ready
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h6 class="alert-heading"><i class="fas fa-lightbulb me-2"></i>Important Notes</h6>
+                    <ul class="mb-0 small">
+                        <li>Cryptocurrency payments are irreversible - no chargebacks</li>
+                        <li>Fees: 0.4% per transaction (lower for high volume)</li>
+                        <li>Automatic conversion to your preferred currency available</li>
+                        <li>24/7 customer support via Telegram and email</li>
+                        <li>Monitor exchange rates as crypto prices fluctuate</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cryptomusConfigForm');
+    
+    form.addEventListener('submit', function(e) {
+        const isActive = document.getElementById('is_active').checked;
+        const apiKey = document.getElementById('cryptomus_api_key').value;
+        const merchantUuid = document.getElementById('cryptomus_merchant_uuid').value;
+        const webhookSecret = document.getElementById('cryptomus_webhook_secret').value;
+        
+        if (isActive) {
+            if (!apiKey) {
+                alert('Please enter a valid Cryptomus API Key');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!merchantUuid) {
+                alert('Please enter a valid Cryptomus Merchant UUID');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!webhookSecret) {
+                alert('Please enter a valid Cryptomus Webhook Secret');
+                e.preventDefault();
+                return;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

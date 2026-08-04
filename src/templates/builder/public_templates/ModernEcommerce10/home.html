@@ -1,0 +1,953 @@
+{% load style_filters %}
+{% load color_filters %}
+
+
+{% load static %}
+{% load currency_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Include Bootstrap for CartManager compatibility -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        
+        
+
+        /* CSS Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --text: #fdf0ec;
+            --background: #aee1f9;
+            --heading: #bde3fb;
+            --primary: #92bcfa;
+            --secondary: #333333;
+            --accent: #666666;
+            --shadow: rgba(146, 188, 250, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        {% generate_color_variables %}
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--secondary);
+            background-color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            /* padding: 0 20px; */
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Header / Navigation Styles */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--text);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--secondary);
+            transition: var(--transition);
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--primary);
+            text-decoration: none;
+            letter-spacing: 1px;
+        }
+
+        .logo a {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .nav-desktop {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--secondary);
+            font-weight: 500;
+            font-size: 16px;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .icon-btn {
+            color: var(--secondary);
+            font-size: 18px;
+            transition: var(--transition);
+            position: relative;
+            text-decoration: none;
+        }
+
+        .icon-btn:hover {
+            color: var(--primary);
+        }
+
+        .badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            font-size: 10px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .sign-in-btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .sign-in-btn:hover {
+            background-color: var(--heading);
+            transform: translateY(-2px);
+        }
+
+        .account-dropdown {
+            position: relative;
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: 30px;
+            right: 0;
+            background-color: var(--nav-text, white);
+            min-width: 180px;
+            box-shadow: 0 8px 25px var(--shadow);
+            border-radius: 8px;
+            padding: 10px 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .account-dropdown:hover .dropdown-content {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: var(--secondary);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .dropdown-content a:hover {
+            background-color: rgba(146, 188, 250, 0.1);
+            color: var(--primary);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--secondary);
+            cursor: pointer;
+        }
+
+        /* Hero Section Styles */
+        .hero {
+            padding-top: 150px;
+            padding-bottom: 100px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to right, var(--text) 0%, rgba(253, 240, 236, 0.9) 100%);
+        }
+
+        .hero-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 60px;
+        }
+
+        .hero-image-container {
+            flex: 1;
+            position: relative;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-image-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--background) 0%, var(--heading) 100%);
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            opacity: 0.7;
+            animation: morphing 20s infinite;
+        }
+
+        @keyframes morphing {
+            0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+            25% { border-radius: 58% 42% 75% 25% / 76% 46% 54% 24%; }
+            50% { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; }
+            75% { border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%; }
+            100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+        }
+
+        .hero-image {
+            position: relative;
+            max-width: 85%;
+            max-height: 85%;
+            object-fit: contain;
+            filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.1));
+            z-index: 2;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .hero-content {
+            flex: 1;
+            padding-left: 20px;
+        }
+
+        .hero h1 {
+            font-size: 58px;
+            margin-bottom: 20px;
+            color: var(--secondary);
+            line-height: 1.1;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--accent);
+            margin-bottom: 40px;
+            max-width: 500px;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            padding: 18px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            transition: var(--transition);
+            box-shadow: 0 10px 20px rgba(146, 188, 250, 0.3);
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-btn:hover {
+            background-color: var(--heading);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(146, 188, 250, 0.4);
+        }
+
+        /* New Arrivals Section */
+        .new-arrivals {
+            background-color: var(--nav-text, white);
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 42px;
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--accent);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .product-card {
+            background-color: var(--nav-text, white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(146, 188, 250, 0.2);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            padding: 25px;
+        }
+         a{
+            text-decoration: none;
+        }
+
+        .product-info h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .product-info p {
+            font-size: 16px;
+            color: var(--accent);
+            margin-bottom: 15px;
+        }
+
+        .product-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--heading);
+        }
+
+        .btn-wishlist {
+            width: 44px;
+            height: 44px;
+            background-color: var(--text);
+            border: 1px solid var(--heading);
+            border-radius: 8px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-wishlist:hover {
+            background-color: var(--background);
+        }
+
+        .see-more-container {
+            text-align: center;
+        }
+
+        /* Product Status Badges */
+        .product-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            padding: 6px 12px;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            z-index: 2;
+        }
+
+        .sale-badge {
+            background-color: #e74c3c;
+        }
+
+        .new-badge {
+            background-color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            padding: 60px 0 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: var(--nav-text, white);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            display: block;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            margin-bottom: 15px;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: var(--nav-text, white);
+            transform: translateX(5px);
+        }
+
+        .footer-section i {
+            margin-right: 10px;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background-color: var(--text);
+            border-radius: 12px;
+            margin: 40px 0;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--heading);
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+
+        .empty-state p {
+            color: var(--accent);
+            margin-bottom: 25px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Mobile Navigation */
+        .mobile-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--text);
+            z-index: 999;
+            padding: 100px 40px 40px;
+            transform: translateX(-100%);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-nav.active {
+            transform: translateX(0);
+        }
+
+        .mobile-nav a {
+            padding: 18px 0;
+            font-size: 20px;
+            text-decoration: none;
+            color: var(--secondary);
+            border-bottom: 1px solid rgba(146, 188, 250, 0.2);
+            transition: var(--transition);
+        }
+
+        .mobile-nav a:hover {
+            color: var(--primary);
+            padding-left: 10px;
+        }
+
+        .mobile-close {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            font-size: 28px;
+            color: var(--secondary);
+            cursor: pointer;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .hero h1 {
+                font-size: 48px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .hero-container {
+                flex-direction: column;
+                gap: 40px;
+            }
+            
+            .hero-content {
+                padding-left: 0;
+                text-align: center;
+            }
+            
+            .hero h1 {
+                font-size: 42px;
+            }
+            
+            .hero p {
+                margin: 0 auto 40px;
+            }
+            
+            .footer-content {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .nav-desktop {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .hero h1 {
+                font-size: 36px;
+            }
+            
+            .hero-image-container {
+                height: 400px;
+            }
+            
+            .section-header h2 {
+                font-size: 36px;
+            }
+            
+            section {
+                padding: 60px 0;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero h1 {
+                font-size: 32px;
+            }
+            
+            .hero p {
+                font-size: 16px;
+            }
+            
+            .cta-btn {
+                padding: 15px 30px;
+                font-size: 15px;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-actions .sign-in-btn {
+                display: none;
+            }
+        }
+
+        /* Generate keyframes for animations */
+        {% generate_hover_keyframes %}
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 1 54 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 1 54 %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <!-- Header -->
+    {%include 'builder/public_templates/ModernEcommerce10/snippets/header1.html'%}
+
+    
+    {% for component in components %}
+    {% if component.drop_zone == '1' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Hero Section -->
+    <section class="hero" id="section-9">
+        <div class="container hero-container">
+            <div class="hero-image-container">
+                <div class="hero-image-bg"></div>
+                
+                    {% if image_customizations.1 %}  <!-- Replace with your actual element ID -->
+                <img src="{{ image_customizations.1.image_url }}" 
+                    alt="{{ image_customizations.1.alt_text|default:'Hero Image' }}" 
+                    class="hero-image">
+                {% else %}
+            
+                <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Luxury Ceramic Vase" class="hero-image editable-image" data-image="1">
+                {% endif %}
+             
+            </div>
+            <div class="hero-content">
+                <h1 id="section-10">{{ text_contents.8|default:"Welcome to "|add:page.brand_name }}</h1>
+                <p id="section-11">{{ text_contents.9|default:"Discover our curated collection of premium home accessories designed to elevate your living spaces. Each piece is crafted with exceptional quality and timeless design." }}</p>
+                <a href="?page=products" class="cta-btn" id="section-12">{{ text_contents.10|default:"Shop the Collection" }}</a>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '9' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- New Arrivals Section -->
+    <section class="new-arrivals" id="section-13">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-14">{{ text_contents.11|default:"New Arrivals" }}</h2>
+                <p id="section-15">{{ text_contents.12|default:"Discover our latest collection of premium home accessories, meticulously crafted to bring elegance to your living spaces." }}</p>
+            </div>
+            
+            <div class="products-grid">
+                {% if products %}
+                    {% for product in products|slice:":8" %}
+                    <a href="/product/{{ product.slug }}/" class="product-image-link">
+                    <!-- Product Template with backend data -->
+                    <div class="product-card" 
+                         id="section-16"
+                         data-product-id="{{ product.id }}"
+                         data-product-title="{{ product.title }}"
+                         data-product-price="{{ product.price }}"
+                         data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% elif product.image_url %}{{ product.image_url }}{% endif %}">
+                        
+                        <!-- Product Badge -->
+                        {% if forloop.first %}
+                            <div class="product-badge new-badge" id="section-17">New</div>
+                        {% elif product.compare_at_price and product.compare_at_price > product.price %}
+                            <div class="product-badge sale-badge">Sale</div>
+                        {% endif %}
+                        
+                        <!-- Product Image -->
+                        {% if product.main_image %}
+                            <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="product-image">
+                        {% elif product.image_url %}
+                            <img src="{{ product.image_url }}" alt="{{ product.title }}" class="product-image">
+                        {% else %}
+                            <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="{{ product.title }}" class="product-image">
+                        {% endif %}
+                        
+                        <!-- Product Info -->
+                        <div class="product-info">
+                            <h3 id="section-18">
+                                
+                                    {{ product.title|truncatechars:30 }}
+                                
+                            </h3>
+                            <p id="section-19">
+                               
+                                    {{ product.short_description|default:product.description|truncatechars:50|default:"Premium home accessory" }}
+                                
+                            </p>
+                            <div class="product-price" id="section-20">
+                                {% if product.compare_at_price and product.compare_at_price > product.price %}
+                                    <span style="text-decoration: line-through; color: var(--accent); font-size: 0.9rem; margin-right: 5px;">
+                                        {{ product.compare_at_price|currency:page }}
+                                    </span>
+                                {% endif %}
+                                {{ product.price|currency:page }}
+                            </div>
+                            <div class="product-actions">
+                                <button class="btn-primary" 
+                                        data-add-to-cart="{{ product.id }}"
+                                        {% if not product.is_in_stock %}disabled{% endif %}>
+                                    <i class="fas fa-cart-plus" data-icon="7"></i> 
+                                    {% if product.is_in_stock %}
+                                        {{ text_contents.16|default:"Add to Cart" }}
+                                    {% else %}
+                                        Out of Stock
+                                    {% endif %}
+                                </button>
+                                <button class="btn-wishlist" data-add-to-wishlist="{{ product.id }}">
+                                    <i class="far fa-heart" data-icon="8"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                       </a>             
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State for Products -->
+                    <div class="empty-state">
+                        <i class="fas fa-box-open"></i>
+                        <h3>No Products Available</h3>
+                        <p>Browse our collections to discover beautiful home accessories for every space.</p>
+                        <a href="?page=categories" class="cta-btn">Explore Categories</a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="see-more-container">
+                <a href="?page=products" class="cta-btn" id="section-21">{{ text_contents.17|default:"View All Products" }}</a>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '13' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Categories Section -->
+    <section class="new-arrivals" id="section-22">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-23">{{ text_contents.18|default:"Shop by Category" }}</h2>
+                <p id="section-24">{{ text_contents.19|default:"Browse our curated collections organized by room and style to find exactly what you're looking for." }}</p>
+            </div>
+            
+            <div class="products-grid">
+                {% if categories %}
+                    {% for category in categories|slice:":4" %}
+                    <!-- Category Template - Only first one should be editable in the editable template -->
+                    <div class="product-card" id="section-25">
+                        <!-- Category Image -->
+                        
+                            <img src="{{ category.image.url }}" alt="{{ category.name }}" class="product-image">
+
+                        
+                        <!-- Category Info -->
+                        <div class="product-info">
+                            <h3 id="section-26">
+                                
+                                    {{ category.name }}
+                             
+                            </h3>
+                            <p id="section-27">
+                                
+                                    {{ category.description|truncatechars:50 }}
+                                
+                            </p>
+                            <div class="product-actions">
+                                <a href="?page=products&category={{ category.slug }}" class="btn-primary" id="section-28">
+                                    <i class="fas fa-eye"></i> 
+                                    
+                                        {{ text_contents.22|default:"View Category" }}
+                                
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State for Categories -->
+                    <div class="empty-state">
+                        <i class="fas fa-layer-group"></i>
+                        <h3>Empty</h3>
+                        
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '22' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+     {%include 'builder/public_templates/ModernEcommerce10/snippets/footer.html'%}
+    
+
+    {% for component in components %}
+    {% if component.drop_zone == '29' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <script>
+        window.PAGE_PALETTE = {% palette_json page %};
+    </script>
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    
+</body>
+</html>

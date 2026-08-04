@@ -1,0 +1,1141 @@
+{% load static %}
+{% load style_filters %}
+
+
+{% load color_filters %}
+{% load currency_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.brand_name }} | Categories</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Include your cart manager script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}" defer></script>
+    
+    <style>
+        /* CSS Variables for Color Palette */
+        :root {
+            --color-soft-pink: #F7DAE7;
+            --color-warm-pink: #E2B4C1;
+            --color-dusty-rose: #D38C9D;
+            --color-deep-rose: #A55166;
+            --color-white: #FFFFFF;
+            --color-off-white: #FDF9FB;
+            --color-dark-text: #333333;
+            --color-light-text: #666666;
+        }
+        {%generate_color_variables%}
+
+        /* Add animation for filtering */
+        .category-card {
+            transition: all 0.3s ease, opacity 0.3s ease;
+        }
+        
+        .category-card.filtered-out {
+            opacity: 0.3;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+        
+        .category-card.filtered-out:hover {
+            transform: scale(0.95);
+        }
+        
+        .no-categories-message {
+            display: none;
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: var(--color-dusty-rose);
+        }
+        
+        .no-categories-message.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Rest of your CSS remains the same */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--color-dark-text);
+            background-color: var(--color-off-white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Categories Hero */
+        .categories-hero {
+            padding: 140px 0 40px;
+            background: linear-gradient(135deg, var(--color-soft-pink) 0%, var(--color-warm-pink) 100%);
+        }
+
+        .categories-hero-content {
+            text-align: center;
+        }
+
+        .categories-hero h1 {
+            font-size: 56px;
+            line-height: 1.1;
+            color: var(--color-deep-rose);
+            margin-bottom: 20px;
+            font-weight: 500;
+            text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .categories-hero p {
+            font-size: 18px;
+            color: var(--color-dark-text);
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 20px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Categories Content */
+        .categories-content {
+            padding: 60px 0;
+        }
+
+        .categories-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .categories-title h2 {
+            font-size: 32px;
+            color: var(--color-deep-rose);
+            font-weight: 500;
+        }
+
+        .categories-title p {
+            color: var(--color-light-text);
+            margin-top: 10px;
+        }
+
+        .categories-count {
+            font-size: 16px;
+            color: var(--color-dusty-rose);
+            font-weight: 500;
+            padding: 10px 20px;
+            background-color: var(--color-soft-pink);
+            border-radius: 4px;
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .category-card {
+            background-color: var(--nav-text, white);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-image {
+            height: 280px;
+            overflow: hidden;
+            background-color: var(--color-soft-pink);
+            position: relative;
+        }
+
+        .category-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .category-card:hover .category-image img {
+            transform: scale(1.05);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%);
+        }
+
+        .category-info {
+            padding: 25px;
+            position: relative;
+        }
+
+        .category-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 26px;
+            color: var(--color-deep-rose);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .category-description {
+            font-size: 14px;
+            color: var(--color-light-text);
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .category-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--color-warm-pink);
+        }
+
+        .product-count {
+            font-size: 14px;
+            color: var(--color-dusty-rose);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .view-category {
+            font-size: 14px;
+            color: var(--color-deep-rose);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: gap 0.3s ease;
+        }
+
+        .category-card:hover .view-category {
+            gap: 10px;
+        }
+
+        /* Featured Products Section */
+        .featured-products {
+            padding: 60px 0;
+            background-color: rgba(247, 218, 231, 0.1);
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: var(--color-deep-rose);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .section-header p {
+            color: var(--color-light-text);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .product-card {
+            background-color: var(--nav-text, white);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-image {
+            height: 220px;
+            overflow: hidden;
+            background-color: var(--color-soft-pink);
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .product-card:hover .product-image img {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-category-small {
+            font-size: 11px;
+            color: var(--color-dusty-rose);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .product-name-small {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+            color: var(--color-dark-text);
+            margin-bottom: 8px;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .product-price-small {
+            font-size: 16px;
+            color: var(--color-deep-rose);
+            font-weight: 500;
+        }
+
+        .product-actions-small {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-primary-small {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: var(--color-deep-rose);
+            color: var(--nav-text, white);
+            text-decoration: none;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(165, 81, 102, 0.2);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .action-primary-small:hover {
+            background-color: #8a4257;
+            transform: translateY(-2px);
+        }
+
+        .wishlist-button-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--color-soft-pink);
+            border: none;
+            color: var(--color-deep-rose);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .wishlist-button-small:hover {
+            background-color: var(--color-dusty-rose);
+            color: var(--nav-text, white);
+        }
+
+        .wishlist-button-small.active {
+            background-color: var(--color-deep-rose);
+            color: var(--nav-text, white);
+        }
+
+        /* Category Filter */
+        .category-filter {
+            background-color: var(--nav-text, white);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+        }
+
+        .filter-header {
+            font-size: 20px;
+            color: var(--color-deep-rose);
+            margin-bottom: 20px;
+            font-weight: 500;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--color-warm-pink);
+        }
+
+        .filter-group {
+            margin-bottom: 25px;
+        }
+
+        .filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-dark-text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-reset {
+            font-size: 13px;
+            color: var(--color-dusty-rose);
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .filter-reset:hover {
+            color: var(--color-deep-rose);
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .filter-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 1px solid var(--color-warm-pink);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .filter-checkbox.checked {
+            background-color: var(--color-deep-rose);
+            border-color: var(--color-deep-rose);
+        }
+
+        .filter-checkbox.checked::after {
+            content: '✓';
+            color: var(--nav-text, white);
+            font-size: 12px;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            color: var(--color-dark-text);
+            transition: color 0.3s ease;
+        }
+
+        .filter-option:hover .filter-label {
+            color: var(--color-deep-rose);
+        }
+
+        .filter-count {
+            font-size: 12px;
+            color: var(--color-light-text);
+            margin-left: auto;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .categories-hero h1 {
+                font-size: 46px;
+            }
+            
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .category-image {
+                height: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .categories-hero {
+                padding: 120px 0 20px;
+            }
+            
+            .categories-hero h1 {
+                font-size: 36px;
+            }
+            
+            .categories-hero p {
+                font-size: 16px;
+            }
+            
+            .section-header h2 {
+                font-size: 28px;
+            }
+            
+            .categories-title h2 {
+                font-size: 28px;
+            }
+            
+            .categories-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .category-image {
+                height: 220px;
+            }
+            
+            .category-name {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .category-image {
+                height: 250px;
+            }
+            
+            .category-filter {
+                padding: 20px;
+            }
+        }
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 225 280 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 225 280 %}
+        {%generate_hover_keyframes%}
+    </style>
+</head>
+<body style="margin-top: 50px;" data-subdomain="{{ page.subdomain }}">
+    
+    <!-- Include Header -->
+        {%include 'builder/public_templates/ModernEcommerce8/snippets/header1.html'%}
+
+    <!-- Categories Hero -->
+    <section class="categories-hero" id="section-225">
+        <div class="container">
+            <div class="categories-hero-content">
+                <h1 id="section-226">{{ text_contents.134|default:"Shop by Category" }}</h1>
+                <p id="section-227">{{ text_contents.135|default:"Explore our curated collections of luxury home décor, organized to help you find exactly what you need for your space" }}</p>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '225' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Categories Content -->
+    <section class="categories-content" id="section-228">
+        <div class="container">
+            <div class="categories-header">
+                <div class="categories-title">
+                    <h2 id="section-229">{{ text_contents.136|default:"All Categories" }}</h2>
+                    <p id="section-230">{{ text_contents.137|default:"Browse our complete collection of luxury home décor categories" }}</p>
+                </div>
+                <div class="categories-count" id="section-231">
+                    <span id="visible-count">{{ categories|length }}</span> Categor{{ categories|length|pluralize:"y,ies" }}
+                </div>
+            </div>
+
+            {% for component in components %}
+            {% if component.drop_zone == '228' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+            <!-- Category Filter - CLIENT-SIDE ONLY -->
+            <div class="category-filter" id="section-232">
+                <div class="filter-header" id="section-233">{{ text_contents.139|default:"Filter Categories" }}</div>
+                
+                <!-- Active Status Filter -->
+                <div class="filter-group">
+                    <div class="filter-title">
+                        <span id="section-234">{{ text_contents.140|default:"Show Only" }}</span>
+                        <button class="filter-reset" id="section-235" onclick="resetActiveFilter()">{{ text_contents.141|default:"Reset" }}</button>
+                    </div>
+                    <div class="filter-options">
+                        {%for category in categories%}
+                        <div class="filter-option" onclick="toggleActiveFilter(this, '{{category.name}}')">
+                            <div class="filter-checkbox"></div>
+                            <span class="filter-label" id="section-236">{{ category.name }}</span>
+                            <span class="filter-count" id="section-237">{{ categories_with_products_count }}</span>
+                        </div>
+                        {%endfor%}
+                    </div>
+                </div>
+
+                <!-- Sort By Filter -->
+                <div style="display: none;" class="filter-group">
+                    <div class="filter-title">
+                        <span id="section-238">{{ text_contents.143|default:"Sort By" }}</span>
+                        <button class="filter-reset" id="section-239" onclick="resetSortFilter()">{{ text_contents.144|default:"Reset" }}</button>
+                    </div>
+                    <div class="filter-options">
+                        <div class="filter-option" onclick="toggleSortFilter(this, 'name')">
+                            <div class="filter-checkbox"></div>
+                            <span class="filter-label" id="section-240">{{ text_contents.145|default:"Name (A-Z)" }}</span>
+                        </div>
+                        <div class="filter-option" onclick="toggleSortFilter(this, 'products')">
+                            <div class="filter-checkbox"></div>
+                            <span class="filter-label">Most Products</span>
+                        </div>
+                        <div class="filter-option" onclick="toggleSortFilter(this, 'default')">
+                            <div class="filter-checkbox checked"></div>
+                            <span class="filter-label">Default Order</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Range Filter -->
+                <div class="filter-group">
+                    <div class="filter-title">
+                        <span id="section-242">{{ text_contents.146|default:"Category Type" }}</span>
+                        <button class="filter-reset" id="section-243" onclick="resetTypeFilter()">{{ text_contents.147|default:"Reset" }}</button>
+                    </div>
+                    <div class="filter-options">
+                        <div class="filter-option" onclick="toggleTypeFilter(this, 'main')">
+                            <div class="filter-checkbox"></div>
+                            <span class="filter-label" id="section-244">{{ text_contents.148|default:"Main Categories" }}</span>
+                        </div>
+                        <div class="filter-option" onclick="toggleTypeFilter(this, 'sub')">
+                            <div class="filter-checkbox"></div>
+                            <span class="filter-label">Subcategories</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% for component in components %}
+            {% if component.drop_zone == '232' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+            <!-- No Categories Message (Hidden by default) -->
+            <div class="no-categories-message" id="no-categories-message">
+                <h3>No categories match your filters</h3>
+                <p>Try adjusting your filter settings</p>
+            </div>
+
+            <!-- Categories Grid -->
+            <div class="categories-grid" id="categories-container">
+                <!-- Dynamic Categories from Database -->
+                {% for category in categories %}
+                <a href="?page=products&category={{ category.slug }}" class="category-card" 
+                   id="section-246"
+                   data-category-id="{{ category.id }}"
+                   data-category-name="{{ category.name|lower }}"
+                   data-category-parent="{% if category.parent %}sub{% else %}main{% endif %}"
+                   data-products-count="{{ category.get_active_products_count }}"
+                   data-has-products="{% if category.get_active_products_count > 0 %}true{% else %}false{% endif %}">
+                    <div class="category-image">
+                        
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}">
+                       
+                        <div class="category-overlay"></div>
+                    </div>
+                    <div class="category-info">
+                        <h3 class="category-name" id="section-247">{{ category.name }}</h3>
+                        <p class="category-description" id="section-248">
+                            {{ category.description|default:"Explore our curated collection of luxury home décor items in this category."|truncatechars:150 }}
+                        </p>
+                        <div class="category-stats">
+                            <span class="product-count" id="section-249">
+                                <i class="fas fa-box" data-icon="26"></i> 
+                                <span class="count-number">{{ category.get_active_products_count }}</span> Product{{ category.get_active_products_count|pluralize }}
+                            </span>
+                            <span class="view-category" id="section-250">
+                                {{ text_contents.151|default:"Explore" }} <i class="fas fa-arrow-right" data-icon="27"></i>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="no-categories-message show" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                    <h3>No categories found</h3>
+                    <p>Check back soon for new collections!</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% for component in components %}
+            {% if component.drop_zone == '246' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+            <!-- Featured Products Section -->
+            <div class="featured-products" id="section-251">
+                <div class="section-header">
+                    <h2 id="section-252">{{ text_contents.152|default:"Featured Products" }}</h2>
+                    <p id="section-253">{{ text_contents.153|default:"Discover our handpicked selection of luxury home décor items" }}</p>
+                </div>
+
+                {% for component in components %}
+                {% if component.drop_zone == '251' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+                <div class="products-grid">
+                    <!-- Dynamic Featured Products from Database -->
+                    {% for product in products|slice:":8" %}
+                    {% if product.featured or forloop.counter <= 4 %}
+                    <div class="product-card" 
+                         id="section-254"
+                         data-product-id="{{ product.id }}"
+                         data-product-title="{{ product.title }}"
+                         data-product-price="{{ product.price }}"
+                         data-product-category="{{ product.category.name|default:'Uncategorized'|lower }}"
+                         data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}">
+                        <div class="product-image">
+                            
+                            <img src="{{ product.main_image.url }}" alt="{{ product.title }}">
+                        </div>
+                        <div class="product-info">
+                            <div class="product-category-small" id="section-255">
+                                {% if product.category %}{{ product.category.name }}{% else %}Uncategorized{% endif %}
+                            </div>
+                            <div class="product-name-small" id="section-256">{{ product.title|truncatechars:50 }}</div>
+                            <div class="product-price-small" id="section-257">{{ product.price|currency:page }}</div>
+                            <div class="product-actions-small">
+                                <button class="action-primary-small add-to-cart-btn" 
+                                        data-product-id="{{ product.id }}"
+                                        onclick="addToCart('{{ product.id }}')">
+                                    <i class="fas fa-shopping-bag" data-icon="6"></i> Add to Cart
+                                </button>
+                                <button class="wishlist-button-small" 
+                                        data-product-id="{{ product.id }}"
+                                        onclick="toggleWishlist(this, '{{ product.id }}')">
+                                    <i class="far fa-heart" data-icon="7"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% empty %}
+                    <div class="no-products-message" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                        <h3>No featured products available</h3>
+                        <p>Check out our categories for more products!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% for component in components %}
+                {% if component.drop_zone == '254' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '228' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Include Footer -->
+        {%include 'builder/public_templates/ModernEcommerce8/snippets/footer.html'%}
+    
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <script>
+        // Filter State
+        let activeFilters = {
+            hasProducts: false,  // Show only categories with products
+            sortBy: 'default',   // 'default', 'name', 'products'
+            categoryType: null   // 'main', 'sub', or null for all
+        };
+
+        // Initialize categories data
+        const categoriesData = [];
+        {% for category in categories %}
+        categoriesData.push({
+            id: '{{ category.id }}',
+            name: '{{ category.name|lower }}',
+            displayName: '{{ category.name }}',
+            parent: '{% if category.parent %}sub{% else %}main{% endif %}',
+            productsCount: {{ category.get_active_products_count }},
+            hasProducts: {{ category.get_active_products_count }} > 0,
+            description: `{{ category.description|default:"Explore our curated collection of luxury home décor items in this category."|truncatechars:150 }}`,
+            url: '?page=products&category={{ category.slug }}',
+            elementId: 'section-246'
+        });
+        {% endfor %}
+
+        // Filter Functions - CLIENT-SIDE ONLY
+        function toggleActiveFilter(element) {
+            const checkbox = element.querySelector('.filter-checkbox');
+            checkbox.classList.toggle('checked');
+            activeFilters.hasProducts = checkbox.classList.contains('checked');
+            applyFilters();
+        }
+
+        function toggleSortFilter(element, sortType) {
+            // Remove checked from all sort filters
+            document.querySelectorAll('.filter-group:nth-child(2) .filter-checkbox').forEach(cb => {
+                cb.classList.remove('checked');
+            });
+            
+            // Add checked to clicked filter
+            const checkbox = element.querySelector('.filter-checkbox');
+            checkbox.classList.add('checked');
+            activeFilters.sortBy = sortType;
+            applyFilters();
+        }
+
+        function toggleTypeFilter(element, type) {
+            const checkbox = element.querySelector('.filter-checkbox');
+            
+            // Toggle this checkbox
+            checkbox.classList.toggle('checked');
+            
+            // Update activeFilters
+            if (checkbox.classList.contains('checked')) {
+                activeFilters.categoryType = type;
+                
+                // Uncheck the other type filter
+                const otherType = type === 'main' ? 'sub' : 'main';
+                const otherCheckbox = document.querySelector(`.filter-option[onclick*="${otherType}"] .filter-checkbox`);
+                if (otherCheckbox) {
+                    otherCheckbox.classList.remove('checked');
+                }
+            } else {
+                activeFilters.categoryType = null;
+            }
+            
+            applyFilters();
+        }
+
+        function resetActiveFilter() {
+            const checkbox = document.querySelector('.filter-group:nth-child(1) .filter-checkbox');
+            checkbox.classList.remove('checked');
+            activeFilters.hasProducts = false;
+            applyFilters();
+        }
+
+        function resetSortFilter() {
+            document.querySelectorAll('.filter-group:nth-child(2) .filter-checkbox').forEach(cb => {
+                cb.classList.remove('checked');
+            });
+            // Set default sort as checked
+            const defaultSort = document.querySelector('.filter-option[onclick*="default"] .filter-checkbox');
+            defaultSort.classList.add('checked');
+            activeFilters.sortBy = 'default';
+            applyFilters();
+        }
+
+        function resetTypeFilter() {
+            document.querySelectorAll('.filter-group:nth-child(3) .filter-checkbox').forEach(cb => {
+                cb.classList.remove('checked');
+            });
+            activeFilters.categoryType = null;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            let visibleCount = 0;
+            const categoryCards = document.querySelectorAll('.category-card');
+            const noCategoriesMessage = document.getElementById('no-categories-message');
+            
+            categoryCards.forEach(card => {
+                let shouldShow = true;
+                
+                // Filter 1: Has products
+                if (activeFilters.hasProducts) {
+                    const hasProducts = card.dataset.hasProducts === 'true';
+                    if (!hasProducts) shouldShow = false;
+                }
+                
+                // Filter 2: Category type
+                if (activeFilters.categoryType) {
+                    const categoryParent = card.dataset.categoryParent;
+                    if (categoryParent !== activeFilters.categoryType) shouldShow = false;
+                }
+                
+                // Apply visibility
+                if (shouldShow) {
+                    card.classList.remove('filtered-out');
+                    visibleCount++;
+                } else {
+                    card.classList.add('filtered-out');
+                }
+            });
+            
+            // Update count display
+            document.getElementById('visible-count').textContent = visibleCount;
+            
+            // Show/hide no categories message
+            if (visibleCount === 0) {
+                noCategoriesMessage.classList.add('show');
+            } else {
+                noCategoriesMessage.classList.remove('show');
+            }
+            
+            // Apply sorting if needed
+            if (activeFilters.sortBy !== 'default') {
+                sortCategories(activeFilters.sortBy);
+            }
+        }
+
+        function sortCategories(sortType) {
+            const container = document.getElementById('categories-container');
+            const cards = Array.from(container.querySelectorAll('.category-card:not(.filtered-out)'));
+            
+            cards.sort((a, b) => {
+                if (sortType === 'name') {
+                    const nameA = a.dataset.categoryName.toLowerCase();
+                    const nameB = b.dataset.categoryName.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                } else if (sortType === 'products') {
+                    const countA = parseInt(a.dataset.productsCount);
+                    const countB = parseInt(b.dataset.productsCount);
+                    return countB - countA; // Descending (most products first)
+                }
+                return 0;
+            });
+            
+            // Reorder cards in container
+            cards.forEach(card => {
+                container.appendChild(card);
+            });
+        }
+
+        // Wishlist Functions - Integrated with your CartManager
+        async function toggleWishlist(button, productId) {
+            if (window.cartManager) {
+                if (button.classList.contains('active')) {
+                    // Remove from wishlist
+                    await window.cartManager.removeFromWishlist(productId);
+                    button.classList.remove('active');
+                    const icon = button.querySelector('i');
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                } else {
+                    // Add to wishlist
+                    await window.cartManager.addToWishlist(productId);
+                    button.classList.add('active');
+                    const icon = button.querySelector('i');
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                }
+            } else {
+                // Fallback if cartManager not loaded
+                button.classList.toggle('active');
+                const icon = button.querySelector('i');
+                
+                if (button.classList.contains('active')) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    console.log(`Added product ${productId} to wishlist`);
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    console.log(`Removed product ${productId} from wishlist`);
+                }
+            }
+        }
+
+        // Cart Functions - Integrated with your CartManager
+        async function addToCart(productId) {
+            if (window.cartManager) {
+                await window.cartManager.addToCart(productId, 1);
+            } else {
+                // Fallback if cartManager not loaded
+                console.log(`Added product ${productId} to cart`);
+                // Show a simple notification
+                const button = event.target.closest('.action-primary-small');
+                if (button) {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Added!';
+                    button.style.backgroundColor = '#4CAF50';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.backgroundColor = '';
+                    }, 2000);
+                }
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Count categories with products for the filter count
+            const categoriesWithProducts = categoriesData.filter(cat => cat.hasProducts).length;
+            document.getElementById('section-237').textContent = categoriesWithProducts;
+            
+            // Initialize product data for CartManager
+            const productsData = [];
+            
+            // Collect from featured products
+            document.querySelectorAll('.product-card').forEach(card => {
+                const productId = card.dataset.productId;
+                if (productId) {
+                    productsData.push({
+                        id: productId,
+                        title: card.dataset.productTitle || 'Product',
+                        price: parseFloat(card.dataset.productPrice) || 0,
+                        image_url: card.dataset.productImage || null
+                    });
+                }
+            });
+            
+            // Make available to CartManager
+            if (productsData.length > 0) {
+                window.productsData = productsData;
+            }
+            
+            // Initialize filter counts
+            const mainCategories = categoriesData.filter(cat => cat.parent === 'main').length;
+            const subCategories = categoriesData.filter(cat => cat.parent === 'sub').length;
+            
+            // Update filter labels if needed
+            const mainFilter = document.querySelector('.filter-option[onclick*="main"] .filter-label');
+            const subFilter = document.querySelector('.filter-option[onclick*="sub"] .filter-label');
+            
+            if (mainFilter) {
+                mainFilter.textContent += ` (${mainCategories})`;
+            }
+            if (subFilter) {
+                subFilter.textContent += ` (${subCategories})`;
+            }
+        });
+
+        // Quick view functionality for categories
+        function quickViewCategory(categoryId) {
+            // In a real implementation, this would show a modal with category details
+            console.log(`Quick viewing category ${categoryId}`);
+        }
+
+        // Handle category clicks
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (this.classList.contains('filtered-out')) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                const categoryId = this.dataset.categoryId;
+                const categoryName = this.dataset.categoryName;
+                
+                // You could send analytics data here
+                console.log(`Category clicked: ${categoryName} (ID: ${categoryId})`);
+            });
+        });
+    </script>
+</body>
+</html>

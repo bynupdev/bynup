@@ -1,0 +1,163 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Tracking Codes - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <!-- In the breadcrumb section -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">My Pages</a></li>
+                    <li class="breadcrumb-item active">{{ page.brand_name }} ({{ page.subdomain }})</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="fw-bold text-primary">Tracking Codes</h1>
+                    <p class="text-muted mb-0">Add analytics and tracking to {{ page.brand_name }}</p>
+                </div>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Add Tracking Code Form -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-code me-2"></i>Add Tracking Code
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="platform" class="form-label">Platform *</label>
+                            <select class="form-select" id="platform" name="platform" required>
+                                <option value="">Select a platform</option>
+                                <option value="meta_pixel">Meta Pixel (Facebook)</option>
+                                <option value="google_analytics">Google Analytics</option>
+                                <option value="google_tag_manager">Google Tag Manager</option>
+                                <option value="tiktok_pixel">TikTok Pixel</option>
+                                <option value="linkedin_insight">LinkedIn Insight Tag</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Tracking Code *</label>
+                            <textarea class="form-control" id="code" name="code" rows="6" 
+                                      placeholder="Paste your tracking code here..." required></textarea>
+                            <div class="form-text">
+                                Paste the complete tracking code provided by the platform.
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-accent w-100">
+                            <i class="fas fa-plus me-2"></i>Add Tracking Code
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking Codes List -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Active Tracking Codes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if tracking_codes %}
+                    <div class="list-group">
+                        {% for tracking in tracking_codes %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        {{ tracking.get_platform_display }}
+                                        {% if tracking.is_active %}
+                                        <span class="badge bg-success ms-2">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary ms-2">Inactive</span>
+                                        {% endif %}
+                                    </h6>
+                                    <small class="text-muted">
+                                        Added: {{ tracking.created_at|date:"M d, Y" }}
+                                    </small>
+                                    <div class="mt-2">
+                                        <code class="small bg-light p-1 rounded">
+                                            {{ tracking.code|truncatewords:10 }}
+                                        </code>
+                                    </div>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" 
+                                            onclick="toggleTracking({{ tracking.id }}, {% if tracking.is_active %}false{% else %}true{% endif %})">
+                                        <i class="fas fa-{% if tracking.is_active %}pause{% else %}play{% endif %}"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteTracking({{ tracking.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Tracking Codes</h5>
+                        <p class="text-muted">Add your first tracking code to monitor your website traffic.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Instructions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        <p><strong>Meta Pixel:</strong> Paste the entire Facebook Pixel code from your Meta Events Manager.</p>
+                        <p><strong>Google Analytics:</strong> Use the gtag.js or Google Tag Manager code.</p>
+                        <p><strong>Important:</strong> Ensure your tracking codes are properly formatted and complete.</p>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTracking(trackingId, activate) {
+    const action = activate ? 'activate' : 'deactivate';
+    if (confirm(`Are you sure you want to ${action} this tracking code?`)) {
+        alert(`Tracking ${action}d for ID: ${trackingId}`);
+        // In real implementation, make AJAX call to update is_active status
+    }
+}
+
+function deleteTracking(trackingId) {
+    if (confirm('Are you sure you want to delete this tracking code?')) {
+        alert('Delete functionality would be implemented for tracking ID: ' + trackingId);
+    }
+}
+</script>
+{% endblock %}

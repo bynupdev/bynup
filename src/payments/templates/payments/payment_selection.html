@@ -1,0 +1,1817 @@
+<!-- payments/templates/payments/payment_selection.html -->
+{% extends 'builder/base.html' %}
+{%load currency_filters%}
+
+{% block title %}Checkout - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+
+<style>
+/* Payment Method Cards - Enhanced with Real Branding */
+.payment-method-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: white;
+}
+
+.payment-method-card:hover {
+    border-color: #4361ee;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.1);
+}
+
+.payment-method-card.selected {
+    border-color: #4361ee;
+    background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.15);
+}
+
+.payment-method-radio {
+    display: none;
+}
+
+.payment-method-label {
+    display: block;
+    padding: 1.2rem;
+    cursor: pointer;
+    margin: 0;
+}
+
+.payment-method-content {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+}
+
+.payment-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    flex-shrink: 0;
+    font-size: 28px;
+}
+
+/* Stripe Branding */
+.payment-icon.stripe {
+    background: #635BFF;
+    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.2);
+}
+
+/* PayPal Branding */
+.payment-icon.paypal {
+    background: #003087;
+    box-shadow: 0 4px 12px rgba(0, 48, 135, 0.2);
+}
+
+/* Razorpay Branding */
+.payment-icon.razorpay {
+    background: #2D8CFF;
+    box-shadow: 0 4px 12px rgba(45, 140, 255, 0.2);
+}
+
+/* Fincra Branding */
+.payment-icon.fincra {
+    background: linear-gradient(135deg, #1a1f2e 0%, #2c3e50 100%);
+    box-shadow: 0 4px 12px rgba(26, 31, 46, 0.2);
+}
+
+/* Cryptomus Branding */
+.payment-icon.cryptomus {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+
+/* Pay on Delivery Branding */
+.payment-icon.pod {
+    background: linear-gradient(135deg, #10b98150 0%, #0596684a 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+/* Social Media Payment Branding */
+.payment-icon.social {
+    background: linear-gradient(135deg, #4361ee 0%, #f72585 100%);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
+}
+
+.payment-icon i, .payment-icon svg {
+    color: white;
+}
+
+.payment-details {
+    flex: 1;
+}
+
+.payment-name {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1e24;
+}
+
+.payment-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.payment-badge {
+    background: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.test-mode-badge {
+    background: #fef3c7;
+    color: #d97706;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+/* Card Icons */
+.card-icons {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.card-icon {
+    width: 32px;
+    height: 20px;
+    background: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    font-size: 14px;
+}
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="h2 text-primary">Checkout</h1>
+                <p class="text-muted">Complete your order in 3 simple steps</p>
+                
+                <!-- Progress Steps -->
+                <div class="row justify-content-center mb-4">
+                    <div class="col-lg-8">
+                        <div class="progress-steps">
+                            <div class="step active">
+                                <div class="step-number">1</div>
+                                <div class="step-label">Your Information</div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-label">Shipping</div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-label">Payment</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Left Column: Customer Information Form -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-user me-2"></i>Your Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="customerInfoForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customerEmail" class="form-label">Email Address *</label>
+                                        <input type="email" class="form-control" id="customerEmail" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customerName" class="form-label">Full Name *</label>
+                                        <input type="text" class="form-control" id="customerName" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="customerPhone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="customerPhone" required>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Shipping Address</h6>
+                                <div class="mb-3">
+                                    <label for="customerAddress" class="form-label">Street Address *</label>
+                                    <textarea class="form-control" id="customerAddress" rows="2" required></textarea>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customerCity" class="form-label">City *</label>
+                                        <input type="text" class="form-control" id="customerCity" required>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="customerState" class="form-label">State/Province</label>
+                                        <input type="text" class="form-control" id="customerState">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="customerZip" class="form-label">Postal Code *</label>
+                                        <input type="text" class="form-control" id="customerZip" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="customerCountry" class="form-label">Country *</label>
+                                    <select class="form-control" id="customerCountry" required>
+                                    <option value="">Select Country</option>
+                                    <option value="US">United States</option>
+                                    <option value="CA">Canada</option>
+                                    <option value="GB">United Kingdom</option>
+                                    <option value="AU">Australia</option>
+                                    <option value="DE">Germany</option>
+                                    <option value="FR">France</option>
+                                    <option value="IT">Italy</option>
+                                    <option value="ES">Spain</option>
+                                    <option value="JP">Japan</option>
+                                    <option value="CN">China</option>
+                                    <option value="IN">India</option>
+                                    <option value="BR">Brazil</option>
+                                    <option value="MX">Mexico</option>
+                                    <option value="NG">Nigeria</option>
+                                    <option value="ZA">South Africa</option>
+                                    <option value="KE">Kenya</option>
+                                    <option value="GH">Ghana</option>
+                                    <option value="CM">Cameroon</option>
+                                    <option value="CI">Ivory Coast</option>
+                                    <option value="SN">Senegal</option>
+                                    <option value="TZ">Tanzania</option>
+                                    <option value="ET">Ethiopia</option>
+                                    <option value="UG">Uganda</option>
+                                    <option value="RW">Rwanda</option>
+                                    <!-- Additional countries below -->
+                                    <option value="AF">Afghanistan</option>
+                                    <option value="AL">Albania</option>
+                                    <option value="DZ">Algeria</option>
+                                    <option value="AD">Andorra</option>
+                                    <option value="AO">Angola</option>
+                                    <option value="AG">Antigua and Barbuda</option>
+                                    <option value="AR">Argentina</option>
+                                    <option value="AM">Armenia</option>
+                                    <option value="AT">Austria</option>
+                                    <option value="AZ">Azerbaijan</option>
+                                    <option value="BS">Bahamas</option>
+                                    <option value="BH">Bahrain</option>
+                                    <option value="BD">Bangladesh</option>
+                                    <option value="BB">Barbados</option>
+                                    <option value="BY">Belarus</option>
+                                    <option value="BE">Belgium</option>
+                                    <option value="BZ">Belize</option>
+                                    <option value="BJ">Benin</option>
+                                    <option value="BT">Bhutan</option>
+                                    <option value="BO">Bolivia</option>
+                                    <option value="BA">Bosnia and Herzegovina</option>
+                                    <option value="BW">Botswana</option>
+                                    <option value="BN">Brunei</option>
+                                    <option value="BG">Bulgaria</option>
+                                    <option value="BF">Burkina Faso</option>
+                                    <option value="BI">Burundi</option>
+                                    <option value="KH">Cambodia</option>
+                                    <option value="CV">Cape Verde</option>
+                                    <option value="CF">Central African Republic</option>
+                                    <option value="TD">Chad</option>
+                                    <option value="CL">Chile</option>
+                                    <option value="CO">Colombia</option>
+                                    <option value="KM">Comoros</option>
+                                    <option value="CG">Congo (Brazzaville)</option>
+                                    <option value="CD">Congo (Kinshasa)</option>
+                                    <option value="CR">Costa Rica</option>
+                                    <option value="HR">Croatia</option>
+                                    <option value="CU">Cuba</option>
+                                    <option value="CY">Cyprus</option>
+                                    <option value="CZ">Czech Republic</option>
+                                    <option value="DK">Denmark</option>
+                                    <option value="DJ">Djibouti</option>
+                                    <option value="DM">Dominica</option>
+                                    <option value="DO">Dominican Republic</option>
+                                    <option value="EC">Ecuador</option>
+                                    <option value="EG">Egypt</option>
+                                    <option value="SV">El Salvador</option>
+                                    <option value="GQ">Equatorial Guinea</option>
+                                    <option value="ER">Eritrea</option>
+                                    <option value="EE">Estonia</option>
+                                    <option value="SZ">Eswatini</option>
+                                    <option value="FJ">Fiji</option>
+                                    <option value="FI">Finland</option>
+                                    <option value="GA">Gabon</option>
+                                    <option value="GM">Gambia</option>
+                                    <option value="GE">Georgia</option>
+                                    <option value="GR">Greece</option>
+                                    <option value="GD">Grenada</option>
+                                    <option value="GT">Guatemala</option>
+                                    <option value="GN">Guinea</option>
+                                    <option value="GW">Guinea-Bissau</option>
+                                    <option value="GY">Guyana</option>
+                                    <option value="HT">Haiti</option>
+                                    <option value="HN">Honduras</option>
+                                    <option value="HU">Hungary</option>
+                                    <option value="IS">Iceland</option>
+                                    <option value="ID">Indonesia</option>
+                                    <option value="IR">Iran</option>
+                                    <option value="IQ">Iraq</option>
+                                    <option value="IE">Ireland</option>
+                                    <option value="IL">Israel</option>
+                                    <option value="JM">Jamaica</option>
+                                    <option value="JO">Jordan</option>
+                                    <option value="KZ">Kazakhstan</option>
+                                    <option value="KI">Kiribati</option>
+                                    <option value="KP">North Korea</option>
+                                    <option value="KR">South Korea</option>
+                                    <option value="KW">Kuwait</option>
+                                    <option value="KG">Kyrgyzstan</option>
+                                    <option value="LA">Laos</option>
+                                    <option value="LV">Latvia</option>
+                                    <option value="LB">Lebanon</option>
+                                    <option value="LS">Lesotho</option>
+                                    <option value="LR">Liberia</option>
+                                    <option value="LY">Libya</option>
+                                    <option value="LI">Liechtenstein</option>
+                                    <option value="LT">Lithuania</option>
+                                    <option value="LU">Luxembourg</option>
+                                    <option value="MG">Madagascar</option>
+                                    <option value="MW">Malawi</option>
+                                    <option value="MY">Malaysia</option>
+                                    <option value="MV">Maldives</option>
+                                    <option value="ML">Mali</option>
+                                    <option value="MT">Malta</option>
+                                    <option value="MH">Marshall Islands</option>
+                                    <option value="MR">Mauritania</option>
+                                    <option value="MU">Mauritius</option>
+                                    <option value="FM">Micronesia</option>
+                                    <option value="MD">Moldova</option>
+                                    <option value="MC">Monaco</option>
+                                    <option value="MN">Mongolia</option>
+                                    <option value="ME">Montenegro</option>
+                                    <option value="MA">Morocco</option>
+                                    <option value="MZ">Mozambique</option>
+                                    <option value="MM">Myanmar</option>
+                                    <option value="NA">Namibia</option>
+                                    <option value="NR">Nauru</option>
+                                    <option value="NP">Nepal</option>
+                                    <option value="NL">Netherlands</option>
+                                    <option value="NZ">New Zealand</option>
+                                    <option value="NI">Nicaragua</option>
+                                    <option value="NE">Niger</option>
+                                    <option value="MK">North Macedonia</option>
+                                    <option value="NO">Norway</option>
+                                    <option value="OM">Oman</option>
+                                    <option value="PK">Pakistan</option>
+                                    <option value="PW">Palau</option>
+                                    <option value="PS">Palestine</option>
+                                    <option value="PA">Panama</option>
+                                    <option value="PG">Papua New Guinea</option>
+                                    <option value="PY">Paraguay</option>
+                                    <option value="PE">Peru</option>
+                                    <option value="PH">Philippines</option>
+                                    <option value="PL">Poland</option>
+                                    <option value="PT">Portugal</option>
+                                    <option value="QA">Qatar</option>
+                                    <option value="RO">Romania</option>
+                                    <option value="RU">Russia</option>
+                                    <option value="KN">Saint Kitts and Nevis</option>
+                                    <option value="LC">Saint Lucia</option>
+                                    <option value="VC">Saint Vincent and the Grenadines</option>
+                                    <option value="WS">Samoa</option>
+                                    <option value="SM">San Marino</option>
+                                    <option value="ST">Sao Tome and Principe</option>
+                                    <option value="SA">Saudi Arabia</option>
+                                    <option value="RS">Serbia</option>
+                                    <option value="SC">Seychelles</option>
+                                    <option value="SL">Sierra Leone</option>
+                                    <option value="SG">Singapore</option>
+                                    <option value="SK">Slovakia</option>
+                                    <option value="SI">Slovenia</option>
+                                    <option value="SB">Solomon Islands</option>
+                                    <option value="SO">Somalia</option>
+                                    <option value="LK">Sri Lanka</option>
+                                    <option value="SD">Sudan</option>
+                                    <option value="SS">South Sudan</option>
+                                    <option value="SR">Suriname</option>
+                                    <option value="SE">Sweden</option>
+                                    <option value="CH">Switzerland</option>
+                                    <option value="SY">Syria</option>
+                                    <option value="TW">Taiwan</option>
+                                    <option value="TJ">Tajikistan</option>
+                                    <option value="TH">Thailand</option>
+                                    <option value="TL">Timor-Leste</option>
+                                    <option value="TG">Togo</option>
+                                    <option value="TO">Tonga</option>
+                                    <option value="TT">Trinidad and Tobago</option>
+                                    <option value="TN">Tunisia</option>
+                                    <option value="TR">Turkey</option>
+                                    <option value="TM">Turkmenistan</option>
+                                    <option value="TV">Tuvalu</option>
+                                    <option value="UA">Ukraine</option>
+                                    <option value="AE">United Arab Emirates</option>
+                                    <option value="UY">Uruguay</option>
+                                    <option value="UZ">Uzbekistan</option>
+                                    <option value="VU">Vanuatu</option>
+                                    <option value="VA">Vatican City</option>
+                                    <option value="VE">Venezuela</option>
+                                    <option value="VN">Vietnam</option>
+                                    <option value="YE">Yemen</option>
+                                    <option value="ZM">Zambia</option>
+                                    <option value="ZW">Zimbabwe</option>
+                                </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="deliveryNotes" class="form-label">Delivery Notes</label>
+                                    <textarea class="form-control" id="deliveryNotes" rows="2" 
+                                              placeholder="Any special instructions for delivery"></textarea>
+                                </div>
+
+                                <button type="button" id="continueToShippingBtn" class="btn btn-primary w-100">
+                                    Continue to Shipping Options
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Order Summary -->
+                <div class="col-lg-6">
+                    <!-- Order Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">Order Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="orderSummary">
+                                <!-- Dynamic order summary will be inserted here -->
+                            </div>
+                            
+                            <!-- Shipping Section (initially hidden) -->
+                            <div id="shippingSection" style="display: none; margin-top: 1rem;">
+                                <hr>
+                                <div class="d-flex justify-content-between">
+                                    <span>Subtotal:</span>
+                                    <span id="subtotalDisplay">$0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between" id="shippingCostRow" style="display: none;">
+                                    <span>Shipping:</span>
+                                    <span id="shippingCostDisplay">$0.00</span>
+                                </div>
+                            </div>
+                            
+                            <!-- TAX SECTION -->
+                            <div id="taxSection" style="display: none; margin-top: 1rem;">
+                                <div id="taxCalculating" style="display: none; text-align: center; color: #6c757d;">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Calculating tax...
+                                </div>
+                                <div id="taxBreakdown"></div>
+                                <div id="taxExemptNotice" class="alert alert-warning py-2 small" style="display: none;">
+                                    <i class="fas fa-file-invoice me-2"></i>
+                                    <strong>Tax Exempt</strong> - No tax will be charged
+                                </div>
+                                <div class="d-flex justify-content-between mt-2" id="taxTotalRow" style="display: none;">
+                                    <span class="fw-bold">Tax:</span>
+                                    <span class="fw-bold text-success" id="taxAmount">$0.00</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Grand Total -->
+                            <div class="d-flex justify-content-between mt-3 pt-3 border-top">
+                                <h5 class="fw-bold">Total:</h5>
+                                <h5 class="fw-bold text-primary" id="grandTotal">$0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipping Options (Initially Hidden) -->
+                    <!-- Shipping Options Card -->
+                    <div class="card mb-4" id="shippingOptionsCard" style="display: none;">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-truck me-2"></i>Shipping Options
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="shippingRatesContainer">
+                                <!-- Dynamic shipping rates will appear here -->
+                            </div>
+                            <div id="noShippingMessage" class="alert alert-warning" style="display: none;">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No shipping rates available for your address.
+                            </div>
+                            <div id="contactForShippingMessage" class="alert alert-info" style="display: none;">
+                                <i class="fas fa-envelope me-2"></i>
+                                <strong>Need shipping to your location?</strong><br>
+                                Please <a href="../../?page=contact" id="contactStoreLink">contact the store</a> for shipping options. Free shipping will be applied now.
+                            </div>
+                            <button type="button" id="continueToPaymentBtn" class="btn btn-primary w-100 mt-3" style="display: none;">
+                                Continue to Payment Method
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods (Initially Hidden) -->
+                    <div class="card" id="paymentMethodsCard" style="display: none;">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">Select Payment Method</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if available_gateways %}
+                                <div class="payment-methods" id="paymentMethods">
+                                    {% for gateway in available_gateways %}
+                                    <div class="payment-method-card" data-gateway="{{ gateway.gateway_type }}">
+                                        <input type="radio" name="paymentMethod"
+                                            id="payment_{{ gateway.gateway_type }}"
+                                            value="{{ gateway.gateway_type }}"
+                                            class="payment-method-radio">
+                                        <label for="payment_{{ gateway.gateway_type }}" class="payment-method-label">
+                                            <div class="payment-method-content">
+                                                <div class="payment-icon 
+                                                    {% if gateway.gateway_type == 'stripe' %}stripe
+                                                    {% elif gateway.gateway_type == 'paypal' %}paypal
+                                                    {% elif gateway.gateway_type == 'razorpay' %}razorpay
+                                                    {% elif gateway.gateway_type == 'fincra' %}fincra
+                                                    {% elif gateway.gateway_type == 'cryptomus' %}cryptomus
+                                                    {% elif gateway.gateway_type == 'pay_on_delivery' %}pod
+                                                    {% elif gateway.gateway_type == 'social_media' %}social
+                                                    {% endif %}">
+                                                    
+                                                    {% if gateway.gateway_type == 'stripe' %}
+                                                        <i class="fab fa-stripe fa-2x"></i>
+                                                    {% elif gateway.gateway_type == 'paypal' %}
+                                                        <i class="fab fa-paypal fa-2x"></i>
+                                                    {% elif gateway.gateway_type == 'razorpay' %}
+                                                        <span style="color: white; font-weight: 700; font-size: 20px;">R</span>
+                                                    {% elif gateway.gateway_type == 'fincra' %}
+                                                        <i class="fas fa-building-columns fa-2x"></i>
+                                                    {% elif gateway.gateway_type == 'cryptomus' %}
+                                                        <i class="fas fa-bitcoin-sign fa-2x"></i>
+                                                    {% elif gateway.gateway_type == 'pay_on_delivery' %}
+                                                        <i class="fas fa-truck fa-2x"></i>
+                                                    {% elif gateway.gateway_type == 'social_media' %}
+                                                        <i class="fas fa-comments fa-2x"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-credit-card fa-2x"></i>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <div class="payment-details">
+                                                    <h6 class="payment-name">
+                                                        {% if gateway.gateway_type == 'pay_on_delivery' %}
+                                                            Pay on Delivery
+                                                        {% elif gateway.gateway_type == 'social_media' %}
+                                                            Pay with Social Media
+                                                        {% elif gateway.gateway_type == 'stripe' %}
+                                                            Stripe
+                                                        {% elif gateway.gateway_type == 'paypal' %}
+                                                            PayPal
+                                                        {% elif gateway.gateway_type == 'razorpay' %}
+                                                            Razorpay
+                                                        {% elif gateway.gateway_type == 'fincra' %}
+                                                            Fincra
+                                                        {% elif gateway.gateway_type == 'cryptomus' %}
+                                                            Cryptomus
+                                                        {% else %}
+                                                            {{ gateway.get_gateway_type_display }}
+                                                        {% endif %}
+                                                    </h6>
+                                                    
+                                                    <small class="text-muted">
+                                                        {% if gateway.gateway_type == 'stripe' %}
+                                                            Cards, Apple Pay, Google Pay, Link
+                                                        {% elif gateway.gateway_type == 'paypal' %}
+                                                            PayPal balance, Cards, Venmo, Pay Later
+                                                        {% elif gateway.gateway_type == 'pay_on_delivery' %}
+                                                            Pay with cash when your order is delivered
+                                                        {% elif gateway.gateway_type == 'razorpay' %}
+                                                            UPI, Cards, NetBanking, Wallets, EMI
+                                                        {% elif gateway.gateway_type == 'fincra' %}
+                                                            Cards, Bank Transfer, Mobile Money, Virtual Account
+                                                        {% elif gateway.gateway_type == 'cryptomus' %}
+                                                            Bitcoin, Ethereum, USDT, +15 cryptocurrencies
+                                                        {% elif gateway.gateway_type == 'social_media' %}
+                                                            WhatsApp, Messenger, Instagram, Telegram, X
+                                                        {% else %}
+                                                            Secure payment processing
+                                                        {% endif %}
+                                                    </small>
+                                                    
+                                                    {% if gateway.gateway_type == 'stripe' %}
+                                                    <div class="card-icons">
+                                                        <span class="card-icon"><i class="fab fa-cc-visa" style="color: #1A1F71;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-mastercard" style="color: #EB001B;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-amex" style="color: #2E77BC;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-apple-pay"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-google-pay"></i></span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'paypal' %}
+                                                    <div class="card-icons">
+                                                        <span class="card-icon"><i class="fab fa-cc-visa" style="color: #1A1F71;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-mastercard" style="color: #EB001B;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-amex" style="color: #2E77BC;"></i></span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'razorpay' %}
+                                                    <div class="payment-badges">
+                                                        <span class="payment-badge"><i class="fas fa-mobile-alt"></i> UPI</span>
+                                                        <span class="payment-badge"><i class="far fa-credit-card"></i> Cards</span>
+                                                        <span class="payment-badge"><i class="fas fa-university"></i> NetBanking</span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'cryptomus' %}
+                                                    <div class="payment-badges">
+                                                        <span class="payment-badge"><i class="fab fa-bitcoin"></i> BTC</span>
+                                                        <span class="payment-badge"><i class="fab fa-ethereum"></i> ETH</span>
+                                                        <span class="payment-badge"><i class="fas fa-dollar-sign"></i> USDT</span>
+                                                        <span class="payment-badge">+15 more</span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'fincra' %}
+                                                    <div class="payment-badges">
+                                                        <span class="payment-badge"><i class="fas fa-credit-card"></i> Cards</span>
+                                                        <span class="payment-badge"><i class="fas fa-building"></i> Bank Transfer</span>
+                                                        <span class="payment-badge"><i class="fas fa-mobile-alt"></i> Mobile Money</span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'social_media' %}
+                                                    <div class="payment-badges">
+                                                        <span class="payment-badge"><i class="fab fa-whatsapp" style="color: #25D366;"></i> WhatsApp</span>
+                                                        <span class="payment-badge"><i class="fab fa-facebook-messenger" style="color: #0084FF;"></i> Messenger</span>
+                                                        <span class="payment-badge"><i class="fab fa-instagram" style="color: #E4405F;"></i> Instagram</span>
+                                                        <span class="payment-badge"><i class="fab fa-telegram" style="color: #26A5E4;"></i> Telegram</span>
+                                                        <span class="payment-badge"><i class="fab fa-x-twitter"></i> X</span>
+                                                    </div>
+                                                    <div class="card-icons" style="margin-top: 8px;">
+                                                        <span class="card-icon"><i class="fab fa-cc-visa" style="color: #1A1F71;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-mastercard" style="color: #EB001B;"></i></span>
+                                                    </div>
+                                                    {% elif gateway.gateway_type == 'pay_on_delivery' %}
+                                                    <div class="payment-badges">
+                                                        <span class="payment-badge"><i class="fas fa-check-circle"></i> Pay on Receipt</span>
+                                                        <span class="payment-badge"><i class="fas fa-shield-alt"></i> Secure</span>
+                                                    </div>
+                                                    {% else %}
+                                                    <div class="card-icons">
+                                                        <span class="card-icon"><i class="fab fa-cc-visa" style="color: #1A1F71;"></i></span>
+                                                        <span class="card-icon"><i class="fab fa-cc-mastercard" style="color: #EB001B;"></i></span>
+                                                    </div>
+                                                    {% endif %}
+                                                    
+                                                    {% if gateway.is_test_mode %}
+                                                    <!-- <div class="test-mode-badge">
+                                                        <i class="fas fa-flask"></i> Test Mode Enabled
+                                                    </div> -->
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- POD Instructions -->
+                                <div id="podInstructions" class="alert alert-info mt-3" style="display: none;">
+                                    <h6><i class="fas fa-truck me-2"></i>Pay on Delivery Information</h6>
+                                    <p id="podInstructionText" class="mb-0 small"></p>
+                                </div>
+
+                                <!-- Complete Order Button -->
+                                <div class="mt-4">
+                                    <button id="completeOrderBtn" class="btn btn-success btn-lg w-100" disabled>
+                                        <i class="fas fa-lock me-2"></i>
+                                        Complete Order
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning text-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No payment methods available. Please contact the store.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <div class="text-center mt-4">
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to Shopping
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Progress Steps */
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+.progress-steps::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50px;
+    right: 50px;
+    height: 2px;
+    background: #e9ecef;
+    z-index: 0;
+}
+.step {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+.step.active .step-number {
+    background: #4361ee;
+    color: white;
+}
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e9ecef;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin: 0 auto 0.5rem;
+    border: 3px solid white;
+}
+.step-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.step.active .step-label {
+    color: #4361ee;
+    font-weight: 500;
+}
+
+/* Payment Method Cards */
+.payment-method-card {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.payment-method-card:hover {
+    border-color: #4361ee;
+    background-color: #f8f9ff;
+}
+.payment-method-card.selected {
+    border-color: #4361ee;
+    background-color: #f0f4ff;
+}
+.payment-method-radio {
+    display: none;
+}
+.payment-method-label {
+    display: block;
+    padding: 1rem;
+    cursor: pointer;
+    margin: 0;
+}
+.payment-method-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.payment-icon {
+    color: #4361ee;
+}
+.payment-icon .fa-truck {
+    color: #28a745;
+}
+.payment-name {
+    margin: 0;
+    color: #333;
+}
+
+/* Order Items */
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+/* Shipping Rate Options */
+.shipping-rate-option {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.shipping-rate-option:hover {
+    border-color: #4361ee;
+    background-color: #f8f9ff;
+}
+.shipping-rate-option.selected {
+    border-color: #4361ee;
+    background-color: #f0f4ff;
+}
+.shipping-rate-radio {
+    display: none;
+}
+.shipping-rate-label {
+    display: block;
+    padding: 1rem;
+    cursor: pointer;
+    margin: 0;
+}
+.shipping-rate-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.shipping-rate-info {
+    flex: 1;
+}
+.shipping-rate-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.shipping-rate-details {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+.shipping-rate-price {
+    font-weight: 700;
+    color: #28a745;
+    font-size: 1.1rem;
+}
+
+/* Tax Breakdown */
+.tax-breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.tax-rate-badge {
+    background: #e9ecef;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+/* Form Validation */
+.form-control:invalid {
+    border-color: #dc3545;
+}
+.form-control:valid {
+    border-color: #28a745;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const continueToShippingBtn = document.getElementById('continueToShippingBtn');
+    const shippingOptionsCard = document.getElementById('shippingOptionsCard');
+    const shippingRatesContainer = document.getElementById('shippingRatesContainer');
+    const noShippingMessage = document.getElementById('noShippingMessage');
+    const continueToPaymentBtn = document.getElementById('continueToPaymentBtn');
+    const paymentMethodsCard = document.getElementById('paymentMethodsCard');
+    const completeOrderBtn = document.getElementById('completeOrderBtn');
+    const orderSummary = document.getElementById('orderSummary');
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    const shippingCostDisplay = document.getElementById('shippingCostDisplay');
+    const shippingCostRow = document.getElementById('shippingCostRow');
+    const shippingSection = document.getElementById('shippingSection');
+    
+    // Tax Elements
+    const taxSection = document.getElementById('taxSection');
+    const taxCalculating = document.getElementById('taxCalculating');
+    const taxBreakdown = document.getElementById('taxBreakdown');
+    const taxExemptNotice = document.getElementById('taxExemptNotice');
+    const taxTotalRow = document.getElementById('taxTotalRow');
+    const taxAmount = document.getElementById('taxAmount');
+    const grandTotal = document.getElementById('grandTotal');
+    
+    // State variables
+    let orderData = {};
+    let customerInfo = {};
+    let selectedShippingRate = null;
+    let selectedPaymentMethod = null;
+    let currentTaxData = null;
+    let subtotal = 0;
+    let shippingCost = 0;
+    let shippingRates = [];
+    let debounceTimer;
+    
+    // Load order data from URL parameters (matches your existing format)
+    function loadOrderData() {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cartParam = urlParams.get('cart');
+            const productParam = urlParams.get('product');
+            
+            orderData = {
+                checkout_type: urlParams.get('type') || 'instant',
+                product: productParam ? JSON.parse(decodeURIComponent(productParam)) : {},
+                cart: cartParam ? JSON.parse(decodeURIComponent(cartParam)) : {},
+                customer: JSON.parse(urlParams.get('customer') || '{}')
+            };
+            
+            console.log('Order data loaded:', orderData);
+            
+            // Calculate subtotal (matches your existing logic)
+            if (orderData.checkout_type === 'instant' && orderData.product) {
+                if (!orderData.product.weight) {
+                    orderData.product.weight = 0;
+                }
+                if (!orderData.product.requires_shipping) {
+                    orderData.product.requires_shipping = true;
+                }
+                const price = parseFloat(orderData.product.price) || 0;
+                const quantity = parseInt(orderData.product.quantity) || 1;
+                subtotal = price * quantity;
+                shippingCost = 0;
+            } else if (orderData.checkout_type === 'cart' && orderData.cart) {
+                subtotal = parseFloat(orderData.cart.subtotal) || 0;
+                shippingCost = 0;
+                 if (!orderData.cart.weight) {
+                    orderData.cart.weight = 0;
+                    }
+                    if (!orderData.cart.requires_shipping) {
+                        orderData.cart.requires_shipping = true;
+                    }
+                
+                // Remove any pre-calculated amounts
+                if (orderData.cart.shipping_amount) {
+                    console.log('Ignoring pre-calculated shipping:', orderData.cart.shipping_amount);
+                    delete orderData.cart.shipping_amount;
+                }
+                if (orderData.cart.tax_amount) {
+                    console.log('Ignoring pre-calculated tax:', orderData.cart.tax_amount);
+                    delete orderData.cart.tax_amount;
+                }
+            }
+            
+            subtotal = isNaN(subtotal) ? 0 : subtotal;
+            
+            console.log('Subtotal:', subtotal);
+            
+            updateOrderSummary();
+            updateGrandTotal();
+            
+            return orderData;
+        } catch (error) {
+            console.error('Error loading order data:', error);
+            orderSummary.innerHTML = '<p class="text-muted">Error loading order information</p>';
+            return {};
+        }
+    }
+    
+   
+    function updateOrderSummary() {
+    let html = '';
+    
+    try {
+        if (orderData.checkout_type === 'instant' && orderData.product && Object.keys(orderData.product).length > 0) {
+            const product = orderData.product;
+            const price = parseFloat(product.price) || 0;
+            const quantity = parseInt(product.quantity) || 1;
+            const itemTotal = price * quantity;
+            
+            html = `
+                <div class="order-item">
+                    <span>${escapeHtml(product.title || 'Product')} x${quantity}</span>
+                    <span>${formatPrice(itemTotal)}</span>
+                </div>
+                <div class="d-flex justify-content-between mt-2">
+                    <span>Subtotal:</span>
+                    <span>${formatPrice(itemTotal)}</span>
+                </div>
+            `;
+        } else if (orderData.checkout_type === 'cart' && orderData.cart && orderData.cart.items) {
+            const items = orderData.cart.items || [];
+            
+            items.forEach(item => {
+                const price = parseFloat(item.price) || 0;
+                const quantity = parseInt(item.quantity) || 1;
+                const itemTotal = price * quantity;
+                
+                html += `
+                    <div class="order-item">
+                        <span>${escapeHtml(item.title || 'Product')} x${quantity}</span>
+                        <span>${formatPrice(itemTotal)}</span>
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div class="d-flex justify-content-between mt-2">
+                    <span>Subtotal:</span>
+                    <span>${formatPrice(subtotal)}</span>
+                </div>
+            `;
+        } else {
+            html = '<p class="text-muted">No order information available</p>';
+        }
+        
+        orderSummary.innerHTML = html;
+        if (subtotalDisplay) {
+            subtotalDisplay.innerHTML = formatPrice(subtotal);
+        }
+    } catch (error) {
+        console.error('Error updating order summary:', error);
+        orderSummary.innerHTML = '<p class="text-muted">Error displaying order</p>';
+    }
+}
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Validate customer form (matches your existing validation)
+    function validateCustomerForm() {
+        const requiredFields = [
+            'customerEmail', 'customerName', 'customerPhone',
+            'customerAddress', 'customerCity', 'customerZip', 'customerCountry'
+        ];
+        
+        for (const fieldId of requiredFields) {
+            const field = document.getElementById(fieldId);
+            if (!field || !field.value.trim()) {
+                if (field) field.focus();
+                return false;
+            }
+        }
+        
+        const email = document.getElementById('customerEmail')?.value || '';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Get customer address object (matches your existing format)
+    function getCustomerAddress() {
+        const countrySelect = document.getElementById('customerCountry');
+        const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+        
+        return {
+            full_name: document.getElementById('customerName')?.value || '',
+            address_line1: document.getElementById('customerAddress')?.value || '',
+            city: document.getElementById('customerCity')?.value || '',
+            state: document.getElementById('customerState')?.value || '',
+            postal_code: document.getElementById('customerZip')?.value || '',
+            country_code: countrySelect.value || '',
+            country_name: selectedOption?.text || '',
+            email: document.getElementById('customerEmail')?.value || '',
+            phone: document.getElementById('customerPhone')?.value || ''
+        };
+    }
+    
+    // Load shipping rates
+    async function loadShippingRates() {
+    if (!shippingRatesContainer) return;
+    
+    const address = getCustomerAddress();
+    
+    if (!address.country_code) {
+        shippingRatesContainer.innerHTML = '<div class="alert alert-info">Please select a country to see shipping rates</div>';
+        noShippingMessage.style.display = 'none';
+        return;
+    }
+    
+    shippingRatesContainer.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading shipping rates...</span>
+            </div>
+            <p class="text-muted mt-2">Calculating shipping rates...</p>
+        </div>
+    `;
+    
+    try {
+        // Build URL with checkout type and product data if it's instant checkout
+        let url = `/payments/shipping/rates/{{ page.subdomain }}/?address=${encodeURIComponent(JSON.stringify(address))}`;
+        
+        // Add checkout type and product data for instant checkout
+        if (orderData.checkout_type === 'instant' && orderData.product) {
+            url += `&type=instant&product=${encodeURIComponent(JSON.stringify(orderData.product))}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        console.log('Shipping rates response:', result);
+        
+        if (result.success && result.rates && result.rates.length > 0) {
+            shippingRates = result.rates;
+            displayShippingRates(shippingRates);
+            noShippingMessage.style.display = 'none';
+            continueToPaymentBtn.style.display = 'block';
+        } else if (result.cart_empty) {
+            shippingRatesContainer.innerHTML = '<div class="alert alert-info">Your cart is empty</div>';
+            noShippingMessage.style.display = 'none';
+            continueToPaymentBtn.style.display = 'none';
+        } else {
+            shippingRatesContainer.innerHTML = '';
+            noShippingMessage.style.display = 'block';
+            continueToPaymentBtn.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading shipping rates:', error);
+        shippingRatesContainer.innerHTML = '<div class="alert alert-danger">Error loading shipping rates. Please try again.</div>';
+        noShippingMessage.style.display = 'none';
+        continueToPaymentBtn.style.display = 'none';
+    }
+}
+
+    // Add this function near the top of your script section
+function formatPrice(price) {
+    const currencySymbol = '{{ page.currency_symbol|default:"$" }}';
+    const decimalPlaces = {{ page.decimal_places|default:2 }};
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum)) return currencySymbol + '0.00';
+    return currencySymbol + priceNum.toFixed(decimalPlaces);
+}
+
+// Also add escapeHtml if not present
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
+    // Display shipping rates
+    function displayShippingRates(rates) {
+    if (!shippingRatesContainer) return;
+    
+    // Check if this is a fallback rate (no zones configured or no match)
+    const isFallback = rates.length === 1 && rates[0].is_fallback;
+    
+    if (isFallback) {
+        // Display a friendly message for fallback shipping
+        const rate = rates[0];
+        let alertType = 'info';
+        let icon = 'fa-info-circle';
+        let title = rate.name;
+        
+        if (rate.message && rate.message.includes('no rates apply')) {
+            alertType = 'warning';
+            icon = 'fa-exclamation-triangle';
+        } else if (rate.message && rate.message.includes('not configured')) {
+            alertType = 'info';
+            icon = 'fa-truck';
+        } else if (rate.message && rate.message.includes('not available')) {
+            alertType = 'warning';
+            icon = 'fa-map-marker-alt';
+        }
+        
+        shippingRatesContainer.innerHTML = `
+            <div class="alert alert-${alertType}">
+                <div class="d-flex align-items-start">
+                    <i class="fas ${icon} me-3 mt-1 fa-lg"></i>
+                    <div>
+                        <h6 class="mb-1">${escapeHtml(title)}</h6>
+                        <p class="mb-0 small">${escapeHtml(rate.description)}</p>
+                        ${rate.message ? `<p class="mb-0 small text-muted mt-1">${escapeHtml(rate.message)}</p>` : ''}
+                        <p class="mb-0 mt-2"><strong>Shipping Cost:</strong> ${formatPrice(rate.price)}</p>
+                        ${rate.delivery_estimate ? `<p class="mb-0"><strong>Delivery Estimate:</strong> ${escapeHtml(rate.delivery_estimate)}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="fallback_shipping_rate" value="${rate.price}" data-rate-name="${rate.name}">
+        `;
+        
+        // For fallback, auto-select and continue
+        selectedShippingRate = rate;
+        shippingCost = parseFloat(rate.price);
+        updateShippingDisplay();
+        continueToPaymentBtn.style.display = 'block';
+        noShippingMessage.style.display = 'none';
+        return;
+    }
+    
+    // Normal shipping rates display
+    let html = '<div class="shipping-rates-list">';
+    rates.forEach((rate, index) => {
+        const isSelected = index === 0 && !selectedShippingRate;
+        html += `
+            <div class="shipping-rate-option ${isSelected ? 'selected' : ''}" data-rate-id="${rate.id}" data-rate-price="${rate.price}">
+                <input type="radio" name="shipping_rate" value="${rate.id}" id="rate_${rate.id}" class="shipping-rate-radio" ${isSelected ? 'checked' : ''}>
+                <label for="rate_${rate.id}" class="shipping-rate-label">
+                    <div class="shipping-rate-content">
+                        <div class="shipping-rate-info">
+                            <div class="shipping-rate-name">${escapeHtml(rate.name)}</div>
+                            ${rate.description ? `<div class="shipping-rate-details">${escapeHtml(rate.description)}</div>` : ''}
+                            ${rate.delivery_estimate ? `<div class="shipping-rate-details"><i class="fas fa-clock"></i> ${escapeHtml(rate.delivery_estimate)}</div>` : ''}
+                            ${rate.carrier ? `<div class="shipping-rate-details"><i class="fas fa-building"></i> ${escapeHtml(rate.carrier)}</div>` : ''}
+                        </div>
+                        <div class="shipping-rate-price">
+                            ${formatPrice(rate.price)}
+                        </div>
+                    </div>
+                </label>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    shippingRatesContainer.innerHTML = html;
+    
+    // Set default selected rate
+    if (rates.length > 0 && !selectedShippingRate) {
+        selectedShippingRate = rates[0];
+        shippingCost = parseFloat(selectedShippingRate.price);
+        updateShippingDisplay();
+    }
+    
+    // Add event listeners to shipping options
+    document.querySelectorAll('.shipping-rate-option').forEach(option => {
+        const radio = option.querySelector('input[type="radio"]');
+        
+        // Remove any existing listeners to prevent duplicates
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+        
+        const newRadio = newOption.querySelector('input[type="radio"]');
+        
+        newOption.addEventListener('click', (e) => {
+            if (e.target === newRadio) return;
+            newRadio.checked = true;
+            const event = new Event('change');
+            newRadio.dispatchEvent(event);
+        });
+        
+        newRadio.addEventListener('change', () => {
+            if (newRadio.checked) {
+                document.querySelectorAll('.shipping-rate-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                newOption.classList.add('selected');
+                
+                const rateId = parseInt(newOption.dataset.rateId);
+                const ratePrice = parseFloat(newOption.dataset.ratePrice);
+                selectedShippingRate = shippingRates.find(r => r.id === rateId);
+                shippingCost = ratePrice;
+                updateShippingDisplay();
+                
+                if (customerInfo && customerInfo.country) {
+                    calculateTax();
+                }
+            }
+        });
+    });
+    
+    // Show the continue button
+    continueToPaymentBtn.style.display = 'block';
+    noShippingMessage.style.display = 'none';
+}
+
+    // Update shipping display
+    function updateShippingDisplay() {
+    if (shippingCostDisplay && shippingCostRow) {
+        shippingCostDisplay.innerHTML = formatPrice(shippingCost);
+        shippingCostRow.style.display = 'flex';
+        shippingSection.style.display = 'block';
+    }
+    updateGrandTotal();
+}
+
+    // Calculate tax (matches your existing tax calculation)
+    async function calculateTax() {
+        if (!taxSection) return;
+        
+        taxSection.style.display = 'block';
+        if (taxCalculating) taxCalculating.style.display = 'block';
+        if (taxBreakdown) taxBreakdown.innerHTML = '';
+        
+        if (debounceTimer) clearTimeout(debounceTimer);
+        
+        debounceTimer = setTimeout(async () => {
+            try {
+                const customerData = {
+                    email: document.getElementById('customerEmail')?.value || '',
+                    country: document.getElementById('customerCountry')?.value || '',
+                    state: document.getElementById('customerState')?.value || '',
+                    city: document.getElementById('customerCity')?.value || '',
+                    postal_code: document.getElementById('customerZip')?.value || ''
+                };
+                
+                const items = [];
+                
+                if (orderData.checkout_type === 'instant' && orderData.product) {
+                    items.push({
+                        product_id: orderData.product.id || 'temp',
+                        title: orderData.product.title || 'Product',
+                        price: parseFloat(orderData.product.price) || 0,
+                        quantity: parseInt(orderData.product.quantity) || 1
+                    });
+                } else if (orderData.checkout_type === 'cart' && orderData.cart && orderData.cart.items) {
+                    orderData.cart.items.forEach(item => {
+                        items.push({
+                            product_id: item.id || 'temp',
+                            title: item.title || 'Product',
+                            price: parseFloat(item.price) || 0,
+                            quantity: parseInt(item.quantity) || 1
+                        });
+                    });
+                }
+                
+                if (items.length === 0 || !customerData.country) {
+                    if (taxCalculating) taxCalculating.style.display = 'none';
+                    if (taxBreakdown) taxBreakdown.innerHTML = '<p class="text-muted small">Enter shipping address to calculate tax</p>';
+                    return;
+                }
+                
+                const response = await fetch(`/payments/api/tax/calculate/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        items: items,
+                        customer: customerData,
+                        shipping_cost: shippingCost || 0,
+                        debug: true
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Tax API response:', data);
+                
+                if (data.success && data.data) {
+                    currentTaxData = data.data;
+                    renderTaxBreakdown();
+                } else {
+                    console.error('Tax calculation error:', data.error);
+                    if (taxCalculating) taxCalculating.style.display = 'none';
+                    if (taxBreakdown) {
+                        taxBreakdown.innerHTML = '<p class="text-muted small">Unable to calculate tax</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Tax calculation error:', error);
+                if (taxCalculating) taxCalculating.style.display = 'none';
+                if (taxBreakdown) {
+                    taxBreakdown.innerHTML = '<p class="text-muted small">Tax calculation unavailable</p>';
+                }
+            }
+        }, 500);
+    }
+    
+    function renderTaxBreakdown() {
+        if (!currentTaxData || !taxBreakdown) return;
+        
+        if (taxCalculating) taxCalculating.style.display = 'none';
+        
+        if (currentTaxData.is_exempt) {
+            taxExemptNotice.style.display = 'block';
+            taxBreakdown.innerHTML = '';
+            taxTotalRow.style.display = 'none';
+        } else {
+            taxExemptNotice.style.display = 'none';
+            
+            let breakdownHtml = '';
+            let totalTax = 0;
+            
+            if (currentTaxData.breakdown && currentTaxData.breakdown.length > 0) {
+                currentTaxData.breakdown.forEach(item => {
+                    if (item.rates_applied && item.rates_applied.length > 0) {
+                        item.rates_applied.forEach(rate => {
+                            let taxAmountVal = parseFloat(rate.tax_amount) || 0;
+                            totalTax += taxAmountVal;
+                            
+                            breakdownHtml += `
+                                <div class="tax-breakdown-item">
+                                    <span>
+                                        ${escapeHtml(rate.jurisdiction || 'Tax')} 
+                                        <span class="tax-rate-badge">${(parseFloat(rate.rate_percentage) || 0).toFixed(2)}%</span>
+                                    </span>
+                                    <span>{{ page.currency_symbol }}${taxAmountVal.toFixed(2)}</span>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+            
+            if (breakdownHtml) {
+                breakdownHtml += `
+                    <div class="tax-subtotal">
+                        <span>Total Tax:</span>
+                        <span>{{ page.currency_symbol }}${totalTax.toFixed(2)}</span>
+                    </div>
+                `;
+                
+                taxBreakdown.innerHTML = breakdownHtml;
+                taxTotalRow.style.display = 'flex';
+                if (taxAmount) {
+                    taxAmount.innerHTML = `{{ page.currency_symbol }}${totalTax.toFixed(2)}`;
+                }
+            } else {
+                taxBreakdown.innerHTML = '<p class="text-muted small">No tax applicable</p>';
+                taxTotalRow.style.display = 'none';
+            }
+        }
+        
+        updateGrandTotal();
+    }
+    
+    function updateGrandTotal() {
+    try {
+        let total = subtotal + shippingCost;
+        
+        if (currentTaxData && !currentTaxData.is_exempt) {
+            let taxValue = parseFloat(currentTaxData.tax_total) || 0;
+            total += taxValue;
+        }
+        
+        if (isNaN(total)) total = 0;
+        
+        if (grandTotal) {
+            grandTotal.innerHTML = formatPrice(total);
+        }
+    } catch (error) {
+        console.error('Error updating grand total:', error);
+    }
+}
+
+    // Continue to Shipping button (matches your existing flow)
+    if (continueToShippingBtn) {
+        continueToShippingBtn.addEventListener('click', function() {
+            if (!validateCustomerForm()) {
+                alert('Please fill in all required fields marked with *');
+                return;
+            }
+            
+            // Update customer info (matches your existing format)
+            const countrySelect = document.getElementById('customerCountry');
+            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+            
+            customerInfo = {
+                name: document.getElementById('customerName')?.value || '',
+                email: document.getElementById('customerEmail')?.value || '',
+                phone: document.getElementById('customerPhone')?.value || '',
+                address: document.getElementById('customerAddress')?.value || '',
+                city: document.getElementById('customerCity')?.value || '',
+                state: document.getElementById('customerState')?.value || '',
+                zip: document.getElementById('customerZip')?.value || '',
+                country: countrySelect.value || '',
+                country_name: selectedOption?.text || '',
+                delivery_notes: document.getElementById('deliveryNotes')?.value || '',
+                delivery_address: document.getElementById('customerAddress')?.value || '',
+                delivery_city: document.getElementById('customerCity')?.value || '',
+                delivery_state: document.getElementById('customerState')?.value || '',
+                delivery_zip: document.getElementById('customerZip')?.value || '',
+            };
+            
+            orderData.customer = customerInfo;
+            
+            // Show shipping options
+            if (shippingOptionsCard) {
+                shippingOptionsCard.style.display = 'block';
+            }
+            
+            // Load shipping rates
+            loadShippingRates();
+            
+            // Update progress steps
+            const steps = document.querySelectorAll('.step');
+            if (steps.length >= 2) {
+                steps[0].classList.remove('active');
+                steps[1].classList.add('active');
+            }
+            
+            // Scroll to shipping options
+            shippingOptionsCard.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+    
+    // Continue to Payment button
+    if (continueToPaymentBtn) {
+        continueToPaymentBtn.addEventListener('click', function() {
+            if (!selectedShippingRate) {
+                alert('Please select a shipping method');
+                return;
+            }
+            
+            // Update order data with shipping info
+            orderData.shipping_rate = selectedShippingRate;
+            orderData.shipping_cost = shippingCost;
+            
+            // Add tax data
+            if (currentTaxData) {
+                orderData.tax_amount = parseFloat(currentTaxData.tax_total) || 0;
+                orderData.tax_breakdown = currentTaxData.breakdown || [];
+            } else {
+                orderData.tax_amount = 0;
+                orderData.tax_breakdown = [];
+            }
+            
+            // Calculate final total
+            const total = subtotal + shippingCost + (parseFloat(orderData.tax_amount) || 0);
+            orderData.total_amount = total;
+            
+            // Show payment methods
+            if (paymentMethodsCard) {
+                paymentMethodsCard.style.display = 'block';
+            }
+            
+            // Update progress steps
+            const steps = document.querySelectorAll('.step');
+            if (steps.length >= 3) {
+                steps[1].classList.remove('active');
+                steps[2].classList.add('active');
+            }
+            
+            // Scroll to payment methods
+            paymentMethodsCard.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+    
+    // Payment method selection (matches your existing code)
+    document.querySelectorAll('.payment-method-radio').forEach(radio => {
+        radio.addEventListener('change', function() {
+            selectedPaymentMethod = this.value;
+            
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            this.closest('.payment-method-card')?.classList.add('selected');
+            
+            if (completeOrderBtn) {
+                completeOrderBtn.disabled = false;
+            }
+            
+            if (this.value === 'pay_on_delivery') {
+                showPodInstructions();
+            } else {
+                const podInstructions = document.getElementById('podInstructions');
+                if (podInstructions) {
+                    podInstructions.style.display = 'none';
+                }
+            }
+        });
+    });
+    
+    // Show POD instructions (matches your existing code)
+    async function showPodInstructions() {
+        try {
+            const response = await fetch(`/payments/api/pod-info/{{ page.subdomain }}/`);
+            const data = await response.json();
+            
+            const podInstructionText = document.getElementById('podInstructionText');
+            if (podInstructionText) {
+                if (data.available && data.pod_instructions) {
+                    podInstructionText.textContent = data.pod_instructions;
+                } else {
+                    podInstructionText.innerHTML = `
+                        <ul class="mb-0">
+                            <li>Pay when your order is delivered</li>
+                            <li>Cash or mobile payment accepted</li>
+                            <li>No upfront payment required</li>
+                            <li>Inspect items before paying</li>
+                        </ul>
+                    `;
+                }
+            }
+            
+            const podInstructions = document.getElementById('podInstructions');
+            if (podInstructions) {
+                podInstructions.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading POD info:', error);
+        }
+    }
+    
+    // Complete order button (matches your existing payment processing)
+    if (completeOrderBtn) {
+        completeOrderBtn.addEventListener('click', async function() {
+            if (!selectedPaymentMethod) {
+                alert('Please select a payment method');
+                return;
+            }
+            
+            // Normalize quantities and prices (matches your existing code)
+            if (orderData.checkout_type === 'instant' && orderData.product) {
+                orderData.product.quantity = parseInt(orderData.product.quantity) || 1;
+                orderData.product.price = parseFloat(orderData.product.price) || 0;
+                orderData.product.total_price = orderData.product.price * orderData.product.quantity;
+            }
+            
+            if (orderData.checkout_type === 'cart' && orderData.cart && orderData.cart.items) {
+                orderData.cart.items.forEach(item => {
+                    item.quantity = parseInt(item.quantity) || 1;
+                    item.price = parseFloat(item.price) || 0;
+                    item.total_price = item.price * item.quantity;
+                });
+            }
+            
+            // Show loading
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`/payments/process-payment/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        payment_method: selectedPaymentMethod,
+                        order_data: orderData
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Payment response:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Payment processing failed');
+                }
+                
+                // Handle different payment gateways (matches your existing code)
+                if (selectedPaymentMethod === 'stripe' && data.session_id && data.public_key) {
+                    await loadStripeAndRedirect(data.public_key, data.session_id);
+                } 
+                else if (selectedPaymentMethod === 'paypal' && data.approval_url) {
+                    window.location.href = data.approval_url;
+                } 
+                else if (selectedPaymentMethod === 'pay_on_delivery' && data.order_number) {
+                    window.location.href = `/payments/pod-success/{{ page.subdomain }}/?order=${data.order_number}`;
+                }
+                else if (selectedPaymentMethod === 'social_media' && data.success) {
+                    if (data.platform_messages) {
+                        sessionStorage.setItem('social_media_messages', JSON.stringify(data.platform_messages));
+                    }
+                    if (data.order_number) {
+                        sessionStorage.setItem('last_order_number', data.order_number);
+                    }
+                    if (data.order_details) {
+                        sessionStorage.setItem('order_details', JSON.stringify(data.order_details));
+                    }
+                    window.location.href = data.redirect_url || `/payments/social-media-success/{{ page.subdomain }}/`;
+                }
+                else if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                }
+                else {
+                    if (selectedPaymentMethod === 'social_media' && data.success) {
+                        window.location.href = `/payments/social-media-success/{{ page.subdomain }}/`;
+                    } else {
+                        alert('Payment method not fully implemented: ' + selectedPaymentMethod);
+                        this.innerHTML = '<i class="fas fa-lock me-2"></i>Complete Order';
+                        this.disabled = false;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Payment error:', error);
+                alert('Payment error: ' + error.message);
+                this.innerHTML = '<i class="fas fa-lock me-2"></i>Complete Order';
+                this.disabled = false;
+            }
+        });
+    }
+    
+    // Load Stripe and redirect (matches your existing code)
+    async function loadStripeAndRedirect(publicKey, sessionId) {
+        try {
+            if (!window.Stripe) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://js.stripe.com/v3/';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+            
+            const stripe = Stripe(publicKey);
+            const { error } = await stripe.redirectToCheckout({ sessionId });
+            
+            if (error) {
+                throw new Error(error.message);
+            }
+        } catch (error) {
+            console.error('Stripe redirect error:', error);
+            throw error;
+        }
+    }
+    
+    // Get CSRF token (matches your existing code)
+    function getCSRFToken() {
+        try {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        } catch (error) {
+            console.error('Error getting CSRF token:', error);
+            return '';
+        }
+    }
+    
+    // Initialize
+    loadOrderData();
+    
+    // Auto-fill if customer data exists in URL (matches your existing code)
+    if (orderData.customer && Object.keys(orderData.customer).length > 0) {
+        const customer = orderData.customer;
+        
+        const setFieldValue = (id, value) => {
+            const field = document.getElementById(id);
+            if (field) field.value = value || '';
+        };
+        
+        setFieldValue('customerEmail', customer.email);
+        setFieldValue('customerName', customer.name);
+        setFieldValue('customerPhone', customer.phone);
+        setFieldValue('customerAddress', customer.address);
+        setFieldValue('customerCity', customer.city);
+        setFieldValue('customerState', customer.state);
+        setFieldValue('customerZip', customer.zip);
+        setFieldValue('customerCountry', customer.country || 'US');
+        
+        setTimeout(() => {
+            calculateTax();
+        }, 500);
+        
+        setTimeout(() => {
+            if (continueToShippingBtn) {
+                continueToShippingBtn.click();
+            }
+        }, 1000);
+    }
+    
+    // Event listeners for tax calculation (matches your existing code)
+    const taxTriggerFields = ['customerCountry', 'customerState', 'customerCity', 'customerZip', 'customerEmail'];
+    taxTriggerFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('change', function() {
+                if (fieldId === 'customerEmail') {
+                    // checkTaxExemption();
+                } else if (shippingOptionsCard && shippingOptionsCard.style.display === 'block') {
+                    loadShippingRates();
+                } else {
+                    calculateTax();
+                }
+            });
+            field.addEventListener('blur', function() {
+                if (fieldId === 'customerEmail') {
+                    // checkTaxExemption();
+                } else if (field.value && shippingOptionsCard && shippingOptionsCard.style.display === 'block') {
+                    loadShippingRates();
+                } else if (field.value) {
+                    calculateTax();
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

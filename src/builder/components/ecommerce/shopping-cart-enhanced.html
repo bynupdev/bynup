@@ -1,0 +1,239 @@
+<section class="component-shopping-cart-enhanced editable-section" data-section="shopping-cart-1"
+         style="padding: 40px 0; background: white;">
+    <div class="container">
+        <h2 class="editable-text text-center mb-5" data-text="cart-title"
+            style="color: #333; font-weight: 700;">
+            Your Shopping Cart
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Cart Items -->
+                <div class="cart-items" id="cartItemsEnhanced">
+                    <div class="empty-cart text-center py-5">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h4 class="editable-text" data-text="empty-cart-title">Your cart is empty</h4>
+                        <p class="editable-text text-muted" data-text="empty-cart-text">
+                            Add some products to get started!
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <!-- Cart Summary -->
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title editable-text" data-text="summary-title">Order Summary</h5>
+                        
+                        <div class="summary-details mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="editable-text" data-text="subtotal-label">Subtotal:</span>
+                                <span id="cartSubtotalEnhanced">$0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="editable-text" data-text="shipping-label">Shipping:</span>
+                                <span id="cartShippingEnhanced">$0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="editable-text" data-text="tax-label">Tax:</span>
+                                <span id="cartTaxEnhanced">$0.00</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between mb-3">
+                                <strong class="editable-text" data-text="total-label">Total:</strong>
+                                <strong id="cartTotalEnhanced">$0.00</strong>
+                            </div>
+                        </div>
+                        
+                        <!-- Customer Information Form -->
+                        <div class="customer-form mb-3">
+                            <div class="mb-2">
+                                <label for="customerName" class="form-label small">Full Name</label>
+                                <input type="text" class="form-control form-control-sm" id="customerName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="customerEmail" class="form-label small">Email</label>
+                                <input type="email" class="form-control form-control-sm" id="customerEmail" required>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary w-100 mb-2" id="proceedToCheckoutEnhanced" disabled>
+                            <i class="fas fa-credit-card me-2"></i>
+                            <span class="editable-text" data-text="checkout-button">Proceed to Checkout</span>
+                        </button>
+                        
+                        <button class="btn btn-outline-secondary w-100" id="continueShoppingEnhanced">
+                            <i class="fas fa-shopping-bag me-2"></i>
+                            <span class="editable-text" data-text="continue-shopping-button">Continue Shopping</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cart = {
+        items: [],
+        
+        addItem: function(product) {
+            const existingItem = this.items.find(item => item.id === product.id);
+            if (existingItem) {
+                existingItem.quantity += product.quantity || 1;
+            } else {
+                this.items.push({
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    quantity: product.quantity || 1,
+                    image: product.image
+                });
+            }
+            this.updateCartDisplay();
+        },
+        
+        removeItem: function(index) {
+            this.items.splice(index, 1);
+            this.updateCartDisplay();
+        },
+        
+        updateQuantity: function(index, quantity) {
+            if (quantity <= 0) {
+                this.removeItem(index);
+            } else {
+                this.items[index].quantity = quantity;
+                this.updateCartDisplay();
+            }
+        },
+        
+        calculateTotals: function() {
+            const subtotal = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const shipping = subtotal > 0 ? 5.00 : 0;
+            const tax = subtotal * 0.08;
+            const total = subtotal + shipping + tax;
+            
+            return { subtotal, shipping, tax, total };
+        },
+        
+        getCartData: function() {
+            const totals = this.calculateTotals();
+            return {
+                items: this.items,
+                subtotal: totals.subtotal,
+                shipping_amount: totals.shipping,
+                tax_amount: totals.tax,
+                total_amount: totals.total
+            };
+        },
+        
+        updateCartDisplay: function() {
+            const cartItems = document.getElementById('cartItemsEnhanced');
+            const emptyCart = cartItems.querySelector('.empty-cart');
+            const proceedButton = document.getElementById('proceedToCheckoutEnhanced');
+            const customerName = document.getElementById('customerName');
+            const customerEmail = document.getElementById('customerEmail');
+            
+            if (this.items.length === 0) {
+                emptyCart.style.display = 'block';
+                proceedButton.disabled = true;
+                return;
+            }
+            
+            emptyCart.style.display = 'none';
+            
+            // Update cart items display
+            let itemsHTML = '';
+            this.items.forEach((item, index) => {
+                itemsHTML += `
+                    <div class="cart-item">
+                        <div class="row align-items-center">
+                            <div class="col-2">
+                                <img src="${item.image || 'https://via.placeholder.com/60x60'}" 
+                                     alt="${item.title}" class="img-fluid rounded">
+                            </div>
+                            <div class="col-4">
+                                <strong>${item.title}</strong>
+                            </div>
+                            <div class="col-2">
+                                $${item.price.toFixed(2)}
+                            </div>
+                            <div class="col-2">
+                                <input type="number" class="form-control form-control-sm" 
+                                       value="${item.quantity}" min="1"
+                                       onchange="window.shoppingCartEnhanced.updateQuantity(${index}, this.value)">
+                            </div>
+                            <div class="col-2">
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="window.shoppingCartEnhanced.removeItem(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            cartItems.innerHTML = itemsHTML;
+            
+            // Update totals
+            const totals = this.calculateTotals();
+            document.getElementById('cartSubtotalEnhanced').textContent = `$${totals.subtotal.toFixed(2)}`;
+            document.getElementById('cartShippingEnhanced').textContent = `$${totals.shipping.toFixed(2)}`;
+            document.getElementById('cartTaxEnhanced').textContent = `$${totals.tax.toFixed(2)}`;
+            document.getElementById('cartTotalEnhanced').textContent = `$${totals.total.toFixed(2)}`;
+            
+            // Update button state
+            this.updateButtonState();
+        },
+        
+        updateButtonState: function() {
+            const proceedButton = document.getElementById('proceedToCheckoutEnhanced');
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerEmail = document.getElementById('customerEmail').value.trim();
+            
+            proceedButton.disabled = this.items.length === 0 || !customerName || !customerEmail;
+        },
+        
+        proceedToCheckout: function() {
+            const customerInfo = {
+                name: document.getElementById('customerName').value.trim(),
+                email: document.getElementById('customerEmail').value.trim()
+            };
+            
+            const cartData = this.getCartData();
+            
+            if (window.checkoutManager) {
+                window.checkoutManager.handleCartCheckout(cartData, customerInfo);
+            } else {
+                console.error('Checkout manager not initialized');
+            }
+        }
+    };
+    
+    // Make cart globally available
+    window.shoppingCartEnhanced = cart;
+    
+    // Add event listeners
+    document.getElementById('customerName').addEventListener('input', () => cart.updateButtonState());
+    document.getElementById('customerEmail').addEventListener('input', () => cart.updateButtonState());
+    document.getElementById('proceedToCheckoutEnhanced').addEventListener('click', () => cart.proceedToCheckout());
+    
+    // Initialize
+    cart.updateCartDisplay();
+});
+</script>
+
+<style>
+.component-shopping-cart-enhanced .cart-item {
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+.component-shopping-cart-enhanced .empty-cart {
+    display: block;
+}
+</style>

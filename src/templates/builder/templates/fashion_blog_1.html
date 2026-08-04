@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Blog Editor</title>
+    <style>
+        :root {
+            --primary-color: #e6b89c;
+            --secondary-color: #9c7a97;
+            --accent-color: #4281a4;
+            --dark-color: #2d3047;
+            --light-color: #fefefe;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --gold: #d4af37;
+            --font-main: 'Playfair Display', serif;
+            --font-secondary: 'Montserrat', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-secondary);
+            background-color: var(--light-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Navigation */
+        .editable-section[data-section="navbar"] {
+            background: var(--dark-color);
+            color: white;
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: var(--font-main);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--gold);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .social-links a:hover {
+            color: var(--gold);
+        }
+
+        /* Page Sections */
+        .page-section {
+            display: none;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        /* Hero Section */
+        .editable-section[data-section="hero"] {
+            background: linear-gradient(135deg, rgba(230,184,156,0.9) 0%, rgba(156,122,151,0.9) 100%);
+            color: white;
+            padding: 6rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-family: var(--font-main);
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-button {
+            background: var(--gold);
+            color: var(--dark-color);
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-family: var(--font-main);
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--dark-color);
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--gold);
+            margin: 1rem auto;
+        }
+
+        /* Featured Posts */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .featured-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        .card-image {
+            height: 250px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        .card-category {
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-family: var(--font-main);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+            line-height: 1.3;
+        }
+
+        .card-excerpt {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .read-time {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Recent Posts */
+        .recent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .recent-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+
+        .recent-image {
+            height: 200px;
+            background: linear-gradient(45deg, var(--secondary-color), var(--accent-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .recent-content {
+            padding: 1.5rem;
+        }
+
+        /* Category Pages */
+        .category-hero {
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .category-title {
+            font-family: var(--font-main);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .category-description {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        /* About Page */
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+
+        .about-text h2 {
+            font-family: var(--font-main);
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark-color);
+        }
+
+        .about-image {
+            background: linear-gradient(45deg, var(--primary-color), var(--gold));
+            height: 400px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 4rem;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .team-member {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .team-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--secondary-color), var(--accent-color));
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        /* Newsletter */
+        .editable-section[data-section="newsletter"] {
+            background: linear-gradient(135deg, var(--dark-color) 0%, #2d3047 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .newsletter-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .newsletter-title {
+            font-family: var(--font-main);
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .newsletter-input {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .newsletter-button {
+            background: var(--gold);
+            color: var(--dark-color);
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .newsletter-button:hover {
+            background: white;
+        }
+
+        /* Footer */
+        .editable-section[data-section="footer"] {
+            background: var(--dark-color);
+            color: white;
+            padding: 3rem 0 1rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h3 {
+            font-family: var(--font-main);
+            margin-bottom: 1rem;
+            color: var(--gold);
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+
+        .copyright {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #444;
+            color: #999;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .newsletter-form {
+                flex-direction: column;
+            }
+
+            .featured-grid,
+            .recent-grid,
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .about-content {
+                grid-template-columns: 1fr;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .category-title {
+                font-size: 2.2rem;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                padding: 0 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <header class="editable-section" data-section="navbar" style="background: #2d3047; color: white; padding: 1rem 0; width: 100%; top: 0; z-index: 1000;">
+        <div class="header-container" style="position: relative;">
+            <div class="nav-container" style="position: sticky;">
+                <div class="logo editable-text" data-text="brand_name" style="font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: #d4af37;">
+                    ChicChronicles
+                </div>
+                
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+                
+                <ul class="nav-links" id="mobileMenu">
+                    <li><a href="#home" onclick="showPage('home')" class="nav-link active editable-text" data-text="nav_home" style="color: #d4af37; text-decoration: none;">Home</a></li>
+                    <li><a href="#fashion" onclick="showPage('fashion')" class="nav-link editable-text" data-text="nav_fashion" style="color: white; text-decoration: none;">Fashion</a></li>
+                    <li><a href="#beauty" onclick="showPage('beauty')" class="nav-link editable-text" data-text="nav_beauty" style="color: white; text-decoration: none;">Beauty</a></li>
+                    <li><a href="#lifestyle" onclick="showPage('lifestyle')" class="nav-link editable-text" data-text="nav_lifestyle" style="color: white; text-decoration: none;">Lifestyle</a></li>
+                    <li><a href="#about" onclick="showPage('about')" class="nav-link editable-text" data-text="nav_about" style="color: white; text-decoration: none;">About</a></li>
+                </ul>
+                
+                <div class="social-links">
+                    <a href="#" class="editable-text" data-text="social_instagram" style="color: white; text-decoration: none;">📷</a>
+                    <a href="#" class="editable-text" data-text="social_pinterest" style="color: white; text-decoration: none;">📌</a>
+                    <a href="#" class="editable-text" data-text="social_twitter" style="color: white; text-decoration: none;">🐦</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Home Page -->
+    <section id="home" class="page-section active">
+        <!-- Hero Section -->
+        <section class="editable-section" data-section="hero" style="background: linear-gradient(135deg, rgba(230,184,156,0.9) 0%, rgba(156,122,151,0.9) 100%); color: white; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title editable-text" data-text="hero_title" style="font-family: 'Playfair Display', serif; font-size: 3.5rem; font-weight: 700; margin-bottom: 1rem;">
+                        Elevate Your Style Journey
+                    </h1>
+                    <p class="hero-subtitle editable-text" data-text="hero_subtitle" style="font-size: 1.3rem; margin-bottom: 2rem;">
+                        Discover the latest trends, styling tips, and fashion inspiration from runway to real life
+                    </p>
+                    <a href="#fashion" onclick="showPage('fashion')" class="cta-button editable-text" data-text="hero_cta" style="background: #d4af37; color: #2d3047; padding: 1rem 2rem; border-radius: 30px; text-decoration: none; display: inline-block;">
+                        Explore Latest Trends
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Posts -->
+        <section class="editable-section" data-section="featured_posts" style="padding: 4rem 0; background: #fefefe;">
+            <div class="container">
+                <h2 class="section-title editable-text" data-text="featured_title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin-bottom: 3rem;">
+                    Featured Stories
+                </h2>
+                
+                <div class="featured-grid">
+                    <!-- Featured Post 1 -->
+                    <div class="featured-card editable-section" data-section="featured_post_1" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            👗
+                        </div>
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category editable-text" data-text="featured_category_1" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                Spring Fashion
+                            </div>
+                            <h3 class="card-title editable-text" data-text="featured_title_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                The Ultimate Spring Wardrobe Refresh
+                            </h3>
+                            <p class="card-excerpt editable-text" data-text="featured_excerpt_1" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                Discover how to transition your wardrobe with key pieces that blend comfort and style for the new season.
+                            </p>
+                            <div class="card-meta">
+                                <span class="editable-text" data-text="featured_author_1" style="color: #666666; font-size: 0.9rem;">By Sarah Chen</span>
+                                <span class="read-time">
+                                    ⏱️ <span class="editable-text" data-text="featured_read_time_1" style="color: #666666; font-size: 0.9rem;">5 min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Featured Post 2 -->
+                    <div class="featured-card editable-section" data-section="featured_post_2" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            💄
+                        </div>
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category editable-text" data-text="featured_category_2" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                Beauty Trends
+                            </div>
+                            <h3 class="card-title editable-text" data-text="featured_title_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                Clean Beauty Revolution 2024
+                            </h3>
+                            <p class="card-excerpt editable-text" data-text="featured_excerpt_2" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                Exploring the shift towards sustainable and transparent beauty products that actually deliver results.
+                            </p>
+                            <div class="card-meta">
+                                <span class="editable-text" data-text="featured_author_2" style="color: #666666; font-size: 0.9rem;">By Mia Rodriguez</span>
+                                <span class="read-time">
+                                    ⏱️ <span class="editable-text" data-text="featured_read_time_2" style="color: #666666; font-size: 0.9rem;">7 min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Posts -->
+        <section class="editable-section" data-section="recent_posts" style="padding: 4rem 0; background: #f8f9fa;">
+            <div class="container">
+                <h2 class="section-title editable-text" data-text="recent_title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin-bottom: 3rem;">
+                    Latest Articles
+                </h2>
+                
+                <div class="recent-grid">
+                    <!-- Recent Post 1 -->
+                    <div class="recent-card editable-section" data-section="recent_post_1" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+                        <div class="recent-image" style="height: 200px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                            👠
+                        </div>
+                        <div class="recent-content" style="padding: 1.5rem;">
+                            <div class="card-category editable-text" data-text="recent_category_1" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                Street Style
+                            </div>
+                            <h3 class="card-title editable-text" data-text="recent_title_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                Urban Fashion: NYC Street Style Guide
+                            </h3>
+                            <p class="card-excerpt editable-text" data-text="recent_excerpt_1" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                Capturing the essence of New York City street fashion and how to incorporate it into your daily looks.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Recent Post 2 -->
+                    <div class="recent-card editable-section" data-section="recent_post_2" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+                        <div class="recent-image" style="height: 200px; background: linear-gradient(45deg, #4281a4, #e6b89c); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                            👜
+                        </div>
+                        <div class="recent-content" style="padding: 1.5rem;">
+                            <div class="card-category editable-text" data-text="recent_category_2" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                Accessories
+                            </div>
+                            <h3 class="card-title editable-text" data-text="recent_title_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                Investment Bags Worth Every Penny
+                            </h3>
+                            <p class="card-excerpt editable-text" data-text="recent_excerpt_2" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                A curated list of timeless handbags that will elevate your style for years to come.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Recent Post 3 -->
+                    <div class="recent-card editable-section" data-section="recent_post_3" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+                        <div class="recent-image" style="height: 200px; background: linear-gradient(45deg, #e6b89c, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                            🌿
+                        </div>
+                        <div class="recent-content" style="padding: 1.5rem;">
+                            <div class="card-category editable-text" data-text="recent_category_3" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                Sustainable Fashion
+                            </div>
+                            <h3 class="card-title editable-text" data-text="recent_title_3" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                Building a Conscious Closet
+                            </h3>
+                            <p class="card-excerpt editable-text" data-text="recent_excerpt_3" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                Practical steps towards creating a sustainable wardrobe without compromising on style.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <!-- Fashion Page -->
+    <section id="fashion" class="page-section">
+        <div class="category-hero editable-section" data-section="fashion_hero" style="background: linear-gradient(135deg, #4281a4 0%, #9c7a97 100%); color: white; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title editable-text" data-text="fashion_title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    Fashion & Style
+                </h1>
+                <p class="category-description editable-text" data-text="fashion_description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    Discover the latest fashion trends, styling tips, and inspiration to elevate your personal style
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                <!-- Fashion Post 1 -->
+                <div class="featured-card editable-section" data-section="fashion_post_1" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        👘
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="fashion_category_1" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Seasonal Trends
+                        </div>
+                        <h3 class="card-title editable-text" data-text="fashion_title_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Fall 2024: Cozy Chic Essentials
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="fashion_excerpt_1" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Embrace the autumn season with these must-have pieces that combine comfort and sophistication.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="fashion_author_1" style="color: #666666; font-size: 0.9rem;">By Emma Wilson</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="fashion_read_time_1" style="color: #666666; font-size: 0.9rem;">6 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fashion Post 2 -->
+                <div class="featured-card editable-section" data-section="fashion_post_2" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        👔
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="fashion_category_2" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Workwear
+                        </div>
+                        <h3 class="card-title editable-text" data-text="fashion_title_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Office to Evening: Versatile Workwear
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="fashion_excerpt_2" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Transform your professional wardrobe with pieces that seamlessly transition from desk to dinner.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="fashion_author_2" style="color: #666666; font-size: 0.9rem;">By James Thompson</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="fashion_read_time_2" style="color: #666666; font-size: 0.9rem;">8 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Beauty Page -->
+    <section id="beauty" class="page-section">
+        <div class="category-hero editable-section" data-section="beauty_hero" style="background: linear-gradient(135deg, #9c7a97 0%, #e6b89c 100%); color: white; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title editable-text" data-text="beauty_title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    Beauty & Wellness
+                </h1>
+                <p class="category-description editable-text" data-text="beauty_description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    Explore the latest beauty trends, skincare routines, and wellness tips for radiant living
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                <!-- Beauty Post 1 -->
+                <div class="featured-card editable-section" data-section="beauty_post_1" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        💆‍♀️
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="beauty_category_1" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Skincare
+                        </div>
+                        <h3 class="card-title editable-text" data-text="beauty_title_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Glass Skin: The Korean Beauty Routine
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="beauty_excerpt_1" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Achieve that coveted glass skin glow with this step-by-step Korean skincare routine.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="beauty_author_1" style="color: #666666; font-size: 0.9rem;">By Sofia Kim</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="beauty_read_time_1" style="color: #666666; font-size: 0.9rem;">10 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Beauty Post 2 -->
+                <div class="featured-card editable-section" data-section="beauty_post_2" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        💅
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="beauty_category_2" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Makeup Trends
+                        </div>
+                        <h3 class="card-title editable-text" data-text="beauty_title_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Minimalist Makeup for Maximum Impact
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="beauty_excerpt_2" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Less is more: Learn how to create stunning looks with just a few key products.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="beauty_author_2" style="color: #666666; font-size: 0.9rem;">By Chloe Martinez</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="beauty_read_time_2" style="color: #666666; font-size: 0.9rem;">7 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lifestyle Page -->
+    <section id="lifestyle" class="page-section">
+        <div class="category-hero editable-section" data-section="lifestyle_hero" style="background: linear-gradient(135deg, #4281a4 0%, #e6b89c 100%); color: white; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title editable-text" data-text="lifestyle_title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    Lifestyle & Wellness
+                </h1>
+                <p class="category-description editable-text" data-text="lifestyle_description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    Discover ways to enhance your daily life with wellness tips, home decor, and mindful living
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                <!-- Lifestyle Post 1 -->
+                <div class="featured-card editable-section" data-section="lifestyle_post_1" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        🏡
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="lifestyle_category_1" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Home Decor
+                        </div>
+                        <h3 class="card-title editable-text" data-text="lifestyle_title_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Creating Your Perfect Reading Nook
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="lifestyle_excerpt_1" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Transform any corner into a cozy retreat perfect for relaxing with your favorite books.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="lifestyle_author_1" style="color: #666666; font-size: 0.9rem;">By Olivia Parker</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="lifestyle_read_time_1" style="color: #666666; font-size: 0.9rem;">5 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lifestyle Post 2 -->
+                <div class="featured-card editable-section" data-section="lifestyle_post_2" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        🧘‍♀️
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category editable-text" data-text="lifestyle_category_2" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            Wellness
+                        </div>
+                        <h3 class="card-title editable-text" data-text="lifestyle_title_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            Morning Routines for Productive Days
+                        </h3>
+                        <p class="card-excerpt editable-text" data-text="lifestyle_excerpt_2" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            Start your day right with these simple yet effective morning habits that boost productivity.
+                        </p>
+                        <div class="card-meta">
+                            <span class="editable-text" data-text="lifestyle_author_2" style="color: #666666; font-size: 0.9rem;">By Noah Johnson</span>
+                            <span class="read-time">
+                                ⏱️ <span class="editable-text" data-text="lifestyle_read_time_2" style="color: #666666; font-size: 0.9rem;">6 min read</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Page -->
+    <section id="about" class="page-section">
+        <div class="category-hero editable-section" data-section="about_hero" style="background: linear-gradient(135deg, #e6b89c 0%, #4281a4 100%); color: white; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title editable-text" data-text="about_title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    About ChicChronicles
+                </h1>
+                <p class="category-description editable-text" data-text="about_description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    Your trusted source for fashion inspiration, beauty expertise, and lifestyle guidance
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2 class="editable-text" data-text="about_story_title" style="font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 1.5rem; color: #2d3047;">
+                        Our Story
+                    </h2>
+                    <p class="editable-text" data-text="about_story_content" style="color: #666666; line-height: 1.6; margin-bottom: 1.5rem;">
+                        Founded in 2020, ChicChronicles began as a passion project between three friends who shared a love for fashion, beauty, and creating meaningful content. What started as a small blog has grown into a trusted resource for thousands of readers seeking authentic style advice and lifestyle inspiration.
+                    </p>
+                    <p class="editable-text" data-text="about_mission" style="color: #666666; line-height: 1.6;">
+                        Our mission is to empower individuals to express their unique style with confidence while promoting sustainable fashion practices and self-care rituals that nurture both inner and outer beauty.
+                    </p>
+                </div>
+                <div class="about-image editable-section" data-section="about_image" style="background: linear-gradient(45deg, #e6b89c, #d4af37); height: 400px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">
+                    ✨
+                </div>
+            </div>
+
+            <h2 class="section-title editable-text" data-text="team_title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin: 4rem 0 3rem;">
+                Meet Our Team
+            </h2>
+
+            <div class="team-grid">
+                <!-- Team Member 1 -->
+                <div class="team-member editable-section" data-section="team_member_1" style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(45deg, #9c7a97, #4281a4); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        👩‍💼
+                    </div>
+                    <h3 class="editable-text" data-text="team_name_1" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; color: #2d3047;">
+                        Sarah Chen
+                    </h3>
+                    <p class="editable-text" data-text="team_role_1" style="color: #4281a4; font-weight: 600; margin-bottom: 1rem;">
+                        Editor-in-Chief
+                    </p>
+                    <p class="editable-text" data-text="team_bio_1" style="color: #666666; font-size: 0.9rem; line-height: 1.5;">
+                        With over 10 years in fashion journalism, Sarah brings expert insight into seasonal trends and styling techniques.
+                    </p>
+                </div>
+
+                <!-- Team Member 2 -->
+                <div class="team-member editable-section" data-section="team_member_2" style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(45deg, #4281a4, #e6b89c); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        👨‍💼
+                    </div>
+                    <h3 class="editable-text" data-text="team_name_2" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; color: #2d3047;">
+                        Marcus Rodriguez
+                    </h3>
+                    <p class="editable-text" data-text="team_role_2" style="color: #4281a4; font-weight: 600; margin-bottom: 1rem;">
+                        Beauty Director
+                    </p>
+                    <p class="editable-text" data-text="team_bio_2" style="color: #666666; font-size: 0.9rem; line-height: 1.5;">
+                        A certified skincare specialist, Marcus demystifies complex beauty routines and product ingredients.
+                    </p>
+                </div>
+
+                <!-- Team Member 3 -->
+                <div class="team-member editable-section" data-section="team_member_3" style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(45deg, #e6b89c, #9c7a97); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        👩‍💻
+                    </div>
+                    <h3 class="editable-text" data-text="team_name_3" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; color: #2d3047;">
+                        Elena Petrova
+                    </h3>
+                    <p class="editable-text" data-text="team_role_3" style="color: #4281a4; font-weight: 600; margin-bottom: 1rem;">
+                        Lifestyle Editor
+                    </p>
+                    <p class="editable-text" data-text="team_bio_3" style="color: #666666; font-size: 0.9rem; line-height: 1.5;">
+                        Elena specializes in creating content that helps readers build balanced, beautiful lives through mindful practices.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter (Global Section) -->
+    <section class="editable-section" data-section="newsletter" style="background: linear-gradient(135deg, #2d3047 0%, #2d3047 100%); color: white; padding: 4rem 0; text-align: center;">
+        <div class="container">
+            <div class="newsletter-content">
+                <h2 class="newsletter-title editable-text" data-text="newsletter_title" style="font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 1rem;">
+                    Style Insider
+                </h2>
+                <p class="editable-text" data-text="newsletter_subtitle" style="margin-bottom: 2rem;">
+                    Get exclusive fashion tips, early access to sales, and curated style guides delivered to your inbox weekly.
+                </p>
+                <form class="newsletter-form">
+                    <input type="email" placeholder="Your email address" class="newsletter-input editable-text" data-text="newsletter_placeholder" style="flex: 1; padding: 1rem; border: none; border-radius: 6px; font-size: 1rem;">
+                    <button type="submit" class="newsletter-button editable-text" data-text="newsletter_button" style="background: #d4af37; color: #2d3047; border: none; padding: 1rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Subscribe
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="editable-section" data-section="footer" style="background: #2d3047; color: white; padding: 3rem 0 1rem;">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 class="editable-text" data-text="footer_about_title" style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: #d4af37;">
+                        About ChicChronicles
+                    </h3>
+                    <p class="editable-text" data-text="footer_about_text" style="color: #ccc; line-height: 1.6;">
+                        Your premier destination for fashion inspiration, beauty tips, and lifestyle content that empowers your personal style journey.
+                    </p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 class="editable-text" data-text="footer_quick_links" style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: #d4af37;">
+                        Quick Links
+                    </h3>
+                    <ul class="footer-links">
+                        <li><a href="#home" onclick="showPage('home')" class="editable-text" data-text="footer_link_home" style="color: #ccc; text-decoration: none;">Home</a></li>
+                        <li><a href="#fashion" onclick="showPage('fashion')" class="editable-text" data-text="footer_link_fashion" style="color: #ccc; text-decoration: none;">Fashion</a></li>
+                        <li><a href="#beauty" onclick="showPage('beauty')" class="editable-text" data-text="footer_link_beauty" style="color: #ccc; text-decoration: none;">Beauty</a></li>
+                        <li><a href="#lifestyle" onclick="showPage('lifestyle')" class="editable-text" data-text="footer_link_lifestyle" style="color: #ccc; text-decoration: none;">Lifestyle</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 class="editable-text" data-text="footer_connect" style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: #d4af37;">
+                        Connect With Us
+                    </h3>
+                    <ul class="footer-links">
+                        <li><a href="#" class="editable-text" data-text="footer_social_insta" style="color: #ccc; text-decoration: none;">Instagram</a></li>
+                        <li><a href="#" class="editable-text" data-text="footer_social_pinterest" style="color: #ccc; text-decoration: none;">Pinterest</a></li>
+                        <li><a href="#" class="editable-text" data-text="footer_social_twitter" style="color: #ccc; text-decoration: none;">Twitter</a></li>
+                        <li><a href="#" class="editable-text" data-text="footer_social_newsletter" style="color: #ccc; text-decoration: none;">Newsletter</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p class="editable-text" data-text="footer_copyright" style="color: #999; text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #444;">
+                    &copy; 2024 ChicChronicles. All rights reserved. | Crafted with 💖 for fashion lovers
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Multi-page navigation functionality
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-section').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.style.color = 'white';
+                link.classList.remove('active');
+            });
+            
+            const activeLink = document.querySelector(`a[href="#${pageId}"]`);
+            if (activeLink) {
+                activeLink.style.color = '#d4af37';
+                activeLink.classList.add('active');
+            }
+            
+            // Close mobile menu
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu) {
+                mobileMenu.classList.remove('active');
+            }
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Newsletter form handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const newsletterForm = document.querySelector('.newsletter-form');
+            if (newsletterForm) {
+                newsletterForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const email = this.querySelector('input[type="email"]').value;
+                    // Simulate subscription
+                    alert(`Thank you for subscribing with: ${email}`);
+                    this.reset();
+                });
+            }
+
+            // Initialize with home page
+            showPage('home');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.querySelector('.mobile-menu-btn');
+            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+
+        // Handle URL hash changes
+        window.addEventListener('hashchange', function() {
+            const hash = window.location.hash.substring(1);
+            if (['home', 'fashion', 'beauty', 'lifestyle', 'about'].includes(hash)) {
+                showPage(hash);
+            }
+        });
+
+        // Initialize page based on URL hash
+        document.addEventListener('DOMContentLoaded', function() {
+            const hash = window.location.hash.substring(1);
+            if (hash && ['home', 'fashion', 'beauty', 'lifestyle', 'about'].includes(hash)) {
+                showPage(hash);
+            } else {
+                showPage('home');
+            }
+        });
+    </script>
+</body>
+</html>

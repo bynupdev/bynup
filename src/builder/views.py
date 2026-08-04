@@ -1,0 +1,8531 @@
+
+
+from decimal import Decimal
+from sqlite3 import IntegrityError
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponse, Http404
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.core.files.base import ContentFile
+from django.utils import timezone
+from datetime import timedelta
+from django.template import engines
+from django.template import TemplateDoesNotExist
+from django.utils.safestring import mark_safe
+from django.template.loader import render_to_string
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Sum, F
+from payments.decorators import (
+    pro_required, business_required, paid_plan_required,
+    check_website_limit, check_product_limit, check_form_submission_limit,
+    custom_domain_required, remove_branding_required
+)
+from payments.decorators import get_user_subscription
+from payments.models import Subscription
+from payments.decorators import check_storage_before_upload
+from payments.storage import get_user_storage_usage, format_bytes, get_storage_limit
+
+import json
+import base64
+import uuid
+import re
+import os
+from django.conf import settings
+
+from builder.utils.color_extractor import TemplateColorExtractor
+
+from .models import *
+
+@login_required
+@custom_domain_required
+def manage_domains(request, subdomain):
+    """Manage custom domains for a published page"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    if request.method == 'POST':
+        custom_domain = request.POST.get('custom_domain', '').strip().lower()
+        is_active = request.POST.get('is_custom_domain_active') == 'on'
+        
+        # Validate domain
+        if custom_domain:
+            domain_pattern = r'^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$'
+            if not re.match(domain_pattern, custom_domain):
+                messages.error(request, 'Please enter a valid domain name (e.g., mystore.com)')
+                return redirect('manage_domains', subdomain=subdomain)
+            
+            # Check if domain is already taken
+            existing = PublishedPage.objects.filter(custom_domain=custom_domain).exclude(id=page.id).first()
+            if existing:
+                messages.error(request, f'Domain {custom_domain} is already in use by another store.')
+                return redirect('manage_domains', subdomain=subdomain)
+        
+        page.custom_domain = custom_domain if custom_domain else None
+        page.is_custom_domain_active = is_active if custom_domain else False
+        page.save()
+        
+        if custom_domain and is_active:
+            messages.success(request, f'Custom domain {custom_domain} activated successfully!')
+        elif custom_domain:
+            messages.info(request, f'Custom domain {custom_domain} saved but not activated.')
+        else:
+            messages.info(request, 'Custom domain removed. Using subdomain.')
+        
+        return redirect('manage_domains', subdomain=subdomain)
+    
+    return render(request, 'builder/manage_domains.html', {
+        'page': page,
+    })
+
+@login_required
+def manage_blog_posts(request, subdomain):
+    """Manage blog posts for a published page - user must own it"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Filter by category if provided
+    category_filter = request.GET.get('category', 'all')
+    if category_filter != 'all':
+        blog_posts = page.blog_posts.filter(category=category_filter)
+    else:
+        blog_posts = page.blog_posts.all()
+    
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        excerpt = request.POST.get('excerpt')
+        category = request.POST.get('category', 'home')
+        featured_image = request.FILES.get('featured_image')
+        
+        blog_post = BlogPost(
+            page=page,
+            title=title,
+            content=content,
+            excerpt=excerpt,
+            category=category
+        )
+        
+        if featured_image:
+            blog_post.featured_image = featured_image
+        
+        blog_post.save()
+        return redirect('manage_blog_posts', subdomain=subdomain)
+    
+    return render(request, 'builder/manage_blog_posts.html', {
+        'page': page,
+        'blog_posts': blog_posts,
+        'current_category': category_filter
+    })
+
+# @login_required
+# def manage_forms(request, subdomain):
+#     """Manage form submissions for a published page - user must own it"""
+#     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+#     form_submissions = page.form_submissions.all()
+    
+#     return render(request, 'builder/manage_forms.html', {
+#         'page': page,
+#         'form_submissions': form_submissions
+#     })
+
+
+@csrf_exempt
+@check_form_submission_limit
+def submit_form(request, subdomain):
+    """Handle form submissions from published pages"""
+    if request.method == 'POST':
+        try:
+            page = get_object_or_404(PublishedPage, subdomain=subdomain)
+            form_name = request.POST.get('form_name', 'contact')
+            
+            # Collect all form data
+            form_data = {}
+            for key, value in request.POST.items():
+                if key != 'csrfmiddlewaretoken' and key != 'form_name':
+                    form_data[key] = value
+            
+            # Create form submission
+            submission = FormSubmission.objects.create(
+                page=page,
+                form_name=form_name,
+                submitted_data=form_data,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+
+            )
+            
+            # Optional: Send email notification
+            # send_form_notification(page, submission)
+            
+            return JsonResponse({'success': True, 'message': 'Form submitted successfully'})
+        
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+
+
+def get_client_ip(request):
+    """Get client IP address"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+@login_required
+def manage_form_submissions(request, subdomain):
+    """Display form submissions for a store"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get filter parameters
+    form_name = request.GET.get('form_name', '')
+    date_range = request.GET.get('date_range', '')
+    search = request.GET.get('search', '')
+    
+    # Base queryset
+    submissions = page.form_submissions.all()
+    
+    # Apply filters
+    if form_name:
+        submissions = submissions.filter(form_name=form_name)
+    
+    if date_range:
+        today = timezone.now().date()
+        if date_range == 'today':
+            submissions = submissions.filter(submitted_at__date=today)
+        elif date_range == 'week':
+            week_ago = today - timedelta(days=7)
+            submissions = submissions.filter(submitted_at__date__gte=week_ago)
+        elif date_range == 'month':
+            month_ago = today - timedelta(days=30)
+            submissions = submissions.filter(submitted_at__date__gte=month_ago)
+        elif date_range == 'year':
+            year_ago = today - timedelta(days=365)
+            submissions = submissions.filter(submitted_at__date__gte=year_ago)
+    
+    if search:
+        submissions = submissions.filter(
+            Q(submitted_data__icontains=search)
+        )
+    
+    # Order by most recent
+    submissions = submissions.order_by('-submitted_at')
+    
+    # Pagination
+    paginator = Paginator(submissions, 20)
+    page_number = request.GET.get('page')
+    submissions_page = paginator.get_page(page_number)
+    
+    # Get unique form names for filter dropdown
+    form_names = page.form_submissions.values_list('form_name', flat=True).distinct()
+    
+    # Calculate stats
+    submissions_count = submissions.count()
+    monthly_count = submissions.filter(submitted_at__date__gte=timezone.now().date() - timedelta(days=30)).count()
+    unique_contacts = submissions.values('submitted_data__email').distinct().count()
+    response_rate = 85  # Placeholder - implement actual logic
+    
+    context = {
+        'page': page,
+        'submissions': submissions_page,
+        'form_names': form_names,
+        'submissions_count': submissions_count,
+        'monthly_count': monthly_count,
+        'unique_contacts': unique_contacts,
+        'response_rate': response_rate,
+    }
+    
+    return render(request, 'builder/manage_forms.html', context)
+
+
+from django.urls import reverse
+# In your views.py, add this import and decorator
+from .decorators import debug_authentication
+from django.conf import settings
+
+def landing_page(request):
+    """
+    Professional landing page for bynUp website builder
+    Called when no published page is found for the domain
+    """
+    return render(request, 'builder/landing.html', {
+        'site_name': 'bynUp',
+        'year': timezone.now().year,
+    })
+
+
+
+@debug_authentication
+def public_page(request):
+    """Render published page based on domain type with file-based components"""
+    if not hasattr(request, 'published_page') or not request.published_page:
+        # raise Http404("Page not found or domain not configured")
+        return landing_page(request)
+    page = request.published_page
+    print(f"🌐 Rendering public page: {page.brand_name} ({page.subdomain})")
+
+    # Determine current page from URL
+    current_page = 'home'  # Default
+    site_domain=settings.SITE_DOMAIN
+    
+    # Check URL parameters first
+    if request.GET.get('page'):
+        current_page = request.GET.get('page')
+    # Check path for pretty URLs (e.g., /about/, /products/)
+    elif request.path != '/':
+        path_parts = request.path.strip('/').split('/')
+        if path_parts and path_parts[0]:
+            current_page = path_parts[0]
+
+    print(f"📄 Current page determined: {current_page}")
+
+    # Load page-specific data from page_customizations
+    home_page='home'
+    # home_page='products'
+    home_page_data = page.page_customizations.get('home', {})
+    # page_data = {**home_page_data, **page.page_customizations.get(current_page, {})}
+    # print(f"Page data is {page_data}")
+    # page_data = page.page_customizations.get(current_page and home_page, {})
+    # print(f"Page data is {page_data}")
+    # Load both
+    home_page_data = page.page_customizations.get('home', {})
+    current_page_data = page.page_customizations.get(current_page, {})
+
+    # Print raw data structure
+    print("\n" + "="*50)
+    print(f"HOMEPAGE DATA STRUCTURE:")
+    print(f"Type: {type(home_page_data)}")
+    print(f"Keys: {list(home_page_data.keys())}")
+    if 'text_contents' in home_page_data:
+        print(f"Homepage text_contents keys: {list(home_page_data['text_contents'].keys())}")
+        print(f"Homepage text_contents values: {home_page_data['text_contents']}")
+
+    print("\n" + "="*50)
+    print(f"CURRENT PAGE ({current_page}) DATA STRUCTURE:")
+    print(f"Type: {type(current_page_data)}")
+    print(f"Keys: {list(current_page_data.keys())}")
+    if 'text_contents' in current_page_data:
+        print(f"Current page text_contents keys: {list(current_page_data['text_contents'].keys())}")
+        print(f"Current page text_contents values: {current_page_data['text_contents']}")
+
+    # Now merge properly
+    page_data = {}
+
+    # Copy all homepage data first
+    for key, value in home_page_data.items():
+        if isinstance(value, dict):
+            page_data[key] = value.copy()  # Deep copy for nested dicts
+        else:
+            page_data[key] = value
+
+    # Overlay with current page data
+    for key, value in current_page_data.items():
+        if key in page_data and isinstance(page_data[key], dict) and isinstance(value, dict):
+            # Merge nested dictionaries
+            page_data[key].update(value)
+        else:
+            page_data[key] = value
+
+    print("\n" + "="*50)
+    print(f"MERGED DATA STRUCTURE:")
+    print(f"Keys: {list(page_data.keys())}")
+    if 'text_contents' in page_data:
+        print(f"Merged text_contents keys: {list(page_data['text_contents'].keys())}")
+        print(f"Merged text_contents values: {page_data['text_contents']}")
+    print("="*50 + "\n")
+    home_page_data = page.page_customizations.get(home_page, {})
+        # GET HIDDEN SECTIONS - This is crucial!
+    hidden_sections = page_data.get('hidden_sections', {})
+
+    # print(f"📦 Loaded page data for {current_page}:", {
+    #     'texts': len(page_data.get('text_contents', {})),
+    #     'styles': len(page_data.get('style_customizations', {})),
+    #     'components': len(page_data.get('component_layout', [])),
+    #     'component_customizations': len(page_data.get('component_customizations', []))
+    # })
+
+    # Load component layout from page data
+    components_data = []
+    component_layout = page_data.get('component_layout', [])
+    component_customizations_list = page_data.get('component_customizations', [])
+    # print(f"Component customizations: {len(component_customizations_list)}")
+    if component_layout:
+        # print(f"🧩 Loading {len(component_layout)} components from layout")
+        for component_ref in component_layout:
+            try:
+                component = load_component_from_file(component_ref['component_id'])
+                if component:
+                    # Get customizations for this component instance
+                    customizations = {}
+                    for comp_custom in component_customizations_list:
+                        if comp_custom.get('instance_id') == component_ref.get('instance_id'):
+                            customizations = comp_custom.get('customizations', {})
+                            break
+
+                    # print(f"🔧 Processing component {component_ref['instance_id']} with {len(customizations.get('texts', {}))} text customizations")
+
+                    # Apply ALL customizations (both text and styles) to the HTML
+                    processed_html = apply_component_customizations(
+                        component['html_content'],
+                        customizations
+                    )
+
+                    components_data.append({
+                        'instance_id': component_ref['instance_id'],
+                        'component_id': component_ref['component_id'],
+                        'drop_zone': component_ref.get('drop_zone', 'end'),
+                        'html_content': mark_safe(processed_html),  # Mark as safe after processing
+                        'customizations': customizations,
+                    })
+                    
+            except Exception as e:
+                print(f"❌ Error loading component {component_ref['component_id']}: {e}")
+   
+    else:
+        print("ℹ️ No component layout found for page")
+
+    # Load other customizations
+    text_contents = page_data.get('text_contents', {})
+    home_text_contents = home_page_data.get('text_contents', {})
+    style_customizations = page_data.get('style_customizations', {})
+    # home_style_customizations = home_page_data.get('style_customizations', {})
+    # home_style_customizations_2 = home_page_data.get('style_customizations', {})
+    print("===================================================================")
+    # print("Customization is",home_style_customizations_2)
+    print("===================================================================")
+    # home_style_customizations_1 = home_page_data.get('style_customizations', {})
+
+    
+
+    background_images = page_data.get('background_images', {})
+    home_background_images = home_page_data.get('background_images', {})
+    home_background_images_1 = home_page_data.get('background_images', {})
+    # ===== ADD THIS: Load icon customizations =====
+    icon_customizations = page_data.get('icon_customizations', {})
+    home_icon_customizations = home_page_data.get('icon_customizations', {})
+    print(f"🎨 Loaded {len(icon_customizations)} icon customizations for {current_page}")
+      # NEW: Prepare dynamic style ranges
+    section_range = list(range(1, 500))  # Support up to 50 sections
+    component_range = list(range(1, 500))  # Support up to 20 components per section
+
+    # Other dynamic data
+    products = page.products.all().order_by('-created_at') #if current_page == 'products' else []
+    categories = page.product_categories.all().order_by('-id')
+      # Get requested category from URL
+   # Get requested category from URL
+    category_slug = request.GET.get('category')
+    current_category = None
+    filtered_products = None
+    print(f"Category slug is: {category_slug}")
+
+    # If on products page, handle category filtering
+    if current_page == 'products':
+        # Get all active categories for this page
+        categories = ProductCategory.objects.filter(page=page, is_active=True)
+        
+        # If category slug provided, get that category
+        if category_slug:
+            current_category = get_object_or_404(
+                ProductCategory,
+                page=page,
+                slug=category_slug,
+                is_active=True
+            )
+            filtered_products = current_category.products.filter(is_active=True, status='active')
+        else:
+            filtered_products = page.products.filter(is_active=True, status='active')
+    blog_posts = page.blog_posts.filter(is_published=True)
+    tracking_codes = page.tracking_codes.filter(is_active=True)
+
+    # Load background images from database
+    # ===== CRITICAL: Load background images from database =====
+    background_images = {}
+    
+    # Method 1: Load from BackgroundImage model (most reliable)
+    bg_objects = BackgroundImage.objects.filter(page=page)
+    print(f"🖼️ Loading {bg_objects.count()} background images from database")
+    
+    for bg in bg_objects:
+        if bg.image:
+            # Generate proper URL for the image
+            image_url = bg.image.url
+            # Get the element_id (already stored as clean numeric ID)
+            element_id = bg.element_id
+            
+            background_images[element_id] = {
+                'image_url': image_url,
+                'element_id': bg.element_id,
+                'has_image': True
+            }
+            print(f"✅ Background image loaded from DB: {element_id} -> {image_url}")
+    
+    # Method 2: Fallback to page_customizations if needed
+    if not background_images:
+        background_images = page_data.get('background_images', {})
+        print(f"📦 Loaded {len(background_images)} background images from page_customizations")
+    # # Load image customizations from database
+    # image_customizations = {}
+    # image_objects = page.image_customizations.filter(page_name=current_page)
+    # print(f"🖼️ Loading {image_objects.count()} custom images for {current_page}")
+    
+     # ===== CRITICAL: Load image customizations from database =====
+    # Get images for the current page
+    image_customizations = {}
+    
+    # Query the ImageCustomization model for this page and current page
+    image_objects = ImageCustomization.objects.filter(
+        page=page, 
+        page_name=current_page
+    )
+    
+    print(f"🖼️ Found {image_objects.count()} image customizations for page '{current_page}'")
+    
+    for img in image_objects:
+        if img.image:
+            # Generate the full URL for the image
+            image_url = img.image.url
+            image_customizations[img.element_id] = {
+                'image_url': image_url,
+                'alt_text': img.alt_text or '',
+                'element_id': img.element_id
+            }
+            print(f"  ✅ Loaded image: {img.element_id} -> {image_url}")
+
+    # Also load home page images if needed for context
+    home_image_customizations = {}
+    if current_page != 'home':
+        home_images = ImageCustomization.objects.filter(
+            page=page, 
+            page_name='home'
+        )
+        for img in home_images:
+            if img.image:
+                home_image_customizations[img.element_id] = {
+                    'image_url': img.image.url,
+                    'alt_text': img.alt_text or ''
+                }
+
+   
+
+    # anonymouse user check
+
+    # if request.user.is_authenticated:
+    #     cart = Cart.objects.filter(user=request.user, page=page).first()
+    # else:
+    #     # For guest users, use session key
+    #     if not request.session.session_key:
+    #         request.session.create()
+    #     cart = Cart.objects.filter(session_key=request.session.session_key, page=page).first()
+
+    if request.user.is_authenticated:
+        # print(f"✅ User is authenticated: {request.user.username} (ID: {request.user.id})")
+        # print(f"📧 User email: {request.user.email}")
+        
+        # Try to get user cart first
+        cart = Cart.objects.filter(user=request.user, page=page).first()
+        
+        # If no user cart, check for session cart and transfer
+        if not cart and request.session.session_key:
+            session_cart = Cart.objects.filter(
+                session_key=request.session.session_key,
+                page=page,
+                user__isnull=True
+            ).first()
+            if session_cart:
+                session_cart.user = request.user
+                session_cart.session_key = None
+                session_cart.save()
+                cart = session_cart
+    else:
+        # print(f"👤 User is NOT authenticated (guest)")
+        # For guest users, use session key
+        if not request.session.session_key:
+            request.session.create()
+        cart = Cart.objects.filter(
+            session_key=request.session.session_key, 
+            page=page,
+            user__isnull=True
+        ).first()
+
+    
+    if request.user.is_authenticated:
+        # print(f"✅ User is authenticated: {request.user.username} (ID: {request.user.id})")
+        # print(f"📧 User email: {request.user.email}")
+        
+        # Try to get user cart first
+        wishlist = Wishlist.objects.filter(user=request.user, page=page).first()
+        
+        # If no user cart, check for session cart and transfer
+        if not cart and request.session.session_key:
+            session_wishlist = Wishlist.objects.filter(
+                session_key=request.session.session_key,
+                page=page,
+                user__isnull=True
+            ).first()
+            if session_wishlist:
+                session_wishlist.user = request.user
+                session_wishlist.session_key = None
+                session_wishlist.save()
+                session_wishlist = session_wishlist
+    else:
+        # print(f"👤 User is NOT authenticated (guest)")
+        # For guest users, use session key
+        if not request.session.session_key:
+            request.session.create()
+        wishlist = Wishlist.objects.filter(
+            session_key=request.session.session_key, 
+            page=page,
+            user__isnull=True
+        ).first()
+
+
+    # wishlist = Wishlist.objects.filter(user=request.user, page=page)
+    print(f"Whish list is {wishlist}")
+    # wish_price_total= sum(WishlistItem.product.price for whish_item in wishlist)
+    # wish_items=WishlistItem.objects.all()
+    # wish_price_total = wish_items.aggregate(total=Sum('product__price'))['total'] or 0
+    # wish_low_stock_items = WishlistItem.objects.filter(product__quantity__lt=5)  
+
+    if not request.user.is_anonymous:
+
+        wish_user=request.user
+        print(f"Wish user is: {wish_user}")
+        wishlist_qs = Wishlist.objects.filter(user=wish_user, page=page)
+
+        wishlist_items = WishlistItem.objects.filter(
+            wishlist__in=wishlist_qs
+        )
+
+        wish_price_total = wishlist_items.aggregate(
+            total=Sum('product__price')
+        )['total'] or 0
+
+        wish_low_stock_items = WishlistItem.objects.filter(wishlist__page=page,product__quantity__lt=5)  
+        wish_low_stock_count=wish_low_stock_items.count()
+
+    else:
+        wish_price_total=0
+        wish_low_stock_count=0
+        wishlist_items={}
+
+
+    variants = ProductVariant.objects.filter(
+    product__page=page,
+    cj_vid__isnull=False
+    )
+
+    print(f"Variants are {variants}")
+
+
+     # ===== CRITICAL: Load active color palette =====
+    active_palette_colors = {}
+    active_palette = None
+    
+    # Try to get from PublishedPage first (cached)
+    if page.active_palette and page.active_palette_colors:
+        active_palette = page.active_palette
+        active_palette_colors = page.active_palette_colors
+        print(f"🎨 Using cached palette: {active_palette.name} with {len(active_palette_colors)} colors")
+    else:
+        # Fallback to PageColorPalette
+        active_palette_record = page.color_palettes.filter(is_active=True).first()
+        if active_palette_record:
+            active_palette = active_palette_record.palette
+            active_palette_colors = active_palette_record.applied_colors
+            
+            # Cache it on the PublishedPage for next time
+            page.active_palette = active_palette
+            page.active_palette_colors = active_palette_colors
+            page.save(update_fields=['active_palette', 'active_palette_colors'])
+            print(f"🎨 Loaded and cached palette: {active_palette.name}")
+    
+    # Determine current page from URL
+    current_page = 'home'
+    if request.GET.get('page'):
+        current_page = request.GET.get('page')
+    elif request.path != '/':
+        path_parts = request.path.strip('/').split('/')
+        if path_parts and path_parts[0]:
+            current_page = path_parts[0]
+    
+    # Load page-specific data from page_customizations
+    page_data = page.page_customizations.get(current_page, {})
+    
+    print(f"🎨 Public page has active palette: {active_palette.name if active_palette else 'None'}")
+    print(f"🎨 Colors available: {len(active_palette_colors)} variables")
+    print(f"🎨 Colors available: {active_palette_colors} ")
+
+    # Generate CSS variables string for the template
+    palette_css_variables = ""
+    if active_palette_colors:
+        css_lines = [":root {"]
+        for var_name, color_data in active_palette_colors.items():
+            # Handle both string and dict formats
+            if isinstance(color_data, dict):
+                hex_value = color_data.get('hex', '')
+            else:
+                hex_value = color_data
+            
+            if hex_value:
+                css_lines.append(f"    --{var_name}: {hex_value};")
+        css_lines.append("}")
+        palette_css_variables = "\n".join(css_lines)
+        print(f"🎨 Generated CSS variables:\n{palette_css_variables}")
+
+    # ===== CRITICAL: Load any overridden palette colors =====
+    if page.active_palette:
+        # Check if there are custom overrides in the database
+        from .models import CustomColorOverride
+        overrides = CustomColorOverride.objects.filter(
+            page=page, 
+            palette=page.active_palette
+        )
+        
+        for override in overrides:
+            if page.active_palette_colors and override.variable_name in page.active_palette_colors:
+                # Update the cached colors with the override
+                if isinstance(page.active_palette_colors[override.variable_name], dict):
+                    page.active_palette_colors[override.variable_name]['hex'] = override.hex_value
+                    page.active_palette_colors[override.variable_name]['rgb'] = override.rgb_value or ''
+                else:
+                    page.active_palette_colors[override.variable_name] = override.hex_value
+
+        
+        
+        # Save the updated colors
+        page.save(update_fields=['active_palette_colors', 'updated_at'])
+
+
+
+    # anonymouse user check end
+    context = {
+        'page': page,
+        'site_domain':site_domain,
+        'current_page': current_page,
+        'components': components_data,
+        'text_contents': text_contents,
+        'home_text_contents':home_text_contents,
+        # 'home_style_customizations': home_style_customizations,
+        'style_customizations': style_customizations,
+        'background_images': background_images,
+        'home_background_images':home_background_images,
+        # ===== CRITICAL: Pass image customizations to template =====
+        'image_customizations': image_customizations,
+        'home_image_customizations': home_image_customizations,  
+        'icon_customizations': icon_customizations,
+        'home_icon_customizations': home_icon_customizations,
+        # 'products': products,
+        # Products - Use filtered products if category is selected
+        'products': filtered_products if current_page == 'products' and filtered_products else products,
+        # 'filtered_products': filtered_products,
+        'categories':categories,
+
+        'variants':variants,
+
+        'current_category': current_category,
+        # 'products': filtered_products,
+        'all_products_count': page.products.filter(is_active=True).count(),
+
+        'blog_posts': blog_posts,
+        'tracking_codes': tracking_codes,
+        'domain_type': getattr(request, 'domain_type', 'subdomain'),
+        'has_components': len(components_data) > 0,
+        'hidden_sections': hidden_sections,  # Pass to template
+
+         # NEW: Dynamic style ranges
+        'section_range': section_range,
+        'component_range': component_range,
+        'cart':cart,
+        'wishlist':wishlist,
+        'wish_price_total':wish_price_total,
+        'wish_low_stock_count':wish_low_stock_count,
+        'wishlist_items':wishlist_items,
+
+        # ===== CRITICAL: Pass palette data to template =====
+        'active_palette': active_palette,
+        'active_palette_colors': active_palette_colors,
+        'palette_css_variables': palette_css_variables,  # Pre-generated CSS string
+
+        'show_auth_links': True,  # Enable auth widgets on this page
+        'registration_url': reverse('accounts:website_register', args=[page.subdomain]),
+        'login_url': reverse('accounts:universal_login') + f'?website_id={page.id}',
+    }
+
+
+    # Determine correct template path
+    template_path = f'builder/public_templates/{page.template_name}/{current_page}.html'
+    print(f"🎯 Rendering template: {template_path}")
+
+    try:
+        return render(request, template_path, context)
+    except TemplateDoesNotExist:
+        # Fallback to single page template
+        fallback_path = f'builder/public_templates/{page.template_name}.html'
+        print(f"⚠️ Template not found, using fallback: {fallback_path}")
+        return render(request, fallback_path, context)
+
+import re
+def apply_component_customizations(html_content, customizations, background_images=None):
+    """Apply customizations while preserving ALL original component styles and structure"""
+    if not customizations and not background_images:
+        return html_content
+
+    try:
+        print(f"🎨 Applying customizations while preserving ALL defaults...")
+        
+        # Start with the original component HTML - this preserves ALL default styles
+        processed_html = html_content
+
+        # Apply text customizations - update content ONLY
+        if 'texts' in customizations:
+            for element_id, content in customizations['texts'].items():
+                try:
+                    # Escape content for HTML
+                    escaped_content = content.replace('"', '&quot;').replace("'", "&#39;")
+                    
+                    # More precise pattern that only replaces the CONTENT between tags
+                    # This preserves all original attributes including styles and classes
+                    pattern = f'(<[^>]*data-text="{element_id}"[^>]*>)(.*?)(</[^>]*>)'
+                    
+                    def replace_content(match):
+                        opening_tag = match.group(1)  # Preserve original opening tag with all attributes
+                        closing_tag = match.group(3)  # Preserve original closing tag
+                        return f'{opening_tag}{escaped_content}{closing_tag}'
+                    
+                    processed_html = re.sub(pattern, replace_content, processed_html, flags=re.DOTALL)
+                    print(f"✅ Updated text for {element_id}")
+                    
+                except Exception as e:
+                    print(f"⚠️ Error replacing text for {element_id}: {e}")
+
+        # Apply style customizations - ADD to existing styles
+        if 'styles' in customizations:
+            for element_id, styles in customizations['styles'].items():
+                try:
+                    if not styles:
+                        continue
+
+                    # Build style string for customizations only
+                    style_parts = []
+                    for prop, value in styles.items():
+                        if value and value.strip():
+                            css_prop = prop.replace('_', '-')
+                            style_parts.append(f'{css_prop}: {value}')
+                    
+                    if not style_parts:
+                        continue
+                        
+                    style_string = '; '.join(style_parts)
+                    
+                    # Pattern to find elements with data-section
+                    pattern = f'(<[^>]*data-section="{element_id}"[^>]*)(>)'
+                    
+                    def add_style_to_element(match):
+                        element_start = match.group(1)  # Everything before the closing >
+                        closing_bracket = match.group(2)
+                        
+                        # Check if style attribute already exists
+                        if 'style="' in element_start:
+                            # Extract existing style and append new styles
+                            style_pattern = r'style="([^"]*)"'
+                            def append_to_style(style_match):
+                                existing_styles = style_match.group(1)
+                                # Combine existing and new styles
+                                combined_styles = f'{existing_styles}; {style_string}'
+                                return f'style="{combined_styles}"'
+                            
+                            updated_element = re.sub(style_pattern, append_to_style, element_start)
+                            return f'{updated_element}{closing_bracket}'
+                        else:
+                            # Add new style attribute
+                            return f'{element_start} style="{style_string}"{closing_bracket}'
+                    
+                    processed_html = re.sub(pattern, add_style_to_element, processed_html)
+                    print(f"✅ Added styles for {element_id}: {style_string}")
+                    
+                except Exception as e:
+                    print(f"⚠️ Error applying styles for {element_id}: {e}")
+
+        # Apply background images from editor
+        if background_images:
+            for element_id, image_data in background_images.items():
+                try:
+                    if not image_data:
+                        continue
+                        
+                    # Extract image URL from different possible formats
+                    image_url = image_data
+                    if isinstance(image_data, dict) and image_data.get('image_url'):
+                        image_url = image_data['image_url']
+                    
+                    if not image_url or image_url == 'none':
+                        continue
+                        
+                    # Build background image style
+                    bg_style = f'background-image: url("{image_url}"); background-size: cover; background-position: center; background-repeat: no-repeat;'
+                    
+                    # Pattern to find elements with data-section
+                    pattern = f'(<[^>]*data-section="{element_id}"[^>]*)(>)'
+                    
+                    def add_background_image(match):
+                        element_start = match.group(1)  # Everything before the closing >
+                        closing_bracket = match.group(2)
+                        
+                        # Check if style attribute already exists
+                        if 'style="' in element_start:
+                            # Extract existing style and append background image
+                            style_pattern = r'style="([^"]*)"'
+                            def append_background(style_match):
+                                existing_styles = style_match.group(1)
+                                
+                                # Remove any existing background-image to avoid conflicts
+                                cleaned_styles = re.sub(r'background-image[^;]*;?', '', existing_styles)
+                                cleaned_styles = re.sub(r'background-size[^;]*;?', '', cleaned_styles)
+                                cleaned_styles = re.sub(r'background-position[^;]*;?', '', cleaned_styles)
+                                cleaned_styles = re.sub(r'background-repeat[^;]*;?', '', cleaned_styles)
+                                cleaned_styles = cleaned_styles.strip().strip(';')
+                                
+                                # Combine existing styles with background image
+                                if cleaned_styles:
+                                    combined_styles = f'{cleaned_styles}; {bg_style}'
+                                else:
+                                    combined_styles = bg_style
+                                    
+                                return f'style="{combined_styles}"'
+                            
+                            updated_element = re.sub(style_pattern, append_background, element_start)
+                            return f'{updated_element}{closing_bracket}'
+                        else:
+                            # Add style attribute with background image
+                            return f'{element_start} style="{bg_style}"{closing_bracket}'
+                    
+                    processed_html = re.sub(pattern, add_background_image, processed_html)
+                    print(f"✅ Added background image for {element_id}: {image_url[:50]}...")
+                    
+                except Exception as e:
+                    print(f"⚠️ Error applying background image for {element_id}: {e}")
+
+        return processed_html
+
+    except Exception as e:
+        print(f"❌ Error in apply_component_customizations: {e}")
+        import traceback
+        traceback.print_exc()
+        return html_content  # Return original if error
+
+
+
+def find_element_by_data_attribute(html, attr_name, attr_value):
+    """Helper to find element with specific data attribute"""
+    pattern = f'<[^>]*{attr_name}="{attr_value}"[^>]*>.*?</[^>]*>'
+    match = re.search(pattern, html, re.DOTALL)
+    return match.group(0) if match else None
+    
+def generate_component_styles(component_customizations):
+    """Generate CSS styles from component customizations"""
+    styles = []
+    
+    for instance_id, customizations in component_customizations.items():
+        if 'styles' in customizations:
+            selector = f'[data-instance-id="{instance_id}"]'
+            style_rules = []
+            
+            for prop, value in customizations['styles'].items():
+                if value:  # Only add non-empty values
+                    css_prop = prop.replace('_', '-')
+                    style_rules.append(f'{css_prop}: {value};')
+            
+            if style_rules:
+                styles.append(f'{selector} {{ {" ".join(style_rules)} }}')
+    
+    return '\n'.join(styles)
+
+def load_component_from_file(component_id):
+    """Load component HTML from file system"""
+    try:
+        components_path = os.path.join(settings.BASE_DIR, 'builder', 'components')
+        manifest_path = os.path.join(components_path, 'component_manifest.json')
+        
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+        
+        # Find the component
+        for category in manifest['categories']:
+            for component in category['components']:
+                if component['id'] == component_id:
+                    component_file = os.path.join(components_path, component['file'])
+                    with open(component_file, 'r') as f:
+                        return {
+                            'id': component['id'],
+                            'name': component['name'],
+                            'html_content': f.read()
+                        }
+        return None
+    except Exception as e:
+        print(f"Error loading component {component_id} from file: {e}")
+        return None
+
+def get_component_customizations(page, instance_id):
+    """Get customizations for a component instance"""
+    try:
+        customization = ComponentCustomization.objects.get(
+            page=page,
+            component_instance_id=instance_id
+        )
+        print(f"📦 Loaded customizations for {instance_id}: {customization.customizations}")
+        return customization.customizations
+    except ComponentCustomization.DoesNotExist:
+        print(f"ℹ️ No customizations found for component {instance_id}")
+        return {}
+    
+
+
+def template_selection(request):
+    """Main page showing available templates organized by categories"""
+    categories = TemplateCategory.objects.filter(
+        is_active=True,
+        templates__is_active=True
+    ).distinct().prefetch_related('templates')
+    
+    # Get featured templates (no specific category)
+    featured_templates = Template.objects.filter(
+        is_active=True
+    ).order_by('-display_order', 'title')
+    
+    context = {
+        'categories': categories,
+        'featured_templates': featured_templates,
+    }
+    return render(request, 'builder/template_selection.html', context)
+
+def load_template(request, template_name):
+    """Load template HTML as snippet for editor"""
+    try:
+        context = {}
+        page_subdomain = request.GET.get('edit')
+        current_page = request.GET.get('page', 'home')  # NEW: Get current page
+        
+        if page_subdomain and request.user.is_authenticated:
+            try:
+                page = PublishedPage.objects.get(subdomain=page_subdomain, user=request.user)
+                context['is_editing_published'] = True
+                context['page'] = page
+                context['current_page'] = current_page  # NEW
+
+                print(f"🔄 Loading template for editing published page: {page.brand_name}")
+                 # Load existing data for the CURRENT PAGE
+                page_data = page.page_customizations.get(current_page, {})
+                
+                text_contents = page_data.get('text_contents', {})
+                style_customizations = page_data.get('style_customizations', {})
+                background_images = page_data.get('background_images', {})
+                icon_customizations = page_data.get('icon_customizations', {})
+                component_layout = page_data.get('component_layout', [])
+                component_customizations = page_data.get('component_customizations', [])
+
+                # Load all existing data (same as in editor view)
+                text_contents = {}
+                for tc in page.text_contents.all():
+                    key_simple = tc.element_id.split('-')[-1] if '-' in tc.element_id else tc.element_id
+                    key_full = f"editable_text_{tc.element_id.replace('-', '_')}"
+                    key_original = tc.element_id
+                    text_contents[key_simple] = tc.content
+                    text_contents[key_full] = tc.content
+                    text_contents[key_original] = tc.content
+
+                style_customizations = {}
+                for sc in page.style_customizations.all():
+                    key_simple = sc.element_id.split('-')[-1] if '-' in sc.element_id else sc.element_id
+                    key_full = f"editable_section_{sc.element_id.replace('-', '_')}"
+                    key_original = sc.element_id
+                    style_data = {
+                        'background_color': sc.background_color or '',
+                        'text_color': sc.text_color or '',
+                        'font_size': sc.font_size or '',
+                        'font_family': sc.font_family or '',
+                        'font_weight': sc.font_weight or '',
+                        'padding': sc.padding or '',
+                        'margin': sc.margin or '',
+                        'border_radius': sc.border_radius or '',
+                        'border': sc.border or '',
+                    }
+                    style_customizations[key_simple] = style_data
+                    style_customizations[key_full] = style_data
+                    style_customizations[key_original] = style_data
+
+                # Load background images
+                background_images = {}
+                bg_objects = page.background_images.all()
+                print(f"🖼️ Loading {bg_objects.count()} background images")
+                
+                for bg in bg_objects:
+                        # Generate proper URL for the image
+                        image_url = bg.image.url if bg.image else None
+                        
+                        # Handle different element ID formats
+                        if bg.element_id.isdigit():
+                            key_simple = bg.element_id
+                            key_full = f"editable_section_{bg.element_id}"
+                            key_original = f"editable-section-{bg.element_id}"
+                        else:
+                            key_simple = bg.element_id.split('-')[-1] if '-' in bg.element_id else bg.element_id
+                            key_full = bg.element_id.replace('-', '_')
+                            key_original = bg.element_id
+
+                        image_data = {
+                            'image_url': image_url,
+                            'element_id': bg.element_id,
+                            'has_image': bool(bg.image)
+                        }
+                        
+                        background_images[key_simple] = image_data
+                        background_images[key_full] = image_data
+                        background_images[key_original] = image_data
+                        
+                        print(f"✅ Background image loaded: {bg.element_id} -> {image_url}")
+
+                icon_customizations = {}
+                for ic in page.icon_customizations.all():
+                    key = ic.element_id.replace('-', '_')
+                    icon_customizations[key] = {
+                        'icon_class': ic.icon_class or '',
+                        'color': ic.color or '',
+                        'font_size': ic.font_size or ''
+                    }
+
+                # Load component data
+                component_layout = page.component_layout if page.component_layout else []
+                component_customizations = []
+                
+                for comp_ref in component_layout:
+                    try:
+                        comp_customization = ComponentCustomization.objects.get(
+                            page=page,
+                            component_instance_id=comp_ref['instance_id']
+                        )
+                        component_customizations.append({
+                            'instance_id': comp_ref['instance_id'],
+                            'component_id': comp_ref['component_id'],
+                            'drop_zone': comp_ref.get('drop_zone', 'end'),
+                            'display_order': comp_ref.get('display_order', 0),
+                            'customizations': comp_customization.customizations
+                        })
+                    except ComponentCustomization.DoesNotExist:
+                        component_customizations.append({
+                            'instance_id': comp_ref['instance_id'],
+                            'component_id': comp_ref['component_id'],
+                            'drop_zone': comp_ref.get('drop_zone', 'end'),
+                            'display_order': comp_ref.get('display_order', 0),
+                            'customizations': {}
+                        })
+
+                # Pass data to template
+                context['editor_text_contents'] = text_contents
+                context['editor_style_customizations'] = style_customizations
+                context['editor_background_images'] = background_images
+                context['editor_icon_customizations'] = icon_customizations
+                context['editor_component_layout'] = component_layout
+                context['editor_component_customizations'] = component_customizations
+
+                print(f"✅ Loaded existing data for template: {len(component_layout)} components")
+
+            except PublishedPage.DoesNotExist:
+                context['is_editing_published'] = False
+                print(f"❌ Page {page_subdomain} not found for template loading")
+        else:
+            context['is_editing_published'] = False
+            
+         # NEW: Load the specific page for multi-page templates
+        template_html = load_multi_page_template(template_name, current_page)
+        return HttpResponse(template_html)    
+        # return render(request, f'builder/templates/{template_name}.html', context)
+        
+    except Exception as e:
+        print(f"ERROR in load_template: {e}")
+        import traceback
+        traceback.print_exc()
+        return HttpResponse('Template not found', status=404)        
+
+@login_required
+def editor(request, template_name, subdomain=None):
+    """Main editor interface - handles both new pages and editing existing pages"""
+    
+    context = {
+        'template_name': template_name,
+    }
+
+    # Get current page and available pages
+    current_page = request.GET.get('page', 'home')
+    available_pages = get_template_pages(template_name)
+    context['current_page'] = current_page
+    context['available_pages'] = available_pages
+    context['is_multi_page'] = len(available_pages) > 1
+
+    # Check if we're editing an existing page
+    page_subdomain = request.GET.get('edit') or subdomain
+    
+    if page_subdomain and request.user.is_authenticated:
+        try:
+            page = PublishedPage.objects.get(subdomain=page_subdomain, user=request.user)
+            context['page'] = page
+            context['is_editing_published'] = True
+            
+            # ===== CRITICAL: Load ALL image customizations from database =====
+            # Load ALL image customizations for this page, not just current page
+            all_image_customizations = {}
+            
+            # Get all image customizations for this page
+            image_objects = ImageCustomization.objects.filter(page=page)
+            print(f"🖼️ EDITOR: Found {image_objects.count()} total image customizations in database")
+            
+            for img in image_objects:
+                if img.image:
+                    # Store by page_name and element_id
+                    if img.page_name not in all_image_customizations:
+                        all_image_customizations[img.page_name] = {}
+                    
+                    all_image_customizations[img.page_name][img.element_id] = {
+                        'image_url': img.image.url,
+                        'alt_text': img.alt_text or '',
+                        'element_id': img.element_id,
+                        'page_name': img.page_name
+                    }
+                    print(f"  ✅ Loaded image: {img.page_name}/{img.element_id} -> {img.image.url}")
+            
+            # Store in page_customizations for the JavaScript
+            if not page.page_customizations:
+                page.page_customizations = {}
+            
+            for page_name, images in all_image_customizations.items():
+                if page_name not in page.page_customizations:
+                    page.page_customizations[page_name] = {}
+                
+                page.page_customizations[page_name]['image_customizations'] = images
+            
+            # Save the updated page_customizations
+            page.save(update_fields=['page_customizations'])
+            
+            # ===== Load existing data for the CURRENT page =====
+            page_data = page.page_customizations.get(current_page, {})
+            
+            # Load all existing data for the current page
+            text_contents = page_data.get('text_contents', {})
+            style_customizations = page_data.get('style_customizations', {})
+            background_images = page_data.get('background_images', {})
+            icon_customizations = page_data.get('icon_customizations', {})
+            component_layout = page_data.get('component_layout', [])
+            component_customizations = page_data.get('component_customizations', [])
+            
+            # Load text contents from TextContent model
+            text_contents = {}
+            for tc in page.text_contents.all():
+                key_simple = tc.element_id.split('-')[-1] if '-' in tc.element_id else tc.element_id
+                key_full = f"editable_text_{tc.element_id.replace('-', '_')}"
+                key_original = tc.element_id
+                
+                text_contents[key_simple] = tc.content
+                text_contents[key_full] = tc.content
+                text_contents[key_original] = tc.content
+            
+            # Load style customizations
+            style_customizations = {}
+            for sc in page.style_customizations.all():
+                key_simple = extract_numeric_id(sc.element_id)
+                if key_simple:
+                    style_data = {
+                        'background_color': sc.background_color or '',
+                        'text_color': sc.text_color or '',
+                        'font_size': sc.font_size or '',
+                        'font_family': sc.font_family or '',
+                        'font_weight': sc.font_weight or '',
+                        'padding': sc.padding or '',
+                        'margin': sc.margin or '',
+                        'border_radius': sc.border_radius or '',
+                        'border': sc.border or '',
+                    }
+                    style_customizations[key_simple] = style_data
+            
+            # Load background images
+            background_images = {}
+            bg_objects = page.background_images.all()
+            for bg in bg_objects:
+                clean_id = extract_numeric_id(bg.element_id)
+                if clean_id and bg.image:
+                    background_images[clean_id] = {
+                        'image_url': bg.image.url,
+                        'element_id': bg.element_id,
+                        'has_image': True
+                    }
+            
+            # Load icon customizations
+            icon_customizations = {}
+            for ic in page.icon_customizations.all():
+                key = ic.element_id.replace('-', '_')
+                icon_customizations[key] = {
+                    'icon_class': ic.icon_class or '',
+                    'color': ic.color or '',
+                    'font_size': ic.font_size or ''
+                }
+            
+            # Load component layout and customizations
+            component_layout = page.component_layout if page.component_layout else []
+            component_customizations = []
+            
+            for comp_ref in component_layout:
+                try:
+                    comp_customization = ComponentCustomization.objects.get(
+                        page=page,
+                        component_instance_id=comp_ref['instance_id']
+                    )
+                    component_customizations.append({
+                        'instance_id': comp_ref['instance_id'],
+                        'component_id': comp_ref['component_id'],
+                        'drop_zone': comp_ref.get('drop_zone', 'end'),
+                        'display_order': comp_ref.get('display_order', 0),
+                        'customizations': comp_customization.customizations
+                    })
+                except ComponentCustomization.DoesNotExist:
+                    component_customizations.append({
+                        'instance_id': comp_ref['instance_id'],
+                        'component_id': comp_ref['component_id'],
+                        'drop_zone': comp_ref.get('drop_zone', 'end'),
+                        'display_order': comp_ref.get('display_order', 0),
+                        'customizations': {}
+                    })
+            
+            # ===== CRITICAL: Get image customizations for the CURRENT page =====
+            current_page_images = all_image_customizations.get(current_page, {})
+            
+            print(f"📸 EDITOR: Loaded {len(current_page_images)} image customizations for page '{current_page}'")
+            
+            # Pass all data to template
+            context['editor_text_contents'] = text_contents
+            context['editor_style_customizations'] = style_customizations
+            context['editor_background_images'] = background_images
+            context['editor_icon_customizations'] = icon_customizations
+            context['editor_component_layout'] = component_layout
+            context['editor_component_customizations'] = component_customizations
+            context['editor_image_customizations'] = current_page_images  # CRITICAL: Pass to template
+            
+            # Build all_page_data for JavaScript
+            all_page_data = {}
+            
+            # First, add all pages from available_pages
+            for page_name in available_pages:
+                page_specific_data = page.page_customizations.get(page_name, {})
+                
+                all_page_data[page_name] = {
+                    'text_contents': page_specific_data.get('text_contents', {}),
+                    'style_customizations': page_specific_data.get('style_customizations', {}),
+                    'background_images': page_specific_data.get('background_images', {}),
+                    'icon_customizations': page_specific_data.get('icon_customizations', {}),
+                    'component_layout': page_specific_data.get('component_layout', []),
+                    'component_customizations': page_specific_data.get('component_customizations', []),
+                    'image_customizations': all_image_customizations.get(page_name, {}),  # CRITICAL: Add images
+                }
+            
+            context['existing_page_data'] = all_page_data
+            
+            # For JavaScript - convert to JSON
+            context['existing_text_contents'] = json.dumps(text_contents)
+            context['existing_style_customizations'] = json.dumps(style_customizations)
+            context['existing_background_images'] = json.dumps(background_images)
+            context['existing_icon_customizations'] = json.dumps(icon_customizations)
+            context['existing_component_layout'] = json.dumps(component_layout)
+            context['existing_component_customizations'] = json.dumps(component_customizations)
+            context['existing_image_customizations'] = json.dumps(current_page_images)  # CRITICAL: Pass to JS
+            
+            print(f"✅ EDITOR: Loaded editor data for {current_page}:", {
+                'texts': len(context['editor_text_contents']),
+                'styles': len(context['editor_style_customizations']),
+                'background_images': len(context['editor_background_images']),
+                'components': len(context['editor_component_layout']),
+                'component_customizations': len(context['editor_component_customizations']),
+                'image_customizations': len(context['editor_image_customizations'])  # Should show count
+            })
+            
+        except PublishedPage.DoesNotExist:
+            context['is_editing_published'] = False
+            print(f"❌ Page {page_subdomain} not found for editing")
+    else:
+        context['is_editing_published'] = False
+    
+    return render(request, 'builder/editor.html', context)
+
+
+def get_components(request):
+    """Load components from files"""
+    try:
+        components_path = os.path.join(settings.BASE_DIR, 'builder', 'components')
+        manifest_path = os.path.join(components_path, 'component_manifest.json')
+        
+        print(f"📁 Looking for manifest at: {manifest_path}")
+        
+        if not os.path.exists(manifest_path):
+            return JsonResponse({'error': f'Manifest not found at {manifest_path}'}, status=404)
+        
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+        
+        print(f"📦 Found manifest with {len(manifest.get('categories', []))} categories")
+        
+        # Load HTML content for each component
+        for category in manifest.get('categories', []):
+            for component in category.get('components', []):
+                component_file = os.path.join(components_path, component['file'])
+                print(f"📄 Loading component file: {component_file}")
+                
+                if os.path.exists(component_file):
+                    with open(component_file, 'r') as f:
+                        component['html_content'] = f.read()
+                else:
+                    component['html_content'] = f'<div class="alert alert-warning">Component file {component_file} not found</div>'
+                    print(f"⚠️ Component file not found: {component_file}")
+        
+        return JsonResponse(manifest)
+        
+    except Exception as e:
+        print(f"❌ Error loading components: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def load_component(request, component_id):
+    """Load a single component by ID"""
+    try:
+        components_path = os.path.join(settings.BASE_DIR, 'builder', 'components')
+        manifest_path = os.path.join(components_path, 'component_manifest.json')
+        
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+        
+        # Find the component
+        for category in manifest.get('categories', []):
+            for component in category.get('components', []):
+                if component['id'] == component_id:
+                    component_file = os.path.join(components_path, component['file'])
+                    
+                    if os.path.exists(component_file):
+                        with open(component_file, 'r') as f:
+                            html_content = f.read()
+                        
+                        return JsonResponse({
+                            'id': component['id'],
+                            'name': component['name'],
+                            'html_content': html_content
+                        })
+        
+        return JsonResponse({'error': 'Component not found'}, status=404)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@login_required
+def save_component_layout(request, subdomain):
+    """Save component layout and customizations"""
+    if request.method == 'POST':
+        try:
+            page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+            data = json.loads(request.body)
+            
+            # Save component layout
+            page.component_layout = data.get('component_layout', [])
+            page.save()
+            
+            # Save individual component customizations
+            for component_data in data.get('component_customizations', []):
+                ComponentCustomization.objects.update_or_create(
+                    page=page,
+                    component_instance_id=component_data['instance_id'],
+                    defaults={
+                        'component_id': component_data['component_id'],
+                        'drop_zone': component_data.get('drop_zone', 'end'),
+                        'display_order': component_data.get('display_order', 0),
+                        'customizations': component_data.get('customizations', {})
+                    }
+                )
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+
+
+# Add this to views.py
+from django.views.decorators.http import require_http_methods
+
+@csrf_exempt
+@login_required
+@require_http_methods(["POST"])
+def delete_background_image(request, subdomain):
+    """
+    Immediately delete a background image from the database
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        
+        element_id = data.get('element_id')
+        page_name = data.get('page_name', 'home')
+        
+        if not element_id:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Element ID is required'
+            })
+        
+        # Extract numeric ID for consistency
+        clean_element_id = extract_numeric_id(element_id)
+        print(f"🗑️ Deleting background image for element: {clean_element_id} on page: {page_name}")
+        
+        # STEP 1: Delete from BackgroundImage model
+        deleted_count, _ = BackgroundImage.objects.filter(
+            page=page,
+            element_id=clean_element_id
+        ).delete()
+        
+        print(f"   Deleted {deleted_count} records from BackgroundImage model")
+        
+        # STEP 2: Remove from page_customizations JSON
+        if page_name in page.page_customizations:
+            # Remove from background_images
+            if 'background_images' in page.page_customizations[page_name]:
+                if clean_element_id in page.page_customizations[page_name]['background_images']:
+                    del page.page_customizations[page_name]['background_images'][clean_element_id]
+                    print(f"   Removed from page_customizations[{page_name}]['background_images']")
+            
+            # Also remove from style_customizations if present
+            if 'style_customizations' in page.page_customizations[page_name]:
+                if clean_element_id in page.page_customizations[page_name]['style_customizations']:
+                    # Remove background-image related styles
+                    style_dict = page.page_customizations[page_name]['style_customizations'][clean_element_id]
+                    for key in ['background_image', 'background-image', 'background-size', 
+                               'background-position', 'background-repeat']:
+                        if key in style_dict:
+                            del style_dict[key]
+                    print(f"   Cleaned style_customizations for {clean_element_id}")
+        
+        # STEP 3: Save the updated page_customizations
+        page.save(update_fields=['page_customizations'])
+        print(f"   Saved updated page_customizations")
+        
+        # STEP 4: Also clear from the page's active palette cache if needed
+        if page.active_palette_colors and f'bg-{clean_element_id}' in page.active_palette_colors:
+            del page.active_palette_colors[f'bg-{clean_element_id}']
+            page.save(update_fields=['active_palette_colors'])
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Background image deleted successfully',
+            'deleted_count': deleted_count,
+            'element_id': clean_element_id
+        })
+        
+    except PublishedPage.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Page not found'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid JSON'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ Error in delete_background_image: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False, 
+            'error': str(e)
+        }, status=500)
+
+# Add these imports at the top with your existing imports
+import threading
+import queue
+import time
+from django.db import transaction
+from django.core.cache import cache
+
+# builder/views.py - Complete publish_page with update_or_create
+
+# @csrf_exempt
+# @login_required
+# def publish_page(request):
+#     # Always return JSON, even on errors
+#     response_data = {'success': False}
+#     """Handle page publishing - using update_or_create (slower but safer)"""
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             print(f"📥 Received publish request")
+            
+#             # Get all data
+#             template_name = data.get('template_name')
+#             all_page_data = data.get('all_page_data', {})
+#             current_page = data.get('current_page', 'home')
+#             brand_name = data.get('brand_name')
+#             subdomain = data.get('subdomain')
+#             page_subdomain = data.get('page_subdomain')
+            
+#             # Get or create template
+#             template = Template.objects.get_or_create(
+#                 name=template_name,
+#                 defaults={
+#                     'title': template_name.replace('_', ' ').title(),
+#                     'template_file': template_name,
+#                     'is_active': True
+#                 }
+#             )[0]
+            
+#             # Get or create page
+#             if page_subdomain:
+#                 # Update existing page
+#                 page = get_object_or_404(PublishedPage, subdomain=page_subdomain, user=request.user)
+#                 page.brand_name = brand_name or page.brand_name
+#                 print(f"✅ Updating existing page: {page.brand_name}")
+#             else:
+#                 # Create new page
+#                 page, created = PublishedPage.objects.get_or_create(
+#                     subdomain=subdomain,
+#                     defaults={
+#                         'user': request.user,
+#                         'brand_name': brand_name,
+#                         'template': template,
+#                         'template_name': template_name,
+#                         'is_published': True,
+#                         'current_page': current_page,
+#                         'page_customizations': {}
+#                     }
+#                 )
+#                 if created:
+#                     print(f"✅ Created new page: {page.brand_name}")
+#                 else:
+#                     print(f"✅ Found existing page: {page.brand_name}")
+            
+#             # Update page fields
+#             page.template = template
+#             page.template_name = template_name
+#             page.is_published = True
+#             page.current_page = current_page
+#             page.page_customizations = all_page_data
+#             page.save()
+            
+#             # ===== PROCESS ALL PAGE DATA USING UPDATE_OR_CREATE =====
+            
+#             # Track counts for logging
+#             text_count = 0
+#             style_count = 0
+#             icon_count = 0
+#             component_count = 0
+            
+#             # Process each page in the multi-page site
+#             for page_name, page_data in all_page_data.items():
+#                 print(f"   📄 Processing {page_name} page...")
+                
+#                 # ===== 1. TEXT CONTENTS =====
+#                 text_contents = page_data.get('text_contents', {})
+#                 for element_id, content in text_contents.items():
+#                     clean_element_id = extract_numeric_id(element_id)
+#                     if clean_element_id:
+#                         obj, created = TextContent.objects.update_or_create(
+#                             page=page,
+#                             element_id=clean_element_id,
+#                             defaults={'content': content}
+#                         )
+#                         text_count += 1
+#                         if created:
+#                             print(f"      ✨ Created text: {clean_element_id}")
+                
+#                 # ===== 2. STYLE CUSTOMIZATIONS =====
+#                 style_customizations = page_data.get('style_customizations', {})
+#                 for element_id, styles in style_customizations.items():
+#                     clean_element_id = extract_numeric_id(element_id)
+#                     if clean_element_id:
+#                         # Check if there are any styles to save
+#                         has_styles = any(styles.values())
+                        
+#                         if has_styles:
+#                             obj, created = StyleCustomization.objects.update_or_create(
+#                                 page=page,
+#                                 element_id=clean_element_id,
+#                                 defaults={
+#                                     'background_color': styles.get('background_color', ''),
+#                                     'text_color': styles.get('text_color', ''),
+#                                     'font_size': styles.get('font_size', ''),
+#                                     'font_family': styles.get('font_family', ''),
+#                                     'font_weight': styles.get('font_weight', ''),
+#                                     'padding': styles.get('padding', ''),
+#                                     'margin': styles.get('margin', ''),
+#                                     'border_radius': styles.get('border_radius', ''),
+#                                     'border': styles.get('border', ''),
+#                                     'display': styles.get('display', ''),
+#                                 }
+#                             )
+#                             style_count += 1
+#                             if created:
+#                                 print(f"      ✨ Created style: {clean_element_id}")
+#                         else:
+#                             # Delete if no styles
+#                             deleted, _ = StyleCustomization.objects.filter(
+#                                 page=page, 
+#                                 element_id=clean_element_id
+#                             ).delete()
+#                             if deleted:
+#                                 print(f"      🗑️ Deleted empty style: {clean_element_id}")
+                
+#                 # ===== 3. BACKGROUND IMAGES (only non-base64) =====
+#                 background_images = page_data.get('background_images', {})
+#                 for element_id, image_data in background_images.items():
+#                     clean_element_id = extract_numeric_id(element_id)
+#                     if clean_element_id and image_data:
+#                         # Only process if it's a media URL (already saved)
+#                         if isinstance(image_data, str) and image_data.startswith('/media/'):
+#                             obj, created = BackgroundImage.objects.update_or_create(
+#                                 page=page,
+#                                 element_id=clean_element_id,
+#                                 defaults={'image': image_data}
+#                             )
+#                             print(f"      🖼️ Updated background image: {clean_element_id}")
+                
+#                 # ===== 4. ICON CUSTOMIZATIONS =====
+#                 icon_customizations = page_data.get('icon_customizations', {})
+#                 for element_id, icons in icon_customizations.items():
+#                     clean_element_id = extract_numeric_id(element_id)
+#                     if clean_element_id:
+#                         obj, created = IconCustomization.objects.update_or_create(
+#                             page=page,
+#                             element_id=clean_element_id,
+#                             defaults={
+#                                 'icon_class': icons.get('icon_class', ''),
+#                                 'color': icons.get('color', ''),
+#                                 'font_size': icons.get('font_size', '')
+#                             }
+#                         )
+#                         icon_count += 1
+#                         if created:
+#                             print(f"      ✨ Created icon: {clean_element_id}")
+                
+#                 # ===== 5. IMAGE CUSTOMIZATIONS (editable-image elements) =====
+#                  # For images, just update metadata (images already in Cloudinary)
+#                 image_customizations = page_data.get('image_customizations', {})
+#                 for element_id, image_data in image_customizations.items():
+#                     if image_data and isinstance(image_data, dict):
+#                         # Just update alt text - image already exists from upload
+#                         ImageCustomization.objects.filter(
+#                             page=page,
+#                             element_id=element_id,
+#                             page_name=page_name
+#                         ).update(
+#                             alt_text=image_data.get('alt_text', '')
+#                         )
+                
+#                 # ===== 6. COMPONENT CUSTOMIZATIONS =====
+#                 component_customizations = page_data.get('component_customizations', [])
+#                 for comp_data in component_customizations:
+#                     instance_id = comp_data.get('instance_id')
+#                     if instance_id:
+#                         obj, created = ComponentCustomization.objects.update_or_create(
+#                             page=page,
+#                             component_instance_id=instance_id,
+#                             defaults={
+#                                 'component_id': comp_data.get('component_id'),
+#                                 'drop_zone': comp_data.get('drop_zone', 'end'),
+#                                 'display_order': comp_data.get('display_order', 0),
+#                                 'customizations': comp_data.get('customizations', {})
+#                             }
+#                         )
+#                         component_count += 1
+#                         if created:
+#                             print(f"      ✨ Created component: {instance_id}")
+            
+#             # ===== 7. HANDLE DELETED BACKGROUND IMAGES =====
+#             for page_name, page_data in all_page_data.items():
+#                 deleted_backgrounds = page_data.get('deleted_background_images', [])
+#                 for element_id in deleted_backgrounds:
+#                     clean_element_id = extract_numeric_id(element_id)
+#                     if clean_element_id:
+#                         deleted, _ = BackgroundImage.objects.filter(
+#                             page=page,
+#                             element_id=clean_element_id
+#                         ).delete()
+#                         if deleted:
+#                             print(f"      🗑️ Deleted background image: {clean_element_id}")
+            
+#             # ===== 8. COLOR PALETTE =====
+#             if 'color_palette' in all_page_data.get(current_page, {}):
+#                 palette_data = all_page_data[current_page]['color_palette']
+#                 try:
+#                     palette = ColorPalette.objects.get(id=palette_data.get('palette_id'))
+#                     page.active_palette = palette
+#                     page.active_palette_colors = palette_data.get('colors', {})
+#                     page.save(update_fields=['active_palette', 'active_palette_colors'])
+#                     print(f"      🎨 Updated color palette: {palette.name}")
+#                 except ColorPalette.DoesNotExist:
+#                     pass
+            
+#             print(f"✅ Successfully published {page.brand_name}")
+#             print(f"   📊 Stats - Texts: {text_count}, Styles: {style_count}, Icons: {icon_count}, Components: {component_count}")
+            
+#             return JsonResponse({
+#                 'success': True,
+#                 'subdomain': page.subdomain,
+#                 'page_url': page.get_absolute_url(),
+#                 'message': 'Page published successfully!',
+#                 'stats': {
+#                     'texts': text_count,
+#                     'styles': style_count,
+#                     'icons': icon_count,
+#                     'components': component_count
+#                 }
+#             })
+            
+#         except Exception as e:
+#             print(f"❌ Publish error: {str(e)}")
+#             import traceback
+#             traceback.print_exc()
+#             return JsonResponse({'success': False, 'error': str(e)})
+    
+#     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# builder/views.py - Update your publish_page view with better error handling
+
+# @csrf_exempt
+# @login_required
+# @check_website_limit
+# def publish_page(request):
+#     """Handle page publishing - with comprehensive error handling"""
+    
+#     # Always return JSON, even on errors
+#     response_data = {'success': False}
+    
+#     try:
+#         if request.method != 'POST':
+#             response_data['error'] = 'Invalid request method'
+#             return JsonResponse(response_data, status=405)
+        
+#         # Log the request for debugging
+#         print("=" * 50)
+#         print("📥 PUBLISH REQUEST RECEIVED")
+#         print(f"User: {request.user.username} (ID: {request.user.id})")
+#         print(f"Content-Type: {request.content_type}")
+#         print(f"Content-Length: {len(request.body)}")
+        
+#         # Try to parse JSON
+#         try:
+#             data = json.loads(request.body)
+#             print(f"✅ JSON parsed successfully")
+#             print(f"Template: {data.get('template_name')}")
+#             print(f"Pages: {list(data.get('all_page_data', {}).keys())}")
+#         except json.JSONDecodeError as e:
+#             print(f"❌ JSON Parse Error: {e}")
+#             print(f"Raw body preview: {request.body[:200]}")
+#             response_data['error'] = f'Invalid JSON: {str(e)}'
+#             return JsonResponse(response_data, status=400)
+        
+#         # Get all data
+#         template_name = data.get('template_name')
+#         all_page_data = data.get('all_page_data', {})
+#         current_page = data.get('current_page', 'home')
+#         brand_name = data.get('brand_name')
+#         subdomain = data.get('subdomain')
+#         page_subdomain = data.get('page_subdomain')
+        
+#         # Validate required fields
+#         if not template_name:
+#             response_data['error'] = 'Template name is required'
+#             return JsonResponse(response_data, status=400)
+        
+#         # Get or create template
+#         template, created = Template.objects.get_or_create(
+#             name=template_name,
+#             defaults={
+#                 'title': template_name.replace('_', ' ').title(),
+#                 'template_file': template_name,
+#                 'is_active': True
+#             }
+#         )
+#         print(f"✅ Template: {template.name} ({'created' if created else 'existing'})")
+        
+#         # Get or create page
+#         try:
+#             if page_subdomain:
+#                 page = PublishedPage.objects.get(subdomain=page_subdomain, user=request.user)
+#                 print(f"✅ Found existing page: {page.brand_name}")
+#                 if brand_name:
+#                     page.brand_name = brand_name
+#             else:
+#                 page, created = PublishedPage.objects.get_or_create(
+#                     subdomain=subdomain,
+#                     defaults={
+#                         'user': request.user,
+#                         'brand_name': brand_name,
+#                         'template': template,
+#                         'template_name': template_name,
+#                         'is_published': True,
+#                         'current_page': current_page
+#                     }
+#                 )
+#                 print(f"✅ Page {'created' if created else 'found'}: {page.brand_name}")
+#         except Exception as e:
+#             print(f"❌ Page error: {e}")
+#             response_data['error'] = f'Page error: {str(e)}'
+#             return JsonResponse(response_data, status=400)
+        
+#         # Update page
+#         page.template = template
+#         page.template_name = template_name
+#         page.is_published = True
+#         page.current_page = current_page
+#         page.page_customizations = all_page_data
+#         page.save()
+        
+#         # ===== DELETE OLD DATA =====
+#         print("🗑️ Deleting old data...")
+#         TextContent.objects.filter(page=page).delete()
+#         StyleCustomization.objects.filter(page=page).delete()
+#         ComponentCustomization.objects.filter(page=page).delete()
+#         IconCustomization.objects.filter(page=page).delete()
+#         # Don't delete BackgroundImage or ImageCustomization - they have files
+        
+#         # ===== SAVE NEW DATA =====
+#         print("💾 Saving new data...")
+        
+#         text_count = 0
+#         style_count = 0
+#         component_count = 0
+#         icon_count = 0
+        
+#         for page_name, page_data in all_page_data.items():
+#             # Text contents
+#             # for element_id, content in page_data.get('text_contents', {}).items():
+#             #     clean_id = extract_numeric_id(element_id)
+#             #     if clean_id:
+#             #         TextContent.objects.create(
+#             #             page=page,
+#             #             element_id=clean_id,
+#             #             content=content
+#             #         )
+#             #         text_count += 1
+#             # Save text contents - USE UPDATE_OR_CREATE to avoid duplicates
+#             # Save text contents - FAST: Delete all then bulk create
+#             text_contents = page_data.get('text_contents', {})
+#             print(f"📝 Saving {len(text_contents)} text contents")
+
+#             # Delete ALL existing text contents for this page in one query
+#             deleted_count = TextContent.objects.filter(page=page).delete()[0]
+#             print(f"  🗑️ Deleted {deleted_count} existing text contents")
+
+#             # Prepare all new objects
+#             text_objects = []
+#             for element_id, content in text_contents.items():
+#                 clean_element_id = extract_numeric_id(element_id)
+#                 if clean_element_id:
+#                     text_objects.append(
+#                         TextContent(
+#                             page=page,
+#                             element_id=clean_element_id,
+#                             content=content
+#                         )
+#                     )
+
+#             # Bulk create all at once
+#             if text_objects:
+#                 created_count = TextContent.objects.bulk_create(text_objects)
+#                 print(f"  ✅ Bulk created {len(text_objects)} text contents")
+#             else:
+#                 print(f"  ℹ️ No text contents to save")            
+#             # Style customizations
+
+#             # Save style customizations
+#             style_customizations = page_data.get('style_customizations', {})
+#             for element_id, styles in style_customizations.items():
+#                 clean_element_id = extract_numeric_id(element_id)
+#                 if clean_element_id:
+#                     # Check if any styles have values
+#                     has_styles = any(styles.values())
+                    
+#                     if has_styles:
+#                         StyleCustomization.objects.update_or_create(
+#                             page=page,
+#                             element_id=clean_element_id,
+#                             defaults={
+#                                 'background_color': styles.get('background_color', ''),
+#                                 'text_color': styles.get('text_color', ''),
+#                                 'font_size': styles.get('font_size', ''),
+#                                 'font_family': styles.get('font_family', ''),
+#                                 'font_weight': styles.get('font_weight', ''),
+#                                 'padding': styles.get('padding', ''),
+#                                 'margin': styles.get('margin', ''),
+#                                 'border_radius': styles.get('border_radius', ''),
+#                                 'border': styles.get('border', ''),
+#                                 'display': styles.get('display', ''),
+#                             }
+#                         )
+#                     else:
+#                         # Delete if no styles exist
+#                         StyleCustomization.objects.filter(
+#                             page=page,
+#                             element_id=clean_element_id
+#                         ).delete()
+
+           
+#             # Save icon customizations - FIXED to handle duplicates
+#             icon_customizations = page_data.get('icon_customizations', {})
+#             for element_id, icons in icon_customizations.items():
+#                 clean_element_id = extract_numeric_id(element_id)
+#                 if clean_element_id:
+#                     try:
+#                         # Use update_or_create instead of create to avoid duplicates
+#                         IconCustomization.objects.update_or_create(
+#                             page=page,
+#                             element_id=clean_element_id,
+#                             defaults={
+#                                 'icon_class': icons.get('icon_class', ''),
+#                                 'color': icons.get('color', ''),
+#                                 'font_size': icons.get('font_size', '')
+#                             }
+#                         )
+#                         print(f"✅ Saved icon customization for {clean_element_id}")
+#                     except Exception as e:
+#                         print(f"❌ Error saving icon for {element_id}: {e}")
+
+#             # Component customizations
+#             for comp_data in page_data.get('component_customizations', []):
+#                 instance_id = comp_data.get('instance_id')
+#                 if instance_id:
+#                     ComponentCustomization.objects.create(
+#                         page=page,
+#                         component_instance_id=instance_id,
+#                         component_id=comp_data.get('component_id'),
+#                         drop_zone=comp_data.get('drop_zone', 'end'),
+#                         display_order=comp_data.get('display_order', 0),
+#                         customizations=comp_data.get('customizations', {})
+#                     )
+#                     component_count += 1
+        
+#         print(f"✅ Saved: {text_count} texts, {style_count} styles, {icon_count} icons, {component_count} components")
+        
+#         # Handle color palette
+#         if 'color_palette' in all_page_data.get(current_page, {}):
+#             palette_data = all_page_data[current_page]['color_palette']
+#             try:
+#                 palette = ColorPalette.objects.get(id=palette_data.get('palette_id'))
+#                 page.active_palette = palette
+#                 page.active_palette_colors = palette_data.get('colors', {})
+#                 page.save(update_fields=['active_palette', 'active_palette_colors'])
+#                 print(f"🎨 Applied palette: {palette.name}")
+#             except Exception as e:
+#                 print(f"⚠️ Palette error: {e}")
+        
+#         print(f"✅ Publish complete for {page.brand_name}")
+        
+#         return JsonResponse({
+#             'success': True,
+#             'subdomain': page.subdomain,
+#             'page_url': page.get_absolute_url(),
+#             'message': 'Page published successfully!'
+#         })
+        
+#     except Exception as e:
+#         print(f"❌ CRITICAL ERROR: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         response_data['error'] = str(e)
+#         return JsonResponse(response_data, status=500)
+       
+
+# builder/views.py
+
+@csrf_exempt
+@login_required
+@check_website_limit
+def publish_page(request):
+    """
+    Handle page publishing with optimized database operations.
+    Uses bulk operations and proper error handling.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError as e:
+        return JsonResponse({'success': False, 'error': f'Invalid JSON: {e}'}, status=400)
+    
+    # Extract data
+    template_name = data.get('template_name')
+    all_page_data = data.get('all_page_data', {})
+    current_page = data.get('current_page', 'home')
+    brand_name = data.get('brand_name')
+    subdomain = data.get('subdomain')
+    page_subdomain = data.get('page_subdomain')
+    
+    if not template_name:
+        return JsonResponse({'success': False, 'error': 'Template name required'}, status=400)
+    
+    try:
+        with transaction.atomic():
+            # Get or create template
+            template, _ = Template.objects.get_or_create(
+                name=template_name,
+                defaults={
+                    'title': template_name.replace('_', ' ').title(),
+                    'template_file': template_name,
+                    'is_active': True
+                }
+            )
+            
+            # Get or create page
+            if page_subdomain:
+                page = PublishedPage.objects.get(
+                    subdomain=page_subdomain, 
+                    user=request.user
+                )
+                if brand_name:
+                    page.brand_name = brand_name
+            else:
+                if not brand_name or not subdomain:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'Brand name and subdomain required for new pages'
+                    }, status=400)
+                
+                page, created = PublishedPage.objects.get_or_create(
+                    subdomain=subdomain,
+                    user=request.user,
+                    defaults={
+                        'brand_name': brand_name,
+                        'template': template,
+                        'template_name': template_name,
+                        'is_published': True,
+                        'current_page': current_page
+                    }
+                )
+            
+            # Update page
+            page.template = template
+            page.template_name = template_name
+            page.is_published = True
+            page.current_page = current_page
+            page.page_customizations = all_page_data
+            page.save()
+            
+            # ===== BULK DELETE EXISTING DATA =====
+            # This is much faster than deleting in loops
+            TextContent.objects.filter(page=page).delete()
+            StyleCustomization.objects.filter(page=page).delete()
+            ComponentCustomization.objects.filter(page=page).delete()
+            IconCustomization.objects.filter(page=page).delete()
+            
+            # ===== BULK CREATE NEW DATA =====
+            text_objects = []
+            style_objects = []
+            icon_objects = []
+            component_objects = []
+            
+            for page_name, page_data in all_page_data.items():
+                # Text contents
+                for element_id, content in page_data.get('text_contents', {}).items():
+                    clean_id = extract_numeric_id(element_id)
+                    if clean_id and content:
+                        text_objects.append(
+                            TextContent(page=page, element_id=clean_id, content=content)
+                        )
+                
+                # Style customizations
+                for element_id, styles in page_data.get('style_customizations', {}).items():
+                    clean_id = extract_numeric_id(element_id)
+                    if clean_id and any(styles.values()):
+                        style_objects.append(
+                            StyleCustomization(
+                                page=page,
+                                element_id=clean_id,
+                                background_color=styles.get('background_color', ''),
+                                text_color=styles.get('text_color', ''),
+                                font_size=styles.get('font_size', ''),
+                                font_family=styles.get('font_family', ''),
+                                font_weight=styles.get('font_weight', ''),
+                                padding=styles.get('padding', ''),
+                                margin=styles.get('margin', ''),
+                                border_radius=styles.get('border_radius', ''),
+                                border=styles.get('border', ''),
+                                display=styles.get('display', ''),
+                            )
+                        )
+                
+                # Icon customizations
+                for element_id, icons in page_data.get('icon_customizations', {}).items():
+                    clean_id = extract_numeric_id(element_id)
+                    if clean_id:
+                        icon_objects.append(
+                            IconCustomization(
+                                page=page,
+                                element_id=clean_id,
+                                icon_class=icons.get('icon_class', ''),
+                                color=icons.get('color', ''),
+                                font_size=icons.get('font_size', '')
+                            )
+                        )
+                
+                # Component customizations
+                for comp_data in page_data.get('component_customizations', []):
+                    if comp_data.get('instance_id'):
+                        component_objects.append(
+                            ComponentCustomization(
+                                page=page,
+                                component_instance_id=comp_data['instance_id'],
+                                component_id=comp_data.get('component_id'),
+                                drop_zone=comp_data.get('drop_zone', 'end'),
+                                display_order=comp_data.get('display_order', 0),
+                                customizations=comp_data.get('customizations', {})
+                            )
+                        )
+            
+            # Bulk create all objects
+            if text_objects:
+                TextContent.objects.bulk_create(text_objects, ignore_conflicts=True)
+            if style_objects:
+                StyleCustomization.objects.bulk_create(style_objects, ignore_conflicts=True)
+            if icon_objects:
+                IconCustomization.objects.bulk_create(icon_objects, ignore_conflicts=True)
+            if component_objects:
+                ComponentCustomization.objects.bulk_create(component_objects, ignore_conflicts=True)
+            
+            # Handle background images (keep existing, only update new ones)
+            for page_name, page_data in all_page_data.items():
+                bg_images = page_data.get('background_images', {})
+                for element_id, image_data in bg_images.items():
+                    clean_id = extract_numeric_id(element_id)
+                    if clean_id and isinstance(image_data, str) and image_data.startswith('data:image'):
+                        # Only process new base64 images
+                        try:
+                            format, imgstr = image_data.split(';base64,')
+                            ext = format.split('/')[-1]
+                            image_file = ContentFile(
+                                base64.b64decode(imgstr),
+                                name=f"bg_{page_name}_{clean_id}_{uuid.uuid4()}.{ext}"
+                            )
+                            BackgroundImage.objects.update_or_create(
+                                page=page,
+                                element_id=clean_id,
+                                defaults={'image': image_file}
+                            )
+                        except Exception as e:
+                            print(f"⚠️ Background image error for {clean_id}: {e}")
+                
+                # Handle image customizations
+                img_customizations = page_data.get('image_customizations', {})
+                for element_id, image_data in img_customizations.items():
+                    if image_data and isinstance(image_data, dict):
+                        image_url = image_data.get('image_url', '')
+                        if image_url and image_url.startswith('data:image'):
+                            try:
+                                format, imgstr = image_url.split(';base64,')
+                                ext = format.split('/')[-1]
+                                image_file = ContentFile(
+                                    base64.b64decode(imgstr),
+                                    name=f"img_{page_name}_{element_id}_{uuid.uuid4()}.{ext}"
+                                )
+                                ImageCustomization.objects.update_or_create(
+                                    page=page,
+                                    element_id=element_id,
+                                    page_name=page_name,
+                                    defaults={
+                                        'image': image_file,
+                                        'alt_text': image_data.get('alt_text', '')
+                                    }
+                                )
+                            except Exception as e:
+                                print(f"⚠️ Image customization error for {element_id}: {e}")
+            
+            # Handle color palette
+            palette_data = all_page_data.get(current_page, {}).get('color_palette')
+            if palette_data:
+                try:
+                    palette = ColorPalette.objects.get(id=palette_data.get('palette_id'))
+                    page.active_palette = palette
+                    page.active_palette_colors = palette_data.get('colors', {})
+                    page.save(update_fields=['active_palette', 'active_palette_colors'])
+                except ColorPalette.DoesNotExist:
+                    pass
+            
+            print(f"✅ Published: {page.brand_name} - "
+                  f"Texts: {len(text_objects)}, "
+                  f"Styles: {len(style_objects)}, "
+                  f"Icons: {len(icon_objects)}, "
+                  f"Components: {len(component_objects)}")
+            
+            return JsonResponse({
+                'success': True,
+                'subdomain': page.subdomain,
+                'page_url': page.get_absolute_url(),
+                'message': 'Page published successfully!',
+                'stats': {
+                    'texts': len(text_objects),
+                    'styles': len(style_objects),
+                    'icons': len(icon_objects),
+                    'components': len(component_objects),
+                }
+            })
+            
+    except PublishedPage.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Page not found'
+        }, status=404)
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Publish error: {e}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False, 
+            'error': str(e)
+        }, status=500)
+
+        
+# builder/views.py - Add this new view
+
+# builder/views.py - Updated upload_image
+
+# builder/views.py - Production-ready upload view
+
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
+import logging
+
+logger = logging.getLogger(__name__)
+
+# builder/views.py - Ultra-simple upload view
+
+@login_required
+@csrf_exempt
+@check_storage_before_upload('image')
+def upload_image(request):
+    """Upload image - Cloudinary handles everything automatically"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'})
+    
+    try:
+        # Get data
+        subdomain = request.POST.get('subdomain')
+        image_file = request.FILES.get('image')
+        element_id = request.POST.get('element_id')
+        page_name = request.POST.get('page_name', 'home')
+        
+        if not all([subdomain, image_file, element_id]):
+            return JsonResponse({'success': False, 'error': 'Missing fields'})
+        
+        # Get the page
+        page = PublishedPage.objects.get(subdomain=subdomain, user=request.user)
+        
+        # Determine type
+        is_background = 'bg' in element_id or 'section' in element_id
+        
+        # Save - THAT'S IT! Cloudinary handles the upload automatically
+        if is_background:
+            clean_id = extract_numeric_id(element_id)
+            
+            # Delete old image first (optional)
+            BackgroundImage.objects.filter(page=page, element_id=clean_id).delete()
+            
+            # Create new with the file
+            bg = BackgroundImage.objects.create(
+                page=page,
+                element_id=clean_id,
+                image=image_file  # Just assign the file!
+            )
+            image_url = bg.image.url  # Returns Cloudinary URL
+        
+        else:
+            # Delete old image first (optional)
+            ImageCustomization.objects.filter(
+                page=page, 
+                element_id=element_id,
+                page_name=page_name
+            ).delete()
+            
+            # Create new with the file
+            img = ImageCustomization.objects.create(
+                page=page,
+                element_id=element_id,
+                page_name=page_name,
+                image=image_file,  # Just assign the file!
+                alt_text=request.POST.get('alt_text', '')
+            )
+            image_url = img.image.url  # Returns Cloudinary URL
+        
+        return JsonResponse({
+            'success': True,
+            'image_url': image_url,
+            'element_id': element_id
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+# builder/views.py - Add debug view
+
+@login_required
+def debug_upload(request):
+    """Debug view to check upload configuration"""
+    import sys
+    import os
+    from django.conf import settings
+    
+    debug_info = {
+        'user': {
+            'id': request.user.id,
+            'username': request.user.username,
+            'is_authenticated': request.user.is_authenticated,
+            'is_active': request.user.is_active,
+        },
+        'session': {
+            'session_key': request.session.session_key,
+            'has_csrf_token': 'csrftoken' in request.COOKIES,
+        },
+        'request': {
+            'method': request.method,
+            'path': request.path,
+            'secure': request.is_secure(),
+            'host': request.get_host(),
+        },
+        'settings': {
+            'debug': settings.DEBUG,
+            'media_url': settings.MEDIA_URL,
+            'media_root': str(settings.MEDIA_ROOT),
+            'media_root_exists': os.path.exists(settings.MEDIA_ROOT),
+            'static_url': settings.STATIC_URL,
+        },
+        'python_version': sys.version,
+    }
+    
+    # Check if media directories are writable
+    if os.path.exists(settings.MEDIA_ROOT):
+        debug_info['media_root_writable'] = os.access(settings.MEDIA_ROOT, os.W_OK)
+        
+        # Check subdirectories
+        for subdir in ['custom_images', 'backgrounds']:
+            path = os.path.join(settings.MEDIA_ROOT, subdir)
+            if os.path.exists(path):
+                debug_info[f'{subdir}_writable'] = os.access(path, os.W_OK)
+            else:
+                debug_info[f'{subdir}_exists'] = False
+    
+    return JsonResponse(debug_info)
+
+
+# builder/views.py
+from django.middleware.csrf import get_token
+
+@login_required
+def get_csrf_token(request):
+    """Return a fresh CSRF token"""
+    return JsonResponse({
+        'csrfToken': get_token(request)
+    })
+
+# builder/views.py - Add this to check if images are processed
+
+@login_required
+def check_image_status(request, subdomain):
+    """Check if images for a page have been processed"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Count pending images
+        from .utils.image_processor import processor
+        
+        # You could also check database for unprocessed flags
+        # For now, just return queue size
+        queue_size = processor.queue.qsize() if hasattr(processor, 'queue') else 0
+        
+        return JsonResponse({
+            'success': True,
+            'queue_size': queue_size,
+            'processed': queue_size == 0
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# builder/views.py - Add this endpoint for clients to check status
+
+@login_required
+def get_processed_images(request, subdomain):
+    """Get list of processed images for a page"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Get all processed custom images
+        custom_images = ImageCustomization.objects.filter(page=page)
+        processed_images = []
+        
+        for img in custom_images:
+            if img.image:
+                processed_images.append({
+                    'element_id': img.element_id,
+                    'page_name': img.page_name,
+                    'image_url': img.image.url,
+                    'alt_text': img.alt_text
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'images': processed_images
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+# Add this helper function outside the class
+def extract_numeric_id(element_id):
+    """Extract only numeric part from element ID"""
+    if not element_id:
+        return None
+    import re
+    if isinstance(element_id, int):
+        return str(element_id)
+    match = re.search(r'\d+', str(element_id))
+    return match.group() if match else None
+
+
+
+
+
+
+# builder/views.py - Update dashboard view
+
+# builder/views.py - Update dashboard view
+# builder/views.py
+
+@login_required
+def dashboard(request):
+    """User dashboard showing their published pages"""
+    from payments.decorators import get_user_limits_status
+    from analytics.models import PageView
+    from django.db.models import Count, Q
+    pages = PublishedPage.objects.filter(
+        user=request.user
+    ).exclude(subdomain__isnull=True).exclude(subdomain='').order_by('-created_at')
+    
+    # Get limits with safe fallback
+    try:
+        limits = get_user_limits_status(request.user)
+        print(f"Dashboard limits for {request.user.email}: {limits}")
+    except Exception as e:
+        print(f"Error getting limits: {e}")
+        limits = {
+            'tier': 'free',
+            'plan_name': 'Free',
+            'is_paid': False,
+            'websites': {'used': 0, 'limit': 1},
+            'products': {'used': 0, 'limit': 10},
+            'forms_this_month': {'used': 0, 'limit': 10},
+            'storage': {'used_mb': 0, 'limit_mb': 100, 'percentage': 0},
+        }
+
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=30)
+    
+    for page in pages:
+        if hasattr(page, 'analytics'):
+            analytics = page.analytics
+            
+            # Get all page views for this page in last 30 days
+            page_views = PageView.objects.filter(
+                analytics=analytics,
+                timestamp__date__range=[start_date, end_date]
+            )
+            
+            # Total visits (corrected)
+            page.corrected_visits = page_views.count() // 2
+            
+            # Unique visitors
+            page.corrected_visitors = page_views.values('visitor_id').distinct().count()
+            
+            # Bounce rate - single query approach
+            session_data = page_views.values('session_id').annotate(
+                view_count=Count('id')
+            )
+            
+            total = session_data.count()
+            if total > 0:
+                bounces = sum(1 for s in session_data if (s['view_count'] // 2) <= 1)
+                page.corrected_bounce = round((bounces / total) * 100, 1)
+            else:
+                page.corrected_bounce = 0
+        else:
+            page.corrected_visits = 0
+            page.corrected_visitors = 0
+            page.corrected_bounce = 0
+    
+    return render(request, 'builder/dashboard.html', {
+        'published_pages': pages,
+        'limits': limits,
+    })
+    
+def edit_page(request, subdomain):
+    """Edit an existing published page"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Redirect to editor with the correct page data
+    return redirect(f'/builder/editor/{page.template_name}/{page.subdomain}/')
+
+
+@login_required
+def delete_page(request, subdomain):
+    """Delete a published page"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    if request.method == 'POST':
+        page.delete()
+        messages.success(request, f'Page "{page.brand_name}" has been deleted successfully.')
+        return redirect('dashboard')
+    
+    return render(request, 'builder/delete_page.html', {
+        'page': page
+    })
+
+from django.db.models import F
+   
+@login_required
+def manage_products(request, subdomain):
+    """Ecwid-style simple product management"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Simple filtering
+    status_filter = request.GET.get('status', '')
+    search_query = request.GET.get('search', '')
+    
+    products = page.products.select_related('category', 'inventory').all()
+    
+    if status_filter:
+        products = products.filter(status=status_filter)
+    if search_query:
+        products = products.filter(title__icontains=search_query)
+    
+    # Pagination
+    paginator = Paginator(products, 10)  # 10 products per page for clean layout
+    page_number = request.GET.get('page')
+    products_page = paginator.get_page(page_number)
+    
+    # Simple statistics
+    total_products = page.products.count()
+    active_products = page.products.filter(status='active').count()
+    low_stock_count = page.products.filter(
+        inventory__quantity__lte=F('inventory__low_stock_threshold'),
+        inventory__track_quantity=True
+    )
+       
+    total_views = page.products.aggregate(total_views=Sum('view_count'))['total_views'] or 0
+    
+    context = {
+        'page': page,
+        'products': products_page,
+        'total_products': total_products,
+        'active_products': active_products,
+        'low_stock_count': low_stock_count,
+        'total_views': total_views,
+    }
+    
+    return render(request, 'builder/manage_products.html', context)
+
+@login_required
+def quick_edit_product(request, subdomain, product_id):
+    """Quick edit modal with tabs"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    categories = page.product_categories.filter(is_active=True)
+    # Get existing specifications
+    specifications = product.dynamic_specs.all().order_by('display_order')
+    
+    context = {
+        'page': page,
+        'product': product,
+        'categories': categories,
+        'specifications': specifications,
+    }
+    
+    return render(request, 'builder/partials/quick_edit_product.html', context)
+
+@login_required
+@check_product_limit(count=1)
+@check_storage_before_upload('image')
+def add_product_simple(request, subdomain):
+    """Simple product creation with basic fields"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # Create basic product
+            product = Product(
+                page=page,
+                title=request.POST.get('title'),
+                description=request.POST.get('description', ''),
+                price=request.POST.get('price'),
+                status='draft'
+            )
+            
+            # Handle compare price
+            compare_price = request.POST.get('compare_at_price')
+            if compare_price:
+                product.compare_at_price = compare_price
+            
+            # Handle image
+            if 'main_image' in request.FILES:
+                product.main_image = request.FILES['main_image']
+            
+            product.save()
+            
+            return JsonResponse({'success': True, 'product_id': product.id})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+@login_required
+def single_product_editor(request, subdomain, product_id):
+    """Single page product editor with tabs"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    categories = page.product_categories.filter(is_active=True)
+    # Get existing specifications using the new related name
+    specifications = product.dynamic_specs.all().order_by('display_order')  # Changed from 'specifications' to 'dynamic_specs'
+    context = {
+        'page': page,
+        'product': product,
+        'categories': categories,
+        'specifications': specifications,
+    }
+    
+    return render(request, 'builder/product_editor.html', context)
+
+
+@login_required
+@check_storage_before_upload('image')
+def update_product(request, subdomain, product_id):
+    """Update product with all advanced features"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    if request.method == 'POST':
+        try:
+            # Debug: Print received POST data
+            print("📥 Received POST data:")
+            for key, value in request.POST.items():
+                print(f"   {key}: {value}")
+            
+            # ========== CRITICAL: Handle use_custom_shipping FIRST ==========
+            # Check both the checkbox value and the hidden field
+            use_custom_shipping_raw = request.POST.get('use_custom_shipping')
+            
+            # Determine if custom shipping should be enabled
+            # Checkbox sends "on" when checked, hidden field sends "off" when unchecked
+            use_custom_shipping = (use_custom_shipping_raw == 'on')
+            
+            print(f"🔧 use_custom_shipping_raw: {use_custom_shipping_raw}")
+            print(f"🔧 use_custom_shipping: {use_custom_shipping}")
+            
+            # Set the flag FIRST
+            product.use_custom_shipping = use_custom_shipping
+            
+            # If custom shipping is disabled, clear all related fields
+            if not use_custom_shipping:
+                print(f"🔄 Custom shipping DISABLED - clearing all custom shipping fields")
+                product.custom_shipping_type = 'flat'
+                product.custom_shipping_price = Decimal('0')
+                product.shipping_per_item = Decimal('0')
+                product.custom_free_shipping_min_price = None
+                product.shipping_note = ''
+                product.ships_separately = False
+            
+            # Update all other fields from different tabs
+            update_fields = [
+                # Basic Info
+                'title', 'description', 'short_description', 'colors', 'sizes', 'status', 'type', 'category',
+                # Pricing
+                'price', 'compare_at_price', 'cost_per_item', 'charge_tax',
+                # Inventory
+                'sku', 'barcode', 'quantity', 'track_quantity', 'low_stock_threshold', 'allow_backorders',
+                # Shipping (original)
+                'weight', 'weight_unit', 'length', 'width', 'height', 'requires_shipping', 'free_shipping',
+                # SEO
+                'meta_title', 'meta_description', 'slug',
+                # Digital
+                'download_limit', 'download_expiry',
+                # Organization
+                'vendor', 'collection', 'tags', 'featured', 'visible_on_store',
+                # Custom shipping fields (only process if custom shipping is enabled)
+                'custom_shipping_type', 'custom_shipping_price', 
+                'shipping_per_item', 'custom_free_shipping_min_price', 'shipping_note', 'ships_separately'
+            ]
+            
+            for field in update_fields:
+                if field in request.POST:
+                    value = request.POST.get(field)
+                    
+                    # Skip processing custom shipping fields if custom shipping is disabled
+                    if field in ['custom_shipping_type', 'custom_shipping_price', 'shipping_per_item', 
+                                 'custom_free_shipping_min_price', 'shipping_note', 'ships_separately']:
+                        if not use_custom_shipping:
+                            continue  # Skip - fields already cleared above
+                    
+                    if value == '' and field in ['compare_at_price', 'cost_per_item', 'custom_free_shipping_min_price']:
+                        setattr(product, field, None)
+                    elif field == 'tags':
+                        # Convert comma-separated tags to list
+                        tags = [tag.strip() for tag in value.split(',') if tag.strip()]
+                        product.tags = tags
+                    elif field == 'category':
+                        category_id = value
+                        if category_id:
+                            product.category = ProductCategory.objects.get(id=category_id, page=page)
+                        else:
+                            product.category = None
+                    elif field in ['charge_tax', 'track_quantity', 'allow_backorders', 'requires_shipping', 
+                                 'free_shipping', 'featured', 'visible_on_store', 'ships_separately']:
+                        setattr(product, field, value == 'on')
+                    elif field in ['custom_shipping_price', 'shipping_per_item']:
+                        # Handle decimal fields
+                        setattr(product, field, Decimal(value) if value else Decimal('0'))
+                    elif field == 'custom_free_shipping_min_price':
+                        # Handle nullable decimal field
+                        if value and value.strip():
+                            setattr(product, field, Decimal(value))
+                        else:
+                            setattr(product, field, None)
+                    else:
+                        setattr(product, field, value)
+            
+            # Handle file uploads
+            if 'main_image' in request.FILES:
+                product.main_image = request.FILES['main_image']
+            if 'digital_file' in request.FILES:
+                product.digital_file = request.FILES['digital_file']
+            
+            # Handle variant data
+            variant_data = request.POST.get('variant_data')
+            if variant_data:
+                update_product_variants(product, json.loads(variant_data))
+                    
+            product.save()
+            
+            # Log the saved state
+            print(f"💾 Product saved: use_custom_shipping = {product.use_custom_shipping}")
+            if product.use_custom_shipping:
+                print(f"   Custom shipping type: {product.custom_shipping_type}")
+                print(f"   Custom shipping price: {product.custom_shipping_price}")
+            
+            files = request.FILES.getlist('images')
+            for file in files:
+                ProductImages.objects.create(product=product, image=file)
+
+            # ===== Handle Specifications =====
+            spec_titles = request.POST.getlist('spec_title[]')
+            spec_values = request.POST.getlist('spec_value[]')
+            
+            # Delete existing specifications
+            product.dynamic_specs.all().delete()
+            
+            # Create new specifications
+            for i, (title, value) in enumerate(zip(spec_titles, spec_values)):
+                if title.strip() and value.strip():
+                    ProductSpecification.objects.create(
+                        product=product,
+                        title=title.strip(),
+                        value=value.strip(),
+                        display_order=i
+                    )
+            
+            return JsonResponse({'success': True, 'message': 'Product updated successfully'})
+            
+        except Exception as e:
+            print(f"Error updating product: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+
+def update_product_variants(product, variant_data):
+    """Update product variants"""
+    # This would handle creating/updating/deleting variants
+    # Implementation depends on your variant structure
+    pass
+
+@login_required
+def delete_product(request, subdomain, product_id):
+    """Delete a product"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    if request.method == 'POST':
+        product.delete()
+        return JsonResponse({'success': True})
+    
+    # If GET request, show confirmation (optional)
+    return JsonResponse({'success': False, 'error': 'Use POST method to delete'})
+
+@login_required
+def update_product_status(request, product_id):
+    """API endpoint to update product status"""
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == 'PATCH':
+        try:
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            
+            if new_status in ['draft', 'active', 'archived']:
+                product.status = new_status
+                product.save()
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'Invalid status'})
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+@check_storage_before_upload('image')
+def manage_product_categories(request, subdomain):
+    """Manage product categories with AJAX responses"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    if request.method == 'POST':
+        try:
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            
+            if not name:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Category name is required'
+                })
+            
+            # Handle image upload
+            image = request.FILES.get('image')
+            
+            # Create category
+            category = ProductCategory.objects.create(
+                page=page,
+                name=name,
+                description=description,
+                image=image if image else None
+            )
+            
+            # Return the created category data
+            return JsonResponse({
+                'success': True,
+                'message': 'Category created successfully!',
+                'category': {
+                    'id': category.id,
+                    'name': category.name,
+                    'description': category.description,
+                    'slug': category.slug,
+                    'image_url': category.image.url if category.image else None,
+                    'products_count': category.products.count(),
+                    'active_products_count': category.get_active_products_count()
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    # GET request - return categories as JSON if requested
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        categories = page.product_categories.all().order_by('display_order', 'name')
+        data = [{
+            'id': cat.id,
+            'name': cat.name,
+            'description': cat.description,
+            'slug': cat.slug,
+            'image_url': cat.image.url if cat.image else None,
+            'products_count': cat.products.count(),
+            'active_products_count': cat.get_active_products_count()
+        } for cat in categories]
+        
+        return JsonResponse({
+            'success': True,
+            'categories': data
+        })
+    
+    # Regular template render
+    categories = page.product_categories.all().order_by('display_order', 'name')
+    return render(request, 'builder/manage_product_categories.html', {
+        'page': page,
+        'categories': categories
+    })
+
+
+@login_required
+def update_category(request, subdomain, category_id):
+    """Update product category with JSON response"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    category = get_object_or_404(ProductCategory, id=category_id, page=page)
+    
+    if request.method == 'POST':
+        try:
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            
+            if not name:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Category name is required'
+                })
+            
+            # Update fields
+            category.name = name
+            category.description = description
+            
+            # Handle image update if provided
+            if 'image' in request.FILES:
+                # Delete old image if exists
+                if category.image:
+                    category.image.delete(save=False)
+                category.image = request.FILES['image']
+            
+            category.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Category updated successfully!',
+                'category': {
+                    'id': category.id,
+                    'name': category.name,
+                    'description': category.description,
+                    'slug': category.slug,
+                    'image_url': category.image.url if category.image else None,
+                    'products_count': category.products.count(),
+                    'active_products_count': category.get_active_products_count()
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def delete_category(request, subdomain, category_id):
+    """Delete product category with JSON response"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    category = get_object_or_404(ProductCategory, id=category_id, page=page)
+    
+    if request.method == 'POST':
+        try:
+            # Check if category has products
+            if category.products.exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Cannot delete category with products. Move products first.'
+                })
+            
+            # Delete image if exists
+            if category.image:
+                category.image.delete(save=False)
+            
+            category_name = category.name
+            category.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Category "{category_name}" deleted successfully!'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+
+
+
+# End
+
+
+@login_required
+def delete_product(request, subdomain, product_id):
+    """Delete a product"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    if request.method == 'POST':
+        product.delete()
+        messages.success(request, f'Product "{product.title}" has been deleted.')
+        return redirect('manage_products', subdomain=subdomain)
+    
+    return render(request, 'builder/delete_product.html', {
+        'page': page,
+        'product': product
+    })
+
+@login_required
+def manage_tracking_codes(request, subdomain):
+    """Manage tracking codes for a published page"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    tracking_codes = page.tracking_codes.all()
+    
+    if request.method == 'POST':
+        platform = request.POST.get('platform')
+        code = request.POST.get('code')
+        is_active = request.POST.get('is_active') == 'on'
+        
+        TrackingCode.objects.update_or_create(
+            page=page,
+            platform=platform,
+            defaults={
+                'code': code,
+                'is_active': is_active
+            }
+        )
+        
+        messages.success(request, f'Tracking code for {platform} has been updated.')
+        return redirect('manage_tracking_codes', subdomain=subdomain)
+    
+    return render(request, 'builder/manage_tracking_codes.html', {
+        'page': page,
+        'tracking_codes': tracking_codes
+    })
+
+@login_required
+def delete_tracking_code(request, subdomain, code_id):
+    """Delete a tracking code"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    tracking_code = get_object_or_404(TrackingCode, id=code_id, page=page)
+    
+    if request.method == 'POST':
+        tracking_code.delete()
+        messages.success(request, f'Tracking code for {tracking_code.platform} has been deleted.')
+        return redirect('manage_tracking_codes', subdomain=subdomain)
+    
+    return render(request, 'builder/delete_tracking_code.html', {
+        'page': page,
+        'tracking_code': tracking_code
+    })
+
+def get_template_pages(template_name):
+    """Get available pages for a template"""
+    try:
+        template = Template.objects.get(name=template_name)
+        if template.template_type == 'multi' and template.available_pages:
+            return template.available_pages
+    except Template.DoesNotExist:
+        pass
+    return ['home']  # Default to home page
+
+def load_multi_page_template(template_name, page_name):
+    """Load specific page from multi-page template"""
+    try:
+        # Try to load from multi-page template directory
+        return render_to_string(f'builder/templates/{template_name}/{page_name}.html')
+    except:
+        # Fallback to single page template
+        return render_to_string(f'builder/templates/{template_name}.html')
+    
+
+
+
+
+
+# cart and Wishlist views
+
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+
+# @csrf_exempt
+# @require_POST
+# def add_to_cart(request, subdomain):
+#     """Add product to cart"""
+#     try:
+#         page = get_object_or_404(PublishedPage, subdomain=subdomain)
+#         data = json.loads(request.body)
+#         product_id = data.get('product_id')
+#         quantity = int(data.get('quantity', 1))
+#         selected_color = data.get('selected_color', '')
+#         selected_size = data.get('selected_size', '')
+
+#         print(f"🛒 Adding to cart - Product: {product_id}, Quantity: {quantity}, Color: {selected_color}, Size: {selected_size}")
+#         # Get the product - ensure it belongs to the correct page
+#         product = get_object_or_404(Product, id=product_id, page=page)
+
+#         # Ensure session exists for guest users
+#         if not request.session.session_key:
+#             request.session.create()
+        
+#         session_key = request.session.session_key
+
+#         # Get or create cart - handle both authenticated and guest users
+#         cart_filter = {
+#             'page': page,
+#         }
+#         print(f'user is {request.user}')
+#         if request.user.is_authenticated:
+#             cart_filter['user'] = request.user
+#             cart_filter['session_key'] = None  # Clear session key for authenticated users
+#         else:
+#             cart_filter['user'] = None
+#             cart_filter['session_key'] = session_key
+
+#         cart, created = Cart.objects.get_or_create(**cart_filter)
+
+#         # Add or update cart item
+#         cart_item, item_created = CartItem.objects.get_or_create(
+#             cart=cart,
+#             product=product,
+#             defaults={
+#                 'quantity': quantity,
+#                 'selected_color': selected_color,
+#                 'selected_size': selected_size
+#             }
+#         )
+
+#         if not item_created:
+#             cart_item.quantity += quantity
+#             cart_item.selected_color = selected_color or cart_item.selected_color
+#             cart_item.selected_size = selected_size or cart_item.selected_size
+#             cart_item.save()
+
+#         return JsonResponse({
+#             'success': True,
+#             'message': f'Added {product.title} to cart',
+#             'cart_total': cart.get_total_quantity(),
+#             'cart_items_count': cart.items.count(),
+#             'selected_color': selected_color,
+#             'selected_size': selected_size
+#         })
+
+#     except Product.DoesNotExist:
+#         return JsonResponse({
+#             'success': False, 
+#             'error': f'Product with ID {product_id} not found for this store'
+#         })
+#     except Exception as e:
+#         print(f"❌ Cart error: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+@csrf_exempt
+@require_POST
+def add_to_cart(request, subdomain):
+    """Add product to cart with variant data"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 1))
+        selected_color = data.get('selected_color', '')
+        selected_size = data.get('selected_size', '')
+        
+        # Get the product
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        session_key = request.session.session_key
+        
+        # Get or create cart
+        cart_filter = {'page': page}
+        if request.user.is_authenticated:
+            cart_filter['user'] = request.user
+            cart_filter['session_key'] = None
+        else:
+            cart_filter['user'] = None
+            cart_filter['session_key'] = session_key
+        
+        cart, created = Cart.objects.get_or_create(**cart_filter)
+        
+        # Check if same variant already exists in cart
+        existing_item = CartItem.objects.filter(
+            cart=cart,
+            product=product,
+            selected_color=selected_color,
+            selected_size=selected_size
+        ).first()
+        
+        if existing_item:
+            # Update existing item
+            existing_item.quantity += quantity
+            existing_item.save()
+            message = f'Updated {product.title} quantity'
+        else:
+            # Create new cart item with variant data
+            CartItem.objects.create(
+                cart=cart,
+                product=product,
+                quantity=quantity,
+                selected_color=selected_color,
+                selected_size=selected_size
+            )
+            message = f'Added {product.title} to cart'
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'cart_total': cart.get_total_quantity(),
+            'cart_items_count': cart.items.count(),
+            'selected_color': selected_color,
+            'selected_size': selected_size
+        })
+        
+    except Exception as e:
+        print(f"❌ Cart error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+@require_POST
+def add_to_wishlist(request, subdomain):
+    """Add product to wishlist"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+
+        product = get_object_or_404(Product, id=product_id, page=page)
+
+        # Ensure session exists for guest users
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Get or create wishlist - handle both authenticated and guest users
+        wishlist_filter = {
+            'page': page,
+        }
+        
+        if request.user.is_authenticated:
+            wishlist_filter['user'] = request.user
+            wishlist_filter['session_key'] = None
+        else:
+            wishlist_filter['user'] = None
+            wishlist_filter['session_key'] = session_key
+
+        wishlist, created = Wishlist.objects.get_or_create(**wishlist_filter)
+
+        # Add to wishlist
+        wishlist_item, created = WishlistItem.objects.get_or_create(
+            wishlist=wishlist,
+            product=product
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Added {product.title} to wishlist',
+            'wishlist_count': wishlist.items.count()
+        })
+
+    except Exception as e:
+        print(f"❌ Wishlist error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+def get_cart_data(request, subdomain):
+    """Get cart data for current user/session"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        
+        # Ensure session exists for guest users
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Build filter for cart and wishlist
+        cart_filter = {'page': page}
+        wishlist_filter = {'page': page}
+        
+        if request.user.is_authenticated:
+            # For authenticated users, try user first, then session
+            cart = Cart.objects.filter(
+                user=request.user,
+                page=page
+            ).first()
+            
+            if not cart:
+                cart = Cart.objects.filter(
+                    session_key=session_key,
+                    page=page
+                ).first()
+                
+            wishlist = Wishlist.objects.filter(
+                user=request.user,
+                page=page
+            ).first()
+            
+            if not wishlist:
+                wishlist = Wishlist.objects.filter(
+                    session_key=session_key,
+                    page=page
+                ).first()
+        else:
+            # For guest users, use session key
+            cart = Cart.objects.filter(
+                session_key=session_key,
+                page=page
+            ).first()
+            
+            wishlist = Wishlist.objects.filter(
+                session_key=session_key,
+                page=page
+            ).first()
+
+        cart_data = {
+            'cart_total': cart.get_total_quantity() if cart else 0,
+            'cart_items_count': cart.items.count() if cart else 0,
+            'wishlist_count': wishlist.items.count() if wishlist else 0,
+            'cart_items': []
+        }
+
+        if cart:
+            for item in cart.items.all():
+                cart_data['cart_items'].append({
+                    'id': item.id,
+                    'product_id': item.product.id,
+                    'title': item.product.title,
+                    'price': str(item.product.price),
+                    'quantity': item.quantity,
+                    'total_price': str(item.get_total_price()),
+                    'image_url': item.product.main_image.url if item.product.main_image else None,
+                     # NEW: Add variant data
+                    'selected_color': item.selected_color,
+                    'selected_size': item.selected_size
+                })
+
+        return JsonResponse(cart_data)
+
+    except Exception as e:
+        print(f"❌ Get cart data error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+# def get_cart_data_for_template(request, page):
+#     """Get cart data for template context - handles both authenticated and guest users"""
+#     try:
+#         # Ensure session exists for guest users
+#         if not request.session.session_key:
+#             request.session.create()
+        
+#         session_key = request.session.session_key
+
+#         # Find cart - handle both authenticated and guest users
+#         cart = None
+#         wishlist = None
+        
+#         if request.user.is_authenticated:
+#             # For authenticated users, try user cart first
+#             cart = Cart.objects.filter(user=request.user, page=page).first()
+#             wishlist = Wishlist.objects.filter(user=request.user, page=page).first()
+            
+#             # If no user cart found, try session cart and transfer it
+#             if not cart:
+#                 session_cart = Cart.objects.filter(session_key=session_key, page=page).first()
+#                 if session_cart:
+#                     session_cart.user = request.user
+#                     session_cart.session_key = None
+#                     session_cart.save()
+#                     cart = session_cart
+            
+#             if not wishlist:
+#                 session_wishlist = Wishlist.objects.filter(session_key=session_key, page=page).first()
+#                 if session_wishlist:
+#                     session_wishlist.user = request.user
+#                     session_wishlist.session_key = None
+#                     session_wishlist.save()
+#                     wishlist = session_wishlist
+#         else:
+#             # For guest users, use session
+#             cart = Cart.objects.filter(session_key=session_key, page=page).first()
+#             wishlist = Wishlist.objects.filter(session_key=session_key, page=page).first()
+
+#         cart_data = {
+#             'cart_total': cart.get_total_quantity() if cart else 0,
+#             'cart_items_count': cart.items.count() if cart else 0,
+#             'wishlist_count': wishlist.items.count() if wishlist else 0,
+#             'cart': cart,  # Pass the cart object itself
+#             'wishlist': wishlist,  # Pass the wishlist object itself
+#         }
+
+#         return cart_data
+
+#     except Exception as e:
+#         print(f"❌ Error getting cart data for template: {e}")
+#         return {
+#             'cart_total': 0,
+#             'cart_items_count': 0,
+#             'wishlist_count': 0,
+#             'cart': None,
+#             'wishlist': None,
+#         }
+
+
+def get_cart_data_for_template(request, page):
+    """Get cart data for template context - PROPERLY handle authenticated users"""
+    try:
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+        
+        # Debug: Check authentication status
+        print(f"🔍 get_cart_data_for_template - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+        print(f"🔍 Session key: {session_key}")
+        
+        # Initialize cart and wishlist
+        cart = None
+        wishlist = None
+        
+        if request.user.is_authenticated:
+            print(f"✅ User is authenticated: {request.user.username} (ID: {request.user.id})")
+            
+            # FIRST: Look for user-specific cart
+            cart = Cart.objects.filter(user=request.user, page=page).first()
+            wishlist = Wishlist.objects.filter(user=request.user, page=page).first()
+            
+            print(f"🔍 User cart found: {cart}")
+            print(f"🔍 User wishlist found: {wishlist}")
+            
+            # SECOND: If no user cart, check for session cart and transfer it
+            if not cart:
+                session_cart = Cart.objects.filter(
+                    session_key=session_key, 
+                    page=page,
+                    user__isnull=True  # Only get carts without users
+                ).first()
+                
+                if session_cart:
+                    print(f"🔄 Transferring session cart to user")
+                    # Transfer session cart to authenticated user
+                    session_cart.user = request.user
+                    session_cart.session_key = None  # Clear session key
+                    session_cart.save()
+                    cart = session_cart
+            
+            if not wishlist:
+                session_wishlist = Wishlist.objects.filter(
+                    session_key=session_key, 
+                    page=page,
+                    user__isnull=True  # Only get wishlists without users
+                ).first()
+                
+                if session_wishlist:
+                    print(f"🔄 Transferring session wishlist to user")
+                    session_wishlist.user = request.user
+                    session_wishlist.session_key = None
+                    session_wishlist.save()
+                    wishlist = session_wishlist
+                    
+        else:
+            print(f"👤 User is NOT authenticated (guest)")
+            # For guest users, use session only
+            cart = Cart.objects.filter(
+                session_key=session_key, 
+                page=page,
+                user__isnull=True  # Ensure no user is attached
+            ).first()
+            
+            wishlist = Wishlist.objects.filter(
+                session_key=session_key, 
+                page=page,
+                user__isnull=True
+            ).first()
+        
+        print(f"📦 Final cart: {cart}")
+        print(f"❤️ Final wishlist: {wishlist}")
+        
+        cart_data = {
+            'cart_total': cart.get_total_quantity() if cart else 0,
+            'cart_items_count': cart.items.count() if cart else 0,
+            'wishlist_count': wishlist.items.count() if wishlist else 0,
+            'cart': cart,  # Pass the cart object itself
+            'wishlist': wishlist,  # Pass the wishlist object itself
+            'is_authenticated': request.user.is_authenticated,
+            'user_id': request.user.id if request.user.is_authenticated else None,
+            'username': request.user.username if request.user.is_authenticated else 'Guest',
+        }
+        
+        return cart_data
+        
+    except Exception as e:
+        print(f"❌ Error in get_cart_data_for_template: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'cart_total': 0,
+            'cart_items_count': 0,
+            'wishlist_count': 0,
+            'cart': None,
+            'wishlist': None,
+            'is_authenticated': False,
+            'user_id': None,
+            'username': 'Guest',
+        }
+
+
+@csrf_exempt
+@require_POST
+def remove_from_cart(request, subdomain):
+    """Remove item from cart"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart - try user first, then session
+        cart = None
+        if request.user.is_authenticated:
+            cart = Cart.objects.filter(
+                user=request.user,
+                page=page
+            ).first()
+            
+            if not cart:
+                cart = Cart.objects.filter(
+                    session_key=session_key,
+                    page=page
+                ).first()
+        else:
+            cart = Cart.objects.filter(
+                session_key=session_key,
+                page=page
+            ).first()
+
+        if not cart:
+            return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+        cart_item = get_object_or_404(CartItem, cart=cart, product_id=product_id)
+        cart_item.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Item removed from cart',
+            'cart_total': cart.get_total_quantity(),
+            'cart_items_count': cart.items.count()
+        })
+
+    except Exception as e:
+        print(f"❌ Remove from cart error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def remove_from_wishlist(request, subdomain):
+    """Remove item from wishlist"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find wishlist - try user first, then session
+        wishlist = None
+        if request.user.is_authenticated:
+            wishlist = Wishlist.objects.filter(
+                user=request.user,
+                page=page
+            ).first()
+            
+            if not wishlist:
+                wishlist = Wishlist.objects.filter(
+                    session_key=session_key,
+                    page=page
+                ).first()
+        else:
+            wishlist = Wishlist.objects.filter(
+                session_key=session_key,
+                page=page
+            ).first()
+
+        if not wishlist:
+            return JsonResponse({'success': False, 'error': 'Wishlist not found'})
+
+        wishlist_item = get_object_or_404(WishlistItem, wishlist=wishlist, product_id=product_id)
+        wishlist_item.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Item removed from wishlist',
+            'wishlist_count': wishlist.items.count()
+        })
+
+    except Exception as e:
+        print(f"❌ Remove from wishlist error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+# Cart and Wishlist management views
+@login_required
+def view_cart(request, subdomain):
+    """View shopping cart"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    cart = Cart.objects.filter(user=request.user, page=page).first()
+    
+    return render(request, 'builder/cart.html', {
+        'page': page,
+        'cart': cart
+    })
+
+
+
+
+@login_required
+def view_wishlist(request, subdomain):
+    """View wishlist"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    wishlist = Wishlist.objects.filter(user=request.user, page=page).first()
+    
+    return render(request, 'builder/wishlist.html', {
+        'page': page,
+        'wishlist': wishlist
+    })
+
+@csrf_exempt
+@require_POST
+def update_cart_item(request, subdomain):
+    """Update cart item quantity"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 1))
+
+        print(f"🛒 Updating cart item - Product: {product_id}, Quantity: {quantity}")
+
+        # Get the product
+        product = get_object_or_404(Product, id=product_id, page=page)
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart
+        cart = find_cart(request, page, session_key)
+        if not cart:
+            return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+        # Update quantity
+        if quantity <= 0:
+            # Remove item if quantity is 0 or less
+            cart_item = get_object_or_404(CartItem, cart=cart, product=product)
+            cart_item.delete()
+            message = f'Removed {product.title} from cart'
+        else:
+            # Update quantity
+            cart.update_item_quantity(product_id, quantity)
+            message = f'Updated {product.title} quantity to {quantity}'
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'cart_total': cart.get_total_quantity(),
+            'cart_items_count': cart.items.count(),
+            'item_quantity': quantity if quantity > 0 else 0
+        })
+
+    except Exception as e:
+        print(f"❌ Update cart item error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def increment_cart_item(request, subdomain):
+    """Increment cart item quantity"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        amount = int(data.get('amount', 1))
+
+        print(f"🛒 Incrementing cart item - Product: {product_id}, Amount: {amount}")
+
+        # Get the product
+        product = get_object_or_404(Product, id=product_id, page=page)
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart
+        cart = find_cart(request, page, session_key)
+        if not cart:
+            return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+        # Increment quantity
+        new_quantity = cart.increment_item(product_id, amount)
+        
+        if new_quantity is not None:
+            return JsonResponse({
+                'success': True,
+                'message': f'Increased {product.title} quantity to {new_quantity}',
+                'cart_total': cart.get_total_quantity(),
+                'cart_items_count': cart.items.count(),
+                'item_quantity': new_quantity
+            })
+        else:
+            # Item doesn't exist in cart, add it
+            return add_to_cart(request, subdomain)
+
+    except Exception as e:
+        print(f"❌ Increment cart item error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def decrement_cart_item(request, subdomain):
+    """Decrement cart item quantity"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        amount = int(data.get('amount', 1))
+
+        print(f"🛒 Decrementing cart item - Product: {product_id}, Amount: {amount}")
+
+        # Get the product
+        product = get_object_or_404(Product, id=product_id, page=page)
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart
+        cart = find_cart(request, page, session_key)
+        if not cart:
+            return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+        # Decrement quantity
+        new_quantity = cart.decrement_item(product_id, amount)
+        
+        if new_quantity is not None:
+            if new_quantity == 0:
+                message = f'Removed {product.title} from cart'
+            else:
+                message = f'Decreased {product.title} quantity to {new_quantity}'
+            
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'cart_total': cart.get_total_quantity(),
+                'cart_items_count': cart.items.count(),
+                'item_quantity': new_quantity
+            })
+        else:
+            return JsonResponse({'success': False, 'error': 'Item not found in cart'})
+
+    except Exception as e:
+        print(f"❌ Decrement cart item error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def clear_cart(request, subdomain):
+    """Clear all items from cart"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart
+        cart = find_cart(request, page, session_key)
+        if not cart:
+            return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+        # Clear all items
+        cart_items_count = cart.items.count()
+        cart.items.all().delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Cleared {cart_items_count} items from cart',
+            'cart_total': 0,
+            'cart_items_count': 0
+        })
+
+    except Exception as e:
+        print(f"❌ Clear cart error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+@csrf_exempt
+@require_POST
+def clear_wishlist(request, subdomain):
+    """Clear all items from wishlist"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+
+        # Find cart
+        wishlist = find_wishlist(request, page, session_key)
+        if not wishlist:
+            return JsonResponse({'success': False, 'error': 'Wishlist not found'})
+
+        # Clear all items
+        wishlist_items_count = wishlist.items.count()
+        wishlist.items.all().delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Cleared {wishlist_items_count} items from wishlist',
+            'wishlist_total': 0,
+            'wishlist_items_count': 0
+        })
+
+    except Exception as e:
+        print(f"❌ Clear wishlist error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+# Helper function to find cart
+# def find_cart(request, page, session_key):
+#     """Helper function to find cart for user/session"""
+#     if request.user.is_authenticated:
+#         # Try user cart first
+#         cart = Cart.objects.filter(user=request.user, page=page).first()
+#         if not cart:
+#             # Try session cart and transfer to user if found
+#             session_cart = Cart.objects.filter(session_key=session_key, page=page).first()
+#             if session_cart:
+#                 session_cart.user = request.user
+#                 session_cart.session_key = None
+#                 session_cart.save()
+#                 return session_cart
+#     else:
+#         # Use session cart
+#         cart = Cart.objects.filter(session_key=session_key, page=page).first()
+    
+#     return cart
+
+
+def find_cart(request, page, session_key):
+    """Helper function to find cart for user/session - FIXED VERSION"""
+    print(f"🔍 find_cart - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+    
+    cart = None
+    
+    if request.user.is_authenticated:
+        print(f"✅ Looking for user cart for {request.user.username}")
+        
+        # First: Try user cart
+        cart = Cart.objects.filter(
+            user=request.user,
+            page=page
+        ).first()
+        
+        print(f"🔍 User cart found: {cart}")
+        
+        # Second: If no user cart, try session cart and transfer
+        if not cart:
+            print(f"🔍 Looking for session cart to transfer")
+            session_cart = Cart.objects.filter(
+                session_key=session_key,
+                page=page,
+                user__isnull=True  # Only carts without users
+            ).first()
+            
+            if session_cart:
+                print(f"🔄 Transferring session cart to user")
+                session_cart.user = request.user
+                session_cart.session_key = None
+                session_cart.save()
+                cart = session_cart
+                
+    else:
+        print(f"👤 User is guest, using session cart")
+        # For guest users, use session cart
+        cart = Cart.objects.filter(
+            session_key=session_key,
+            page=page,
+            user__isnull=True  # Ensure no user attached
+        ).first()
+    
+    print(f"📦 Final cart found: {cart}")
+    return cart
+
+
+
+
+def find_wishlist(request, page, session_key):
+    """Helper function to find wishlist for user/session - FIXED VERSION"""
+    print(f"🔍 find_wishlist - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+    
+    wishlist = None
+    
+    if request.user.is_authenticated:
+        print(f"✅ Looking for user wishlist for {request.user.username}")
+        
+        # First: Try user cart
+        wishlist = Wishlist.objects.filter(
+            user=request.user,
+            page=page
+        ).first()
+        
+        print(f"🔍 User cart found: {wishlist}")
+        
+        # Second: If no user cart, try session cart and transfer
+        if not wishlist:
+            print(f"🔍 Looking for session cart to transfer")
+            session_wishlist = Wishlist.objects.filter(
+                session_key=session_key,
+                page=page,
+                user__isnull=True  # Only carts without users
+            ).first()
+            
+            if session_wishlist:
+                print(f"🔄 Transferring session cart to user")
+                session_wishlist.user = request.user
+                session_wishlist.session_key = None
+                session_wishlist.save()
+                wishlist = session_wishlist
+                
+    else:
+        print(f"👤 User is guest, using session cart")
+        # For guest users, use session cart
+        wishlist = Wishlist.objects.filter(
+            session_key=session_key,
+            page=page,
+            user__isnull=True  # Ensure no user attached
+        ).first()
+    
+    print(f"📦 Final cart found: {wishlist}")
+    return wishlist
+
+
+
+
+
+@csrf_exempt
+@require_POST
+def submit_review(request, subdomain):
+    """Submit a product review - FIXED authentication"""
+    try:
+        print(f"🎯 SUBMIT REVIEW - User: {request.user}, Auth: {request.user.is_authenticated}")
+        
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        # data = json.loads(request.body)
+
+         # Get form data
+        product_id = request.POST.get('product_id')
+        user_name = request.POST.get('user_name', '').strip()
+        rating = int(request.POST.get('rating', 0))
+        title = request.POST.get('title', '').strip()
+        comment = request.POST.get('comment', '').strip()
+        is_verified = request.POST.get('is_verified') == 'on'
+
+        # Validation
+        if not user_name:
+            return JsonResponse({'success': False, 'error': 'Please enter your name'})
+        
+        if not 1 <= rating <= 5:
+            return JsonResponse({'success': False, 'error': 'Please select a valid rating'})
+        
+        if not comment:
+            return JsonResponse({'success': False, 'error': 'Please write your review'})
+        
+        # Debug user info
+        if request.user.is_authenticated:
+            print(f"✅ Submitting as authenticated user: {request.user.username} (ID: {request.user.id})")
+        else:
+            print(f"👤 Submitting as guest user")
+        
+        # # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        session_key = request.session.session_key
+        
+        # # Check for existing review
+        # review_filter = {'product_id': product_id}
+        
+        # if request.user.is_authenticated:
+        #     review_filter['user'] = request.user
+        #     review_filter['session_key__isnull'] = True  # Only user reviews
+        # else:
+        #     review_filter['user__isnull'] = True  # Only guest reviews
+        #     review_filter['session_key'] = session_key
+        
+        # existing_review = ProductReview.objects.filter(**review_filter).first()
+        
+        # if existing_review:
+        #     return JsonResponse({
+        #         'success': False, 
+        #         'error': 'You have already reviewed this product'
+        #     })
+        
+        # Create review
+        review = ProductReview.objects.create(
+            product_id=product_id,
+            user=request.user if request.user.is_authenticated else None,
+            author_name=user_name,
+            session_key=session_key if not request.user.is_authenticated else None,
+            rating=rating,
+            title=title,
+            comment=comment,
+            is_verified_purchase=is_verified,
+            is_approved=True
+        )
+        
+        print(f"✅ Review created: ID {review.id}, User: {review.user}, Session: {review.session_key}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Review submitted successfully',
+            'review_id': review.id
+        })
+        
+    except Exception as e:
+        print(f"❌ Review error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@csrf_exempt
+@require_POST
+def mark_review_helpful(request, subdomain):
+    """Mark a review as helpful"""
+    try:
+        data = json.loads(request.body)
+        review_id = data.get('review_id')
+        
+        review = get_object_or_404(ProductReview, id=review_id)
+        
+        # Ensure session exists for guest users
+        if not request.session.session_key:
+            request.session.create()
+        session_key = request.session.session_key
+        
+        # Check if already voted
+        vote_filter = {
+            'review': review,
+        }
+        
+        if request.user.is_authenticated:
+            vote_filter['user'] = request.user
+            vote_filter['session_key'] = None
+        else:
+            vote_filter['user'] = None
+            vote_filter['session_key'] = session_key
+        
+        existing_vote = ReviewHelpful.objects.filter(**vote_filter).first()
+        if existing_vote:
+            return JsonResponse({'success': False, 'error': 'You have already marked this review as helpful'})
+        
+        # Create helpful vote
+        ReviewHelpful.objects.create(
+            review=review,
+            user=request.user if request.user.is_authenticated else None,
+            session_key=session_key if not request.user.is_authenticated else None
+        )
+        
+        # Update helpful count
+        review.helpful_count += 1
+        review.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Review marked as helpful',
+            'helpful_count': review.helpful_count
+        })
+        
+    except Exception as e:
+        print(f"❌ Helpful vote error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+from django.db.models import Avg, Count  # Import Avg and Count
+
+def get_product_reviews(request, subdomain, product_id):
+    """Get reviews for a product"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        product = get_object_or_404(Product, id=product_id, page=page)
+
+        # DEBUG: Add logging
+        print(f"🔍 Looking for reviews for product {product_id} on page {subdomain}")
+        print(f"📦 Found product: {product.title if product else 'NOT FOUND'}")
+        
+        reviews = product.reviews.filter(is_approved=True).select_related('user')
+
+        # DEBUG: Log review count
+        print(f"📝 Found {reviews.count()} reviews for product {product_id}")
+        
+        # Calculate rating statistics
+        # total_reviews = reviews.count()
+        # if total_reviews > 0:
+        #     avg_rating = reviews.aggregate(avg=models.Avg('rating'))['avg']
+        #     rating_distribution = reviews.values('rating').annotate(count=models.Count('id')).order_by('rating')
+        # else:
+        #     avg_rating = 0
+        #     rating_distribution = []
+
+        # Assuming 'reviews' is a queryset of your review model
+        # total_reviews = reviews.count()
+
+        # Assuming 'reviews' is a queryset of your review model
+        # reviews = Review.objects.all()  # Replace with your actual queryset
+
+        # Initialize the rating distribution dictionary
+        rating_distribution = {i: 0 for i in range(1, 6)}  # Assuming ratings are from 1 to 5
+
+        # Count total reviews
+        total_reviews = reviews.count()
+
+        if total_reviews > 0:
+            # Populate the rating distribution
+            for review in reviews:
+                if review.rating in rating_distribution:
+                    rating_distribution[review.rating] += 1
+
+            # Calculate average rating
+            total_rating = sum(review.rating for review in reviews)
+            avg_rating = total_rating / total_reviews
+        else:
+            avg_rating = 0  # Handle case where there are no reviews
+
+        # Now you can use rating_distribution and avg_rating
+        print("Average Rating:", avg_rating)
+        print("Rating Distribution:", rating_distribution)
+        
+        reviews_data = []
+        for review in reviews:
+            reviews_data.append({
+                'id': review.id,
+                'user_name': review.user.username if review.user else 'Anonymous',
+                'rating': review.rating,
+                'title': review.title,
+                'comment': review.comment,
+                'helpful_count': review.helpful_count,
+                'created_at': review.created_at.strftime('%B %d, %Y'),
+                'is_verified': review.is_verified_purchase,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'reviews': reviews_data,
+            'statistics': {
+                'total_reviews': total_reviews,
+                'average_rating': round(avg_rating, 1) if avg_rating else 0,
+                'rating_distribution': list(rating_distribution),
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Get reviews error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}) 
+
+
+
+# builder/views.py - Update product_detail_page function
+# builder/views.py - Update product_detail_page function
+def product_detail_page(request, product_slug):
+    """Product detail page with all customizations"""
+    # Get subdomain from request (set by middleware)
+    subdomain = getattr(request, 'subdomain', None)
+    
+    if not subdomain:
+        # Fallback: try to extract from published_page
+        if hasattr(request, 'published_page'):
+            subdomain = request.published_page.subdomain
+        else:
+            # Last resort: try to extract from host
+            host = request.get_host().lower()
+            if 'localhost' in host:
+                parts = host.split('.')
+                subdomain = parts[0] if len(parts) > 1 else None
+            else:
+                parts = host.split('.')
+                subdomain = parts[0] if len(parts) >= 3 else None
+    
+    if not subdomain:
+        raise Http404("Subdomain not found")
+    
+    # Get the website
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+    
+    # Get the product
+    product = get_object_or_404(Product, slug=product_slug, page=page)
+    if product.colors:
+        colors=[w.strip() for w in product.colors.split(',')]
+    else:
+        colors=''
+    
+    if product.sizes:
+        sizes=[w.strip() for w in product.sizes.split(',')]
+    else:
+        sizes=''
+
+    images=product.product_images.all()[:4]
+
+
+   # ADD THIS TRACKING LOGIC:
+    from django.utils import timezone
+    from django.db import transaction
+    
+    try:
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_key = request.session.session_key
+        
+        # Use atomic transaction to handle potential race conditions
+        with transaction.atomic():
+            # Try to get existing entry
+            existing = RecentlyViewedProduct.objects.filter(
+                page=page,
+                product=product,
+                session_key=session_key,
+                user=request.user if request.user.is_authenticated else None
+            ).first()
+            
+            if existing:
+                # Update timestamp
+                existing.viewed_at = timezone.now()
+                existing.save()
+                print(f"🔄 Updated timestamp for existing entry")
+            else:
+                # Create new entry
+                RecentlyViewedProduct.objects.create(
+                    page=page,
+                    product=product,
+                    session_key=session_key,
+                    user=request.user if request.user.is_authenticated else None,
+                    viewed_at=timezone.now()
+                )
+                print(f"✅ Created new recently viewed entry")
+                
+    except IntegrityError:
+        # If we get integrity error (race condition), just update existing
+        RecentlyViewedProduct.objects.filter(
+            page=page,
+            product=product,
+            session_key=session_key,
+            user=request.user if request.user.is_authenticated else None
+        ).update(viewed_at=timezone.now())
+        print(f"🔄 Recovered from integrity error by updating")
+        
+    except Exception as e:
+        print(f"⚠️ Recently viewed tracking failed: {str(e)}")
+        # Continue with page render even if tracking fails  
+
+    # Get recently viewed products for this user/session
+    if request.user.is_authenticated:
+        recent_products = RecentlyViewedProduct.objects.filter(
+            page=page,
+            user=request.user
+        ).order_by('-viewed_at').select_related('product')[:10]
+    else:
+        recent_products = RecentlyViewedProduct.objects.filter(
+            page=page,
+            session_key=session_key
+        ).order_by('-viewed_at').select_related('product')[:10]
+
+    
+   
+        
+    
+    print(f"🛍️ Rendering product detail: {product.title} on {page.brand_name}")
+    
+    # Load customizations from the 'products' page
+    page_key = 'product-details'
+    page_key2='home'
+    page_data = page.page_customizations.get(page_key and page_key2, {})
+
+    home_page_data = page.page_customizations.get(page_key2, {})
+    current_page_data = page.page_customizations.get(page_key, {})
+
+    # Print raw data structure
+    print("\n" + "="*50)
+    print(f"HOMEPAGE DATA STRUCTURE:")
+    print(f"Type: {type(home_page_data)}")
+    print(f"Keys: {list(home_page_data.keys())}")
+    if 'text_contents' in home_page_data:
+        print(f"Homepage text_contents keys: {list(home_page_data['text_contents'].keys())}")
+        print(f"Homepage text_contents values: {home_page_data['text_contents']}")
+
+    print("\n" + "="*50)
+    print(f"CURRENT PAGE ({page_key}) DATA STRUCTURE:")
+    print(f"Type: {type(current_page_data)}")
+    print(f"Keys: {list(current_page_data.keys())}")
+    if 'text_contents' in current_page_data:
+        print(f"Current page text_contents keys: {list(current_page_data['text_contents'].keys())}")
+        print(f"Current page text_contents values: {current_page_data['text_contents']}")
+
+    # Now merge properly
+    page_data = {}
+
+    # Copy all homepage data first
+    for key, value in home_page_data.items():
+        if isinstance(value, dict):
+            page_data[key] = value.copy()  # Deep copy for nested dicts
+        else:
+            page_data[key] = value
+
+    # Overlay with current page data
+    for key, value in current_page_data.items():
+        if key in page_data and isinstance(page_data[key], dict) and isinstance(value, dict):
+            # Merge nested dictionaries
+            page_data[key].update(value)
+        else:
+            page_data[key] = value
+
+    print("\n" + "="*50)
+    print(f"MERGED DATA STRUCTURE:")
+    print(f"Keys: {list(page_data.keys())}")
+    if 'text_contents' in page_data:
+        print(f"Merged text_contents keys: {list(page_data['text_contents'].keys())}")
+        print(f"Merged text_contents values: {page_data['text_contents']}")
+    print("="*50 + "\n")
+    home_page_data = page.page_customizations.get(page_key2, {})
+        # GET HIDDEN SECTIONS - This is crucial!
+    hidden_sections = page_data.get('hidden_sections', {})
+
+    
+    print(f"📦 Loaded customizations from '{page_key}' page:", {
+        'texts': len(page_data.get('text_contents', {})),
+        'styles': len(page_data.get('style_customizations', {})),
+        'components': len(page_data.get('component_layout', [])),
+        'component_customizations': len(page_data.get('component_customizations', []))
+    })
+    print(f"Page texts {page_data.get('text_contents', {})}")
+    
+    # Load component layout from page data
+    components_data = []
+    component_layout = page_data.get('component_layout', [])
+    component_customizations_list = page_data.get('component_customizations', [])
+    
+    if component_layout:
+        print(f"🧩 Loading {len(component_layout)} components from layout")
+        for component_ref in component_layout:
+            try:
+                component = load_component_from_file(component_ref['component_id'])
+                if component:
+                    # Get customizations for this component instance
+                    customizations = {}
+                    for comp_custom in component_customizations_list:
+                        if comp_custom.get('instance_id') == component_ref.get('instance_id'):
+                            customizations = comp_custom.get('customizations', {})
+                            break
+
+                    # Apply customizations
+                    processed_html = apply_component_customizations(
+                        component['html_content'],
+                        customizations
+                    )
+
+                    components_data.append({
+                        'instance_id': component_ref['instance_id'],
+                        'component_id': component_ref['component_id'],
+                        'drop_zone': component_ref.get('drop_zone', 'end'),
+                        'html_content': mark_safe(processed_html),
+                        'customizations': customizations,
+                    })
+            except Exception as e:
+                print(f"❌ Error loading component {component_ref['component_id']}: {e}")
+    
+    # Load other customizations
+    text_contents = page_data.get('text_contents', {})
+    style_customizations = page_data.get('style_customizations', {})
+    background_images = page_data.get('background_images', {})
+    icon_customizations = page_data.get('icon_customizations', {})
+
+    home_text_contents = home_page_data.get('text_contents', {})
+    home_style_customizations = home_page_data.get('style_customizations', {})
+    home_background_images = home_page_data.get('background_images', {})
+    home_icon_customizations = home_page_data.get('icon_customizations', {})
+
+    
+
+    
+    
+    # Load background images from database
+    background_images_db = {}
+    bg_objects = page.background_images.all()
+    
+    for bg in bg_objects:
+        image_url = bg.image.url if bg.image else None
+        clean_element_id = extract_numeric_id(bg.element_id)
+        if clean_element_id and image_url:
+            background_images_db[clean_element_id] = {
+                'image_url': image_url,
+                'element_id': bg.element_id,
+                'has_image': True
+            }
+    
+    # Get related products
+    # related_products = page.products.exclude(id=product.id).order_by('-created_at')[:4]
+    related_products = Product.objects.filter(category=product.category, page=page).exclude(id=product.id)[:5]
+
+    
+    # Check if user is authenticated and a member
+    is_website_member = False
+    if request.user.is_authenticated:
+        try:
+            from accounts.models import WebsiteUser
+            is_website_member = WebsiteUser.objects.filter(
+                user=request.user,
+                website=page,
+                is_active=True
+            ).exists()
+        except ImportError:
+            pass
+    
+    # Get all products for navigation
+    all_products = page.products.all().order_by('title')
+    
+    # Dynamic style ranges
+    section_range = list(range(1, 500))
+    component_range = list(range(1, 500))
+
+    variants = ProductVariant.objects.filter(
+        product__page=page,
+        cj_vid__isnull=False
+    )
+
+    print(f"Variants are {variants}")
+    reviews = ProductReview.objects.filter(product=product).order_by('-created_at')
+     # Calculate statistics
+    review_count = reviews.count()
+    
+    if review_count > 0:
+        average_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+        average_rating = round(average_rating, 1)
+    else:
+        average_rating = 0.0
+
+     # Only approved reviews
+    reviews_qs = product.reviews.filter(is_approved=True)
+
+    total_reviews = reviews_qs.count()
+
+    # Count ratings
+    rating_counts = reviews_qs.values('rating').annotate(count=Count('rating'))
+
+    # Initialize defaults
+    rating_data = {
+        1: {'count': 0, 'percentage': 0},
+        2: {'count': 0, 'percentage': 0},
+        3: {'count': 0, 'percentage': 0},
+        4: {'count': 0, 'percentage': 0},
+        5: {'count': 0, 'percentage': 0},
+    }
+
+    # Fill counts
+    for r in rating_counts:
+        rating_data[r['rating']]['count'] = r['count']
+
+    # Calculate percentages
+    if total_reviews > 0:
+        for star in rating_data:
+            rating_data[star]['percentage'] = round(
+                (rating_data[star]['count'] / total_reviews) * 100, 1
+            )
+    full_stars = int(average_rating)
+    has_half_star = (average_rating - full_stars) >= 0.5
+    # Context for template rendering
+    context = {
+        'page': page,
+        'product': product,
+        'product_images':images,
+        'related_products': related_products,
+        'all_products': all_products,
+        'recently_viewed_products': recent_products,
+        'colors':colors,
+        'sizes':sizes,
+        'variants':variants,
+
+        'reviews': reviews,
+        'review_count': review_count,
+        'average_rating': average_rating,
+        'reviews': reviews_qs,
+        'total_reviews': total_reviews,
+        'rating_data': rating_data,
+        'full_stars': full_stars,
+        'has_half_star': has_half_star,
+        
+        # CUSTOMIZATIONS - THESE WERE MISSING!
+        'current_page': 'product_details',
+        'components': components_data,
+        'text_contents': text_contents,
+        'home_text_contents': home_text_contents,
+        'style_customizations': style_customizations,
+        'home_style_customizations':home_style_customizations,
+        'background_images': background_images_db,
+        'home_background_images': home_background_images,
+        'icon_customizations': icon_customizations,
+        
+        # Other data
+        'is_website_member': is_website_member,
+        'user': request.user,
+        
+        # Dynamic style ranges
+        'section_range': section_range,
+        'component_range': component_range,
+        
+        # Hidden sections (if any)
+        'hidden_sections': page_data.get('hidden_sections', {}),
+    }
+    
+    # Try to render product detail template
+    try:
+        # First try: template_name/product_details.html
+        template_path = f'builder/public_templates/{page.template_name}/product_details.html'
+        return render(request, template_path, context)
+    except TemplateDoesNotExist:
+        # Second try: template_name/product_detail.html
+        try:
+            template_path = f'builder/public_templates/{page.template_name}/product_detail.html'
+            return render(request, template_path, context)
+        except TemplateDoesNotExist:
+            # Third try: template_name/product.html
+            try:
+                template_path = f'builder/public_templates/{page.template_name}/product.html'
+                return render(request, template_path, context)
+            except TemplateDoesNotExist:
+                # Fallback: generic product detail template
+                return render(request, 'builder/product_detail.html', context)
+
+
+def product_list_page(request):
+    """Product listing page for published websites"""
+    try:
+        # Get the page from the request (using middleware)
+        if not hasattr(request, 'published_page') or not request.published_page:
+            raise Http404("Page not found")
+        
+        page = request.published_page
+        
+        # Get filter parameters
+        category = request.GET.get('category', '')
+        sort = request.GET.get('sort', 'newest')
+        search = request.GET.get('search', '')
+        
+        # Base queryset
+        products = Product.objects.filter(page=page, is_active=True)
+        
+        # Apply filters
+        if category:
+            products = products.filter(category__iexact=category)
+        
+        if search:
+            products = products.filter(
+                models.Q(title__icontains=search) | 
+                models.Q(description__icontains=search)
+            )
+        
+        # Apply sorting
+        if sort == 'newest':
+            products = products.order_by('-created_at')
+        elif sort == 'price_low':
+            products = products.order_by('price')
+        elif sort == 'price_high':
+            products = products.order_by('-price')
+        elif sort == 'name':
+            products = products.order_by('title')
+        elif sort == 'rating':
+            # This would require a more complex query for average rating
+            products = products.order_by('-created_at')
+        
+        # Get categories for filter dropdown
+        categories = Product.objects.filter(page=page, is_active=True).values_list('category', flat=True).distinct()
+        
+        context = {
+            'page': page,
+            'products': products,
+            'categories': [cat for cat in categories if cat],  # Remove empty categories
+            'current_category': category,
+            'current_sort': sort,
+            'current_search': search,
+        }
+        
+        # Try to use product list template specific to this template, fallback to default
+        try:
+            return render(request, f'builder/public_templates/{page.template_name}/products.html', context)
+        except TemplateDoesNotExist:
+            return render(request, 'builder/public_products.html', context)
+            
+    except PublishedPage.DoesNotExist:
+        raise Http404("Page not found")
+
+
+
+
+def test_auth(request):
+    """Test authentication endpoint"""
+    data = {
+        'user_id': request.user.id,
+        'username': request.user.username,
+        'is_authenticated': request.user.is_authenticated,
+        'is_staff': request.user.is_staff,
+        'is_superuser': request.user.is_superuser,
+        'email': request.user.email,
+        'session_key': request.session.session_key,
+        'auth_user_id': request.session.get('_auth_user_id'),
+    }
+    return JsonResponse(data)
+
+
+def test_middleware_order(request):
+    """Test if middleware is running in correct order"""
+    response_data = {
+        'middleware_tested': 'SubdomainMiddleware',
+        'user_at_view_level': {
+            'username': request.user.username,
+            'is_authenticated': request.user.is_authenticated,
+            'class': str(request.user.__class__),
+        },
+        'session_data': {
+            'auth_user_id': request.session.get('_auth_user_id'),
+        },
+        'custom_attrs': {
+            'has_published_page': hasattr(request, 'published_page'),
+            'has_subdomain': hasattr(request, 'subdomain'),
+            'published_page': str(getattr(request, 'published_page', None)),
+            'subdomain': getattr(request, 'subdomain', None),
+        }
+    }
+    
+    # Check specific URLs
+    if 'admin' in request.path:
+        response_data['is_admin'] = True
+    
+    return JsonResponse(response_data)
+
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from .models import ProductCategory
+
+
+@login_required
+def manage_product_categories(request, subdomain):
+    """Manage product categories with AJAX responses"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Handle POST request for creating categories
+    if request.method == 'POST':
+        try:
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            
+            if not name:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Category name is required'
+                })
+            
+            # Handle image upload
+            image = request.FILES.get('image')
+            
+            # Create category
+            category = ProductCategory.objects.create(
+                page=page,
+                name=name,
+                description=description,
+                image=image if image else None
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Category created successfully!',
+                'category': {
+                    'id': category.id,
+                    'name': category.name,
+                    'description': category.description,
+                    'slug': category.slug,
+                    'image_url': category.image.url if category.image else None,
+                    'products_count': category.products.count(),
+                    'active_products_count': category.get_active_products_count()
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    # Handle AJAX GET request for loading categories
+    elif request.method == 'GET' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            categories = page.product_categories.all().order_by('display_order', 'name')
+            data = [{
+                'id': cat.id,
+                'name': cat.name,
+                'description': cat.description,
+                'slug': cat.slug,
+                'image_url': cat.image.url if cat.image else None,
+                'products_count': cat.products.count(),
+                'active_products_count': cat.get_active_products_count()
+            } for cat in categories]
+            
+            return JsonResponse({
+                'success': True,
+                'categories': data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    # Regular template render for initial page load
+    categories = page.product_categories.all().order_by('display_order', 'name')
+    return render(request, 'builder/manage_product_categories.html', {
+        'page': page,
+        'categories': categories
+    })
+
+@login_required
+def edit_product_category(request, subdomain, category_id):
+    """Edit a product category"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    category = get_object_or_404(ProductCategory, id=category_id, page=page)
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        description = request.POST.get('description', '')
+        display_order = request.POST.get('display_order', 0)
+        is_active = request.POST.get('is_active') == 'on'
+        
+        if name:
+            category.name = name
+            category.description = description
+            category.display_order = display_order
+            category.is_active = is_active
+            category.save()
+            
+            messages.success(request, f'Category "{name}" updated successfully!')
+            return redirect('manage_product_categories', subdomain=subdomain)
+    
+    return render(request, 'builder/edit_product_category.html', {
+        'page': page,
+        'category': category
+    })
+
+@login_required
+def delete_product_category(request, subdomain, category_id):
+    """Delete a product category"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    category = get_object_or_404(ProductCategory, id=category_id, page=page)
+    
+    if request.method == 'POST':
+        category_name = category.name
+        category.delete()
+        messages.success(request, f'Category "{category_name}" deleted successfully!')
+        return redirect('manage_product_categories', subdomain=subdomain)
+    
+    return render(request, 'builder/delete_product_category.html', {
+        'page': page,
+        'category': category
+    })
+
+
+
+
+def get_recently_viewed_products(request, subdomain):
+    """Get 10 most recently viewed products for current visitor"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        
+        # Get session key for anonymous users
+        session_key = request.session.session_key
+        
+        # Query recently viewed products
+        if request.user.is_authenticated:
+            # For logged-in users, use user ID
+            recently_viewed = RecentlyViewedProduct.objects.filter(
+                page=page,
+                user=request.user
+            ).select_related('product').order_by('-viewed_at')[:10]
+        else:
+            # For anonymous users, use session key
+            recently_viewed = RecentlyViewedProduct.objects.filter(
+                page=page,
+                session_key=session_key
+            ).select_related('product').order_by('-viewed_at')[:10]
+        
+        # Prepare product data
+        products_data = []
+        for rvp in recently_viewed:
+            product = rvp.product
+            products_data.append({
+                'id': product.id,
+                'title': product.title,
+                'description': product.description[:100] + '...' if len(product.description) > 100 else product.description,
+                'price': str(product.price),
+                'image_url': product.image.url if product.image else None,
+                'viewed_at': rvp.viewed_at.strftime('%b %d, %Y'),
+                'page_url': f"/products/{product.id}/"  # Adjust based on your URL pattern
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'products': products_data,
+            'count': len(products_data)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting recently viewed products: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+
+
+
+
+
+
+
+
+
+# CJ Dropshipping
+
+import json
+import logging
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.utils import timezone
+from django.contrib import messages
+from django.db.models import F
+   
+from .models import PublishedPage, CJSettings, CJProduct, CJOrder, CJSyncLog
+import json
+import logging
+from datetime import datetime
+
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.contrib import messages
+
+from .models import PublishedPage, CJSettings, CJProduct, CJOrder, CJSyncLog, Product
+from .services.cj_service import CJService, CJOrderRequest,CJManager
+
+from builder import models
+
+import json
+import logging
+from datetime import timedelta
+from typing import Dict, Any
+
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db import transaction
+from django.utils import timezone
+from django.contrib import messages
+from django.db.models import Q, Sum, Count
+from django.views.decorators.csrf import csrf_protect
+
+from .models import PublishedPage, CJSettings, CJProduct, CJOrder, CJSyncLog, Product
+
+
+logger = logging.getLogger(__name__)
+
+
+@login_required
+def cj_settings(request, subdomain):
+    """CJ Settings view"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+    except CJSettings.DoesNotExist:
+        cj_settings_obj = None
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save_settings':
+            # Create or update settings
+            if not cj_settings_obj:
+                cj_settings_obj = CJSettings(page=page)
+            
+            api_key = request.POST.get('api_key', '').strip()
+            if api_key:
+                cj_settings_obj.api_key = api_key
+                
+                # Test the API key
+                try:
+                    cj_service = CJService(api_key, str(page.id))
+                    test_result = cj_service.test_connection()
+                    
+                    if test_result['success']:
+                        cj_settings_obj.api_status = 'active'
+                        cj_settings_obj.is_active = True
+                        messages.success(request, 'CJ API connection successful!')
+                    else:
+                        cj_settings_obj.api_status = 'invalid'
+                        cj_settings_obj.is_active = False
+                        messages.error(request, f'API connection failed: {test_result["message"]}')
+                        
+                except Exception as e:
+                    cj_settings_obj.api_status = 'invalid'
+                    messages.error(request, f'API test error: {str(e)}')
+            
+            # Update other settings
+            cj_settings_obj.auto_fulfill = request.POST.get('auto_fulfill') == 'on'
+            cj_settings_obj.auto_sync_prices = request.POST.get('auto_sync_prices') == 'on'
+            cj_settings_obj.auto_sync_inventory = request.POST.get('auto_sync_inventory') == 'on'
+            cj_settings_obj.default_profit_margin = request.POST.get('default_profit_margin', '30.00')
+            cj_settings_obj.default_warehouse = request.POST.get('default_warehouse', 'CN')
+            cj_settings_obj.currency = request.POST.get('currency', 'USD')
+            cj_settings_obj.save()
+            
+            messages.success(request, 'Settings saved successfully!')
+            return redirect('cj_settings', subdomain=subdomain)
+        
+        elif action == 'test_connection' and cj_settings_obj:
+            # Test connection with existing API key
+            try:
+                cj_service = CJService(cj_settings_obj.api_key, str(page.id))
+                test_result = cj_service.test_connection()
+                
+                if test_result['success']:
+                    cj_settings_obj.api_status = 'active'
+                    cj_settings_obj.save(update_fields=['api_status'])
+                    messages.success(request, 'API connection test successful!')
+                else:
+                    cj_settings_obj.api_status = 'invalid'
+                    cj_settings_obj.save(update_fields=['api_status'])
+                    messages.error(request, f'API test failed: {test_result["message"]}')
+                    
+            except Exception as e:
+                messages.error(request, f'Connection test error: {str(e)}')
+            
+            return redirect('cj_settings', subdomain=subdomain)
+        
+        elif action == 'toggle_active' and cj_settings_obj:
+            # Toggle active status
+            cj_settings_obj.is_active = not cj_settings_obj.is_active
+            cj_settings_obj.save(update_fields=['is_active'])
+            
+            status = 'activated' if cj_settings_obj.is_active else 'deactivated'
+            messages.success(request, f'CJ integration {status}')
+            return redirect('cj_settings', subdomain=subdomain)
+    
+    # Calculate API usage for display
+    api_usage = {
+        'today': cj_settings_obj.daily_api_calls if cj_settings_obj else 0,
+        'limit': cj_settings_obj.max_daily_calls if cj_settings_obj else 950,
+        'percentage': 0
+    }
+    
+    if cj_settings_obj and cj_settings_obj.max_daily_calls > 0:
+        api_usage['percentage'] = (cj_settings_obj.daily_api_calls / cj_settings_obj.max_daily_calls) * 100
+    
+    context = {
+        'page': page,
+        'cj_settings': cj_settings_obj,
+        'api_usage': api_usage,
+        'currencies': [
+            ('USD', 'US Dollar'),
+            ('EUR', 'Euro'),
+            ('GBP', 'British Pound'),
+            ('CAD', 'Canadian Dollar'),
+            ('AUD', 'Australian Dollar'),
+        ],
+        'warehouses': [
+            ('CN', 'China Warehouse'),
+            ('US', 'USA Warehouse'),
+            ('EU', 'Europe Warehouse'),
+            ('RU', 'Russia Warehouse'),
+        ]
+    }
+    
+    return render(request, 'builder/cj_settings.html', context)
+
+
+
+def json_response(success: bool, data: Dict = None, error: str = None, 
+                 status: int = 200) -> JsonResponse:
+    """Standard JSON response"""
+    response_data = {
+        'success': success,
+        'timestamp': timezone.now().isoformat(),
+    }
+    
+    if success:
+        response_data['data'] = data or {}
+    else:
+        response_data['error'] = error or 'Unknown error'
+        
+    return JsonResponse(response_data, status=status)
+
+
+def validate_json_request(request):
+    """Validate JSON request body"""
+    try:
+        return json.loads(request.body)
+    except json.JSONDecodeError:
+        raise ValueError('Invalid JSON data')
+
+
+
+# ============== PRODUCT SEARCH ==============
+import requests
+# Utility for CJ API Calls
+def call_cj_api(settings, endpoint, method="GET", params=None, data=None):
+    if not settings.can_make_api_call()[0]:
+        return None, "Rate limit exceeded"
+    
+    url = f"https://developers.cjdropshipping.com/api2.0/v1{endpoint}"
+    headers = {"CJ-Access-Token": settings.api_key}
+    
+    response = requests.request(method, url, headers=headers, params=params, json=data)
+    settings.increment_api_calls()
+    return response.json(), None
+   
+
+from .models import CJSettings
+import requests
+from django.core.cache import cache
+
+from django.utils import timezone
+from datetime import timedelta
+import requests
+
+def get_cj_access_token(settings_obj):
+    """
+    Retrieves the token from the database. If expired or missing, 
+    fetches a new one from CJ and saves it to the database.
+    """
+    # 1. Check if we already have a valid token in the database
+    if settings_obj.access_token and settings_obj.token_expiry:
+        # Check if the token is still valid (using a 1-day buffer for safety)
+        if settings_obj.token_expiry > timezone.now() + timedelta(days=1):
+            return settings_obj.access_token
+
+    # 2. If no valid token, request a new one from CJ
+    print("Fetching new Access Token from CJ Dropshipping...")
+    auth_url = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken"
+    payload = {"apiKey": settings_obj.api_key}
+    
+    try:
+        response = requests.post(auth_url, json=payload, timeout=10)
+        data = response.json()
+
+        if data.get("code") == 200:
+            new_token = data["data"]["accessToken"]
+            
+            # 3. Save the new token and expiry to the database
+            settings_obj.access_token = new_token
+            # CJ tokens usually last 15 days
+            settings_obj.token_expiry = timezone.now() + timedelta(days=15)
+            settings_obj.api_status = 'active'
+            settings_obj.save()
+            
+            return new_token
+        else:
+            print(f"CJ Auth Error: {data.get('message')}")
+            settings_obj.api_status = 'invalid'
+            settings_obj.save()
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Connection to CJ failed: {e}")
+        return None
+
+
+
+import requests
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import PublishedPage, CJSettings
+
+import re
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import PublishedPage, CJSettings
+from builder.services.cj_service import CJService
+
+# @login_required
+def cj_product_search(request, subdomain):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    settings_obj = get_object_or_404(CJSettings, page=page)
+    
+    query = request.GET.get('q', '').strip()
+    cj_products = []
+    error_message = None
+    
+    token = get_cj_access_token(settings_obj) # Uses your existing token helper
+    
+    if query and token:
+        service = CJService(token)
+        
+        # 1. Parse Query for PID (UUID or Numeric)
+        uuid_pattern = r'p-([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
+        numeric_pattern = r'-p-(\d+)'
+        
+        uuid_match = re.search(uuid_pattern, query)
+        numeric_match = re.search(numeric_pattern, query)
+        
+        extracted_id = None
+        if uuid_match:
+            extracted_id = uuid_match.group(1)
+        elif numeric_match:
+            extracted_id = numeric_match.group(1)
+        elif len(query) > 15: # Fallback for raw ID strings
+            extracted_id = query
+
+        try:
+            if extracted_id:
+                # DIRECT FETCH
+                res = requests.get(f"{service.BASE_URL}/product/query", 
+                                   headers=service.headers, params={"pid": extracted_id})
+                if res.json().get("code") == 200:
+                    cj_products = [res.json().get("data")]
+            else:
+                # KEYWORD SEARCH
+                res = requests.get(f"{service.BASE_URL}/product/list", 
+                                   headers=service.headers, 
+                                   params={"productName": query, "pageSize": 20, "sortType": "3"})
+                cj_products = res.json().get("data", {}).get("list", [])
+
+            # 2. ENRICH WITH WAREHOUSE DATA
+            # This allows the user to choose their shipping origin manually
+            for item in cj_products:
+                warehouses = []
+
+                # 1️⃣ CJ Warehouse breakdown
+                cj_warehouses = service.get_stock_details(item['pid'])
+                # Expected: list of dicts with warehouse info
+
+                for wh in cj_warehouses:
+                    warehouses.append({
+                        "name": wh.get("warehouseName", "CJ Warehouse"),
+                        "region": wh.get("warehouseRegion", "Unknown"),
+                        "qty": int(wh.get("availableStock", 0)),
+                        "type": "CJ"
+                    })
+
+                # 2️⃣ Supplier stock fallback
+                supplier_stock = service.get_supplier_stock(item['pid'])
+                if supplier_stock > 0:
+                    warehouses.append({
+                        "name": "Supplier Warehouse",
+                        "region": "China",
+                        "qty": supplier_stock,
+                        "type": "SUPPLIER"
+                    })
+
+                # 3️⃣ Attach to product
+                item['warehouses'] = warehouses
+
+                # 4️⃣ Convenience flags
+                item['total_stock'] = sum(w['qty'] for w in warehouses)
+                item['in_stock'] = item['total_stock'] > 0
+
+                # IMAGE & STOCK NORMALIZATION
+                # for item in cj_products:
+                #     # 1. Fix Image Path
+                #     img = item.get('productImage', '')
+                #     if img and not img.startswith('http'):
+                #         item['productImage'] = f"https://{img.lstrip('/')}"
+                #     elif not img:
+                #         # Final fallback to a placeholder if no image found
+                #         item['productImage'] = "/static/images/placeholder.png"
+
+                # 2. Re-run your stock and warehouse logic
+                # item['warehouse_list'] = service.get_stock_details(item['pid'])
+                # item['stock_qty'] = sum(int(w['stockNum']) for w in item['warehouse_list'])
+                # if item['stock_qty'] == 0:
+                #     item['stock_qty'] = service.get_supplier_stock(item['pid'])
+
+
+                # Extract or create a slug for the URL
+                # CJ usually uses the English name converted to lowercase with dashes
+                name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
+                # Clean up non-alphanumeric characters
+                name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
+                
+                item['cj_url_slug'] = name_slug
+        except Exception as e:
+            error_message = f"Search failed: {str(e)}"
+    # supplier_stock = service.get_supplier_stock(item['pid'])
+    # print(f'Supplier stock is {supplier_stock}')
+    
+
+    return render(request, 'builder/dashboard/cj_search.html', {
+        'page': page,
+        'cj_products': cj_products,
+        'query': query,
+        'error_message': error_message
+    })
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_search_page(request, subdomain):
+    """Render the CJ product search page"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Check if CJ is configured
+    try:
+        cj_settings = page.cj_settings.get()
+        if not cj_settings.is_active:
+            messages.warning(request, 'CJ integration is not active. Please activate it in settings.')
+            return redirect('cj_settings', subdomain=subdomain)
+    except CJSettings.DoesNotExist:
+        messages.warning(request, 'Please configure CJ integration first.')
+        return redirect('cj_settings', subdomain=subdomain)
+    
+    context = {
+        'page': page,
+        'cj_settings': cj_settings,
+        'query': request.GET.get('q', '')
+    }
+    
+    return render(request, 'builder/cj_product_search.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_product_details(request, subdomain, product_id):
+    """View detailed information about a CJ product"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+        if not cj_settings_obj.is_active:
+            messages.warning(request, 'CJ integration is not active')
+            return redirect('cj_settings', subdomain=subdomain)
+    except CJSettings.DoesNotExist:
+        messages.warning(request, 'Please configure CJ integration first')
+        return redirect('cj_settings', subdomain=subdomain)
+    
+    token = get_cj_access_token(cj_settings_obj)
+    if not token:
+        messages.error(request, 'Failed to connect to CJ API')
+        return redirect('cj_product_search', subdomain=subdomain)
+    
+    # Fetch product details
+    detail_url = "https://developers.cjdropshipping.com/api2.0/v1/product/query"
+    headers = {"CJ-Access-Token": token}
+    
+    try:
+        response = requests.get(detail_url, headers=headers, params={"pid": product_id}, timeout=30)
+        
+        if response.status_code != 200:
+            messages.error(request, f'Failed to fetch product details: {response.status_code}')
+            return redirect('cj_product_search', subdomain=subdomain)
+        
+        api_data = response.json()
+        if api_data.get("code") != 200:
+            messages.error(request, api_data.get("msg", "Failed to fetch product"))
+            return redirect('cj_product_search', subdomain=subdomain)
+        
+        product_data = api_data.get("data", {})
+        
+        # Parse JSON strings
+        if isinstance(product_data.get('productName'), str) and product_data['productName'].startswith('['):
+            try:
+                product_data['productName_parsed'] = json.loads(product_data['productName'])
+            except:
+                product_data['productName_parsed'] = []
+        
+        if isinstance(product_data.get('productImage'), str) and product_data['productImage'].startswith('['):
+            try:
+                product_data['productImage_parsed'] = json.loads(product_data['productImage'])
+            except:
+                product_data['productImage_parsed'] = []
+        
+        # Parse other JSON fields
+        json_fields = ['materialNameEn', 'packingNameEn', 'productProEn']
+        for field in json_fields:
+            if isinstance(product_data.get(field), str) and product_data[field].startswith('['):
+                try:
+                    product_data[f'{field}_parsed'] = json.loads(product_data[field])
+                except:
+                    product_data[f'{field}_parsed'] = []
+        
+        # Calculate selling price
+        try:
+            sell_price_str = product_data.get('sellPrice', '0')
+            if isinstance(sell_price_str, str):
+                sell_price_str = sell_price_str.replace(',', '').replace('$', '').strip()
+            cj_price = Decimal(str(sell_price_str)) if sell_price_str else Decimal('0')
+            # margin = cj_settings_obj.default_profit_margin
+            selling_price = cj_price * (1 + margin / Decimal('100'))
+            rounded = selling_price.quantize(Decimal('0.01'), rounding='ROUND_HALF_UP')
+            if rounded % Decimal('1') < Decimal('0.95'):
+                final_price = Decimal(str(int(rounded))) + Decimal('0.95')
+            else:
+                final_price = Decimal(str(int(rounded))) + Decimal('0.99')
+        except:
+            cj_price = Decimal('0')
+            final_price = Decimal('0')
+        
+        # Get product name
+        product_name = product_data.get('productNameEn', 'Unknown Product')
+        if not product_name or product_name == '':
+            if product_data.get('productName_parsed') and len(product_data['productName_parsed']) > 0:
+                product_name = product_data['productName_parsed'][0]
+            elif product_data.get('productName'):
+                product_name = str(product_data['productName'])[:200]
+        
+        # Check if already imported
+        is_imported = CJProduct.objects.filter(page=page, cj_product_id=product_id).exists()
+        
+        context = {
+            'page': page,
+            'product_id': product_id,
+            'product': product_data,
+            'product_name': product_name,
+            'cj_price': cj_price,
+            'selling_price': final_price,
+            'profit_margin': 0,
+            'is_imported': is_imported,
+            'variants': product_data.get('variants', []),
+            'supplier_name': product_data.get('supplierName', 'Unknown Supplier'),
+            'supplier_id': product_data.get('supplierId'),
+            'category_name': product_data.get('categoryName', ''),
+            'estimated_delivery': product_data.get('estimatedDelivery', '7-15 days'),
+            'stock': product_data.get('stock', 0),
+            'moq': product_data.get('moq', 1),  # Minimum Order Quantity
+        }
+        
+        return render(request, 'builder/cj_product_details.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error fetching product details: {str(e)}")
+        messages.error(request, f'Error loading product details: {str(e)}')
+        return redirect('cj_product_search', subdomain=subdomain)
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_categories(request, subdomain):
+    """Get CJ product categories"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+        if not cj_settings_obj.is_active:
+            return JsonResponse({'success': False, 'error': 'CJ integration is not active'})
+    except CJSettings.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'CJ integration not configured'})
+    
+    token = get_cj_access_token(cj_settings_obj)
+    if not token:
+        return JsonResponse({'success': False, 'error': 'Failed to get access token'})
+    
+    url = "https://developers.cjdropshipping.com/api2.0/v1/product/getCategory"
+    headers = {"CJ-Access-Token": token}
+    params = {"pageNum": 1, "pageSize": 100}
+    
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        data = response.json()
+        
+        if data.get("code") == 200:
+            categories = data.get("data", {}).get("resultList", [])
+            # Filter for English categories
+            english_categories = [
+                cat for cat in categories 
+                if cat.get('categoryNameEn') and not cat['categoryNameEn'].startswith('[')
+            ]
+            return JsonResponse({'success': True, 'categories': english_categories})
+        else:
+            return JsonResponse({'success': False, 'error': data.get("msg", "Failed to fetch categories")})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+
+
+import json
+import requests
+from django.core.files.base import ContentFile
+from django.utils.text import slugify
+from django.db import transaction
+import os
+
+def download_image_to_field(url_input):
+    """Parses input (string or list) and downloads the actual image."""
+    try:
+        # Handle cases where URL is a JSON string like '["http..."]'
+        if isinstance(url_input, str) and url_input.startswith('['):
+            url_list = json.loads(url_input)
+            url = url_list[0] if url_list else None
+        elif isinstance(url_input, list):
+            url = url_input[0] if url_input else None
+        else:
+            url = url_input
+
+        if not url: return None
+
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            # Clean filename from URL
+            file_name = url.split('/')[-1].split('?')[0]
+            return ContentFile(response.content, name=file_name)
+    except Exception as e:
+        print(f"Download failed for {url_input}: {e}")
+    return None
+
+@transaction.atomic
+def cj_import_product(request, subdomain, pid):
+    # ... (Your standard page/token/service setup) ...
+    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    settings_obj = get_object_or_404(CJSettings, page=page)
+    token = get_cj_access_token(settings_obj)
+    
+    service = CJService(token)
+    product_data = service.get_product_details(pid)
+    print(f'product data is {product_data}')
+    
+    
+    # 1. FIX: Get variants directly from nested data if list is empty
+    variants_data = product_data.get('variants', [])
+    
+    # 2. Extract and Save Category
+    raw_cat = product_data.get('categoryName', 'General')
+    clean_cat_name = raw_cat.split('/')[-1].strip()
+    category_obj, _ = ProductCategory.objects.get_or_create(name=clean_cat_name, page=page)
+
+    # 3. Create unique slug
+    base_slug = slugify(product_data.get('productNameEn'))
+    slug = base_slug
+    counter = 1
+    while Product.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    # Extract the weight safely
+    raw_weight = str(product_data.get('productWeight', '0'))
+    if '-' in raw_weight:
+        # Take the higher value in the range, or raw_weight.split('-')[0] for the lower
+        raw_weight = raw_weight.split('-')[-1].strip()
+
+    # 4. Create Product
+    product, created = Product.objects.update_or_create(
+        cj_pid=pid,
+        defaults={
+            'page': page,
+            'title': product_data.get('productNameEn'),
+            'slug': slug,
+            'description': product_data.get('description', ''),
+            'category': category_obj,
+            'price': float(product_data.get('sellPrice', 0)),
+            'compare_at_price': float(product_data.get('suggestSellPrice', 0)),
+            'status': 'active',
+            'weight': float(raw_weight) if raw_weight else 0.0,
+        }
+    )
+
+     # 5. FIX: Handle Images (Parsing JSON strings)
+    raw_images = product_data.get('productImageSet', [])
+    if not raw_images: # Fallback to the string version
+        img_str = product_data.get('productImage', '[]')
+        raw_images = json.loads(img_str) if img_str.startswith('[') else [img_str]
+
+    # Save Main Image
+ # 5. FIX: Handle Images (Parsing JSON strings)
+    # raw_images = product_data.get('productImageSet', [])
+    # if not raw_images: # Fallback to the string version
+    #     img_str = product_data.get('productImage', '[]')
+    #     raw_images = json.loads(img_str) if img_str.startswith('[') else [img_str]
+
+    # # Save Main Image
+    # if raw_images and not product.main_image:
+    #     img_file = download_image_to_field(raw_images[0])
+    #     if img_file:
+    #         product.main_image.save(img_file.name, img_file, save=True)
+    # 5. FIX: Handle Images (Parsing JSON strings)
+
+    # Save Main Image
+    if raw_images and not product.main_image:
+        img_file = download_image_to_field(raw_images[0])
+        if img_file:
+            product.main_image.save(img_file.name, img_file, save=True)
+    # --- Handling Gallery (ProductImages Model) ---
+    for img_url in raw_images:
+        # Check if this image is already attached to avoid duplicates
+        file_name = img_url.split('/')[-1].split('?')[0]
+        
+        if not ProductImages.objects.filter(product=product, image__icontains=file_name).exists():
+            img_res = requests.get(img_url, timeout=10)
+            if img_res.status_code == 200:
+                # Create a NEW instance and save a FRESH ContentFile
+                pi = ProductImages(product=product)
+                # This physically writes the file to your media folder
+                pi.image.save(file_name, ContentFile(img_res.content), save=True)
+    # 6. Process Variants (Mapping CJ data to your ProductVariant model)
+    colors = set()
+    sizes = set()
+
+
+    # 6. Process Variants
+    # --- Inside the variants loop ---
+    # Inside your cj_import_product view
+    
+    variants = product_data.get('variants', [])
+    print(f"Product variant is {variants}")
+    for v in variants:
+        vid = v.get('vid')
+        print("===========================================================================================")
+        print(f"Product vid is {vid}")
+        print("===========================================================================================")
+
+        v_sku = v.get('variantSku')
+
+        variant_key = v.get('variantKey', '').strip()
+
+        if not variant_key or '-' not in variant_key:
+            continue  # skip invalid keys
+
+        # Split ONLY on the last hyphen (important!)
+        left, size = variant_key.rsplit('-', 1)
+        size = size.strip()
+
+        # Remove leading numbers/codes from color
+        # Example: "9301 Gray" → "Gray"
+        color_parts = left.split()
+        color = color_parts[-1].strip()
+
+        # Store results
+        if color:
+            colors.add(color)
+        if size:
+            sizes.add(size)
+
+        # Default quantity if API fails
+        total_qty = 0
+        
+        try:
+            stock_details = service.get_stock_by_vid(vid)
+            # Map storageNum correctly
+            total_qty = sum(int(item.get('storageNum', 0)) for item in stock_details)
+        except Exception as e:
+            print(f"Skipping stock update for {v_sku} due to timeout/error: {e}")
+            # Fallback: Use the inventoryNum already present in the variant data
+            total_qty = int(v.get('inventoryNum', 0))
+
+        # 1. Update Inventory
+        inv_obj, _ = ProductInventory.objects.update_or_create(
+            sku=v_sku,
+            defaults={'quantity': total_qty}
+        )        # 2. Update Variant
+        ProductVariant.objects.update_or_create(
+            sku=v_sku,
+            defaults={
+                'product': product,
+                'inventory': inv_obj,
+                'cj_vid':vid,
+                'price': float(v.get('variantSellPrice', 0)),
+                'option1': v.get('variantKey', 'Default'),
+            }
+        )
+    # Update product attributes
+    product.colors = ", ".join(sorted(colors))
+    product.sizes = ", ".join(sorted(sizes))
+    manager = CJManager(token=token)
+    # manager.sync_product_color_size(product)
+
+    product.cj_vid = vid
+    product.has_variants = len(variants_data) > 1
+
+    # success = manager.sync_product_color_size(product)
+    
+    # if success:
+    #     return JsonResponse({
+    #         "status": "success",
+    #         "message": f"Imported {product.title} with Color: {product.colors} and Size: {product.sizes}"
+    #     })
+
+
+    product.quantity = total_qty
+    # If stock is 0, you might want to auto-set status to out_of_stock
+    if total_qty == 0:
+        product.status = 'out_of_stock'
+    else:
+        product.status = 'active'
+
+
+
+    product.save()        
+
+    # --- At the end of cj_import_product view ---
+
+    # 7. Import Reviews and Ratings
+    reviews_data = service.get_product_reviews(pid)
+
+    print(f'Review data is {reviews_data}')
+
+    for review in reviews_data:
+        comment_text = review.get('comment', '')
+        if not comment_text:
+            continue # Skip ratings that have no text if desired
+
+        # Map CJ data to your model fields
+        ProductReview.objects.get_or_create(
+            product=product,
+            comment=comment_text,
+            author_name=review.get('userName', 'Verified Buyer'),
+            defaults={
+                'rating': int(review.get('score', 5)),
+                'title': "Customer Review",  # CJ doesn't provide titles, so we use a placeholder
+                'is_verified_purchase': True,
+                'is_approved': True, # Auto-approve imported reviews
+                'helpful_count': 0,
+            }
+        )
+
+    return JsonResponse({'status': 'success', 'message': 'Import complete'})
+
+# ============== OTHER VIEWS (simplified) ==============
+# @login_required
+# @require_http_methods(["GET"])
+# def cj_products_list(request, subdomain):
+#     """List all products imported from CJ for this store"""
+#     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+#     products = CJProduct.objects.filter(page=page).select_related('local_product')
+    
+#     # Filter by status if provided
+#     status = request.GET.get('status')
+#     if status:
+#         products = products.filter(sync_status=status)
+
+#     return render(request, 'builder/cj_products_list.html', {
+#         'page': page,
+#         'products': products,
+#         'synced_count': products.filter(sync_status='synced').count(),
+#         'failed_count': products.filter(sync_status='failed').count()
+#     })
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_products_list(request, subdomain):
+    """List all imported CJ products"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get filter parameters
+    sync_status = request.GET.get('sync_status')
+    search_query = request.GET.get('q', '').strip()
+    
+    # Base queryset
+    products = CJProduct.objects.filter(page=page).select_related('local_product')
+    
+    # Apply filters
+    if sync_status:
+        products = products.filter(sync_status=sync_status)
+    
+    if search_query:
+        products = products.filter(
+            Q(cj_product_id__icontains=search_query) |
+            Q(local_product__title__icontains=search_query) |
+            Q(cj_sku__icontains=search_query)
+        )
+    
+    # Pagination
+    paginator = Paginator(products.order_by('-created_at'), 20)
+    page_num = int(request.GET.get('page', 1))
+    try:
+        page_obj = paginator.page(page_num)
+    except:
+        page_obj = paginator.page(1)
+    
+    # Calculate stats
+    total_products = products.count()
+    synced_count = products.filter(sync_status='synced').count()
+    failed_count = products.filter(sync_status='failed').count()
+    pending_count = products.filter(sync_status='pending').count()
+    
+    context = {
+        'page': page,
+        'products': page_obj,
+        'total_products': total_products,
+        'synced_count': synced_count,
+        'failed_count': failed_count,
+        'pending_count': pending_count,
+        'search_query': search_query,
+        'current_sync_status': sync_status,
+    }
+    return render(request, 'builder/cj_products_list.html', context)
+
+
+# Note: Remaining views (dashboard, orders, sync logs, etc.) would follow similar pattern
+# but since you only asked for product-related views, I'll stop here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @login_required
+# def cj_sync_product(request, subdomain, cj_product_id):
+#     """Manually sync price and stock for a specific product"""
+#     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+#     cj_product = get_object_or_404(CJProduct, page=page, cj_product_id=cj_product_id)
+    
+#     settings = page.cj_settings.get()
+#     cj_service = CJService(settings.api_key, page)
+    
+#     # Fetch fresh data from CJ API
+#     result = cj_service.get_product_detail(cj_product_id)
+#     if result['success']:
+#         # Update price and stock
+#         cj_product.cj_price_usd = result['product']['pricing']['price']
+#         cj_product.cj_stock_quantity = result['product']['inventory']['stock']
+#         cj_product.last_full_sync = timezone.now()
+#         cj_product.sync_status = 'synced'
+#         cj_product.save()
+        
+#         return JsonResponse({'status': 'success', 'price': str(cj_product.cj_price_usd)})
+    
+#     return JsonResponse({'status': 'error', 'message': result.get('error')}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def cj_sync_product(request, subdomain, product_id):
+    """Sync a specific product"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_product = CJProduct.objects.get(page=page, cj_product_id=product_id)
+    except CJProduct.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Product not found'
+        }, status=404)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+        if not cj_settings_obj.is_active:
+            return JsonResponse({
+                'success': False,
+                'error': 'CJ integration is not active'
+            }, status=400)
+    except CJSettings.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'CJ integration not configured'
+        }, status=400)
+    
+    sync_log = CJSyncLog.objects.create(
+        page=page,
+        sync_type='price_sync',
+        status='started',
+        request_data={'cj_product_id': product_id}
+    )
+    
+    try:
+        token = get_cj_access_token(cj_settings_obj)
+        if not token:
+            sync_log.status = 'failed'
+            sync_log.error_message = 'Failed to get access token'
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to get access token'
+            }, status=400)
+        
+        # Fetch latest product data
+        detail_url = "https://developers.cjdropshipping.com/api2.0/v1/product/query"
+        headers = {"CJ-Access-Token": token}
+        response = requests.get(detail_url, headers=headers, params={"pid": product_id}, timeout=30)
+        
+        if response.status_code != 200:
+            cj_product.sync_status = 'failed'
+            cj_product.last_sync_error = f'API returned {response.status_code}'
+            cj_product.retry_count += 1
+            cj_product.save()
+            
+            sync_log.status = 'failed'
+            sync_log.error_message = f'API returned {response.status_code}'
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'error': f'API returned {response.status_code}'
+            }, status=400)
+        
+        api_data = response.json()
+        if api_data.get("code") != 200:
+            cj_product.sync_status = 'failed'
+            cj_product.last_sync_error = api_data.get("msg", "API error")
+            cj_product.retry_count += 1
+            cj_product.save()
+            
+            sync_log.status = 'failed'
+            sync_log.error_message = api_data.get("msg", "API error")
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'error': api_data.get("msg", "Failed to fetch product")
+            }, status=400)
+        
+        product_data = api_data.get("data", {})
+        cj_price = Decimal(str(product_data.get('sellPrice', 0)))
+        
+        # Update prices if changed
+        if cj_price != cj_product.cj_price_usd:
+            selling_price = cj_product.calculate_selling_price()
+            if selling_price and cj_product.local_product:
+                cj_product.local_product.price = selling_price
+                cj_product.local_product.save()
+        
+        # Update CJ product record
+        cj_product.cj_data = product_data
+        cj_product.cj_price_usd = cj_price
+        cj_product.last_price_sync = timezone.now()
+        cj_product.last_full_sync = timezone.now()
+        cj_product.sync_status = 'synced'
+        cj_product.last_sync_error = ''
+        cj_product.retry_count = 0
+        cj_product.save()
+        
+        sync_log.status = 'success'
+        sync_log.items_processed = 1
+        sync_log.items_succeeded = 1
+        sync_log.api_calls_made = 1
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Product synced successfully',
+            'cj_price': float(cj_price),
+            'last_sync': timezone.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error syncing CJ product: {str(e)}")
+        cj_product.sync_status = 'failed'
+        cj_product.last_sync_error = str(e)
+        cj_product.retry_count += 1
+        cj_product.save()
+        
+        sync_log.status = 'failed'
+        sync_log.error_message = str(e)
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Sync failed: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def cj_bulk_sync(request, subdomain):
+    """Bulk sync all products that need syncing"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+        if not cj_settings_obj.is_active:
+            return JsonResponse({
+                'success': False,
+                'error': 'CJ integration is not active'
+            }, status=400)
+    except CJSettings.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'CJ integration not configured'
+        }, status=400)
+    
+    # Get products that need syncing
+    products_to_sync = CJProduct.objects.filter(
+        page=page,
+        sync_status__in=['synced', 'out_of_sync', 'failed']
+    )
+    
+    # Limit to 50 products per bulk sync to avoid timeouts
+    products_to_sync = products_to_sync[:50]
+    
+    sync_log = CJSyncLog.objects.create(
+        page=page,
+        sync_type='price_sync',
+        status='started',
+        request_data={'bulk': True, 'product_count': len(products_to_sync)}
+    )
+    
+    try:
+        cj_service = CJService(cj_settings_obj.api_key, page)
+        results = []
+        successful = 0
+        failed = 0
+        
+        for cj_product in products_to_sync:
+            try:
+                # Get latest product data
+                result = cj_service.get_product_detail(cj_product.cj_product_id, include_variants=False)
+                
+                if result['success']:
+                    product_data = result['product']
+                    cj_price = product_data['pricing']['price']
+                    stock = product_data['inventory']['stock']
+                    
+                    # Update prices if changed
+                    if cj_price != cj_product.cj_price_usd:
+                        selling_price = cj_product.calculate_selling_price()
+                        
+                        if selling_price and cj_product.local_product:
+                            cj_product.local_product.price = selling_price
+                            cj_product.local_product.save()
+                    
+                    # Update CJ product record
+                    cj_product.cj_data = product_data
+                    cj_product.cj_price_usd = cj_price
+                    cj_product.cj_stock_quantity = stock
+                    cj_product.local_stock_quantity = stock
+                    cj_product.last_price_sync = timezone.now()
+                    cj_product.last_inventory_sync = timezone.now()
+                    cj_product.last_full_sync = timezone.now()
+                    cj_product.sync_status = 'synced'
+                    cj_product.last_sync_error = ''
+                    cj_product.retry_count = 0
+                    cj_product.save()
+                    
+                    successful += 1
+                    results.append({
+                        'product_id': cj_product.cj_product_id,
+                        'status': 'success',
+                        'new_price': float(cj_price) if cj_price else None
+                    })
+                else:
+                    failed += 1
+                    cj_product.sync_status = 'failed'
+                    cj_product.last_sync_error = result.get('error', 'Sync failed')
+                    cj_product.retry_count += 1
+                    cj_product.save()
+                    
+                    results.append({
+                        'product_id': cj_product.cj_product_id,
+                        'status': 'failed',
+                        'error': result.get('error')
+                    })
+                    
+            except Exception as e:
+                failed += 1
+                cj_product.sync_status = 'failed'
+                cj_product.last_sync_error = str(e)
+                cj_product.retry_count += 1
+                cj_product.save()
+                
+                results.append({
+                    'product_id': cj_product.cj_product_id,
+                    'status': 'error',
+                    'error': str(e)
+                })
+        
+        sync_log.status = 'success' if successful > 0 else 'failed'
+        sync_log.items_processed = len(products_to_sync)
+        sync_log.items_succeeded = successful
+        sync_log.items_failed = failed
+        sync_log.api_calls_made = len(products_to_sync)
+        sync_log.completed_at = timezone.now()
+        sync_log.response_data = {'results': results}
+        sync_log.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Bulk sync completed: {successful} successful, {failed} failed',
+            'total': len(products_to_sync),
+            'successful': successful,
+            'failed': failed,
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in bulk sync: {str(e)}")
+        
+        sync_log.status = 'failed'
+        sync_log.error_message = str(e)
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Bulk sync failed: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def cj_create_order(request, subdomain):
+    """Create a CJ order (manual fulfillment)"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        cj_settings_obj = page.cj_settings.get()
+        if not cj_settings_obj.is_active:
+            messages.error(request, 'CJ integration is not active')
+            return redirect('cj_orders', subdomain=subdomain)
+    except CJSettings.DoesNotExist:
+        messages.error(request, 'CJ integration not configured')
+        return redirect('cj_settings', subdomain=subdomain)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Validate required fields
+            required_fields = ['order_number', 'products', 'shipping_country', 'customer_info']
+            for field in required_fields:
+                if field not in data:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Missing required field: {field}'
+                    }, status=400)
+            
+            # Create sync log
+            sync_log = CJSyncLog.objects.create(
+                page=page,
+                sync_type='order_submit',
+                status='started',
+                request_data={'order_number': data['order_number']}
+            )
+            
+            try:
+                cj_service = CJService(cj_settings_obj.api_key, page)
+                
+                # Prepare order data for CJ
+                order_data = {
+                    'orderNo': data['order_number'],
+                    'shippingCountryCode': data['shipping_country'],
+                    'productList': [],
+                    'warehouse': data.get('warehouse', cj_settings_obj.default_warehouse),
+                    'buyerInfo': data['customer_info']
+                }
+                
+                # Add shipping method if provided
+                if 'shipping_method' in data:
+                    order_data['shippingMethod'] = data['shipping_method']
+                
+                # Calculate total cost and prepare product list
+                total_cost = 0
+                for item in data['products']:
+                    # Get CJ product details
+                    try:
+                        cj_product = CJProduct.objects.get(
+                            page=page,
+                            local_product_id=item.get('product_id')
+                        )
+                        
+                        order_data['productList'].append({
+                            'pid': cj_product.cj_product_id,
+                            'quantity': item.get('quantity', 1),
+                            'sellingPrice': float(cj_product.local_selling_price or cj_product.calculate_selling_price())
+                        })
+                        
+                        total_cost += float(cj_product.cj_price_usd or 0) * item.get('quantity', 1)
+                        
+                    except CJProduct.DoesNotExist:
+                        sync_log.status = 'failed'
+                        sync_log.error_message = f"Product not found: {item.get('product_id')}"
+                        sync_log.completed_at = timezone.now()
+                        sync_log.save()
+                        
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Product not found: {item.get("product_id")}'
+                        }, status=400)
+                
+                # Submit order to CJ
+                result = cj_service.create_order(order_data)
+                
+                if result['success']:
+                    # Create CJ order record
+                    cj_order = CJOrder.objects.create(
+                        page=page,
+                        order_number=data['order_number'],
+                        cj_order_id=result['order_id'],
+                        local_order_reference=data.get('local_order_id', ''),
+                        customer_name=data['customer_info'].get('name', ''),
+                        customer_email=data['customer_info'].get('email', ''),
+                        shipping_country=data['shipping_country'],
+                        shipping_address=data['customer_info'].get('address', {}),
+                        status='submitted',
+                        total_amount=data.get('total_amount', 0),
+                        cj_cost=total_cost,
+                        profit=data.get('total_amount', 0) - total_cost,
+                        currency=cj_settings_obj.currency,
+                        shipping_method=data.get('shipping_method', ''),
+                        products=data['products'],
+                        cj_request_data=order_data,
+                        cj_response_data=result,
+                        submitted_at=timezone.now()
+                    )
+                    
+                    sync_log.status = 'success'
+                    sync_log.items_processed = len(data['products'])
+                    sync_log.items_succeeded = len(data['products'])
+                    sync_log.api_calls_made = 1
+                    sync_log.completed_at = timezone.now()
+                    sync_log.response_data = result
+                    sync_log.save()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Order submitted to CJ successfully',
+                        'order_id': cj_order.id,
+                        'cj_order_id': result['order_id'],
+                        'total_cost': total_cost,
+                        'profit': float(cj_order.profit)
+                    })
+                else:
+                    sync_log.status = 'failed'
+                    sync_log.error_message = result.get('error', 'Order submission failed')
+                    sync_log.completed_at = timezone.now()
+                    sync_log.save()
+                    
+                    return JsonResponse(result, status=400)
+                    
+            except Exception as e:
+                logger.error(f"Error creating CJ order: {str(e)}")
+                
+                sync_log.status = 'failed'
+                sync_log.error_message = str(e)
+                sync_log.completed_at = timezone.now()
+                sync_log.save()
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Order creation failed: {str(e)}'
+                }, status=500)
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }, status=400)
+    
+    # GET request - show order creation form
+    # Get available products for dropdown
+    cj_products = CJProduct.objects.filter(
+        page=page,
+        sync_status='synced',
+        cj_stock_quantity__gt=0
+    ).select_related('local_product')[:100]
+    
+    context = {
+        'page': page,
+        'cj_settings': cj_settings_obj,
+        'cj_products': cj_products,
+        'countries': [
+            ('US', 'United States'),
+            ('CA', 'Canada'),
+            ('GB', 'United Kingdom'),
+            ('AU', 'Australia'),
+            ('DE', 'Germany'),
+            ('FR', 'France'),
+        ]
+    }
+    
+    return render(request, 'builder/cj_create_order.html', context)
+
+
+@login_required
+def cj_orders_list(request, subdomain):
+    """View status of all CJ-related orders"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    orders = CJOrder.objects.filter(page=page).order_by('-created_at')
+    
+    return render(request, 'builder/cj_orders.html', {
+        'page': page,
+        'orders': orders,
+        'status_options': CJOrder._meta.get_field('status').choices
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_order_detail(request, subdomain, order_id):
+    """View details of a specific CJ order"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    try:
+        order = CJOrder.objects.get(page=page, id=order_id)
+    except CJOrder.DoesNotExist:
+        messages.error(request, 'Order not found')
+        return redirect('cj_orders', subdomain=subdomain)
+    
+    context = {
+        'page': page,
+        'order': order,
+    }
+    
+    return render(request, 'builder/cj_order_detail.html', context)
+
+
+@login_required
+def cj_check_order_status(request, subdomain, order_id):
+    """Force an update of an order's status from CJ's API"""
+    order = get_object_or_404(CJOrder, id=order_id, page__subdomain=subdomain)
+    settings = order.page.cj_settings.get()
+    cj_service = CJService(settings.api_key, order.page)
+    
+    result = cj_service.get_order_status(order.cj_order_id)
+    if result['success']:
+        order.status = result['order']['status'].lower()
+        order.tracking_number = result['order'].get('tracking_number')
+        order.save()
+        return JsonResponse({'status': 'success', 'new_status': order.status})
+    
+    return JsonResponse({'status': 'error', 'message': result.get('error')}, status=400)
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def cj_sync_logs(request, subdomain):
+    """View sync logs for monitoring"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get filter parameters
+    sync_type = request.GET.get('sync_type')
+    status = request.GET.get('status')
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    
+    # Base queryset
+    logs = CJSyncLog.objects.filter(page=page)
+    
+    # Apply filters
+    if sync_type:
+        logs = logs.filter(sync_type=sync_type)
+    
+    if status:
+        logs = logs.filter(status=status)
+    
+    if date_from:
+        logs = logs.filter(started_at__date__gte=date_from)
+    
+    if date_to:
+        logs = logs.filter(started_at__date__lte=date_to)
+    
+    # Pagination
+    paginator = Paginator(logs.order_by('-started_at'), 50)
+    page_num = int(request.GET.get('page', 1))
+    
+    try:
+        page_obj = paginator.page(page_num)
+    except:
+        page_obj = paginator.page(1)
+    
+    # Calculate statistics
+    total_logs = logs.count()
+    success_rate = 0
+    if total_logs > 0:
+        success_count = logs.filter(status='success').count()
+        success_rate = (success_count / total_logs) * 100
+    
+    # API usage
+    api_calls = logs.aggregate(models.Sum('api_calls_made'))['api_calls_made__sum'] or 0
+    
+    context = {
+        'page': page,
+        'logs': page_obj,
+        'total_logs': total_logs,
+        'success_rate': round(success_rate, 1),
+        'api_calls': api_calls,
+        'sync_type_options': [
+            ('', 'All Types'),
+            ('product_search', 'Product Search'),
+            ('product_import', 'Product Import'),
+            ('price_sync', 'Price Sync'),
+            ('inventory_sync', 'Inventory Sync'),
+            ('order_submit', 'Order Submission'),
+            ('order_status_check', 'Order Status Check'),
+        ],
+        'status_options': [
+            ('', 'All Status'),
+            ('success', 'Success'),
+            ('failed', 'Failed'),
+            ('partial', 'Partial'),
+            ('rate_limited', 'Rate Limited'),
+        ],
+        'current_sync_type': sync_type,
+        'current_status': status,
+        'date_from': date_from,
+        'date_to': date_to,
+    }
+    
+    return render(request, 'builder/cj_sync_logs.html', context)
+
+@login_required
+def cj_dashboard(request, subdomain):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    cj_settings, created = CJSettings.objects.get_or_create(page=page)
+    
+    query = request.GET.get('search', '')
+    products = []
+    
+    if query and cj_settings.api_key:
+        service = CJService(cj_settings)
+        results = service.search_products(query)
+        products = results.get('data', {}).get('list', [])
+
+    return render(request, 'builder/cj_dashboard.html', {
+        'page': page,
+        'cj_settings': cj_settings,
+        'cj_products': products
+    })
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def cj_webhook(request, subdomain):
+    """Receive webhooks from CJ for order updates"""
+    # Get page from subdomain
+    try:
+        page = PublishedPage.objects.get(subdomain=subdomain)
+    except PublishedPage.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid subdomain'}, status=404)
+    
+    # Verify webhook secret
+    try:
+        cj_settings_obj = page.cj_settings.get()
+    except CJSettings.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'CJ integration not configured'}, status=400)
+    
+    # Get webhook signature
+    signature = request.headers.get('X-CJ-Signature')
+    if not signature:
+        return JsonResponse({'success': False, 'error': 'Missing signature'}, status=400)
+    
+    # Verify signature (CJ might send it, implement if they provide method)
+    # For now, we'll trust the webhook
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    
+    # Create sync log for webhook
+    sync_log = CJSyncLog.objects.create(
+        page=page,
+        sync_type='webhook',
+        status='started',
+        request_data=data
+    )
+    
+    try:
+        event_type = data.get('event_type')
+        
+        if event_type == 'order_status_update':
+            # Update order status
+            cj_order_id = data.get('order_id')
+            new_status = data.get('status')
+            tracking_info = data.get('tracking', {})
+            
+            try:
+                order = CJOrder.objects.get(page=page, cj_order_id=cj_order_id)
+                
+                old_status = order.status
+                order.status = new_status
+                
+                if tracking_info:
+                    order.tracking_number = tracking_info.get('number', '')
+                    order.tracking_url = tracking_info.get('url', '')
+                
+                if new_status == 'shipped' and not order.shipped_at:
+                    order.shipped_at = timezone.now()
+                elif new_status == 'delivered' and not order.delivered_at:
+                    order.delivered_at = timezone.now()
+                
+                order.save()
+                
+                sync_log.status = 'success'
+                sync_log.completed_at = timezone.now()
+                sync_log.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Order status updated from {old_status} to {new_status}'
+                })
+                
+            except CJOrder.DoesNotExist:
+                sync_log.status = 'failed'
+                sync_log.error_message = f'Order not found: {cj_order_id}'
+                sync_log.completed_at = timezone.now()
+                sync_log.save()
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Order not found'
+                }, status=404)
+        
+        elif event_type == 'product_update':
+            # Product price or stock update
+            product_id = data.get('product_id')
+            updates = data.get('updates', {})
+            
+            try:
+                cj_product = CJProduct.objects.get(page=page, cj_product_id=product_id)
+                
+                if 'price' in updates:
+                    cj_product.cj_price_usd = float(updates['price'])
+                
+                if 'stock' in updates:
+                    cj_product.cj_stock_quantity = int(updates['stock'])
+                
+                cj_product.last_full_sync = timezone.now()
+                cj_product.save()
+                
+                sync_log.status = 'success'
+                sync_log.completed_at = timezone.now()
+                sync_log.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Product updated'
+                })
+                
+            except CJProduct.DoesNotExist:
+                sync_log.status = 'failed'
+                sync_log.error_message = f'Product not found: {product_id}'
+                sync_log.completed_at = timezone.now()
+                sync_log.save()
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Product not found'
+                }, status=404)
+        
+        else:
+            sync_log.status = 'failed'
+            sync_log.error_message = f'Unknown event type: {event_type}'
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'error': f'Unknown event type: {event_type}'
+            }, status=400)
+            
+    except Exception as e:
+        logger.error(f"Error processing CJ webhook: {str(e)}")
+        
+        sync_log.status = 'failed'
+        sync_log.error_message = str(e)
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Webhook processing failed: {str(e)}'
+        }, status=500)
+    
+
+
+
+
+
+
+# builder/views.py - Add these color-related views
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+import json
+from .models import ColorPalette, ColorPaletteColor, PageColorPalette, CustomColorOverride, PublishedPage
+
+@login_required
+def get_color_palettes(request):
+    """
+    API endpoint to get all available color palettes
+    """
+    try:
+        # Get filter parameters
+        category = request.GET.get('category')
+        mood = request.GET.get('mood')
+        search = request.GET.get('search')
+        
+        # Base queryset
+        palettes = ColorPalette.objects.filter(is_active=True)
+        
+        # Apply filters
+        if category and category != 'all':
+            palettes = palettes.filter(category=category)
+        if mood and mood != 'all':
+            palettes = palettes.filter(mood=mood)
+        if search:
+            palettes = palettes.filter(name__icontains=search)
+        
+        # Order by popularity and display order
+        palettes = palettes.order_by('-display_order', '-usage_count', 'name')
+        
+        # Get current active palette for the page if editing
+        current_palette = None
+        page_subdomain = request.GET.get('page_subdomain')
+        if page_subdomain:
+            try:
+                page = PublishedPage.objects.get(subdomain=page_subdomain, user=request.user)
+                active_palette = page.color_palettes.filter(is_active=True).first()
+                if active_palette:
+                    current_palette = {
+                        'id': active_palette.palette.id,
+                        'name': active_palette.palette.name,
+                        'slug': active_palette.palette.slug,
+                    }
+            except PublishedPage.DoesNotExist:
+                pass
+        
+        # Format response
+        data = {
+            'categories': [],
+            'palettes': [],
+            'current_palette': current_palette
+        }
+        
+        # Get all unique categories with counts
+        categories = []
+        for cat_code, cat_name in ColorPalette._meta.get_field('category').choices:
+            count = ColorPalette.objects.filter(category=cat_code, is_active=True).count()
+            if count > 0:
+                categories.append({
+                    'code': cat_code,
+                    'name': cat_name,
+                    'count': count
+                })
+        data['categories'] = categories
+        
+        # Format palettes
+        for palette in palettes[:50]:  # Limit to 50 for performance
+            colors = []
+            for color in palette.colors.all().order_by('display_order'):
+                colors.append({
+                    'variable': color.variable_name,
+                    'hex': color.hex_value,
+                    'rgb': color.rgb_value,
+                    'name': color.name,
+                    'type': color.color_type
+                })
+            
+            data['palettes'].append({
+                'id': palette.id,
+                'name': palette.name,
+                'slug': palette.slug,
+                'category': palette.category,
+                'category_display': palette.get_category_display(),
+                'mood': palette.mood,
+                'mood_display': palette.get_mood_display(),
+                'description': palette.description,
+                'is_premium': palette.is_premium,
+                'usage_count': palette.usage_count,
+                'colors': colors[:8],  # Limit to 8 colors for preview
+            })
+        
+        return JsonResponse({'success': True, 'data': data})
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def get_palette_detail(request, palette_id):
+    """
+    Get detailed information about a specific palette
+    """
+    try:
+        palette = get_object_or_404(ColorPalette, id=palette_id, is_active=True)
+        
+        colors = []
+        for color in palette.colors.all().order_by('display_order'):
+            colors.append({
+                'variable': color.variable_name,
+                'hex': color.hex_value,
+                'rgb': color.rgb_value,
+                'name': color.name,
+                'type': color.color_type,
+                'display_order': color.display_order
+            })
+        
+        data = {
+            'id': palette.id,
+            'name': palette.name,
+            'slug': palette.slug,
+            'description': palette.description,
+            'category': palette.category,
+            'category_display': palette.get_category_display(),
+            'mood': palette.mood,
+            'mood_display': palette.get_mood_display(),
+            'is_premium': palette.is_premium,
+            'usage_count': palette.usage_count,
+            'colors': colors
+        }
+        
+        return JsonResponse({'success': True, 'data': data})
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# builder/views.py - Enhanced apply_color_palette with dynamic variable mapping
+# builder/views.py - Fixed apply_color_palette with proper F() usage
+
+# builder/views.py - Enhanced apply_color_palette
+
+
+# builder/views.py - Fixed apply_color_palette
+
+@csrf_exempt
+@login_required
+def apply_color_palette(request, subdomain):
+    """
+    Apply a color palette to a published page and save to database
+    """
+    if request.method == 'POST':
+        try:
+            page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+            data = json.loads(request.body)
+            
+            palette_id = data.get('palette_id')
+            palette = get_object_or_404(ColorPalette, id=palette_id)
+            
+            # ===== CRITICAL FIX: Properly deactivate existing active palette =====
+            # Use a transaction to ensure data consistency
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # 1. Deactivate ALL existing active palettes for this page
+                #    This must be done BEFORE creating a new active palette
+                deactivated_count = PageColorPalette.objects.filter(
+                    page=page, 
+                    is_active=True
+                ).update(is_active=False)
+                
+                print(f"🔄 Deactivated {deactivated_count} existing active palettes")
+                
+                # 2. Also update the PublishedPage model
+                page.active_palette = None
+                page.active_palette_colors = {}
+                page.save(update_fields=['active_palette', 'active_palette_colors', 'updated_at'])
+                
+                # 3. Get the template's color mapping
+                template = page.template
+                
+                # Get or create color mapping
+                color_mapping, _ = TemplateColorMapping.objects.get_or_create(
+                    template=template,
+                    defaults={
+                        'variables': TemplateColorExtractor.generate_color_map(template.name)['variables'],
+                        'suggested_mapping': TemplateColorExtractor.generate_color_map(template.name)['suggested_mapping']
+                    }
+                )
+                
+                # Get active mapping
+                variable_mapping = color_mapping.get_active_mapping()
+                
+                # Get custom overrides
+                custom_overrides = data.get('overrides', {})
+                
+                # Build the color application map
+                applied_colors = {}
+                template_variables = color_mapping.variables
+                
+                for var_name, var_data in template_variables.items():
+                    # Check for override
+                    if var_name in custom_overrides:
+                        applied_colors[var_name] = {
+                            'hex': custom_overrides[var_name],
+                            'rgb': ColorPaletteColor.hex_to_rgb(custom_overrides[var_name]),
+                            'source': 'override'
+                        }
+                        continue
+                    
+                    # Try to find matching palette color
+                    matched_color = None
+                    
+                    if var_name in variable_mapping:
+                        role = variable_mapping[var_name].get('role')
+                        palette_color = palette.colors.filter(color_type=role).first()
+                        if palette_color:
+                            matched_color = palette_color
+                    
+                    if not matched_color:
+                        matched_color = find_best_palette_match(var_name, palette)
+                    
+                    if not matched_color:
+                        matched_color = palette.colors.filter(color_type='primary').first()
+                    
+                    if matched_color:
+                        applied_colors[var_name] = {
+                            'hex': matched_color.hex_value,
+                            'rgb': matched_color.rgb_value,
+                            'source': 'palette',
+                            'palette_color_id': matched_color.id,
+                            'color_name': matched_color.name,
+                            'color_type': matched_color.color_type
+                        }
+                    else:
+                        # Keep original
+                        applied_colors[var_name] = {
+                            'hex': var_data.get('value', '#000000'),
+                            'rgb': var_data.get('rgb', '0,0,0'),
+                            'source': 'original'
+                        }
+                
+                # 4. NOW create the new active palette (no conflict since we deactivated others)
+                page_palette = PageColorPalette.objects.create(
+                    page=page,
+                    palette=palette,
+                    is_active=True,
+                    applied_colors=applied_colors,
+                    variable_mapping=variable_mapping
+                )
+                
+                # 5. Update the PublishedPage model with the new palette
+                page.active_palette = palette
+                page.active_palette_colors = applied_colors
+                page.save(update_fields=['active_palette', 'active_palette_colors', 'updated_at'])
+                
+                # 6. Save custom overrides
+                if custom_overrides:
+                    for var_name, hex_value in custom_overrides.items():
+                        CustomColorOverride.objects.update_or_create(
+                            page=page,
+                            palette=palette,
+                            variable_name=var_name,
+                            defaults={
+                                'hex_value': hex_value,
+                                'rgb_value': ColorPaletteColor.hex_to_rgb(hex_value)
+                            }
+                        )
+                
+                # 7. Increment usage counts
+                palette.usage_count =F('usage_count') + 1
+                palette.save(update_fields=['usage_count'])
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Applied {palette.name} palette successfully!',
+                'colors': applied_colors,
+                'variable_count': len(applied_colors),
+                'palette_id': palette.id,
+                'palette_name': palette.name,
+                'deactivated': deactivated_count
+            })
+        
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+
+
+@login_required
+def get_page_palette(request, subdomain):
+    """
+    Get the currently active palette for a page (from PublishedPage)
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Get from PublishedPage first (faster)
+        if page.active_palette and page.active_palette_colors:
+            # Get custom overrides
+            overrides = {}
+            for override in CustomColorOverride.objects.filter(page=page, palette=page.active_palette):
+                overrides[override.variable_name] = override.hex_value
+            
+            data = {
+                'palette_id': page.active_palette.id,
+                'palette_name': page.active_palette.name,
+                'applied_at': page.updated_at.isoformat(),
+                'colors': page.active_palette_colors,
+                'overrides': overrides
+            }
+            return JsonResponse({'success': True, 'data': data})
+        
+        # Fallback to PageColorPalette
+        else:
+            active_palette = page.color_palettes.filter(is_active=True).first()
+            if active_palette:
+                # Update PublishedPage cache
+                page.active_palette = active_palette.palette
+                page.active_palette_colors = active_palette.applied_colors
+                page.save(update_fields=['active_palette', 'active_palette_colors'])
+                
+                data = {
+                    'palette_id': active_palette.palette.id,
+                    'palette_name': active_palette.palette.name,
+                    'applied_at': active_palette.applied_at.isoformat(),
+                    'colors': active_palette.applied_colors,
+                    'overrides': {}
+                }
+                return JsonResponse({'success': True, 'data': data})
+            
+            # IMPORTANT: Return null data when no palette is active
+            return JsonResponse({'success': True, 'data': None})
+            
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+# builder/views.py - Fixed reset_page_palette
+
+@login_required
+def reset_page_palette(request, subdomain):
+    """
+    Reset page to default template colors
+    """
+    if request.method == 'POST':
+        try:
+            page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+            
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # 1. Deactivate ALL active palettes for this page
+                deactivated = PageColorPalette.objects.filter(
+                    page=page,
+                    is_active=True
+                ).update(is_active=False)
+                
+                # 2. Clear palette from PublishedPage model (this is critical!)
+                page.active_palette = None
+                page.active_palette_colors = {}
+                
+                # 3. Also remove palette from page_customizations JSON
+                if page.page_customizations:
+                    # Remove from all pages in the multi-page site
+                    for page_name in page.page_customizations.keys():
+                        if 'color_palette' in page.page_customizations.get(page_name, {}):
+                            del page.page_customizations[page_name]['color_palette']
+                
+                # Save the page with all changes
+                page.save(update_fields=['active_palette', 'active_palette_colors', 'page_customizations', 'updated_at'])
+                
+                # 4. Delete all custom color overrides for this page
+                deleted_overrides = CustomColorOverride.objects.filter(page=page).delete()
+                
+                # 5. Optionally, clear any color-related data from component customizations
+                # This ensures no color variables remain in components
+                for comp_custom in ComponentCustomization.objects.filter(page=page):
+                    if comp_custom.customizations and 'colors' in comp_custom.customizations:
+                        customizations = comp_custom.customizations
+                        if 'colors' in customizations:
+                            del customizations['colors']
+                            comp_custom.customizations = customizations
+                            comp_custom.save(update_fields=['customizations'])
+                
+                print(f"🔄 Reset palette for page {page.subdomain}: Deactivated {deactivated} palettes")
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Reset to default template colors',
+                'deactivated': deactivated,
+                'overrides_deleted': deleted_overrides[0] if deleted_overrides else 0
+            })
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+
+def find_best_palette_match(var_name, palette):
+    """
+    Find the best matching palette color for a template variable name
+    Using fuzzy matching and keyword analysis
+    """
+    from difflib import SequenceMatcher
+    
+    var_lower = var_name.lower()
+    best_match = None
+    best_score = 0
+    
+    for palette_color in palette.colors.all():
+        # Check against color name
+        color_name_lower = palette_color.name.lower()
+        score = SequenceMatcher(None, var_lower, color_name_lower).ratio()
+        
+        # Check against color type
+        color_type_lower = palette_color.color_type.lower()
+        type_score = SequenceMatcher(None, var_lower, color_type_lower).ratio()
+        
+        # Take the better score
+        score = max(score, type_score)
+        
+        # Bonus for keyword matches
+        keywords = {
+            'primary': ['primary', 'main', 'brand'],
+            'secondary': ['secondary', 'second', 'alt'],
+            'accent': ['accent', 'highlight', 'cta'],
+            'background': ['background', 'bg', 'back'],
+            'text': ['text', 'font', 'copy'],
+            'heading': ['heading', 'title', 'header'],
+        }
+        
+        for role, words in keywords.items():
+            if palette_color.color_type == role:
+                for word in words:
+                    if word in var_lower:
+                        score += 0.3
+                        break
+        
+        if score > best_score and score > 0.4:  # Minimum threshold
+            best_score = score
+            best_match = palette_color
+    
+    return best_match
+
+# builder/views.py - Add this view
+
+@login_required
+def get_template_color_variables(request, template_name):
+    """
+    Get all color variables discovered in a template
+    Used by the frontend to show what can be customized
+    """
+    try:
+        template = get_object_or_404(Template, name=template_name)
+        
+        # Get or create color mapping
+        color_mapping, created = TemplateColorMapping.objects.get_or_create(
+            template=template,
+            defaults={
+                'variables': TemplateColorExtractor.generate_color_map(template.name)['variables'],
+                'suggested_mapping': TemplateColorExtractor.generate_color_map(template.name)['suggested_mapping']
+            }
+        )
+        
+        # Get active mapping
+        active_mapping = color_mapping.get_active_mapping()
+        
+        # Format response
+        variables = []
+        for var_name, var_data in color_mapping.variables.items():
+            var_info = {
+                'name': var_name,
+                'value': var_data.get('value', ''),
+                'type': var_data.get('type', 'hex'),
+                'source': var_data.get('source', 'unknown'),
+                'suggested_role': active_mapping.get(var_name, {}).get('role', 'custom'),
+                'confidence': active_mapping.get(var_name, {}).get('confidence', 0.3)
+            }
+            variables.append(var_info)
+        
+        return JsonResponse({
+            'success': True,
+            'template': template.name,
+            'variable_count': len(variables),
+            'variables': variables,
+            'has_custom_mapping': bool(color_mapping.custom_mapping),
+            'mapping': active_mapping
+        })
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+# builder/views.py - Fixed get_page_palette
+
+@login_required
+def get_page_palette(request, subdomain):
+    """
+    Get the currently active palette for a page (from PublishedPage)
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Get from PublishedPage first (faster)
+        if page.active_palette and page.active_palette_colors:
+            # Get custom overrides
+            overrides = {}
+            for override in CustomColorOverride.objects.filter(page=page, palette=page.active_palette):
+                overrides[override.variable_name] = override.hex_value
+            
+            data = {
+                'palette_id': page.active_palette.id,
+                'palette_name': page.active_palette.name,
+                'applied_at': page.updated_at.isoformat(),
+                'colors': page.active_palette_colors,
+                'overrides': overrides
+            }
+            return JsonResponse({'success': True, 'data': data})
+        
+        # Fallback to PageColorPalette
+        else:
+            active_palette = page.color_palettes.filter(is_active=True).first()
+            if active_palette:
+                # Update PublishedPage cache
+                page.active_palette = active_palette.palette
+                page.active_palette_colors = active_palette.applied_colors
+                page.save(update_fields=['active_palette', 'active_palette_colors'])
+                
+                data = {
+                    'palette_id': active_palette.palette.id,
+                    'palette_name': active_palette.palette.name,
+                    'applied_at': active_palette.applied_at.isoformat(),
+                    'colors': active_palette.applied_colors,
+                    'overrides': {}
+                }
+                return JsonResponse({'success': True, 'data': data})
+        
+        return JsonResponse({'success': True, 'data': None})
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@login_required
+def reset_page_palette(request, subdomain):
+    """
+    Reset page to default template colors
+    """
+    if request.method == 'POST':
+        try:
+            page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+            
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # 1. Deactivate ALL active palettes for this page
+                deactivated = PageColorPalette.objects.filter(
+                    page=page,
+                    is_active=True
+                ).update(is_active=False)
+                
+                # 2. Clear palette from PublishedPage model (this is critical!)
+                page.active_palette = None
+                page.active_palette_colors = {}
+                
+                # 3. Also remove palette from page_customizations JSON
+                if page.page_customizations:
+                    # Remove from all pages in the multi-page site
+                    for page_name in list(page.page_customizations.keys()):
+                        if 'color_palette' in page.page_customizations.get(page_name, {}):
+                            del page.page_customizations[page_name]['color_palette']
+                
+                # Save the page with all changes
+                page.save(update_fields=['active_palette', 'active_palette_colors', 'page_customizations', 'updated_at'])
+                
+                # 4. Delete all custom color overrides for this page
+                CustomColorOverride.objects.filter(page=page).delete()
+                
+                # 5. Clear any color-related data from component customizations
+                for comp_custom in ComponentCustomization.objects.filter(page=page):
+                    if comp_custom.customizations:
+                        customizations = comp_custom.customizations
+                        modified = False
+                        if 'colors' in customizations:
+                            del customizations['colors']
+                            modified = True
+                        if modified:
+                            comp_custom.customizations = customizations
+                            comp_custom.save(update_fields=['customizations'])
+                
+                print(f"🔄 Reset palette for page {page.subdomain}: Deactivated {deactivated} palettes")
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Reset to default template colors',
+                'deactivated': deactivated
+            })
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+# Add these imports at the top
+from django.db import transaction
+from django.core.cache import cache
+from .models import PaletteColorUsage, ColorPaletteColor
+import logging
+
+logger = logging.getLogger(__name__)
+
+@login_required
+@csrf_exempt
+def update_palette_color(request, subdomain):
+    """
+    Update a palette color globally across all elements that use it
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        
+        variable_name = data.get('variable_name')
+        new_hex_value = data.get('hex_value')
+        palette_id = data.get('palette_id')
+        
+        if not all([variable_name, new_hex_value, palette_id]):
+            return JsonResponse({'success': False, 'error': 'Missing required fields'})
+        
+        # Validate hex color
+        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', new_hex_value):
+            return JsonResponse({'success': False, 'error': 'Invalid hex color format'})
+        
+        def hex_to_rgb(hex_color):
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) == 6:
+                rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                return f"{rgb[0]}, {rgb[1]}, {rgb[2]}"
+            return ""
+        
+        with transaction.atomic():
+            palette = get_object_or_404(ColorPalette, id=palette_id)
+            
+            # Update the page's active palette colors
+            if page.active_palette == palette and page.active_palette_colors:
+                if variable_name in page.active_palette_colors:
+                    if isinstance(page.active_palette_colors[variable_name], dict):
+                        page.active_palette_colors[variable_name]['hex'] = new_hex_value
+                        page.active_palette_colors[variable_name]['rgb'] = hex_to_rgb(new_hex_value)
+                    else:
+                        page.active_palette_colors[variable_name] = new_hex_value
+                    
+                    page.save(update_fields=['active_palette_colors', 'updated_at'])
+            
+            # Update or create palette color in database
+            palette_color, created = ColorPaletteColor.objects.update_or_create(
+                palette=palette,
+                variable_name=variable_name,
+                defaults={
+                    'name': variable_name.replace('_', ' ').title(),
+                    'hex_value': new_hex_value,
+                    'color_type': 'custom',
+                    'rgb_value': hex_to_rgb(new_hex_value)
+                }
+            )
+            
+            # NO REDIS - Just return success without any cache operations
+            return JsonResponse({
+                'success': True,
+                'message': f'Color {variable_name} updated to {new_hex_value}',
+                'variable_name': variable_name,
+                'hex_value': new_hex_value,
+                'rgb_value': palette_color.rgb_value,
+                'palette_id': palette.id,
+                'palette_name': palette.name,
+                'updated_at': timezone.now().isoformat()
+            })
+            
+    except ColorPalette.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Palette not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.exception(f"Error updating palette color: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    """
+    Update a palette color globally across all elements that use it
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        
+        variable_name = data.get('variable_name')
+        new_hex_value = data.get('hex_value')
+        palette_id = data.get('palette_id')
+        
+        if not all([variable_name, new_hex_value, palette_id]):
+            return JsonResponse({'success': False, 'error': 'Missing required fields'})
+        
+        # Validate hex color
+        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', new_hex_value):
+            return JsonResponse({'success': False, 'error': 'Invalid hex color format'})
+        
+        # Helper function to convert hex to RGB
+        def hex_to_rgb(hex_color):
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) == 6:
+                rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                return f"{rgb[0]}, {rgb[1]}, {rgb[2]}"
+            return ""
+        
+        with transaction.atomic():
+            # Get the palette
+            palette = get_object_or_404(ColorPalette, id=palette_id)
+            
+            # Update the page's active palette colors
+            if page.active_palette == palette and page.active_palette_colors:
+                if variable_name in page.active_palette_colors:
+                    if isinstance(page.active_palette_colors[variable_name], dict):
+                        page.active_palette_colors[variable_name]['hex'] = new_hex_value
+                        page.active_palette_colors[variable_name]['rgb'] = hex_to_rgb(new_hex_value)
+                    else:
+                        page.active_palette_colors[variable_name] = new_hex_value
+                    
+                    page.save(update_fields=['active_palette_colors', 'updated_at'])
+            
+            # Update or create palette color in database
+            palette_color, created = ColorPaletteColor.objects.update_or_create(
+                palette=palette,
+                variable_name=variable_name,
+                defaults={
+                    'name': variable_name.replace('_', ' ').title(),
+                    'hex_value': new_hex_value,
+                    'color_type': 'custom',
+                    'rgb_value': hex_to_rgb(new_hex_value)
+                }
+            )
+            
+            # Try to clear cache, but don't fail if Redis is down
+            try:
+                from django.core.cache import cache
+                cache_key = f'palette_css_{page.id}_{variable_name}'
+                cache.delete(cache_key)
+            except Exception as cache_error:
+                # Log but don't fail - cache is not critical
+                logger.warning(f"Cache deletion failed (non-critical): {cache_error}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Color {variable_name} updated to {new_hex_value}',
+                'variable_name': variable_name,
+                'hex_value': new_hex_value,
+                'rgb_value': palette_color.rgb_value,
+                'palette_id': palette.id,
+                'palette_name': palette.name,
+                'updated_at': timezone.now().isoformat()
+            })
+            
+    except ColorPalette.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Palette not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.exception(f"Error updating palette color: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+
+
+@staticmethod
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 6:
+        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        return f"{rgb[0]}, {rgb[1]}, {rgb[2]}"
+    return ""
+
+
+@login_required
+def scan_page_color_usage(request, subdomain):
+    """
+    Scan the current page to count how many elements use each palette color
+    This helps track usage statistics for global updates
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        if not page.active_palette:
+            return JsonResponse({'success': False, 'error': 'No active palette'})
+        
+        # Clear existing usage records for this page/palette
+        PaletteColorUsage.objects.filter(
+            page=page,
+            palette=page.active_palette
+        ).update(element_count=0)
+        
+        # Get all palette colors for the active palette
+        palette_colors = page.active_palette.colors.all()
+        
+        # For each color, we need to count elements in the template that use it
+        # This would require loading the template HTML and counting elements with matching CSS variables
+        
+        # Simplified approach: Update usage counts to at least 1 if the color is in active_palette_colors
+        if page.active_palette_colors:
+            for var_name, color_data in page.active_palette_colors.items():
+                try:
+                    palette_color = ColorPaletteColor.objects.get(
+                        palette=page.active_palette,
+                        variable_name=var_name
+                    )
+                    
+                    usage, created = PaletteColorUsage.objects.get_or_create(
+                        page=page,
+                        palette=page.active_palette,
+                        palette_color=palette_color,
+                        variable_name=var_name,
+                        defaults={
+                            'current_hex_value': color_data.get('hex') if isinstance(color_data, dict) else color_data,
+                            'element_count': 1  # At least the color is defined
+                        }
+                    )
+                    
+                    if not created:
+                        usage.current_hex_value = color_data.get('hex') if isinstance(color_data, dict) else color_data
+                        usage.element_count = max(usage.element_count, 1)
+                        usage.save()
+                        
+                except ColorPaletteColor.DoesNotExist:
+                    # Create it on the fly
+                    hex_value = color_data.get('hex') if isinstance(color_data, dict) else color_data
+                    palette_color = ColorPaletteColor.objects.create(
+                        palette=page.active_palette,
+                        variable_name=var_name,
+                        name=var_name.replace('_', ' ').title(),
+                        hex_value=hex_value,
+                        color_type='custom'
+                    )
+                    
+                    PaletteColorUsage.objects.create(
+                        page=page,
+                        palette=page.active_palette,
+                        palette_color=palette_color,
+                        variable_name=var_name,
+                        current_hex_value=hex_value,
+                        element_count=1
+                    )
+        
+        total_usages = PaletteColorUsage.objects.filter(
+            page=page,
+            palette=page.active_palette
+        ).count()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Scanned {total_usages} color usages',
+            'total_colors': total_usages
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error scanning color usage: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+
+# payment selection
+
+@login_required
+def currency_settings(request, subdomain):
+    """Manage currency settings for the store"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    if request.method == 'POST':
+        # Update currency settings
+        page.currency_code = request.POST.get('currency_code', 'USD')
+        
+        # Set symbol based on currency code
+        # Set symbol based on currency code
+        currency_symbols = {
+            # Major World Currencies
+            'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
+            
+            # Americas
+            'CAD': 'C$', 'MXN': 'MX$', 'BRL': 'R$', 'ARS': '$', 'CLP': 'CLP$',
+            'COP': 'COL$', 'PEN': 'S/', 'UYU': '$U', 'PYG': '₲', 'BOB': 'Bs',
+            'VES': 'Bs.S', 'CRC': '₡', 'DOP': 'RD$', 'GTQ': 'Q', 'HNL': 'L',
+            'NIO': 'C$', 'PAB': 'B/.', 'BSD': 'B$', 'BBD': 'Bds$', 'BZD': 'BZ$',
+            'BMD': 'BD$', 'KYD': 'CI$', 'TTD': 'TT$', 'JMD': 'J$', 'HTG': 'G',
+            'CUP': '₱', 'AWG': 'Afl', 'ANG': 'ƒ',
+            
+            # Europe
+            'CHF': 'Fr', 'NOK': 'kr', 'SEK': 'kr', 'DKK': 'kr', 'ISK': 'kr',
+            'RUB': '₽', 'TRY': '₺', 'PLN': 'zł', 'CZK': 'Kč', 'HUF': 'Ft',
+            'RON': 'lei', 'BGN': 'лв', 'HRK': 'kn', 'RSD': 'дин', 'ALL': 'L',
+            'MKD': 'ден', 'BAM': 'KM', 'MDL': 'lei', 'BYN': 'Br', 'UAH': '₴',
+            'GEL': '₾', 'AMD': '֏', 'AZN': '₼',
+            
+            # Asia Pacific
+            'AUD': 'A$', 'NZD': 'NZ$', 'SGD': 'S$', 'HKD': 'HK$', 'KRW': '₩',
+            'INR': '₹', 'IDR': 'Rp', 'MYR': 'RM', 'PHP': '₱', 'THB': '฿',
+            'VND': '₫', 'PKR': '₨', 'BDT': '৳', 'LKR': 'Rs', 'NPR': 'रू',
+            'MMK': 'K', 'KHR': '៛', 'LAK': '₭', 'MNT': '₮', 'TWD': 'NT$',
+            'MOP': 'MOP$', 'KZT': '₸', 'UZS': 'soʻm', 'TJS': 'SM', 'KGS': 'с',
+            'ILS': '₪', 'JOD': 'د.ا', 'IQD': 'ع.د', 'IRR': '﷼', 'SAR': '﷼',
+            'AED': 'د.إ', 'QAR': 'ر.ق', 'KWD': 'د.ك', 'BHD': 'د.ب', 'OMR': 'ر.ع',
+            'YER': '﷼', 'LBP': 'ل.ل', 'SYP': '£S', 'AFN': '؋',
+            
+            # Africa
+            'ZAR': 'R', 'EGP': '£E', 'NGN': '₦', 'KES': 'KSh', 'GHS': '₵',
+            'MAD': 'د.م.', 'DZD': 'د.ج', 'TND': 'د.ت', 'LYD': 'ل.د', 'SDG': 'ج.س',
+            'ETB': 'ብር', 'UGX': 'USh', 'TZS': 'TSh', 'RWF': 'FRw', 'BIF': 'FBu',
+            'CDF': 'FC', 'GNF': 'FG', 'XOF': 'CFA', 'XAF': 'FCFA', 'MUR': '₨',
+            'MGA': 'Ar', 'ZMW': 'ZK', 'MWK': 'MK', 'BWP': 'P', 'NAD': 'N$',
+            'SZL': 'E', 'LSL': 'L', 'ZWL': 'Z$', 'MZN': 'MT', 'AOA': 'Kz',
+            'MRO': 'UM', 'CVE': '$', 'SCR': 'SR', 'KMF': 'CF', 'DJF': 'Fdj',
+            'ERN': 'Nfk', 'SOS': 'Sh', 'GMD': 'D', 'SLL': 'Le', 'LRD': 'L$',
+            
+            # Oceania
+            'PGK': 'K', 'FJD': 'FJ$', 'SBD': 'SI$', 'VUV': 'Vt', 'TOP': 'T$',
+            'WST': 'WS$', 'KID': '$', 'TVD': '$', 'XPF': '₣',
+            
+            # Precious Metals & Special
+            'XAU': 'oz t', 'XAG': 'oz t', 'XPT': 'oz t', 'XPD': 'oz t',
+            'XDR': 'SDR',
+        }
+        page.currency_symbol = currency_symbols.get(page.currency_code, '$')
+        
+        page.currency_position = request.POST.get('currency_position', 'before')
+        page.thousand_separator = request.POST.get('thousand_separator', ',')
+        page.decimal_separator = request.POST.get('decimal_separator', '.')
+        page.decimal_places = int(request.POST.get('decimal_places', 2))
+        
+        # Payment gateway mappings
+        payment_mapping = {}
+        gateways = ['stripe', 'paypal', 'razorpay', 'square']
+        for gateway in gateways:
+            gateway_currency = request.POST.get(f'{gateway}_currency')
+            if gateway_currency:
+                payment_mapping[gateway] = gateway_currency
+        
+        page.payment_currency_mapping = payment_mapping
+        page.save()
+        
+        messages.success(request, 'Currency settings updated successfully!')
+        return redirect('currency_settings', subdomain=subdomain)
+    
+    # Common currency list for display
+    currencies = [
+        # Major World Currencies
+        {'code': 'USD', 'name': 'US Dollar', 'symbol': '$'},
+        {'code': 'EUR', 'name': 'Euro', 'symbol': '€'},
+        {'code': 'GBP', 'name': 'British Pound', 'symbol': '£'},
+        {'code': 'JPY', 'name': 'Japanese Yen', 'symbol': '¥'},
+        {'code': 'CNY', 'name': 'Chinese Yuan', 'symbol': '¥'},
+        
+        # Americas
+        {'code': 'CAD', 'name': 'Canadian Dollar', 'symbol': 'C$'},
+        {'code': 'MXN', 'name': 'Mexican Peso', 'symbol': 'MX$'},
+        {'code': 'BRL', 'name': 'Brazilian Real', 'symbol': 'R$'},
+        {'code': 'ARS', 'name': 'Argentine Peso', 'symbol': '$'},
+        {'code': 'CLP', 'name': 'Chilean Peso', 'symbol': 'CLP$'},
+        {'code': 'COP', 'name': 'Colombian Peso', 'symbol': 'COL$'},
+        {'code': 'PEN', 'name': 'Peruvian Sol', 'symbol': 'S/'},
+        {'code': 'UYU', 'name': 'Uruguayan Peso', 'symbol': '$U'},
+        {'code': 'PYG', 'name': 'Paraguayan Guarani', 'symbol': '₲'},
+        {'code': 'BOB', 'name': 'Bolivian Boliviano', 'symbol': 'Bs'},
+        {'code': 'VES', 'name': 'Venezuelan Bolívar', 'symbol': 'Bs.S'},
+        {'code': 'CRC', 'name': 'Costa Rican Colón', 'symbol': '₡'},
+        {'code': 'DOP', 'name': 'Dominican Peso', 'symbol': 'RD$'},
+        {'code': 'GTQ', 'name': 'Guatemalan Quetzal', 'symbol': 'Q'},
+        {'code': 'HNL', 'name': 'Honduran Lempira', 'symbol': 'L'},
+        {'code': 'NIO', 'name': 'Nicaraguan Córdoba', 'symbol': 'C$'},
+        {'code': 'PAB', 'name': 'Panamanian Balboa', 'symbol': 'B/.'},
+        {'code': 'BSD', 'name': 'Bahamian Dollar', 'symbol': 'B$'},
+        {'code': 'BBD', 'name': 'Barbadian Dollar', 'symbol': 'Bds$'},
+        {'code': 'BZD', 'name': 'Belize Dollar', 'symbol': 'BZ$'},
+        {'code': 'BMD', 'name': 'Bermudian Dollar', 'symbol': 'BD$'},
+        {'code': 'KYD', 'name': 'Cayman Islands Dollar', 'symbol': 'CI$'},
+        {'code': 'TTD', 'name': 'Trinidad & Tobago Dollar', 'symbol': 'TT$'},
+        {'code': 'JMD', 'name': 'Jamaican Dollar', 'symbol': 'J$'},
+        {'code': 'HTG', 'name': 'Haitian Gourde', 'symbol': 'G'},
+        {'code': 'CUP', 'name': 'Cuban Peso', 'symbol': '₱'},
+        {'code': 'AWG', 'name': 'Aruban Florin', 'symbol': 'Afl'},
+        {'code': 'ANG', 'name': 'Netherlands Antillean Guilder', 'symbol': 'ƒ'},
+        
+        # Europe
+        {'code': 'CHF', 'name': 'Swiss Franc', 'symbol': 'Fr'},
+        {'code': 'NOK', 'name': 'Norwegian Krone', 'symbol': 'kr'},
+        {'code': 'SEK', 'name': 'Swedish Krona', 'symbol': 'kr'},
+        {'code': 'DKK', 'name': 'Danish Krone', 'symbol': 'kr'},
+        {'code': 'ISK', 'name': 'Icelandic Króna', 'symbol': 'kr'},
+        {'code': 'RUB', 'name': 'Russian Ruble', 'symbol': '₽'},
+        {'code': 'TRY', 'name': 'Turkish Lira', 'symbol': '₺'},
+        {'code': 'PLN', 'name': 'Polish Złoty', 'symbol': 'zł'},
+        {'code': 'CZK', 'name': 'Czech Koruna', 'symbol': 'Kč'},
+        {'code': 'HUF', 'name': 'Hungarian Forint', 'symbol': 'Ft'},
+        {'code': 'RON', 'name': 'Romanian Leu', 'symbol': 'lei'},
+        {'code': 'BGN', 'name': 'Bulgarian Lev', 'symbol': 'лв'},
+        {'code': 'HRK', 'name': 'Croatian Kuna', 'symbol': 'kn'},
+        {'code': 'RSD', 'name': 'Serbian Dinar', 'symbol': 'дин'},
+        {'code': 'ALL', 'name': 'Albanian Lek', 'symbol': 'L'},
+        {'code': 'MKD', 'name': 'Macedonian Denar', 'symbol': 'ден'},
+        {'code': 'BAM', 'name': 'Bosnian Mark', 'symbol': 'KM'},
+        {'code': 'MDL', 'name': 'Moldovan Leu', 'symbol': 'lei'},
+        {'code': 'BYN', 'name': 'Belarusian Ruble', 'symbol': 'Br'},
+        {'code': 'UAH', 'name': 'Ukrainian Hryvnia', 'symbol': '₴'},
+        {'code': 'GEL', 'name': 'Georgian Lari', 'symbol': '₾'},
+        {'code': 'AMD', 'name': 'Armenian Dram', 'symbol': '֏'},
+        {'code': 'AZN', 'name': 'Azerbaijani Manat', 'symbol': '₼'},
+        
+        # Asia Pacific
+        {'code': 'AUD', 'name': 'Australian Dollar', 'symbol': 'A$'},
+        {'code': 'NZD', 'name': 'New Zealand Dollar', 'symbol': 'NZ$'},
+        {'code': 'SGD', 'name': 'Singapore Dollar', 'symbol': 'S$'},
+        {'code': 'HKD', 'name': 'Hong Kong Dollar', 'symbol': 'HK$'},
+        {'code': 'KRW', 'name': 'South Korean Won', 'symbol': '₩'},
+        {'code': 'INR', 'name': 'Indian Rupee', 'symbol': '₹'},
+        {'code': 'IDR', 'name': 'Indonesian Rupiah', 'symbol': 'Rp'},
+        {'code': 'MYR', 'name': 'Malaysian Ringgit', 'symbol': 'RM'},
+        {'code': 'PHP', 'name': 'Philippine Peso', 'symbol': '₱'},
+        {'code': 'THB', 'name': 'Thai Baht', 'symbol': '฿'},
+        {'code': 'VND', 'name': 'Vietnamese Dong', 'symbol': '₫'},
+        {'code': 'PKR', 'name': 'Pakistani Rupee', 'symbol': '₨'},
+        {'code': 'BDT', 'name': 'Bangladeshi Taka', 'symbol': '৳'},
+        {'code': 'LKR', 'name': 'Sri Lankan Rupee', 'symbol': 'Rs'},
+        {'code': 'NPR', 'name': 'Nepalese Rupee', 'symbol': 'रू'},
+        {'code': 'MMK', 'name': 'Myanmar Kyat', 'symbol': 'K'},
+        {'code': 'KHR', 'name': 'Cambodian Riel', 'symbol': '៛'},
+        {'code': 'LAK', 'name': 'Lao Kip', 'symbol': '₭'},
+        {'code': 'MNT', 'name': 'Mongolian Tögrög', 'symbol': '₮'},
+        {'code': 'TWD', 'name': 'New Taiwan Dollar', 'symbol': 'NT$'},
+        {'code': 'MOP', 'name': 'Macanese Pataca', 'symbol': 'MOP$'},
+        {'code': 'KZT', 'name': 'Kazakhstani Tenge', 'symbol': '₸'},
+        {'code': 'UZS', 'name': 'Uzbekistani Som', 'symbol': 'soʻm'},
+        {'code': 'TJS', 'name': 'Tajikistani Somoni', 'symbol': 'SM'},
+        {'code': 'KGS', 'name': 'Kyrgyzstani Som', 'symbol': 'с'},
+        {'code': 'ILS', 'name': 'Israeli Shekel', 'symbol': '₪'},
+        {'code': 'JOD', 'name': 'Jordanian Dinar', 'symbol': 'د.ا'},
+        {'code': 'IQD', 'name': 'Iraqi Dinar', 'symbol': 'ع.د'},
+        {'code': 'IRR', 'name': 'Iranian Rial', 'symbol': '﷼'},
+        {'code': 'SAR', 'name': 'Saudi Riyal', 'symbol': '﷼'},
+        {'code': 'AED', 'name': 'UAE Dirham', 'symbol': 'د.إ'},
+        {'code': 'QAR', 'name': 'Qatari Riyal', 'symbol': 'ر.ق'},
+        {'code': 'KWD', 'name': 'Kuwaiti Dinar', 'symbol': 'د.ك'},
+        {'code': 'BHD', 'name': 'Bahraini Dinar', 'symbol': 'د.ب'},
+        {'code': 'OMR', 'name': 'Omani Rial', 'symbol': 'ر.ع'},
+        {'code': 'YER', 'name': 'Yemeni Rial', 'symbol': '﷼'},
+        {'code': 'LBP', 'name': 'Lebanese Pound', 'symbol': 'ل.ل'},
+        {'code': 'SYP', 'name': 'Syrian Pound', 'symbol': '£S'},
+        {'code': 'AFN', 'name': 'Afghan Afghani', 'symbol': '؋'},
+        
+        # Africa
+        {'code': 'ZAR', 'name': 'South African Rand', 'symbol': 'R'},
+        {'code': 'EGP', 'name': 'Egyptian Pound', 'symbol': '£E'},
+        {'code': 'NGN', 'name': 'Nigerian Naira', 'symbol': '₦'},
+        {'code': 'KES', 'name': 'Kenyan Shilling', 'symbol': 'KSh'},
+        {'code': 'GHS', 'name': 'Ghanaian Cedi', 'symbol': '₵'},
+        {'code': 'MAD', 'name': 'Moroccan Dirham', 'symbol': 'د.م.'},
+        {'code': 'DZD', 'name': 'Algerian Dinar', 'symbol': 'د.ج'},
+        {'code': 'TND', 'name': 'Tunisian Dinar', 'symbol': 'د.ت'},
+        {'code': 'LYD', 'name': 'Libyan Dinar', 'symbol': 'ل.د'},
+        {'code': 'SDG', 'name': 'Sudanese Pound', 'symbol': 'ج.س'},
+        {'code': 'ETB', 'name': 'Ethiopian Birr', 'symbol': 'ብር'},
+        {'code': 'UGX', 'name': 'Ugandan Shilling', 'symbol': 'USh'},
+        {'code': 'TZS', 'name': 'Tanzanian Shilling', 'symbol': 'TSh'},
+        {'code': 'RWF', 'name': 'Rwandan Franc', 'symbol': 'FRw'},
+        {'code': 'BIF', 'name': 'Burundian Franc', 'symbol': 'FBu'},
+        {'code': 'CDF', 'name': 'Congolese Franc', 'symbol': 'FC'},
+        {'code': 'GNF', 'name': 'Guinean Franc', 'symbol': 'FG'},
+        {'code': 'XOF', 'name': 'West African CFA Franc', 'symbol': 'CFA'},
+        {'code': 'XAF', 'name': 'Central African CFA Franc', 'symbol': 'FCFA'},
+        {'code': 'MUR', 'name': 'Mauritian Rupee', 'symbol': '₨'},
+        {'code': 'MGA', 'name': 'Malagasy Ariary', 'symbol': 'Ar'},
+        {'code': 'ZMW', 'name': 'Zambian Kwacha', 'symbol': 'ZK'},
+        {'code': 'MWK', 'name': 'Malawian Kwacha', 'symbol': 'MK'},
+        {'code': 'BWP', 'name': 'Botswana Pula', 'symbol': 'P'},
+        {'code': 'NAD', 'name': 'Namibian Dollar', 'symbol': 'N$'},
+        {'code': 'SZL', 'name': 'Eswatini Lilangeni', 'symbol': 'E'},
+        {'code': 'LSL', 'name': 'Lesotho Loti', 'symbol': 'L'},
+        {'code': 'ZWL', 'name': 'Zimbabwean Dollar', 'symbol': 'Z$'},
+        {'code': 'MZN', 'name': 'Mozambican Metical', 'symbol': 'MT'},
+        {'code': 'AOA', 'name': 'Angolan Kwanza', 'symbol': 'Kz'},
+        {'code': 'MRO', 'name': 'Mauritanian Ouguiya', 'symbol': 'UM'},
+        {'code': 'CVE', 'name': 'Cape Verdean Escudo', 'symbol': '$'},
+        {'code': 'SCR', 'name': 'Seychellois Rupee', 'symbol': 'SR'},
+        {'code': 'KMF', 'name': 'Comorian Franc', 'symbol': 'CF'},
+        {'code': 'DJF', 'name': 'Djiboutian Franc', 'symbol': 'Fdj'},
+        {'code': 'ERN', 'name': 'Eritrean Nakfa', 'symbol': 'Nfk'},
+        {'code': 'SOS', 'name': 'Somali Shilling', 'symbol': 'Sh'},
+        {'code': 'GMD', 'name': 'Gambian Dalasi', 'symbol': 'D'},
+        {'code': 'SLL', 'name': 'Sierra Leonean Leone', 'symbol': 'Le'},
+        {'code': 'LRD', 'name': 'Liberian Dollar', 'symbol': 'L$'},
+        
+        # Oceania
+        {'code': 'PGK', 'name': 'Papua New Guinean Kina', 'symbol': 'K'},
+        {'code': 'FJD', 'name': 'Fijian Dollar', 'symbol': 'FJ$'},
+        {'code': 'SBD', 'name': 'Solomon Islands Dollar', 'symbol': 'SI$'},
+        {'code': 'VUV', 'name': 'Vanuatu Vatu', 'symbol': 'Vt'},
+        {'code': 'TOP', 'name': 'Tongan Paʻanga', 'symbol': 'T$'},
+        {'code': 'WST', 'name': 'Samoan Tālā', 'symbol': 'WS$'},
+        {'code': 'KID', 'name': 'Kiribati Dollar', 'symbol': '$'},
+        {'code': 'TVD', 'name': 'Tuvaluan Dollar', 'symbol': '$'},
+        {'code': 'XPF', 'name': 'CFP Franc', 'symbol': '₣'},
+        
+        # Precious Metals & Special
+        {'code': 'XAU', 'name': 'Gold (troy ounce)', 'symbol': 'oz t'},
+        {'code': 'XAG', 'name': 'Silver (troy ounce)', 'symbol': 'oz t'},
+        {'code': 'XPT', 'name': 'Platinum (troy ounce)', 'symbol': 'oz t'},
+        {'code': 'XPD', 'name': 'Palladium (troy ounce)', 'symbol': 'oz t'},
+        {'code': 'XDR', 'name': 'Special Drawing Rights', 'symbol': 'SDR'},
+    ]    
+    context = {
+        'page': page,
+        'currencies': currencies,
+    }
+    return render(request, 'builder/currency_settings.html', context)
+
+
+
+from django.views.decorators.http import require_http_methods
+
+@login_required
+def edit_shipping_policy(request, subdomain):
+    """
+    Edit shipping and returns policy for a store with AJAX auto-save support
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get or create policy
+    policy, created = ShippingPolicy.objects.get_or_create(page=page)
+    
+    # Handle AJAX auto-save
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            data = json.loads(request.body)
+            
+            # Update policy fields
+            policy.processing_time = data.get('processing_time', '1-3 business days')
+            policy.shipping_methods = data.get('shipping_methods', '')
+            policy.delivery_timeframe = data.get('delivery_timeframe', '5-10 business days')
+            policy.free_shipping_threshold = data.get('free_shipping_threshold', 'Orders over $50')
+            policy.return_window = data.get('return_window', '30 days')
+            policy.return_conditions = data.get('return_conditions', '')
+            policy.return_process = data.get('return_process', '')
+            policy.refund_info = data.get('refund_info', '')
+            policy.international_shipping = data.get('international_shipping', '')
+            policy.support_contact = data.get('support_contact', '')
+            policy.is_active = data.get('is_active') == 'on'
+            policy.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Policy saved successfully',
+                'updated_at': policy.updated_at.isoformat()
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    # Handle regular form submission
+    elif request.method == 'POST':
+        try:
+            # Update policy fields
+            policy.processing_time = request.POST.get('processing_time', '1-3 business days')
+            policy.shipping_methods = request.POST.get('shipping_methods', '')
+            policy.delivery_timeframe = request.POST.get('delivery_timeframe', '5-10 business days')
+            policy.free_shipping_threshold = request.POST.get('free_shipping_threshold', 'Orders over $50')
+            policy.return_window = request.POST.get('return_window', '30 days')
+            policy.return_conditions = request.POST.get('return_conditions', '')
+            policy.return_process = request.POST.get('return_process', '')
+            policy.refund_info = request.POST.get('refund_info', '')
+            policy.international_shipping = request.POST.get('international_shipping', '')
+            policy.support_contact = request.POST.get('support_contact', '')
+            policy.is_active = request.POST.get('is_active') == 'on'
+            policy.save()
+            
+            messages.success(request, 'Shipping policy updated successfully!')
+            return redirect('edit_shipping_policy', subdomain=subdomain)
+            
+        except Exception as e:
+            messages.error(request, f'Error saving policy: {str(e)}')
+    
+    elif request.method == 'DELETE':
+        policy.delete()
+        return JsonResponse({'success': True})
+    
+    context = {
+        'page': page,
+        'policy': policy,
+    }
+    return render(request, 'builder/shipping_policy_edit.html', context)
+
+
+def public_shipping_policy(request, subdomain):
+    """
+    Public view for shipping policy page
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+    
+    try:
+        policy = page.shipping_policy
+        if not policy.is_active:
+            policy = None
+    except ShippingPolicy.DoesNotExist:
+        policy = None
+    
+    context = {
+        'page': page,
+        'policy': policy,
+    }
+    return render(request, 'builder/public_templates/shipping_returns.html', context)
+
+@login_required
+def manage_social_media(request, subdomain):
+    """
+    Manage social media handles for a store - no validation
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    social_media = page.social_media.all()
+    
+    # Handle AJAX requests
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            platform = request.POST.get('platform')
+            raw_handle = request.POST.get('raw_handle', '').strip()
+            display_name = request.POST.get('display_name', '').strip()
+            is_active = request.POST.get('is_active') == 'on'
+            open_in_new_tab = request.POST.get('open_in_new_tab', 'on') == 'on'
+            
+            # Check if this is an update or create
+            if request.POST.get('update'):
+                social = get_object_or_404(SocialMedia, page=page, platform=platform)
+            else:
+                # Check if platform already exists
+                if SocialMedia.objects.filter(page=page, platform=platform).exists():
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'{platform} is already connected'
+                    }, status=400)
+                
+                social, created = SocialMedia.objects.get_or_create(
+                    page=page,
+                    platform=platform,
+                    defaults={'display_order': page.social_media.count()}
+                )
+            
+            # Update fields - no validation!
+            social.raw_handle = raw_handle
+            social.display_name = display_name
+            social.is_active = is_active
+            social.open_in_new_tab = open_in_new_tab
+            social.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{social.get_platform_display()} saved successfully',
+                'url': social.get_url()
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    # Handle DELETE requests
+    elif request.method == 'DELETE':
+        try:
+            data = json.loads(request.body)
+            platform = data.get('platform')
+            social = get_object_or_404(SocialMedia, page=page, platform=platform)
+            social.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{social.get_platform_display()} removed successfully'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    context = {
+        'page': page,
+        'social_media': social_media,
+        'total_active': social_media.filter(is_active=True).count(),
+    }
+    return render(request, 'builder/social_media_edit.html', context)
+
+
+
+@login_required
+def edit_terms(request, subdomain):
+    """
+    Edit terms and conditions for a store
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get or create terms
+    terms, created = TermsAndConditions.objects.get_or_create(page=page)
+    
+    # Handle AJAX auto-save
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            # Update all fields
+            terms.content = request.POST.get('content', '')
+            terms.introduction = request.POST.get('introduction', '')
+            terms.agreement_to_terms = request.POST.get('agreement_to_terms', '')
+            terms.intellectual_property = request.POST.get('intellectual_property', '')
+            terms.user_responsibilities = request.POST.get('user_responsibilities', '')
+            terms.prohibited_activities = request.POST.get('prohibited_activities', '')
+            terms.termination = request.POST.get('termination', '')
+            terms.governing_law = request.POST.get('governing_law', '')
+            terms.disputes = request.POST.get('disputes', '')
+            terms.limitations = request.POST.get('limitations', '')
+            terms.contact_info = request.POST.get('contact_info', '')
+            terms.is_active = request.POST.get('is_active') == 'on'
+            terms.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Terms saved successfully',
+                'updated_at': terms.last_updated.isoformat()
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    # Handle regular form submission
+    elif request.method == 'POST':
+        try:
+            terms.content = request.POST.get('content', '')
+            terms.introduction = request.POST.get('introduction', '')
+            terms.agreement_to_terms = request.POST.get('agreement_to_terms', '')
+            terms.intellectual_property = request.POST.get('intellectual_property', '')
+            terms.user_responsibilities = request.POST.get('user_responsibilities', '')
+            terms.prohibited_activities = request.POST.get('prohibited_activities', '')
+            terms.termination = request.POST.get('termination', '')
+            terms.governing_law = request.POST.get('governing_law', '')
+            terms.disputes = request.POST.get('disputes', '')
+            terms.limitations = request.POST.get('limitations', '')
+            terms.contact_info = request.POST.get('contact_info', '')
+            terms.is_active = request.POST.get('is_active') == 'on'
+            terms.save()
+            
+            messages.success(request, 'Terms and conditions updated successfully!')
+            return redirect('edit_terms', subdomain=subdomain)
+            
+        except Exception as e:
+            messages.error(request, f'Error saving terms: {str(e)}')
+    
+    # Handle DELETE
+    elif request.method == 'DELETE':
+        terms.delete()
+        return JsonResponse({'success': True})
+    
+    context = {
+        'page': page,
+        'terms': terms,
+    }
+    return render(request, 'builder/terms_edit.html', context)
+
+
+@login_required
+def edit_privacy(request, subdomain):
+    """
+    Edit privacy policy for a store
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    # Get or create privacy policy
+    privacy, created = PrivacyPolicy.objects.get_or_create(page=page)
+    
+    # Handle AJAX auto-save
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            # Update all fields
+            privacy.content = request.POST.get('content', '')
+            privacy.introduction = request.POST.get('introduction', '')
+            privacy.information_collected = request.POST.get('information_collected', '')
+            privacy.how_we_use = request.POST.get('how_we_use', '')
+            privacy.cookies = request.POST.get('cookies', '')
+            privacy.third_party = request.POST.get('third_party', '')
+            privacy.data_security = request.POST.get('data_security', '')
+            privacy.your_rights = request.POST.get('your_rights', '')
+            privacy.children_privacy = request.POST.get('children_privacy', '')
+            privacy.international_transfers = request.POST.get('international_transfers', '')
+            privacy.policy_changes = request.POST.get('policy_changes', '')
+            privacy.contact_info = request.POST.get('contact_info', '')
+            privacy.gdpr_compliant = request.POST.get('gdpr_compliant') == 'on'
+            privacy.ccpa_compliant = request.POST.get('ccpa_compliant') == 'on'
+            privacy.is_active = request.POST.get('is_active') == 'on'
+            privacy.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Privacy policy saved successfully',
+                'updated_at': privacy.last_updated.isoformat()
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    
+    # Handle regular form submission
+    elif request.method == 'POST':
+        try:
+            privacy.content = request.POST.get('content', '')
+            privacy.introduction = request.POST.get('introduction', '')
+            privacy.information_collected = request.POST.get('information_collected', '')
+            privacy.how_we_use = request.POST.get('how_we_use', '')
+            privacy.cookies = request.POST.get('cookies', '')
+            privacy.third_party = request.POST.get('third_party', '')
+            privacy.data_security = request.POST.get('data_security', '')
+            privacy.your_rights = request.POST.get('your_rights', '')
+            privacy.children_privacy = request.POST.get('children_privacy', '')
+            privacy.international_transfers = request.POST.get('international_transfers', '')
+            privacy.policy_changes = request.POST.get('policy_changes', '')
+            privacy.contact_info = request.POST.get('contact_info', '')
+            privacy.gdpr_compliant = request.POST.get('gdpr_compliant') == 'on'
+            privacy.ccpa_compliant = request.POST.get('ccpa_compliant') == 'on'
+            privacy.is_active = request.POST.get('is_active') == 'on'
+            privacy.save()
+            
+            messages.success(request, 'Privacy policy updated successfully!')
+            return redirect('edit_privacy', subdomain=subdomain)
+            
+        except Exception as e:
+            messages.error(request, f'Error saving privacy policy: {str(e)}')
+    
+    # Handle DELETE
+    elif request.method == 'DELETE':
+        privacy.delete()
+        return JsonResponse({'success': True})
+    
+    context = {
+        'page': page,
+        'privacy': privacy,
+    }
+    return render(request, 'builder/privacy_edit.html', context)
+
+
+def public_terms(request, subdomain):
+    """
+    Public view for terms and conditions
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+    
+    try:
+        terms = page.terms
+        if not terms.is_active:
+            terms = None
+    except TermsAndConditions.DoesNotExist:
+        terms = None
+    
+    context = {
+        'page': page,
+        'terms': terms,
+    }
+    return render(request, 'builder/public_templates/terms.html', context)
+
+
+def public_privacy(request, subdomain):
+    """
+    Public view for privacy policy
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+    
+    try:
+        privacy = page.privacy
+        if not privacy.is_active:
+            privacy = None
+    except PrivacyPolicy.DoesNotExist:
+        privacy = None
+    
+    context = {
+        'page': page,
+        'privacy': privacy,
+    }
+    return render(request, 'builder/public_templates/privacy.html', context)
+
+
+# Add this to your views.py in the builder app
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+from .models import PublishedPage
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def check_subdomain_availability(request):
+    """
+    API endpoint to check if a subdomain is available
+    GET: Check availability of a single subdomain
+    POST: Bulk check multiple subdomains
+    """
+    try:
+        if request.method == "GET":
+            subdomain = request.GET.get('subdomain', '').strip().lower()
+            
+            if not subdomain:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Subdomain is required'
+                }, status=400)
+            
+            # Validate subdomain format
+            import re
+            if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', subdomain):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid subdomain format',
+                    'is_available': False,
+                    'suggestions': generate_subdomain_suggestions(subdomain)
+                })
+            
+            if len(subdomain) < 2:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Subdomain must be at least 2 characters',
+                    'is_available': False,
+                    'suggestions': generate_subdomain_suggestions(subdomain)
+                })
+            
+            # Check if subdomain exists (excluding current user's pages if editing)
+            existing = PublishedPage.objects.filter(subdomain=subdomain)
+            
+            # If editing, exclude the current page
+            page_id = request.GET.get('page_id')
+            if page_id:
+                existing = existing.exclude(id=page_id)
+            
+            is_available = not existing.exists()
+            
+            # Generate suggestions if not available
+            suggestions = []
+            if not is_available:
+                suggestions = generate_subdomain_suggestions(subdomain)
+            
+            return JsonResponse({
+                'success': True,
+                'subdomain': subdomain,
+                'is_available': is_available,
+                'suggestions': suggestions,
+                'message': 'Subdomain is available!' if is_available else 'Subdomain is already taken'
+            })
+            
+        elif request.method == "POST":
+            # Bulk check multiple subdomains
+            data = json.loads(request.body)
+            subdomains = data.get('subdomains', [])
+            
+            if not subdomains:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No subdomains provided'
+                }, status=400)
+            
+            results = {}
+            for subdomain in subdomains:
+                # Basic validation
+                import re
+                is_valid = bool(re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', subdomain)) and len(subdomain) >= 2
+                
+                if not is_valid:
+                    results[subdomain] = {
+                        'is_available': False,
+                        'is_valid': False,
+                        'error': 'Invalid format'
+                    }
+                else:
+                    existing = PublishedPage.objects.filter(subdomain=subdomain)
+                    page_id = data.get('page_id')
+                    if page_id:
+                        existing = existing.exclude(id=page_id)
+                    
+                    results[subdomain] = {
+                        'is_available': not existing.exists(),
+                        'is_valid': True
+                    }
+            
+            return JsonResponse({
+                'success': True,
+                'results': results
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+def generate_subdomain_suggestions(subdomain):
+    """Generate alternative subdomain suggestions"""
+    suggestions = []
+    base = subdomain.strip('-').lower()
+    
+    # Remove invalid characters for base
+    import re
+    base = re.sub(r'[^a-z0-9-]', '', base)
+    base = base.strip('-')
+    
+    if not base:
+        return []
+    
+    suggestions = [
+        f"{base}-shop",
+        f"{base}-store",
+        f"{base}1",
+        f"{base}-online",
+        f"shop-{base}",
+        f"{base}-app",
+        f"{base}-site",
+        f"my{base}"
+    ]
+    
+    # Filter out any invalid suggestions and limit to 5
+    valid_suggestions = []
+    for s in suggestions:
+        if re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', s) and len(s) >= 2:
+            valid_suggestions.append(s)
+        if len(valid_suggestions) >= 5:
+            break
+    
+    return valid_suggestions
+
+
+
+
+@login_required
+def get_storage_info(request):
+    """Simple API to get current storage usage"""
+    used = get_user_storage_usage(request.user)
+    limit = get_storage_limit(request.user)
+    
+    return JsonResponse({
+        'used_bytes': used,
+        'used_formatted': format_bytes(used),
+        'limit_bytes': limit,
+        'limit_formatted': format_bytes(limit),
+        'percentage': (used / limit * 100) if limit else 0
+    })
+
+# builder/views.py - Add debugging to the API endpoint
+
+# builder/views.py
+
+@login_required
+def api_storage_info(request):
+    """API endpoint to get storage and limits info"""
+    from payments.decorators import get_user_limits_status
+    import json
+    import traceback
+    
+    try:
+        limits = get_user_limits_status(request.user)
+        
+        # Debug print
+        print(f"API storage info for {request.user.email}: {limits}")
+        
+        return JsonResponse({
+            'success': True,
+            'data': limits
+        })
+        
+    except Exception as e:
+        print(f"API storage info ERROR: {str(e)}")
+        traceback.print_exc()
+        
+        # Return a proper fallback response with full structure
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'data': {
+                'tier': 'free',
+                'plan_name': 'Free',
+                'is_paid': False,
+                'websites': {'used': 0, 'limit': 1},
+                'products': {'used': 0, 'limit': 10},
+                'forms_this_month': {'used': 0, 'limit': 10},
+                'storage': {'used_mb': 0, 'limit_mb': 100, 'percentage': 0},
+            }
+        })
+
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from payments.decorators import get_user_plan, has_feature
+
+
+def support_page(request):
+    """Support page with dynamic options based on user's plan"""
+    
+    # Default values for anonymous users
+    current_plan = 'free'
+    plan_name = 'Free'
+    email_available = True
+    email_response_time = '48 hours'
+    chat_available = False
+    chat_response_time = None
+    chat_hours = None
+    phone_available = False
+    priority_available = False
+    priority_response_time = None
+    
+    if request.user.is_authenticated:
+        plan = get_user_plan(request.user)
+        current_plan = plan.tier if plan else 'free'
+        plan_name = plan.name if plan else 'Free'
+        
+        # Set support options based on plan tier
+        if current_plan == 'free':
+            email_available = True
+            email_response_time = '48 hours'
+            chat_available = False
+            phone_available = False
+            priority_available = False
+            
+        elif current_plan == 'pro':
+            email_available = True
+            email_response_time = '24 hours'
+            chat_available = False
+            phone_available = False
+            priority_available = True
+            priority_response_time = '24 hours'
+            
+        elif current_plan == 'business':
+            email_available = True
+            email_response_time = '24 hours'
+            chat_available = True
+            chat_response_time = '4 hours'
+            chat_hours = '9am - 9pm EST'
+            phone_available = False
+            priority_available = True
+            priority_response_time = '4 hours'
+            
+        elif current_plan == 'agency':
+            email_available = True
+            email_response_time = '24 hours'
+            chat_available = True
+            chat_response_time = 'Immediate'
+            chat_hours = '24/7'
+            phone_available = True
+            priority_available = True
+            priority_response_time = 'Immediate'
+    
+    context = {
+        'current_plan': current_plan,
+        'plan_name': plan_name,
+        'email_available': email_available,
+        'email_response_time': email_response_time,
+        'chat_available': chat_available,
+        'chat_response_time': chat_response_time,
+        'chat_hours': chat_hours,
+        'phone_available': phone_available,
+        'priority_available': priority_available,
+        'priority_response_time': priority_response_time,
+    }
+    
+    return render(request, 'builder/support.html', context)
+
+
+
+# builder/views.py - Add this view
+
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+
+def contact_page(request):
+    """Simple contact page"""
+    return render(request, 'builder/contact.html')
+
+
+@require_http_methods(["POST"])
+def submit_contact(request):
+    """Handle contact form submission"""
+    try:
+        # Log the request
+        logger.info(f"Contact form submission from: {request.META.get('REMOTE_ADDR')}")
+        
+        # Parse JSON data
+        data = json.loads(request.body)
+        logger.info(f"Contact form data received: {data.get('email')} - {data.get('subject')}")
+        
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        subject = data.get('subject', '').strip()
+        message = data.get('message', '').strip()
+        
+        # Basic validation
+        if not all([name, email, subject, message]):
+            logger.warning("Contact form missing required fields")
+            return JsonResponse({
+                'success': False, 
+                'error': 'All fields are required'
+            })
+        
+        # Email validation
+        import re
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            return JsonResponse({
+                'success': False,
+                'error': 'Please enter a valid email address'
+            })
+        
+        # Save to database (optional)
+        try:
+            from builder.models import ContactSubmission
+            ContactSubmission.objects.create(
+                name=name,
+                email=email,
+                subject=subject,
+                message=message,
+                ip_address=request.META.get('REMOTE_ADDR', ''),
+            )
+            logger.info(f"Contact form saved to database")
+        except Exception as e:
+            logger.error(f"Failed to save contact form: {e}")
+            # Continue even if database save fails
+        
+        # Send email notification (optional)
+        try:
+            send_contact_notification(name, email, subject, message)
+        except Exception as e:
+            logger.error(f"Failed to send contact email: {e}")
+            # Continue even if email fails
+        
+        logger.info(f"Contact form processed successfully")
+        
+        return JsonResponse({'success': True})
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in contact form: {e}")
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid request format'
+        })
+    except Exception as e:
+        logger.error(f"Contact form error: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': 'An unexpected error occurred. Please try again.'
+        })
+
+
+def send_contact_notification(name, email, subject, message):
+    """Send email notification for contact form"""
+    # You can implement email sending here
+    # For now, just print to console
+    print(f"""
+    ========================================
+    New Contact Form Submission
+    ========================================
+    Name: {name}
+    Email: {email}
+    Subject: {subject}
+    Message: {message[:200]}...
+    ========================================
+    """)
+
+
+def about_page(request):
+    """About page"""
+    return render(request, 'builder/about.html')
+
+def privacy_policy(request):
+    """Privacy policy page"""
+    return render(request, 'builder/legal/privacy.html')
+
+
+def terms_of_service(request):
+    """Terms of service page"""
+    return render(request, 'builder/legal/terms.html')
+
+def demo_page(request):
+    """Demo video page"""
+    return render(request, 'builder/demo.html', {
+        'year': datetime.now().year,
+    })

@@ -1,0 +1,166 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Checkout - {{ page.brand_name }}{% endblock %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="h2 text-primary">Checkout</h1>
+                <p class="text-muted">Enter your information to complete your order</p>
+            </div>
+
+            <!-- Order Summary -->
+            {% if order_data %}
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Display order summary here -->
+                    <p>Items: {{ order_data.items|length }}</p>
+                    <p>Total: {{ order_data.total_amount|currency:page }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Customer Information Form -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Customer Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="customerInfoForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_email" class="form-label">Email Address *</label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_name" class="form-label">Full Name *</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Phone Number</label>
+                            {{ form.phone }}
+                        </div>
+
+                        <h5 class="mt-4 mb-3">Billing Address</h5>
+                        <div class="mb-3">
+                            <label for="id_address" class="form-label">Street Address *</label>
+                            {{ form.address }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_city" class="form-label">City *</label>
+                                {{ form.city }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="id_state" class="form-label">State</label>
+                                {{ form.state }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="id_zip_code" class="form-label">ZIP Code *</label>
+                                {{ form.zip_code }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_country" class="form-label">Country *</label>
+                            {{ form.country }}
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="sameDeliveryAddress">
+                            <label class="form-check-label" for="sameDeliveryAddress">
+                                Delivery address is same as billing address
+                            </label>
+                        </div>
+
+                        <div id="deliveryAddressSection" style="display: none;">
+                            <h5 class="mt-4 mb-3">Delivery Address</h5>
+                            <div class="mb-3">
+                                <label for="id_delivery_address" class="form-label">Delivery Address</label>
+                                {{ form.delivery_address }}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_delivery_city" class="form-label">Delivery City</label>
+                                    {{ form.delivery_city }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="id_delivery_state" class="form-label">Delivery State</label>
+                                    {{ form.delivery_state }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="id_delivery_zip" class="form-label">Delivery ZIP</label>
+                                    {{ form.delivery_zip }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="id_delivery_notes" class="form-label">Delivery Notes</label>
+                            {{ form.delivery_notes }}
+                            <div class="form-text">Any special instructions for delivery</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Continue to Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle delivery address
+    const sameAddressCheckbox = document.getElementById('sameDeliveryAddress');
+    const deliverySection = document.getElementById('deliveryAddressSection');
+    
+    sameAddressCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            deliverySection.style.display = 'none';
+        } else {
+            deliverySection.style.display = 'block';
+        }
+    });
+    
+    // Form validation
+    document.getElementById('customerInfoForm').addEventListener('submit', function(e) {
+        // Add any custom validation here
+        const email = document.getElementById('id_email').value;
+        const name = document.getElementById('id_name').value;
+        
+        if (!email || !name) {
+            e.preventDefault();
+            alert('Please fill in all required fields');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

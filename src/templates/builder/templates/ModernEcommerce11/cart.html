@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | Lullaby Luxe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Variables for Color Palette */
+        :root {
+            --text: #B0988B;
+            --heading: #4D8581;
+            --primary: #ABDED7;
+            --background: #DBCBBE;
+            --secondary: #EEE7DF;
+            --accent: #333333;
+            --border: #555555;
+            --success: #FFFFFF;
+            --shadow: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--secondary);
+            color: var(--accent);
+            line-height: 1.6;
+            padding-top: 100px; /* For fixed header */
+        }
+
+        h1, h2, h3, h4 {
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        p {
+            color: var(--border);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .temp-btn {
+            display: inline-block;
+            background-color: var(--heading);
+            color: var(--success);
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+            text-decoration: none;
+        }
+
+        .temp-btn:hover {
+            background-color: var(--text);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .temp-btn-secondary {
+            background-color: transparent;
+            color: var(--heading);
+            border: 1px solid var(--heading);
+        }
+
+        .temp-btn-secondary:hover {
+            background-color: rgba(77, 133, 129, 0.1);
+        }
+
+        .temp-btn-checkout {
+            background-color: var(--text);
+            color: var(--success);
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+        }
+
+        .temp-btn-checkout:hover {
+            background-color: var(--heading);
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* Cart Header */
+        .cart-header {
+            padding: 40px 0 20px;
+            border-bottom: 1px solid var(--background);
+            margin-bottom: 40px;
+        }
+
+        .cart-header h1 {
+            font-size: 36px;
+            color: var(--heading);
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        /* Cart Section */
+        .cart-section {
+            padding: 40px 0;
+        }
+
+        .cart-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 60px;
+        }
+
+        /* Cart Items */
+        .cart-items {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .cart-item {
+            background-color: var(--success);
+            border-radius: 8px;
+            padding: 25px;
+            display: grid;
+            grid-template-columns: 120px 1fr auto;
+            gap: 25px;
+            align-items: center;
+            box-shadow: 0 3px 15px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .cart-item:hover {
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .cart-item-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 6px;
+            overflow: hidden;
+            background-color: var(--background);
+        }
+
+        .cart-item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cart-item-details {
+            padding-right: 20px;
+        }
+
+        .cart-item-title {
+            font-size: 18px;
+            color: var(--heading);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .cart-item-variant {
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .cart-item-price {
+            font-size: 18px;
+            color: var(--heading);
+            font-weight: 500;
+        }
+
+        .cart-item-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-temp-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--background);
+            background-color: var(--success);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .quantity-temp-btn:hover {
+            border-color: var(--heading);
+            background-color: var(--primary);
+        }
+
+        .quantity-input {
+            width: 50px;
+            height: 32px;
+            text-align: center;
+            border: 1px solid var(--background);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .remove-temp-btn {
+            color: var(--border);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.3s ease;
+        }
+
+        .remove-temp-btn:hover {
+            color: var(--text);
+        }
+
+        /* Cart Summary */
+        .cart-summary {
+            background-color: var(--success);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 3px 15px var(--shadow);
+            position: sticky;
+            top: 140px;
+            height: fit-content;
+        }
+
+        .cart-summary h2 {
+            font-size: 24px;
+            color: var(--heading);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--background);
+            font-weight: 400;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--background);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            color: var(--accent);
+        }
+
+        .summary-value {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .summary-total {
+            font-size: 20px;
+            color: var(--heading);
+            font-weight: 500;
+        }
+
+        .summary-total .summary-value {
+            font-size: 24px;
+            color: var(--text);
+        }
+
+        .promo-code {
+            margin-top: 25px;
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .promo-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--background);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .promo-temp-btn {
+            padding: 12px 20px;
+            background-color: var(--primary);
+            color: var(--heading);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .promo-temp-btn:hover {
+            background-color: var(--heading);
+            color: var(--success);
+        }
+
+        .checkout-temp-btn {
+            margin-top: 30px;
+        }
+
+        /* Empty Cart */
+        .empty-cart {
+            text-align: center;
+            padding: 80px 20px;
+            background-color: var(--success);
+            border-radius: 12px;
+            box-shadow: 0 5px 20px var(--shadow);
+            margin: 40px 0;
+        }
+
+        .empty-cart i {
+            font-size: 72px;
+            color: var(--primary);
+            margin-bottom: 25px;
+        }
+
+        .empty-cart h2 {
+            font-size: 28px;
+            color: var(--heading);
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        .empty-cart p {
+            margin-bottom: 30px;
+            font-size: 16px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .empty-cart-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Continue Shopping Banner */
+        .continue-shopping {
+            background-color: var(--primary);
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .continue-shopping h3 {
+            font-size: 24px;
+            color: var(--heading);
+            margin-bottom: 15px;
+            font-weight: 400;
+        }
+
+        .continue-shopping p {
+            margin-bottom: 25px;
+            color: var(--accent);
+        }
+
+        /* Related Products */
+        .related-products-section {
+            padding: 60px 0;
+            background-color: var(--success);
+            margin-top: 60px;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 36px;
+            color: var(--heading);
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        .related-products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .product-card {
+            background-color: var(--success);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-image {
+            height: 250px;
+            width: 100%;
+            object-fit: cover;
+            background-color: var(--background);
+        }
+
+        .product-card .product-info {
+            padding: 20px;
+        }
+
+        .product-card h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+
+        .product-card .price {
+            font-size: 18px;
+            color: var(--heading);
+            font-weight: 400;
+            margin-bottom: 15px;
+        }
+
+        .product-card .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .product-card .temp-btn-primary {
+            flex: 1;
+            background-color: var(--heading);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .product-card .temp-btn-primary:hover {
+            background-color: var(--text);
+        }
+
+        .product-card .temp-btn-wishlist {
+            background-color: transparent;
+            border: 1px solid var(--background);
+            color: var(--text);
+            width: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-card .temp-btn-wishlist:hover {
+            background-color: var(--background);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .cart-container {
+                gap: 40px;
+            }
+            
+            .related-products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .cart-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .cart-summary {
+                position: static;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+            
+            .related-products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .cart-item {
+                grid-template-columns: 100px 1fr auto;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .cart-item-image {
+                width: 100px;
+                height: 100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cart-item {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .cart-item-image {
+                width: 150px;
+                height: 150px;
+                margin: 0 auto;
+            }
+            
+            .cart-item-details {
+                padding-right: 0;
+            }
+            
+            .cart-item-actions {
+                flex-direction: row;
+                justify-content: center;
+            }
+            
+            .related-products-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            
+            .empty-cart-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .empty-cart-actions .temp-btn {
+                width: 100%;
+                max-width: 250px;
+            }
+            
+            section {
+                padding: 60px 0;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .cart-header h1 {
+                font-size: 28px;
+            }
+            
+            .section-title h2 {
+                font-size: 28px;
+            }
+            
+            .temp-btn {
+                padding: 12px 24px;
+                font-size: 15px;
+            }
+            
+            .cart-summary {
+                padding: 20px;
+            }
+            
+            .promo-input-group {
+                flex-direction: column;
+            }
+            
+            .promo-temp-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cart Header -->
+    <section class="cart-header editable-section" data-section="136">
+        <div class="container">
+            <h1 class="editable-text editable-section no-drop-zone" data-section="137" data-text="104">Shopping Cart</h1>
+            <p class="editable-text editable-section no-drop-zone" data-section="138" data-text="105">Review your items and proceed to checkout</p>
+        </div>
+    </section>
+
+    <!-- Cart Section -->
+    <section class="cart-section editable-section" data-section="139">
+        <div class="container">
+            <div class="cart-container">
+                <!-- Cart Items -->
+                <div class="cart-items">
+                    <!-- Cart Item 1 -->
+                    <div class="cart-item editable-section no-drop-zone" data-section="140">
+                        <div class="cart-item-image">
+                            <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80" alt="Organic Cotton Romper">
+                        </div>
+                        <div class="cart-item-details">
+                            <h3 class="cart-item-title editable-text editable-section no-drop-zone" data-section="141" data-text="106">Organic Cotton Romper</h3>
+                            <p class="cart-item-variant editable-text editable-section no-drop-zone" data-section="142" data-text="107">Color: Cloud White | Size: 3-6M</p>
+                            <p class="cart-item-price editable-text editable-section no-drop-zone" data-section="143" data-text="108">$48.00</p>
+                        </div>
+                        <div class="cart-item-actions">
+                            <div class="quantity-control">
+                                <button class="quantity-temp-btn" onclick="decreaseQuantity(1)">-</button>
+                                <input type="number" class="quantity-input" value="1" min="1" max="10" data-item-id="1">
+                                <button class="quantity-temp-btn" onclick="increaseQuantity(1)">+</button>
+                            </div>
+                            <button class="remove-temp-btn" onclick="removeItem(1)">
+                                <i class="fas fa-trash editable-icon" data-icon="21" data-default-class="fas fa-trash"></i>
+                                <span class="editable-text editable-section no-drop-zone" data-section="144" data-text="109">Remove</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Item 2 -->
+                    <div class="cart-item">
+                        <div class="cart-item-image">
+                            <img src="https://images.unsplash.com/photo-1589878614012-db51690e73e9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80" alt="Cashmere Baby Set">
+                        </div>
+                        <div class="cart-item-details">
+                            <h3 class="cart-item-title">Cashmere Baby Set</h3>
+                            <p class="cart-item-variant">Color: Sky Blue | Size: 6-12M</p>
+                            <p class="cart-item-price">$89.00</p>
+                        </div>
+                        <div class="cart-item-actions">
+                            <div class="quantity-control">
+                                <button class="quantity-temp-btn" onclick="decreaseQuantity(2)">-</button>
+                                <input type="number" class="quantity-input" value="1" min="1" max="10" data-item-id="2">
+                                <button class="quantity-temp-btn" onclick="increaseQuantity(2)">+</button>
+                            </div>
+                            <button class="remove-temp-btn" onclick="removeItem(2)">
+                                <i class="fas fa-trash editable-icon" data-icon="21" data-default-class="fas fa-trash"></i>
+                                <span>Remove</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Summary -->
+                <div class="cart-summary editable-section no-drop-zone" data-section="145">
+                    <h2 class="editable-text editable-section no-drop-zone" data-section="146" data-text="110">Order Summary</h2>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="147" data-text="111">Subtotal</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="148" data-text="112">$137.00</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="149" data-text="113">Shipping</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="150" data-text="114">$5.99</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="151" data-text="115">Tax</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="152" data-text="116">$11.42</span>
+                    </div>
+                    
+                    <div class="summary-row summary-total">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="153" data-text="117">Total</span>
+                        <span class="summary-value editable-text editable-section no-drop-zone" data-section="154" data-text="118">$154.41</span>
+                    </div>
+                    
+                    <div class="promo-code">
+                        <span class="summary-label editable-text editable-section no-drop-zone" data-section="155" data-text="119">Promo Code</span>
+                        <div class="promo-input-group">
+                            <input type="text" class="promo-input" placeholder="Enter code">
+                            <button class="promo-temp-btn editable-text editable-section no-drop-zone" data-section="156" data-text="120">Apply</button>
+                        </div>
+                    </div>
+                    
+                    <div class="checkout-temp-btn">
+                        <button class="temp-btn temp-btn-checkout editable-text editable-section no-drop-zone" data-section="157" data-text="121">Proceed to Checkout</button>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <p class="editable-text editable-section no-drop-zone" data-section="158" data-text="122">
+                            <i class="fas fa-lock editable-icon" data-icon="22" data-default-class="fas fa-lock"></i>
+                            Secure checkout · Free returns
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Continue Shopping Banner -->
+            <div class="continue-shopping editable-section" data-section="159">
+                <h3 class="editable-text editable-section no-drop-zone" data-section="160" data-text="123">Need something else?</h3>
+                <p class="editable-text editable-section no-drop-zone" data-section="161" data-text="124">Complete your baby's wardrobe with our premium collection</p>
+                <a href="?page=shop" class="temp-btn temp-btn-secondary editable-text editable-section no-drop-zone" data-section="162" data-text="125">Continue Shopping</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Related Products Section -->
+    <section class="related-products-section editable-section" data-section="163">
+        <div class="container">
+            <div class="section-title">
+                <h2 class="editable-text editable-section no-drop-zone" data-section="164" data-text="126">You May Also Like</h2>
+                <p class="editable-text editable-section no-drop-zone" data-section="165" data-text="127">Complete your little one's wardrobe with these matching pieces</p>
+            </div>
+            
+            <div class="related-products-grid">
+                <!-- Related Product 1 -->
+                <div class="product-card editable-section no-drop-zone" data-section="166">
+                    <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" alt="Linen Baby Dress" class="product-image">
+                    <div class="product-info">
+                        <h3 class="editable-text editable-section no-drop-zone" data-section="167" data-text="128">Linen Baby Dress</h3>
+                        <p class="editable-text editable-section no-drop-zone" data-section="168" data-text="129">Perfect for special occasions</p>
+                        <div class="price editable-text editable-section no-drop-zone" data-section="169" data-text="130">$65.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-primary editable-text editable-section no-drop-zone" data-section="170" data-text="131">
+                                <i class="fas fa-cart-plus editable-icon" data-icon="6" data-default-class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="temp-btn-wishlist">
+                                <i class="fas fa-heart editable-icon" data-icon="7" data-default-class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 2 -->
+                <div class="product-card">
+                    <img src="https://images.unsplash.com/photo-1577900230376-81d5278e7e6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" alt="Swaddle Set" class="product-image">
+                    <div class="product-info">
+                        <h3>Premium Swaddle Set</h3>
+                        <p>Gentle fabric for peaceful sleep</p>
+                        <div class="price">$72.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-primary">
+                                <i class="fas fa-cart-plus editable-icon" data-icon="6" data-default-class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="temp-btn-wishlist">
+                                <i class="fas fa-heart editable-icon" data-icon="7" data-default-class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 3 -->
+                <div class="product-card">
+                    <img src="https://images.unsplash.com/photo-1595272563575-3d1c5ba2d4c9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" alt="Bodysuit Set" class="product-image">
+                    <div class="product-info">
+                        <h3>3-Pack Bodysuits</h3>
+                        <p>Essential cotton for everyday wear</p>
+                        <div class="price">$36.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-primary">
+                                <i class="fas fa-cart-plus editable-icon" data-icon="6" data-default-class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="temp-btn-wishlist">
+                                <i class="fas fa-heart editable-icon" data-icon="7" data-default-class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Related Product 4 -->
+                <div class="product-card">
+                    <img src="https://images.unsplash.com/photo-1566305977571-5666677c6e98?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" alt="Sleep Sack" class="product-image">
+                    <div class="product-info">
+                        <h3>Organic Sleep Sack</h3>
+                        <p>Safe and comfortable wearable blanket</p>
+                        <div class="price">$42.00</div>
+                        <div class="product-actions">
+                            <button class="temp-btn-primary">
+                                <i class="fas fa-cart-plus editable-icon" data-icon="6" data-default-class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                            <button class="temp-btn-wishlist">
+                                <i class="fas fa-heart editable-icon" data-icon="7" data-default-class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Quantity Controls
+        function increaseQuantity(itemId) {
+            const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+            let value = parseInt(input.value);
+            if (value < 10) {
+                input.value = value + 1;
+                updateCartItem(itemId, value + 1);
+            }
+        }
+
+        function decreaseQuantity(itemId) {
+            const input = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
+            let value = parseInt(input.value);
+            if (value > 1) {
+                input.value = value - 1;
+                updateCartItem(itemId, value - 1);
+            }
+        }
+
+        function updateCartItem(itemId, quantity) {
+            console.log(`Updating item ${itemId} to quantity ${quantity}`);
+            // In real implementation, this would make an AJAX call to update cart
+            updateCartSummary();
+        }
+
+        function removeItem(itemId) {
+            if (confirm('Are you sure you want to remove this item from your cart?')) {
+                const item = document.querySelector(`.cart-item:nth-child(${itemId})`);
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-20px)';
+                
+                setTimeout(() => {
+                    item.remove();
+                    if (document.querySelectorAll('.cart-item').length === 0) {
+                        showEmptyCart();
+                    }
+                    updateCartSummary();
+                }, 300);
+                
+                console.log(`Removed item ${itemId} from cart`);
+                // In real implementation, this would make an AJAX call
+            }
+        }
+
+        // Update Cart Summary
+        function updateCartSummary() {
+            let subtotal = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                const priceText = item.querySelector('.cart-item-price').textContent;
+                const price = parseFloat(priceText.replace('$', ''));
+                const quantity = parseInt(item.querySelector('.quantity-input').value);
+                subtotal += price * quantity;
+            });
+            
+            const shipping = 5.99;
+            const tax = subtotal * 0.0835; // 8.35% tax rate
+            const total = subtotal + shipping + tax;
+            
+            // Update summary values
+            document.querySelector('[data-section="148"]').textContent = `$${subtotal.toFixed(2)}`;
+            document.querySelector('[data-section="152"]').textContent = `$${tax.toFixed(2)}`;
+            document.querySelector('[data-section="154"]').textContent = `$${total.toFixed(2)}`;
+        }
+
+        // Show Empty Cart
+        function showEmptyCart() {
+            const cartContainer = document.querySelector('.cart-container');
+            cartContainer.innerHTML = `
+                <div class="empty-cart">
+                    <i class="fas fa-shopping-cart editable-icon" data-icon="23" data-default-class="fas fa-shopping-cart"></i>
+                    <h2>Your cart is empty</h2>
+                    <p>Looks like you haven't added any items to your cart yet.</p>
+                    <div class="empty-cart-actions">
+                        <a href="?page=shop" class="temp-btn">Start Shopping</a>
+                        <a href="?page=home" class="temp-btn temp-btn-secondary">Return to Home</a>
+                    </div>
+                </div>
+            `;
+            
+            // Hide summary when cart is empty
+            document.querySelector('.cart-summary').style.display = 'none';
+        }
+
+        // Promo Code Application
+        document.querySelector('.promo-temp-btn').addEventListener('click', function() {
+            const promoInput = document.querySelector('.promo-input');
+            const promoCode = promoInput.value.trim();
+            
+            if (promoCode === 'BABYLOVE') {
+                alert('Promo code applied! You got 10% off your order.');
+                // Apply discount logic here
+                promoInput.value = '';
+            } else if (promoCode) {
+                alert('Invalid promo code. Please try again.');
+            } else {
+                alert('Please enter a promo code.');
+            }
+        });
+
+        // Proceed to Checkout
+        document.querySelector('.temp-btn-checkout').addEventListener('click', function() {
+            if (document.querySelectorAll('.cart-item').length > 0) {
+                window.location.href = '?page=checkout';
+            } else {
+                alert('Your cart is empty. Add some items before checkout.');
+            }
+        });
+
+        // Add to Cart from Related Products
+        document.querySelectorAll('.product-card .temp-btn-primary').forEach(button => {
+            button.addEventListener('click', function() {
+                const productCard = this.closest('.product-card');
+                const productName = productCard.querySelector('h3').textContent;
+                const productPrice = productCard.querySelector('.price').textContent;
+                
+                alert(`Added ${productName} to cart!`);
+                // In real implementation, this would add item to cart via AJAX
+                
+                // Update cart badge (assuming badge is in header)
+                const badge = document.querySelector('.header-actions .fa-shopping-cart')?.nextElementSibling;
+                if(badge) {
+                    const currentCount = parseInt(badge.textContent);
+                    badge.textContent = currentCount + 1;
+                }
+            });
+        });
+
+        // Initialize cart summary
+        updateCartSummary();
+    </script>
+</body>
+</html>

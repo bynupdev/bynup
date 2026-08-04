@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÆTHER | Wishlist</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --charcoal: #2A3330;
+            --sage: #74B267;
+            --soft-chartreuse: #EBEA8E;
+            --misted-stone: #C6CBD1;
+            --dusty-rose: #CB7A81;
+            --bg-white: #FFFFFF;
+            --text-dark: #2A3330;
+            --text-light: #5A6B66;
+            --border-light: rgba(42, 51, 48, 0.1);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-white);
+            color: var(--text-dark);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .wishlist-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Page Header */
+        .wishlist-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .wishlist-header h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--charcoal);
+            margin-bottom: 1rem;
+        }
+
+        .wishlist-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        /* Wishlist Stats */
+        .wishlist-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem 2rem;
+            background: var(--bg-white);
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dusty-rose);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        /* Wishlist Actions */
+        .wishlist-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .wishlist-filters {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 0.5rem 1.25rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border-light);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+        }
+
+        .filter-chip:hover {
+            border-color: var(--sage);
+            color: var(--sage);
+        }
+
+        .filter-chip.active {
+            background: var(--charcoal);
+            color: white;
+            border-color: var(--charcoal);
+        }
+
+        .clear-wishlist-btn {
+            padding: 0.5rem 1.25rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border-light);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clear-wishlist-btn:hover {
+            border-color: var(--dusty-rose);
+            color: var(--dusty-rose);
+        }
+
+        /* Wishlist Grid */
+        .wishlist-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .wishlist-item {
+            background: var(--bg-white);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .wishlist-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .wishlist-image-container {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+        }
+
+        .wishlist-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .wishlist-item:hover .wishlist-image {
+            transform: scale(1.05);
+        }
+
+        .wishlist-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--dusty-rose);
+            color: white;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .wishlist-remove {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            z-index: 2;
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .wishlist-item:hover .wishlist-remove {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .wishlist-remove:hover {
+            background: var(--dusty-rose);
+            color: white;
+        }
+
+        .wishlist-info {
+            padding: 1.25rem;
+        }
+
+        .wishlist-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--sage);
+            margin-bottom: 0.5rem;
+        }
+
+        .wishlist-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--charcoal);
+        }
+
+        .wishlist-price {
+            font-weight: 600;
+            color: var(--dusty-rose);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .wishlist-actions-bottom {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .add-to-cart-wishlist {
+            flex: 1;
+            padding: 0.6rem;
+            background: var(--charcoal);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .add-to-cart-wishlist:hover {
+            background: var(--sage);
+        }
+
+        .view-details-btn {
+            width: 40px;
+            padding: 0.6rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border-light);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-details-btn:hover {
+            border-color: var(--sage);
+            color: var(--sage);
+        }
+
+        /* Empty Wishlist State */
+        .empty-wishlist {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--bg-white);
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+        }
+
+        .empty-wishlist-icon {
+            font-size: 4rem;
+            color: var(--misted-stone);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-wishlist h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--charcoal);
+        }
+
+        .empty-wishlist p {
+            color: var(--text-light);
+            margin-bottom: 2rem;
+        }
+
+        .shop-now-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--charcoal);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .shop-now-btn:hover {
+            background: var(--sage);
+            transform: translateY(-2px);
+        }
+
+        /* Recently Viewed Section */
+        .recently-viewed {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .recently-viewed h2 {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            text-align: center;
+        }
+
+        .recently-viewed-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .recent-card {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .recent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .recent-image {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .recent-info {
+            padding: 1rem;
+        }
+
+        .recent-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .recent-price {
+            color: var(--dusty-rose);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .wishlist-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .recently-viewed-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .wishlist-container {
+                padding: 2rem 1.5rem;
+            }
+            .wishlist-header h1 {
+                font-size: 2.2rem;
+            }
+            .wishlist-stats {
+                gap: 1rem;
+            }
+            .stat-card {
+                min-width: 120px;
+                padding: 0.75rem 1rem;
+            }
+            .wishlist-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            .recently-viewed-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .wishlist-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .wishlist-filters {
+                justify-content: center;
+            }
+            .clear-wishlist-btn {
+                justify-content: center;
+            }
+            .wishlist-remove {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .wishlist-grid {
+                grid-template-columns: 1fr;
+                max-width: 320px;
+                margin: 0 auto;
+            }
+            .recently-viewed-grid {
+                grid-template-columns: 1fr;
+                max-width: 320px;
+                margin: 0 auto;
+            }
+            .stat-card {
+                min-width: 100px;
+            }
+            .stat-number {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wishlist-container">
+    
+    <!-- Wishlist Header -->
+    <div class="wishlist-header editable-section" data-section="400">
+        <h1 class="editable-text editable-section no-drop-zone" data-section="401" data-text="400">My Wishlist</h1>
+        <p class="editable-text editable-section no-drop-zone" data-section="402" data-text="401">Save your favorite pieces and come back to them whenever you're ready</p>
+    </div>
+
+    <!-- Wishlist Stats -->
+    <div class="wishlist-stats editable-section" data-section="403">
+        <div class="stat-card">
+            <div class="stat-number" id="total-items">8</div>
+            <div class="stat-label editable-text editable-section no-drop-zone" data-section="404" data-text="402">Total Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="total-value">$2,456</div>
+            <div class="stat-label editable-text editable-section no-drop-zone" data-section="405" data-text="403">Total Value</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="on-sale-count">2</div>
+            <div class="stat-label editable-text editable-section no-drop-zone" data-section="406" data-text="404">On Sale</div>
+        </div>
+    </div>
+
+    <!-- Wishlist Actions -->
+    <div class="wishlist-actions">
+        <div class="wishlist-filters">
+            <button class="filter-chip active" data-filter="all">All Items</button>
+            <button class="filter-chip" data-filter="in-stock">In Stock</button>
+            <button class="filter-chip" data-filter="on-sale">On Sale</button>
+            <button class="filter-chip" data-filter="new">New Arrivals</button>
+        </div>
+        <button class="clear-wishlist-btn editable-text editable-section no-drop-zone" data-section="407" data-text="405">
+            <i class="fas fa-trash-alt"></i> Clear Wishlist
+        </button>
+    </div>
+
+    <!-- Wishlist Grid -->
+    <div class="wishlist-grid" id="wishlistGrid">
+        <!-- Wishlist Item 1 (Editable) -->
+        <div class="wishlist-item editable-section no-drop-zone" data-section="408" data-category="vases" data-stock="in-stock" data-sale="false" data-new="true">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image editable-image" data-image="60" src="https://images.pexels.com/photos/8557242/pexels-photo-8557242.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Sculptural ceramic vase">
+                <div class="wishlist-badge">NEW</div>
+                <button class="wishlist-remove" data-item-id="1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category editable-text editable-section no-drop-zone" data-section="409" data-text="406">VASES</div>
+                <div class="wishlist-name editable-text editable-section no-drop-zone" data-section="410" data-text="407">Sculptural ceramic vase</div>
+                <div class="wishlist-price editable-text editable-section no-drop-zone" data-section="411" data-text="408">$189</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="1">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="1">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 2 -->
+        <div class="wishlist-item" data-category="lighting" data-stock="in-stock" data-sale="true" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/10248444/pexels-photo-10248444.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Contemporary table lamp">
+                <div class="wishlist-badge">SALE</div>
+                <button class="wishlist-remove" data-item-id="2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">LIGHTING</div>
+                <div class="wishlist-name">Contemporary table lamp</div>
+                <div class="wishlist-price"><span style="text-decoration: line-through; font-size: 0.9rem;">$275</span> $220</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="2">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="2">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 3 -->
+        <div class="wishlist-item" data-category="textiles" data-stock="in-stock" data-sale="false" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/6707215/pexels-photo-6707215.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Linen throw pillow set">
+                <button class="wishlist-remove" data-item-id="3">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">TEXTILES</div>
+                <div class="wishlist-name">Linen throw pillow set</div>
+                <div class="wishlist-price">$124</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="3">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="3">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 4 -->
+        <div class="wishlist-item" data-category="wall-art" data-stock="in-stock" data-sale="false" data-new="true">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/5506791/pexels-photo-5506791.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Minimalist wall art frame">
+                <div class="wishlist-badge">NEW</div>
+                <button class="wishlist-remove" data-item-id="4">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">WALL ART</div>
+                <div class="wishlist-name">Minimalist wall art frame</div>
+                <div class="wishlist-price">$320</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="4">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="4">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 5 -->
+        <div class="wishlist-item" data-category="furniture" data-stock="low-stock" data-sale="false" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/1169104/pexels-photo-1169104.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Oak side table">
+                <div class="wishlist-badge" style="background: var(--sage);">LOW STOCK</div>
+                <button class="wishlist-remove" data-item-id="5">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">FURNITURE</div>
+                <div class="wishlist-name">Oak side table</div>
+                <div class="wishlist-price">$450</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="5">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="5">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 6 -->
+        <div class="wishlist-item" data-category="vases" data-stock="out-of-stock" data-sale="false" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/4145195/pexels-photo-4145195.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Hand-blown glass vessel">
+                <div class="wishlist-badge" style="background: var(--text-light);">OUT OF STOCK</div>
+                <button class="wishlist-remove" data-item-id="6">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">VASES</div>
+                <div class="wishlist-name">Hand-blown glass vessel</div>
+                <div class="wishlist-price">$234</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="6" disabled style="opacity: 0.5; cursor: not-allowed;">
+                        <i class="fas fa-bell"></i> Notify Me
+                    </button>
+                    <button class="view-details-btn" data-product-id="6">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 7 -->
+        <div class="wishlist-item" data-category="lighting" data-stock="in-stock" data-sale="true" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/949589/pexels-photo-949589.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Brass floor lamp">
+                <div class="wishlist-badge">SALE</div>
+                <button class="wishlist-remove" data-item-id="7">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">LIGHTING</div>
+                <div class="wishlist-name">Brass floor lamp</div>
+                <div class="wishlist-price"><span style="text-decoration: line-through; font-size: 0.9rem;">$589</span> $471</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="7">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="7">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 8 -->
+        <div class="wishlist-item" data-category="textiles" data-stock="in-stock" data-sale="false" data-new="false">
+            <div class="wishlist-image-container">
+                <img class="wishlist-image" src="https://images.pexels.com/photos/1691473/pexels-photo-1691473.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Wool blend throw blanket">
+                <button class="wishlist-remove" data-item-id="8">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">TEXTILES</div>
+                <div class="wishlist-name">Wool blend throw blanket</div>
+                <div class="wishlist-price">$198</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist" data-product-id="8">
+                        <i class="fas fa-shopping-bag"></i> Add to Cart
+                    </button>
+                    <button class="view-details-btn" data-product-id="8">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty Wishlist State (initially hidden) -->
+    <div class="empty-wishlist" id="emptyWishlist" style="display: none;">
+        <div class="empty-wishlist-icon">
+            <i class="far fa-heart"></i>
+        </div>
+        <h2>Your wishlist is empty</h2>
+        <p>Save your favorite items by clicking the heart icon on any product. They'll appear here for easy access.</p>
+        <a href="?page=shop" class="shop-now-btn">Start Shopping</a>
+    </div>
+
+    <!-- Recently Viewed Section -->
+    <div class="recently-viewed editable-section" data-section="412">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="413" data-text="409">Recently Viewed</h2>
+        <div class="recently-viewed-grid" id="recentlyViewedGrid">
+            <!-- Recently Viewed Item 1 -->
+            <a href="#" class="recent-card">
+                <img class="recent-image" src="https://images.pexels.com/photos/8557242/pexels-photo-8557242.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Sculptural ceramic vase">
+                <div class="recent-info">
+                    <div class="recent-name">Sculptural ceramic vase</div>
+                    <div class="recent-price">$189</div>
+                </div>
+            </a>
+            <!-- Recently Viewed Item 2 -->
+            <a href="#" class="recent-card">
+                <img class="recent-image" src="https://images.pexels.com/photos/10248444/pexels-photo-10248444.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Contemporary table lamp">
+                <div class="recent-info">
+                    <div class="recent-name">Contemporary table lamp</div>
+                    <div class="recent-price">$275</div>
+                </div>
+            </a>
+            <!-- Recently Viewed Item 3 -->
+            <a href="#" class="recent-card">
+                <img class="recent-image" src="https://images.pexels.com/photos/6707215/pexels-photo-6707215.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Linen throw pillow set">
+                <div class="recent-info">
+                    <div class="recent-name">Linen throw pillow set</div>
+                    <div class="recent-price">$124</div>
+                </div>
+            </a>
+            <!-- Recently Viewed Item 4 -->
+            <a href="#" class="recent-card">
+                <img class="recent-image" src="https://images.pexels.com/photos/5506791/pexels-photo-5506791.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop" alt="Minimalist wall art frame">
+                <div class="recent-info">
+                    <div class="recent-name">Minimalist wall art frame</div>
+                    <div class="recent-price">$320</div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Wishlist data
+    let wishlistItems = [
+        { id: 1, name: "Sculptural ceramic vase", price: 189, category: "vases", stock: "in-stock", sale: false, new: true, total: 189 },
+        { id: 2, name: "Contemporary table lamp", price: 220, originalPrice: 275, category: "lighting", stock: "in-stock", sale: true, new: false, total: 220 },
+        { id: 3, name: "Linen throw pillow set", price: 124, category: "textiles", stock: "in-stock", sale: false, new: false, total: 124 },
+        { id: 4, name: "Minimalist wall art frame", price: 320, category: "wall-art", stock: "in-stock", sale: false, new: true, total: 320 },
+        { id: 5, name: "Oak side table", price: 450, category: "furniture", stock: "low-stock", sale: false, new: false, total: 450 },
+        { id: 6, name: "Hand-blown glass vessel", price: 234, category: "vases", stock: "out-of-stock", sale: false, new: false, total: 234 },
+        { id: 7, name: "Brass floor lamp", price: 471, originalPrice: 589, category: "lighting", stock: "in-stock", sale: true, new: false, total: 471 },
+        { id: 8, name: "Wool blend throw blanket", price: 198, category: "textiles", stock: "in-stock", sale: false, new: false, total: 198 }
+    ];
+
+    let currentFilter = 'all';
+
+    // Update wishlist stats
+    function updateStats() {
+        const totalItems = wishlistItems.length;
+        const totalValue = wishlistItems.reduce((sum, item) => sum + item.total, 0);
+        const onSaleCount = wishlistItems.filter(item => item.sale).length;
+        
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('total-value').textContent = `$${totalValue.toLocaleString()}`;
+        document.getElementById('on-sale-count').textContent = onSaleCount;
+    }
+
+    // Filter wishlist items
+    function filterWishlist() {
+        const items = document.querySelectorAll('.wishlist-item');
+        let visibleCount = 0;
+        
+        items.forEach(item => {
+            const category = item.getAttribute('data-category');
+            const stock = item.getAttribute('data-stock');
+            const sale = item.getAttribute('data-sale') === 'true';
+            const isNew = item.getAttribute('data-new') === 'true';
+            
+            let show = false;
+            
+            switch(currentFilter) {
+                case 'all':
+                    show = true;
+                    break;
+                case 'in-stock':
+                    show = stock === 'in-stock' || stock === 'low-stock';
+                    break;
+                case 'on-sale':
+                    show = sale;
+                    break;
+                case 'new':
+                    show = isNew;
+                    break;
+            }
+            
+            if (show) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty state
+        const wishlistGrid = document.getElementById('wishlistGrid');
+        const emptyWishlist = document.getElementById('emptyWishlist');
+        
+        if (visibleCount === 0 && wishlistItems.length > 0) {
+            wishlistGrid.style.display = 'none';
+            emptyWishlist.style.display = 'block';
+            emptyWishlist.querySelector('h2').textContent = 'No items match your filter';
+            emptyWishlist.querySelector('p').textContent = 'Try changing your filter to see more items.';
+        } else if (wishlistItems.length === 0) {
+            wishlistGrid.style.display = 'none';
+            emptyWishlist.style.display = 'block';
+            emptyWishlist.querySelector('h2').textContent = 'Your wishlist is empty';
+            emptyWishlist.querySelector('p').textContent = 'Save your favorite items by clicking the heart icon on any product.';
+        } else {
+            wishlistGrid.style.display = 'grid';
+            emptyWishlist.style.display = 'none';
+        }
+    }
+
+    // Remove item from wishlist
+    function removeItem(itemId) {
+        const itemIndex = wishlistItems.findIndex(i => i.id === itemId);
+        if (itemIndex !== -1) {
+            wishlistItems.splice(itemIndex, 1);
+            const wishlistItem = document.querySelector(`.wishlist-item[data-item-id="${itemId}"]`);
+            if (wishlistItem) wishlistItem.remove();
+            updateStats();
+            filterWishlist();
+        }
+    }
+
+    // Clear entire wishlist
+    function clearWishlist() {
+        if (confirm('Are you sure you want to clear your entire wishlist? This action cannot be undone.')) {
+            wishlistItems = [];
+            const wishlistGrid = document.getElementById('wishlistGrid');
+            wishlistGrid.innerHTML = '';
+            updateStats();
+            filterWishlist();
+        }
+    }
+
+    // Initialize wishlist functionality
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.getAttribute('data-filter');
+            filterWishlist();
+        });
+    });
+
+    document.querySelectorAll('.wishlist-remove').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const itemId = parseInt(this.getAttribute('data-item-id'));
+            removeItem(itemId);
+        });
+    });
+
+    document.querySelector('.clear-wishlist-btn')?.addEventListener('click', clearWishlist);
+
+    document.querySelectorAll('.add-to-cart-wishlist').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const productId = this.getAttribute('data-product-id');
+            if (!this.disabled) {
+                alert(`Product ${productId} added to cart!`);
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Added';
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 1500);
+            } else {
+                alert('This product is currently out of stock. We will notify you when it becomes available.');
+            }
+        });
+    });
+
+    document.querySelectorAll('.view-details-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const productId = this.getAttribute('data-product-id');
+            window.location.href = `?page=product-details&id=${productId}`;
+        });
+    });
+
+    // Initialize
+    updateStats();
+    filterWishlist();
+</script>
+</body>
+</html>

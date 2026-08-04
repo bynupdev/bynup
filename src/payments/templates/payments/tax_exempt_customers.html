@@ -1,0 +1,240 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Tax Exempt Customers - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exempt-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .exempt-header {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(243, 156, 18, 0.2);
+    }
+
+    .customer-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 2px solid #eef2f6;
+        transition: all 0.3s ease;
+    }
+
+    .customer-card:hover {
+        border-color: #f39c12;
+        box-shadow: 0 10px 25px rgba(243, 156, 18, 0.1);
+    }
+
+    .customer-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .exemption-badge {
+        background: #fef5e7;
+        color: #f39c12;
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    .expiry-badge {
+        background: #fee9e7;
+        color: #e74c3c;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="exempt-container">
+        <!-- Header -->
+        <div class="exempt-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-2">Tax Exempt Customers</h1>
+                <p class="mb-0 opacity-75">Manage customers who are exempt from paying taxes</p>
+            </div>
+            <div>
+                <a href="{% url 'payments:tax_dashboard' page.subdomain %}" class="btn btn-light me-2">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+                <a href="{% url 'payments:tax_exempt_customer_create' page.subdomain %}" class="btn btn-light">
+                    <i class="fas fa-plus me-2"></i>Add Customer
+                </a>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="search" 
+                               placeholder="Search by email or company" 
+                               value="{{ filters.search|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                            <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Expired</option>
+                            <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending Review</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customers List -->
+        {% for customer in customers %}
+        <div class="customer-card">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="customer-avatar">
+                        {{ customer.email|first|upper }}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">{{ customer.email }}</h5>
+                            <div class="mb-2">
+                                {% if customer.company_name %}
+                                <span class="exemption-badge me-2">
+                                    <i class="fas fa-building me-1"></i>{{ customer.company_name }}
+                                </span>
+                                {% endif %}
+                                {% if customer.tax_id %}
+                                <span class="exemption-badge">
+                                    <i class="fas fa-id-card me-1"></i>{{ customer.tax_id }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-muted small">
+                                <span class="me-3">
+                                    <i class="fas fa-tag me-1"></i>{{ customer.get_exemption_reason_display|default:"No reason specified" }}
+                                </span>
+                                <span class="me-3">
+                                    <i class="fas fa-calendar-plus me-1"></i>Added: {{ customer.created_at|date:"M d, Y" }}
+                                </span>
+                                {% if customer.exempt_until %}
+                                <span class="expiry-badge">
+                                    <i class="fas fa-hourglass-end me-1"></i>Expires: {{ customer.exempt_until|date:"M d, Y" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge {% if customer.is_currently_exempt %}bg-success{% else %}bg-secondary{% endif %} me-2">
+                                {% if customer.is_currently_exempt %}Active{% else %}Inactive{% endif %}
+                            </span>
+                            <div class="btn-group">
+                                <a href="{% url 'payments:tax_exempt_customer_edit' page.subdomain customer.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteCustomer({{ customer.id }}, '{{ customer.email }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <i class="fas fa-users fa-4x text-muted mb-3"></i>
+            <h5 class="text-muted">No Exempt Customers</h5>
+            <p class="text-muted">Add customers who should be exempt from paying taxes</p>
+            <a href="{% url 'payments:tax_exempt_customer_create' page.subdomain %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add First Customer
+            </a>
+        </div>
+        {% endfor %}
+
+        <!-- Pagination -->
+        {% if customers.has_other_pages %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if customers.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customers.previous_page_number }}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}">
+                        Previous
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for i in customers.paginator.page_range %}
+                {% if customers.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ i }}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}">{{ i }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if customers.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customers.next_page_number }}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}">
+                        Next
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function deleteCustomer(customerId, email) {
+    if (confirm(`Remove ${email} from exemption list?`)) {
+        fetch(`/payments/tax/{{ page.subdomain }}/exempt/${customerId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

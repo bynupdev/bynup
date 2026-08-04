@@ -1,0 +1,250 @@
+<!-- payments/templates/payments/gateway_config_base.html -->
+{% extends 'payments/base_payments.html' %}
+
+{% block payment_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="{{ gateway_icon }} me-2"></i>Configure {{ gateway_name }}
+                </h5>
+                <div>
+                    {% if gateway.is_active %}
+                        <span class="badge bg-success me-2">Active</span>
+                    {% endif %}
+                    {% if gateway.is_test_mode %}
+                        <span class="badge bg-warning">Test Mode</span>
+                    {% else %}
+                        <span class="badge bg-success">Live Mode</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post" id="gatewayConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Mode Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_test_mode" name="is_test_mode"
+                                       {% if gateway.is_test_mode %}checked{% endif %}>
+                                <label class="form-check-label" for="is_test_mode">
+                                    <strong>Test Mode</strong>
+                                    <small class="text-muted d-block">
+                                        Use test credentials. Disable when ready for real payments.
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Credentials Sections -->
+                    {% include "payments/includes/credentials_section.html" with mode="test" %}
+                    {% include "payments/includes/credentials_section.html" with mode="live" %}
+                    
+                    <!-- Currency Configuration (Universal) -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">
+                        <i class="fas fa-exchange-alt me-2"></i>Currency Configuration
+                    </h6>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="target_currency" class="form-label">Target Currency</label>
+                            <select class="form-select" id="target_currency" name="target_currency">
+                                {% for code, name in currencies.items %}
+                                <option value="{{ code }}" {% if gateway.target_currency == code %}selected{% endif %}>
+                                    {{ code }} - {{ name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Currency to convert to before sending to {{ gateway_name }}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="auto_convert" name="auto_convert"
+                                       {% if gateway.auto_convert %}checked{% endif %}>
+                                <label class="form-check-label" for="auto_convert">
+                                    <strong>Auto-Convert Currency</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">
+                                Automatically convert {{ page.currency|default:'USD' }} to target currency
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Supported Currencies Info -->
+                    <div class="alert alert-info" id="currencySupportInfo">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="supportMessage">Loading supported currencies...</span>
+                    </div>
+                    
+                    <!-- Test Conversion -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6><i class="fas fa-calculator me-2"></i>Test Currency Conversion</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="number" class="form-control" id="testAmount" value="100" min="0.01" step="0.01">
+                                </div>
+                                <div class="col-md-2 text-center pt-2">
+                                    <span id="testFromCurrency">{{ page.currency|default:'USD' }}</span>
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                    <span id="testToCurrency">USD</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-outline-primary" id="testConversionBtn">
+                                        <i class="fas fa-sync-alt me-1"></i>Test Rate
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <div id="testResult" class="pt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activation Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                       {% if gateway.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <strong>Activate {{ gateway_name }} Payments</strong>
+                                    <small class="text-muted d-block">
+                                        Enable to accept payments through {{ gateway_name }} on your website
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'payments:manage_gateways' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currencySelect = document.getElementById('target_currency');
+    const testFromCurrency = document.getElementById('testFromCurrency');
+    const testToCurrency = document.getElementById('testToCurrency');
+    const testAmount = document.getElementById('testAmount');
+    const testResult = document.getElementById('testResult');
+    const supportMessage = document.getElementById('supportMessage');
+    const gatewayType = '{{ gateway.gateway_type }}';
+    
+    // Update display when currency changes
+    currencySelect.addEventListener('change', function() {
+        testToCurrency.textContent = this.value;
+        updateSupportedCurrencies(this.value);
+    });
+    
+    // Test conversion
+    document.getElementById('testConversionBtn').addEventListener('click', async function() {
+        const amount = testAmount.value;
+        const fromCurrency = testFromCurrency.textContent;
+        const toCurrency = currencySelect.value;
+        
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Testing...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch('{% url "payments:test_currency_conversion" page.subdomain %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    from_currency: fromCurrency,
+                    to_currency: toCurrency,
+                    gateway_type: gatewayType
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                testResult.innerHTML = `
+                    <span class="text-success">
+                        Rate: ${data.rate.toFixed(4)}<br>
+                        ${data.converted_amount.toFixed(2)} ${toCurrency}
+                    </span>
+                `;
+            } else {
+                testResult.innerHTML = `<span class="text-danger">${data.error}</span>`;
+            }
+        } catch (error) {
+            testResult.innerHTML = `<span class="text-danger">Error: ${error.message}</span>`;
+        } finally {
+            this.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Test Rate';
+            this.disabled = false;
+        }
+    });
+    
+    // Update supported currencies info
+    async function updateSupportedCurrencies(currency) {
+        try {
+            const response = await fetch('{% url "payments:check_currency_support" page.subdomain %}?' + new URLSearchParams({
+                gateway: gatewayType,
+                currency: currency
+            }));
+            
+            const data = await response.json();
+            
+            if (data.supported) {
+                supportMessage.innerHTML = `
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    ${currency} is supported by ${gatewayType}. No conversion needed if store currency matches.
+                `;
+            } else {
+                supportMessage.innerHTML = `
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    ${currency} is not directly supported by ${gatewayType}. 
+                    Recommended currency: ${data.suggested || 'USD'}. 
+                    Auto-conversion will be applied.
+                `;
+            }
+        } catch (error) {
+            console.error('Failed to check currency support:', error);
+        }
+    }
+    
+    // Initialize
+    updateSupportedCurrencies(currencySelect.value);
+});
+</script>
+
+<!-- builder/templates/builder/base.html -->
+<script>
+// Global CSRF token function
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
+}
+</script>
+{% endblock %}

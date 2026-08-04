@@ -1,0 +1,406 @@
+<!-- payments/templates/payments/social_media_success.html -->
+{% extends 'builder/base.html' %}
+{% load currency_filters %}
+
+{% block title %}Order Submitted - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Success Header -->
+            <div class="text-center mb-5">
+                <div class="mb-4">
+                    <span class="bg-success text-white rounded-circle p-3 d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-check fa-3x"></i>
+                   </span>
+                </div>
+                <h1 class="h2 text-success">Order Submitted Successfully!</h1>
+                <p class="lead">Order #{{ order_number }}</p>
+                <p class="text-muted">Please send your order details to us via your preferred platform below.</p>
+            </div>
+            
+            <!-- Customer Information Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2"></i>Your Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-user-circle me-2 text-primary"></i>Contact Details
+                                </h6>
+                                <p class="mb-1"><strong>Name:</strong> {{ order.customer_name }}</p>
+                                <p class="mb-1"><strong>Email:</strong> {{ order.customer_email }}</p>
+                                <p class="mb-0"><strong>Phone:</strong> {{ order.phone }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>Delivery Address
+                                </h6>
+                                <p class="mb-1"><strong>Address:</strong> {{ order.delivery_address|default:order.customer_address }}</p>
+                                <p class="mb-1">
+                                    <strong>City/State/ZIP:</strong> 
+                                    {{ order.delivery_city|default:order.customer_city }}, 
+                                    {{ order.delivery_state|default:order.customer_state }} 
+                                    {{ order.delivery_zip|default:order.customer_zip }}
+                                </p>
+                                <p class="mb-0"><strong>Country:</strong> {{ order.delivery_country|default:order.customer_country }}</p>
+                                {% if order.delivery_notes %}
+                                <p class="mb-0 mt-2 text-muted small">
+                                    <i class="fas fa-note-sticky me-1"></i>
+                                    <strong>Notes:</strong> {{ order.delivery_notes }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shipping Information Card - NOW WITH SHIPPING COST -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-truck me-2"></i>Shipping Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-shipping-fast me-2 text-primary"></i>Shipping Method
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>{{ order.shipping_method|default:"Standard Shipping" }}</strong>
+                                </p>
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Est. delivery: {{ order.shipping_delivery_estimate|default:"3-7 business days" }}
+                                </p>
+                                {% if order.shipping_carrier %}
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-building me-1"></i>
+                                    Carrier: {{ order.shipping_carrier }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100 text-center">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-dollar-sign me-2 text-success"></i>Shipping Cost
+                                </h6>
+                                <p class="display-6 text-success fw-bold mb-0">
+                                    {{ order.shipping_amount|currency:page }}
+                                </p>
+                                <p class="text-muted small mb-0 mt-2">
+                                    * Shipping cost is included in total
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-shopping-bag me-2"></i>Order Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>
+                                        {{ item.product_title }}
+                                        {% if item.selected_color or item.selected_size %}
+                                            <br><small class="text-muted">
+                                                {% if item.selected_color %}Color: {{ item.selected_color }}{% endif %}
+                                                {% if item.selected_color and item.selected_size %} | {% endif %}
+                                                {% if item.selected_size %}Size: {{ item.selected_size }}{% endif %}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">{{ item.product_price|currency:page }}</td>
+                                    <td class="text-end">{{ item.total_price|currency:page }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="border-top">
+                                    <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end">{{ order.subtotal|currency:page }}</td>
+                                </tr>
+                                {% if order.shipping_amount and order.shipping_amount > 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Shipping:</strong></td>
+                                    <td class="text-end fw-bold text-success">{{ order.shipping_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if order.tax_amount and order.tax_amount > 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Tax:</strong></td>
+                                    <td class="text-end">{{ order.tax_amount|currency:page}}</td>
+                                </tr>
+                                {% endif %}
+                                {% if order.discount_amount and order.discount_amount > 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Discount:</strong></td>
+                                    <td class="text-end text-danger">-{{ order.discount_amount|currency:page}}</td>
+                                </tr>
+                                {% endif %}
+                                <tr class="fw-bold border-top">
+                                    <td colspan="3" class="text-end fs-5">Total:</td>
+                                    <td class="text-end text-success fs-4">{{ order.total_amount|currency:page }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Payment Method Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Payment Method
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fab fa-whatsapp fa-2x text-success"></i>
+                            <i class="fab fa-facebook-messenger fa-2x text-primary ms-2"></i>
+                            <i class="fab fa-instagram fa-2x text-danger ms-2"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Payment via Social Media</h6>
+                            <p class="text-muted small mb-0">You will receive payment instructions via your chosen social media platform</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Send via Social Media -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-paper-plane me-2"></i>Send Your Order
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Click on your preferred platform to send us your order details. The message is pre-filled with all your information.</p>
+                    
+                    <div class="row g-3">
+                        {% if platform_messages and platform_messages.whatsapp %}
+                        <div class="col-md-6">
+                            <a href="{{ platform_messages.whatsapp.link }}" target="_blank" class="text-decoration-none">
+                                <div class="card h-100 border-success hover-shadow">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-whatsapp fa-3x text-success mb-3"></i>
+                                        <h5>WhatsApp</h5>
+                                        <p class="small text-muted">{{ platform_messages.whatsapp.business_name|default:"Send via WhatsApp" }}</p>
+                                        <span class="btn btn-success btn-sm">Send Order</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if platform_messages and platform_messages.facebook %}
+                        <div class="col-md-6">
+                            <a href="{{ platform_messages.facebook.link }}" target="_blank" class="text-decoration-none">
+                                <div class="card h-100 border-primary hover-shadow">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-facebook-messenger fa-3x text-primary mb-3"></i>
+                                        <h5>Messenger</h5>
+                                        <p class="small text-muted">Send via Facebook Messenger</p>
+                                        <span class="btn btn-primary btn-sm">Send Order</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if platform_messages and platform_messages.instagram %}
+                        <div class="col-md-6">
+                            <a href="{{ platform_messages.instagram.link }}" target="_blank" class="text-decoration-none">
+                                <div class="card h-100 border-danger hover-shadow">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-instagram fa-3x text-danger mb-3"></i>
+                                        <h5>Instagram</h5>
+                                        <p class="small text-muted">DM @{{ platform_messages.instagram.username }}</p>
+                                        <span class="btn btn-danger btn-sm">Copy & Send</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if platform_messages and platform_messages.telegram %}
+                        <div class="col-md-6">
+                            <a href="{{ platform_messages.telegram.link }}" target="_blank" class="text-decoration-none">
+                                <div class="card h-100 border-info hover-shadow">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-telegram fa-3x text-info mb-3"></i>
+                                        <h5>Telegram</h5>
+                                        <p class="small text-muted">@{{ platform_messages.telegram.username }}</p>
+                                        <span class="btn btn-info btn-sm">Send Order</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if platform_messages and platform_messages.x %}
+                        <div class="col-md-6">
+                            <a href="{{ platform_messages.x.link }}" target="_blank" class="text-decoration-none">
+                                <div class="card h-100 border-dark hover-shadow">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-x-twitter fa-3x text-dark mb-3"></i>
+                                        <h5>X.com</h5>
+                                        <p class="small text-muted">@{{ platform_messages.x.username }}</p>
+                                        <span class="btn btn-dark btn-sm">Send DM</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not platform_messages %}
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No social media platforms are configured for this store. Please contact the store owner.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message Preview -->
+            {% if platform_messages %}
+                {% for platform, message_data in platform_messages.items %}
+                    {% if forloop.first %}
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-envelope me-2"></i>Message Preview ({{ platform|title }})
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-light p-3 rounded" style="white-space: pre-wrap; font-family: monospace; font-size: 12px;">
+                                {{ message_data.message }}
+                            </div>
+                            <p class="text-muted small mt-2">
+                                <i class="fas fa-info-circle"></i> This message will be pre-filled when you click the platform buttons above.
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Next Steps -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>What's Next?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ol class="mb-3 mb-md-0">
+                                <li class="mb-2">Send your order using one of the platforms above</li>
+                                <li class="mb-2">The store will confirm receipt and provide payment instructions</li>
+                                <li class="mb-2">Complete payment as instructed</li>
+                                <li>Your order will be processed for delivery</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info small">
+                                <i class="fas fa-truck me-2"></i>
+                                <strong>Shipping Timeline:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li>Order processing: 1-2 business days</li>
+                                    <li>Shipping: {{ order.shipping_delivery_estimate|default:"3-7" }} business days</li>
+                                    <li>Tracking will be provided via your chosen platform</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="text-center mt-4">
+                <a href="{{ page.get_domain_url }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Back to Store
+                </a>
+                <button class="btn btn-outline-secondary ms-2" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Print Order
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-shadow {
+    transition: all 0.3s ease;
+}
+.hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+.table th, .table td {
+    vertical-align: middle;
+}
+.card {
+    border-radius: 12px;
+    overflow: hidden;
+}
+.border-success {
+    border-color: #25D366 !important;
+}
+.border-primary {
+    border-color: #0084FF !important;
+}
+.border-danger {
+    border-color: #E4405F !important;
+}
+.border-info {
+    border-color: #26A5E4 !important;
+}
+.border-dark {
+    border-color: #000000 !important;
+}
+.display-6 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

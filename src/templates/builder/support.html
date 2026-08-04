@@ -1,0 +1,453 @@
+<!-- templates/support/support.html -->
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Support Center - bynUp{% endblock %}
+
+{% block extra_css %}
+<style>
+    .support-hero {
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 60px 0;
+        border-radius: 0 0 30px 30px;
+        margin-bottom: 40px;
+    }
+    
+    .support-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        height: 100%;
+        border: 1px solid #e1e5eb;
+        transition: all 0.3s ease;
+    }
+    
+    .support-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    
+    .support-card.premium {
+        border: 2px solid #4361ee;
+        background: linear-gradient(white, #f8faff);
+    }
+    
+    .support-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        margin-bottom: 20px;
+    }
+    
+    .icon-email { background: #EA4335; color: white; }
+    .icon-chat { background: #25D366; color: white; }
+    .icon-phone { background: #4361ee; color: white; }
+    .icon-priority { background: #f72585; color: white; }
+    .icon-faq { background: #10b981; color: white; }
+    .icon-knowledge { background: #8b5cf6; color: white; }
+    
+    .response-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+    
+    .badge-available {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-upgrade {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-unavailable {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .plan-badge {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    
+    .plan-free { background: #e2e8f0; color: #4a5568; }
+    .plan-pro { background: #4361ee; color: white; }
+    .plan-business { background: #3a0ca3; color: white; }
+    .plan-agency { background: #f72585; color: white; }
+    
+    .faq-item {
+        border-bottom: 1px solid #e1e5eb;
+        padding: 20px 0;
+    }
+    
+    .faq-item:last-child {
+        border-bottom: none;
+    }
+    
+    .faq-question {
+        font-weight: 600;
+        font-size: 18px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .faq-question:hover {
+        color: #4361ee;
+    }
+    
+    .faq-answer {
+        color: #6c757d;
+        line-height: 1.6;
+        display: none;
+        padding-top: 10px;
+    }
+    
+    .faq-answer.active {
+        display: block;
+    }
+    
+    .contact-method {
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .upgrade-cta {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        margin-top: 40px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<div class="support-hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4 fw-bold mb-3">How can we help you?</h1>
+                <p class="lead mb-4 opacity-90">Get the support you need, when you need it</p>
+                
+                {% if user.is_authenticated %}
+                <div class="plan-badge plan-{{ current_plan }}">
+                    <i class="fas fa-crown me-2"></i>
+                    {{ plan_name }} Plan
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+    
+    {% if user.is_authenticated %}
+    <!-- Current Plan Support Overview -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="alert alert-info border-0 rounded-4 p-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-info-circle fa-2x"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-2">Your Support Level: {{ plan_name }}</h5>
+                        <p class="mb-0">
+                            {% if current_plan == 'free' %}
+                                You have access to email support with 48-hour response time and our knowledge base.
+                                <a href="{% url 'payments:pricing' %}" class="fw-bold text-primary">Upgrade your plan</a> for faster support.
+                            {% elif current_plan == 'pro' %}
+                                You have priority email support with 24-hour response time, plus access to our knowledge base.
+                            {% elif current_plan == 'business' %}
+                                You have priority chat support with 4-hour response time, plus all email and knowledge base access.
+                            {% elif current_plan == 'agency' %}
+                                You have 24/7 phone and chat support with dedicated account manager, plus all other support channels.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Support Options -->
+    <h3 class="fw-bold mb-4 text-center">Choose Your Support Channel</h3>
+    
+    <div class="row g-4 mb-5">
+        
+        <!-- Email Support -->
+        <div class="col-md-6 col-lg-4">
+            <div class="support-card">
+                <div class="support-icon icon-email">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Email Support</h5>
+                <p class="text-muted mb-3">Send us an email and we'll get back to you</p>
+                
+                {% if email_available %}
+                    <div class="contact-method">
+                        <strong>Response Time:</strong> {{ email_response_time }}<br>
+                        <strong>Email:</strong> bynupteam@protonmail.com
+                    </div>
+                    <a href="mailto:bynupteam@protonmail.com" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-paper-plane me-2"></i>Send Email
+                    </a>
+                    <span class="response-badge badge-available d-block text-center mt-2">
+                        <i class="fas fa-check-circle me-1"></i>Available on your plan
+                    </span>
+                {% else %}
+                    <div class="contact-method opacity-50">
+                        <strong>Available on:</strong> Pro plan and above
+                    </div>
+                    <span class="response-badge badge-upgrade d-block text-center">
+                        <i class="fas fa-lock me-1"></i>Upgrade to access
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Chat Support -->
+        <div class="col-md-6 col-lg-4">
+            <div class="support-card {% if chat_available %}premium{% endif %}">
+                <div class="support-icon icon-chat">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Live Chat</h5>
+                <p class="text-muted mb-3">Real-time chat with our support team</p>
+                
+                {% if chat_available %}
+                    <div class="contact-method">
+                        <strong>Response Time:</strong> {{ chat_response_time }}<br>
+                        <strong>Hours:</strong> {{ chat_hours }}
+                    </div>
+                    <button class="btn btn-primary w-100">
+                        <a style="text-decoration: none; color: white;" href="https://wa.me/+237680044151"><i class="fas fa-comment me-2"></i> Start Chat</a>
+                    </button>
+                    <span class="response-badge badge-available d-block text-center mt-2">
+                        <i class="fas fa-check-circle me-1"></i>Available on your plan
+                    </span>
+                {% else %}
+                    <div class="contact-method opacity-50">
+                        <strong>Available on:</strong> Business plan and above
+                    </div>
+                    <span class="response-badge badge-upgrade d-block text-center">
+                        <i class="fas fa-lock me-1"></i>Upgrade to Business
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Phone Support -->
+        <div class="col-md-6 col-lg-4">
+            <div class="support-card {% if phone_available %}premium{% endif %}">
+                <div class="support-icon icon-phone">
+                    <i class="fas fa-phone-alt"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Phone Support</h5>
+                <p class="text-muted mb-3">Speak directly with our support specialists</p>
+                
+                {% if phone_available %}
+                    <div class="contact-method">
+                        <strong>Hours:</strong> 24/7<br>
+                        <strong>Phone:</strong> +237680044151
+                    </div>
+                    <a href="tel:+18881234567" class="btn btn-primary w-100">
+                        <i class="fas fa-phone me-2"></i>Call Now
+                    </a>
+                    <span class="response-badge badge-available d-block text-center mt-2">
+                        <i class="fas fa-check-circle me-1"></i>Available on your plan
+                    </span>
+                {% else %}
+                    <div class="contact-method opacity-50">
+                        <strong>Available on:</strong> Agency plan only
+                    </div>
+                    <span class="response-badge badge-upgrade d-block text-center">
+                        <i class="fas fa-lock me-1"></i>Upgrade to Agency
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Priority Support -->
+        <!-- <div class="col-md-6 col-lg-3">
+            <div class="support-card {% if priority_available %}premium{% endif %}">
+                <div class="support-icon icon-priority">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Priority Support</h5>
+                <p class="text-muted mb-3">Skip the queue with priority handling</p>
+                
+                {% if priority_available %}
+                    <div class="contact-method">
+                        <strong>Response Time:</strong> {{ priority_response_time }}<br>
+                        <strong>Dedicated Queue:</strong> Yes
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="openPrioritySupport()">
+                        <i class="fas fa-ticket-alt me-2"></i>Create Priority Ticket
+                    </button>
+                    <span class="response-badge badge-available d-block text-center mt-2">
+                        <i class="fas fa-check-circle me-1"></i>Available on your plan
+                    </span>
+                {% else %}
+                    <div class="contact-method opacity-50">
+                        <strong>Available on:</strong> Pro plan and above
+                    </div>
+                    <span class="response-badge badge-upgrade d-block text-center">
+                        <i class="fas fa-lock me-1"></i>Upgrade to Pro
+                    </span>
+                {% endif %}
+            </div>
+        </div> -->
+    </div>
+    
+    <!-- Knowledge Base & FAQ -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="support-card">
+                <div class="support-icon icon-knowledge">
+                    <i class="fas fa-book"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Knowledge Base</h5>
+                <p class="text-muted mb-3">Browse our extensive library of guides and tutorials</p>
+                <ul class="list-unstyled mb-3">
+                    <li class="mb-2"><i class="fas fa-chevron-right text-primary me-2"></i>Getting Started Guide</li>
+                    <li class="mb-2"><i class="fas fa-chevron-right text-primary me-2"></i>Template Customization</li>
+                    <li class="mb-2"><i class="fas fa-chevron-right text-primary me-2"></i>E-commerce Setup</li>
+                    <li class="mb-2"><i class="fas fa-chevron-right text-primary me-2"></i>SEO Best Practices</li>
+                </ul>
+                <a href="#" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt me-2"></i>Browse Knowledge Base
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="support-card">
+                <div class="support-icon icon-faq">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Frequently Asked Questions</h5>
+                
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            How do I connect my custom domain?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Go to your dashboard, select your website, and click "Domains". Follow the instructions to add your custom domain and update your DNS settings.
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            How do I upgrade my plan?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Visit our <a href="{% url 'payments:pricing' %}">pricing page</a>, select your desired plan, and follow the payment instructions. Your upgrade will be activated within 24 hours.
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            Can I cancel my subscription anytime?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Yes! You can cancel your subscription at any time from your account settings. Your plan will remain active until the end of your billing period.
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            What payment methods do you accept?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            We accept bank transfers, mobile money, cash payments, and all major credit cards. Contact us via WhatsApp or Telegram for payment details.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upgrade CTA (only show for free/pro users) -->
+    {% if current_plan == 'free' or current_plan == 'pro' %}
+    <div class="upgrade-cta">
+        <h2 class="fw-bold mb-3">Need Faster Support?</h2>
+        <p class="lead mb-4 opacity-90">Upgrade to a higher plan for priority support and faster response times</p>
+        <a href="{% url 'payments:pricing' %}" class="btn btn-light btn-lg px-5">
+            <i class="fas fa-arrow-up me-2"></i>View Plans
+        </a>
+    </div>
+    {% endif %}
+    
+    <!-- Still Need Help -->
+    <div class="text-center mt-5 pt-4">
+        <p class="text-muted mb-2">Can't find what you're looking for?</p>
+        <h5>We're here to help!</h5>
+        
+        <div class="d-flex justify-content-center gap-3 mt-3">
+            <a href="https://wa.me/+237680044151" class="btn btn-success" target="_blank">
+                <i class="fab fa-whatsapp me-2"></i>WhatsApp
+            </a>
+            <a href="https://t.me/MJerase" class="btn btn-info text-white" target="_blank">
+                <i class="fab fa-telegram-plane me-2"></i>Telegram
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleFaq(element) {
+    const answer = element.nextElementSibling;
+    const icon = element.querySelector('i');
+    
+    answer.classList.toggle('active');
+    
+    if (answer.classList.contains('active')) {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    } else {
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
+}
+
+function openChat() {
+    // Integrate with your chat system (Tawk.to, Intercom, etc.)
+    alert('Chat support will open. This would integrate with Tawk.to or Intercom.');
+    // Example: Tawk_API.toggle();
+}
+
+function openPrioritySupport() {
+    window.location.href = 'mailto:mjerase92@gmail.com?subject=Priority Support Request';
+}
+</script>
+{% endblock %}

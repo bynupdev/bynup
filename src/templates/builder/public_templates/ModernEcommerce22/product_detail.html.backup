@@ -1,0 +1,1478 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.title|default:"Product Details" }} | {{ page.brand_name }} - Precision Gaming Equipment</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --teal-primary: #02ABB0;
+            --teal-deep: #035A69;
+            --teal-darker: #024E5B;
+            --cyan-accent: #01A4BD;
+            --gray-soft: #DCDADE;
+            --bg-dark: #0A0F12;
+            --bg-card: rgba(16, 24, 28, 0.85);
+            --text-light: #F0F2F4;
+            --text-muted: #9CA3AF;
+            --border-subtle: rgba(220, 218, 222, 0.12);
+            --glow-teal: rgba(2, 171, 176, 0.3);
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --success: #28a745;
+        }
+        {% generate_color_variables %}
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow-x: hidden;
+            padding-top: 80px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            padding: 20px 0;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .breadcrumb a {
+            color: var(--teal-primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--cyan-accent);
+        }
+
+        .breadcrumb span {
+            margin: 0 8px;
+            color: var(--text-muted);
+        }
+
+        /* Product Details Layout */
+        .product-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 80px;
+        }
+
+        /* Product Gallery */
+        .product-gallery {
+            position: sticky;
+            top: 100px;
+        }
+
+        .main-image-container {
+            background: var(--bg-card);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            margin-bottom: 20px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .thumbnail {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            aspect-ratio: 1 / 1;
+        }
+
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumbnail.active {
+            border-color: var(--teal-primary);
+            transform: scale(1.02);
+        }
+
+        .thumbnail:hover {
+            border-color: var(--cyan-accent);
+            transform: scale(1.02);
+        }
+
+        /* Product Info */
+        .product-info {
+            padding: 20px 0;
+        }
+
+        .product-category {
+            color: var(--teal-primary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .product-title {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        /* Rating */
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stars {
+            display: flex;
+            gap: 4px;
+            color: var(--warning);
+        }
+
+        .stars i {
+            font-size: 1rem;
+        }
+
+        .rating-value {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .review-count {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Price */
+        .product-price {
+            margin-bottom: 20px;
+        }
+
+        .current-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--teal-primary);
+        }
+
+        .original-price {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            text-decoration: line-through;
+            margin-left: 12px;
+        }
+
+        .discount-badge {
+            display: inline-block;
+            background: var(--danger);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        /* Description */
+        .product-description {
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        /* Variants */
+        .variant-section {
+            margin-bottom: 30px;
+        }
+
+        .variant-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-light);
+        }
+
+        .color-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .color-option:hover {
+            transform: scale(1.05);
+        }
+
+        .color-option.active {
+            border-color: var(--teal-primary);
+            box-shadow: 0 0 0 2px var(--glow-teal);
+        }
+
+        .size-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .size-option {
+            padding: 10px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .size-option:hover {
+            border-color: var(--teal-primary);
+            color: var(--teal-primary);
+        }
+
+        .size-option.active {
+            background: linear-gradient(135deg, var(--teal-primary), var(--cyan-accent));
+            border-color: transparent;
+            color: var(--bg-dark);
+            font-weight: 600;
+        }
+
+        /* Quantity */
+        .quantity-section {
+            margin-bottom: 30px;
+        }
+
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 50px;
+            width: fit-content;
+            padding: 5px;
+        }
+
+        .qty-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(220, 218, 222, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-light);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .qty-btn:hover {
+            background: var(--teal-primary);
+            color: var(--bg-dark);
+        }
+
+        .quantity-input {
+            width: 60px;
+            text-align: center;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .buy-now-btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--teal-primary), var(--cyan-accent));
+            color: var(--bg-dark);
+            border: none;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .buy-now-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--glow-teal);
+        }
+
+        .add-to-cart-btn {
+            flex: 1;
+            background: transparent;
+            border: 2px solid var(--teal-primary);
+            color: var(--teal-primary);
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .add-to-cart-btn:hover {
+            background: var(--teal-primary);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+        }
+
+        .wishlist-btn {
+            width: 60px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 50px;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wishlist-btn:hover {
+            border-color: var(--teal-primary);
+            color: var(--teal-primary);
+        }
+
+        /* Product Meta */
+        .product-meta {
+            padding-top: 20px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .meta-item i {
+            width: 20px;
+            color: var(--teal-primary);
+        }
+
+        /* Tabs Section */
+        .tabs-section {
+            margin-bottom: 80px;
+        }
+
+        .tab-headers {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 28px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: var(--teal-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--teal-primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--teal-primary), var(--cyan-accent));
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Description Content */
+        .description-content {
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .description-content p {
+            margin-bottom: 16px;
+        }
+
+        /* Specifications */
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .spec-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .spec-label {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .spec-value {
+            color: var(--text-muted);
+        }
+
+        /* Reviews Section */
+        .reviews-summary {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            flex-wrap: wrap;
+        }
+
+        .rating-summary {
+            text-align: center;
+        }
+
+        .average-rating {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--teal-primary);
+        }
+
+        .rating-stars {
+            margin: 10px 0;
+        }
+
+        .rating-bars {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .rating-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .rating-star-label {
+            width: 60px;
+            font-size: 0.9rem;
+        }
+
+        .rating-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(220, 218, 222, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .rating-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--teal-primary), var(--cyan-accent));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .rating-percent {
+            width: 50px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Review Form */
+        .review-form {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+
+        .review-form h3 {
+            margin-bottom: 20px;
+        }
+
+        .star-rating-input {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .star-rating-input input {
+            display: none;
+        }
+
+        .star-rating-input label {
+            font-size: 1.8rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .star-rating-input label:hover,
+        .star-rating-input label:hover ~ label,
+        .star-rating-input input:checked ~ label {
+            color: var(--warning);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(220, 218, 222, 0.1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--teal-primary);
+            box-shadow: 0 0 0 3px var(--glow-teal);
+        }
+
+        .submit-review-btn {
+            background: linear-gradient(135deg, var(--teal-primary), var(--cyan-accent));
+            color: var(--bg-dark);
+            border: none;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-review-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--glow-teal);
+        }
+
+        /* Customer Reviews List */
+        .reviews-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .review-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-subtle);
+            transition: all 0.3s ease;
+        }
+
+        .review-card:hover {
+            border-color: var(--teal-primary);
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .reviewer-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .reviewer-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--teal-primary), var(--cyan-accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .reviewer-name {
+            font-weight: 600;
+        }
+
+        .review-date {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .review-rating {
+            margin-bottom: 12px;
+        }
+
+        .review-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .review-comment {
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        /* Related Products */
+        .related-products {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .related-products h2 {
+            font-size: 2rem;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .related-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-subtle);
+            text-decoration: none;
+            display: block;
+        }
+
+        .related-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--teal-primary);
+            box-shadow: 0 10px 30px rgba(2, 171, 176, 0.2);
+        }
+
+        .related-img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .related-info {
+            padding: 16px;
+        }
+
+        .related-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        .related-price {
+            color: var(--teal-primary);
+            font-weight: 700;
+        }
+
+        .empty-related {
+            text-align: center;
+            padding: 60px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border-subtle);
+            grid-column: 1 / -1;
+        }
+
+        .empty-related i {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .empty-related p {
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .product-details {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .product-gallery {
+                position: static;
+            }
+            .related-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .specs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 70px;
+            }
+            .container {
+                padding: 0 20px;
+            }
+            .product-title {
+                font-size: 1.8rem;
+            }
+            .related-grid {
+                grid-template-columns: 1fr;
+                max-width: 350px;
+                margin: 0 auto;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .wishlist-btn {
+                width: 100%;
+                padding: 16px;
+            }
+            .thumbnail-grid {
+                gap: 10px;
+            }
+        }
+
+        {% generate_section_styles style_customizations 64 100 %}
+        {% generate_background_images background_images 64 100 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+{% include 'builder/public_templates/ModernEcommerce22/snippets/header1.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == '64' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<!-- Breadcrumb -->
+<div class="container">
+    <div class="breadcrumb" id="section-64">
+        <a href="?page=home" id="section-65">{{ text_contents.49|default:"Home" }}</a>
+        <span>/</span>
+        <a href="?page=products" id="section-66">{{ text_contents.50|default:"Shop" }}</a>
+        <span>/</span>
+        <span id="section-67">{{ text_contents.51|default:"Product Details" }}</span>
+    </div>
+</div>
+
+<!-- Product Details -->
+<div class="container">
+    {% if product %}
+    <div class="product-details">
+        <!-- Product Gallery -->
+        <div class="product-gallery" id="section-68">
+            <div class="main-image-container">
+                <img id="mainImage" src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.pexels.com/photos/2115256/pexels-photo-2115256.jpeg?auto=compress&cs=tinysrgb&w=800{% endif %}" alt="{{ product.title }}" class="main-image">
+            </div>
+            <div class="thumbnail-grid" id="thumbnailGrid">
+                {% if product.main_image %}
+                <div class="thumbnail active" data-image="{{ product.main_image.url }}">
+                    <img src="{{ product.main_image.url }}" alt="Thumbnail 1">
+                </div>
+                {% endif %}
+                {% for image in product_images %}
+                <div class="thumbnail" data-image="{{ image.image.url }}">
+                    <img src="{{ image.image.url }}" alt="Thumbnail {{ forloop.counter|add:1 }}">
+                </div>
+                {% empty %}
+                {% if product.image_gallery %}
+                    {% for img_url in product.image_gallery|slice:":3" %}
+                    <div class="thumbnail" data-image="{{ img_url }}">
+                        <img src="{{ img_url }}" alt="Thumbnail {{ forloop.counter }}">
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="thumbnail" data-image="https://images.pexels.com/photos/2115257/pexels-photo-2115257.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/2115257/pexels-photo-2115257.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumbnail">
+                    </div>
+                    <div class="thumbnail" data-image="https://images.pexels.com/photos/2115258/pexels-photo-2115258.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/2115258/pexels-photo-2115258.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumbnail">
+                    </div>
+                    <div class="thumbnail" data-image="https://images.pexels.com/photos/4425760/pexels-photo-4425760.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/4425760/pexels-photo-4425760.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumbnail">
+                    </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="product-info" id="section-69">
+            <div class="product-category" id="section-70">{{ text_contents.52|default:product.category.name|upper|default:"GAMING GEAR" }}</div>
+            <h1 class="product-title" id="section-71">{{ text_contents.53|default:product.title }}</h1>
+            
+            <div class="product-rating">
+                <div class="stars" id="ratingStars">
+                    {% for i in "12345"|make_list %}
+                        {% if forloop.counter <= full_stars %}
+                            <i class="fas fa-star"></i>
+                        {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                            <i class="fas fa-star-half-alt"></i>
+                        {% else %}
+                            <i class="far fa-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <span class="rating-value" id="section-72">{{ text_contents.54|default:average_rating }}</span>
+                <span class="review-count" id="section-73">{{ text_contents.55|default:review_count }} reviews</span>
+            </div>
+            
+            <div class="product-price">
+                <span class="current-price" id="section-74">{{ product.price|currency:page }}</span>
+                {% if product.compare_at_price and product.compare_at_price > product.price %}
+                <span class="original-price" id="section-75">{{ product.compare_at_price|currency:page }}</span>
+                <span class="discount-badge" id="section-76">-{{ product.discount_percentage }}%</span>
+                {% endif %}
+            </div>
+            
+            <p class="product-description" id="section-77">{{ text_contents.59|default:product.short_description|default:product.description|striptags|truncatewords:50 }}</p>
+            
+            <!-- Color Variants -->
+            {% if colors %}
+            <div class="variant-section" id="section-78">
+                <div class="variant-title" id="section-79">{{ text_contents.60|default:"Color" }}</div>
+                <div class="color-options" id="colorOptions">
+                    {% for color in colors %}
+                    <div class="color-option {% if forloop.first %}active{% endif %}" style="background-color: {{ color }};" data-color="{{ color }}"></div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Size Variants -->
+            {% if sizes %}
+            <div class="variant-section" id="section-80">
+                <div class="variant-title" id="section-81">{{ text_contents.61|default:"Switch Type" }}</div>
+                <div class="size-options" id="sizeOptions">
+                    {% for size in sizes %}
+                    <div class="size-option {% if forloop.first %}active{% endif %}" data-size="{{ size }}">{{ size }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Quantity -->
+            <div class="quantity-section">
+                <div class="variant-title">Quantity</div>
+                <div class="quantity-selector">
+                    <button class="qty-btn" id="qtyMinus">-</button>
+                    <input type="number" id="quantity" class="quantity-input" value="1" min="1" max="{{ product.quantity|default:10 }}">
+                    <button class="qty-btn" id="qtyPlus">+</button>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="buy-now-btn" id="buyNowBtn" data-product-id="{{ product.id }}">
+                    <i class="fas fa-bolt"></i> Buy Now
+                </button>
+                <button class="add-to-cart-btn" id="addToCartBtn" data-product-id="{{ product.id }}">
+                    <i class="fas fa-cart-plus"></i> Add to Cart
+                </button>
+                <button class="wishlist-btn" id="wishlistBtn" data-product-id="{{ product.id }}">
+                    <i class="far fa-heart"></i>
+                </button>
+            </div>
+            
+            <!-- Product Meta -->
+            <div class="product-meta">
+                <div class="meta-item">
+                    <i class="fas fa-truck"></i>
+                    <span id="section-82">{{ text_contents.62|default:"Free Shipping Worldwide" }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-undo-alt"></i>
+                    <span id="section-83">{{ text_contents.63|default:"30-Day Money-Back Guarantee" }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <span id="section-84">{{ text_contents.64|default:"2-Year Warranty" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Section -->
+    <div class="tabs-section" id="section-85">
+        <div class="tab-headers">
+            <button class="tab-btn active" data-tab="description">Description</button>
+            <button class="tab-btn" data-tab="specifications">Specifications</button>
+            <button class="tab-btn" data-tab="reviews">Reviews</button>
+        </div>
+        
+        <!-- Description Tab -->
+        <div class="tab-content active" id="description-tab">
+            <div class="description-content" id="section-86">
+                {{ product.description|safe|default:"<p>No description available for this product.</p>" }}
+            </div>
+        </div>
+        
+        <!-- Specifications Tab -->
+        <div class="tab-content" id="specifications-tab">
+            <div class="specs-grid" id="section-87">
+                {% if product.brand %}
+                <div class="spec-item">
+                    <span class="spec-label">Brand</span>
+                    <span class="spec-value">{{ product.brand }}</span>
+                </div>
+                {% endif %}
+                {% if product.material %}
+                <div class="spec-item">
+                    <span class="spec-label">Material</span>
+                    <span class="spec-value">{{ product.material }}</span>
+                </div>
+                {% endif %}
+                <div class="spec-item">
+                    <span class="spec-label">SKU</span>
+                    <span class="spec-value">{{ product.sku|default:"N/A" }}</span>
+                </div>
+                <div class="spec-item">
+                    <span class="spec-label">Weight</span>
+                    <span class="spec-value">{{ product.weight|default:"N/A" }} {{ product.weight_unit|default:"g" }}</span>
+                </div>
+                {% if product.specifications %}
+                <div class="spec-item">
+                    <span class="spec-label">Specifications</span>
+                    <span class="spec-value">{{ product.specifications }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Reviews Tab -->
+        <div class="tab-content" id="reviews-tab">
+            <!-- Reviews Summary -->
+            <div class="reviews-summary">
+                <div class="rating-summary">
+                    <div class="average-rating">{{ average_rating|floatformat:1 }}</div>
+                    <div class="rating-stars">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= full_stars %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter == full_stars|add:1 and has_half_star %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div>{{ total_reviews }} reviews</div>
+                </div>
+                <div class="rating-bars">
+                    {% for star in "54321"|make_list %}
+                    <div class="rating-bar-item">
+                        <span class="rating-star-label">{{ star }} star</span>
+                        <div class="rating-bar">
+                            <div class="rating-bar-fill" style="width: {{ rating_data|get_item:star|get_item:'percentage'|default:0 }}%"></div>
+                        </div>
+                        <span class="rating-percent">{{ rating_data|get_item:star|get_item:'percentage'|default:0 }}%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Review Form -->
+            <div class="review-form" id="section-88">
+                <h3 id="section-89">{{ text_contents.66|default:"Write a Review" }}</h3>
+                <div class="star-rating-input" id="starRatingInput">
+                    <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+                    <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+                    <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+                    <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+                    <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+                </div>
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" id="reviewerName" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label>Review Title</label>
+                    <input type="text" id="reviewTitle" placeholder="Summarize your experience">
+                </div>
+                <div class="form-group">
+                    <label>Your Review</label>
+                    <textarea id="reviewComment" rows="5" placeholder="Share your thoughts about this product..."></textarea>
+                </div>
+                <button class="submit-review-btn" id="submitReviewBtn" data-product-id="{{ product.id }}">Submit Review</button>
+            </div>
+            
+            <!-- Customer Reviews List -->
+            <div class="reviews-list" id="reviewsList">
+                {% if reviews %}
+                    {% for review in reviews|slice:":5" %}
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar">{{ review.author_name|slice:":2"|upper }}</div>
+                                <div>
+                                    <div class="reviewer-name">{{ review.author_name }}</div>
+                                    <div class="review-date">{{ review.created_at|date:"F d, Y" }}</div>
+                                </div>
+                            </div>
+                            <div class="review-rating">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="review-title">{{ review.title }}</div>
+                        <div class="review-comment">{{ review.comment }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-related" style="grid-column: auto;">
+                        <i class="fas fa-comments"></i>
+                        <p>No reviews yet. Be the first to review this product!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products Section -->
+    <div class="related-products" id="section-90">
+        <h2 id="section-91">{{ text_contents.67|default:"You May Also Like" }}</h2>
+        {% if related_products %}
+        <div class="related-grid" id="relatedGrid">
+            {% for related in related_products|slice:":4" %}
+            <a href="/product/{{ related.slug }}/" class="related-card">
+                <img src="{% if related.main_image %}{{ related.main_image.url }}{% else %}https://images.pexels.com/photos/2115258/pexels-photo-2115258.jpeg?auto=compress&cs=tinysrgb&w=400{% endif %}" alt="{{ related.title }}" class="related-img">
+                <div class="related-info">
+                    <div class="related-name">{{ related.title|truncatechars:30 }}</div>
+                    <div class="related-price">{{ related.price|currency:page }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-related">
+            <i class="fas fa-box-open"></i>
+            <p>No related products available for this item.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="text-align: center; padding: 80px;">
+        <i class="fas fa-search" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 20px;"></i>
+        <h3>Product Not Found</h3>
+        <p>The product you're looking for doesn't exist or has been removed.</p>
+        <a href="?page=products" style="display: inline-block; margin-top: 20px; background: var(--teal-primary); color: var(--bg-dark); padding: 12px 32px; border-radius: 40px; text-decoration: none;">Continue Shopping</a>
+    </div>
+    {% endif %}
+</div>
+
+{% for component in components %}
+    {% if component.drop_zone == '90' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% include 'builder/public_templates/ModernEcommerce22/snippets/footer.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% render_icon_script %}
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+<script>
+    // Image Gallery Thumbnail Switcher
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const mainImage = document.getElementById('mainImage');
+    
+    if (thumbnails.length > 0 && mainImage) {
+        thumbnails.forEach(thumb => {
+            thumb.addEventListener('click', function() {
+                thumbnails.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                const newImage = this.dataset.image;
+                if (newImage) {
+                    mainImage.src = newImage;
+                }
+            });
+        });
+    }
+    
+    // Color Variant Selection
+    const colorOptions = document.querySelectorAll('.color-option');
+    colorOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            colorOptions.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    
+    // Size Variant Selection
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            sizeOptions.forEach(s => s.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    
+    // Quantity Controls
+    const qtyMinus = document.getElementById('qtyMinus');
+    const qtyPlus = document.getElementById('qtyPlus');
+    const quantityInput = document.getElementById('quantity');
+    
+    if (qtyMinus && qtyPlus && quantityInput) {
+        qtyMinus.addEventListener('click', () => {
+            let value = parseInt(quantityInput.value);
+            if (value > 1) {
+                quantityInput.value = value - 1;
+            }
+        });
+        
+        qtyPlus.addEventListener('click', () => {
+            let value = parseInt(quantityInput.value);
+            const max = parseInt(quantityInput.getAttribute('max')) || 10;
+            if (value < max) {
+                quantityInput.value = value + 1;
+            }
+        });
+        
+        quantityInput.addEventListener('change', () => {
+            let value = parseInt(quantityInput.value);
+            const max = parseInt(quantityInput.getAttribute('max')) || 10;
+            if (isNaN(value) || value < 1) quantityInput.value = 1;
+            if (value > max) quantityInput.value = max;
+        });
+    }
+    
+    // Tab Switching
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            const tabId = this.dataset.tab;
+            const activeTab = document.getElementById(`${tabId}-tab`);
+            if (activeTab) activeTab.classList.add('active');
+        });
+    });
+    
+    // Star Rating Input
+    const starInputs = document.querySelectorAll('#starRatingInput input');
+    starInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Visual feedback handled by CSS
+        });
+    });
+    
+    // Submit Review
+    const submitReviewBtn = document.getElementById('submitReviewBtn');
+    if (submitReviewBtn) {
+        submitReviewBtn.addEventListener('click', function() {
+            const name = document.getElementById('reviewerName')?.value;
+            const title = document.getElementById('reviewTitle')?.value;
+            const comment = document.getElementById('reviewComment')?.value;
+            const rating = document.querySelector('#starRatingInput input:checked');
+            const productId = this.dataset.productId;
+            
+            if (!name || !title || !comment || !rating) {
+                showNotification('Please fill in all fields and select a rating', 'error');
+                return;
+            }
+            
+            if (window.cartManager) {
+                // Submit via AJAX if cartManager exists
+                fetch(`/builder/reviews/add/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        rating: rating.value,
+                        title: title,
+                        comment: comment,
+                        author_name: name
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Review submitted successfully!', 'success');
+                        document.getElementById('reviewerName').value = '';
+                        document.getElementById('reviewTitle').value = '';
+                        document.getElementById('reviewComment').value = '';
+                        if (rating) rating.checked = false;
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showNotification(data.error || 'Error submitting review', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Network error. Please try again.', 'error');
+                });
+            } else {
+                showNotification('Review submitted successfully!', 'success');
+                document.getElementById('reviewerName').value = '';
+                document.getElementById('reviewTitle').value = '';
+                document.getElementById('reviewComment').value = '';
+                if (rating) rating.checked = false;
+            }
+        });
+    }
+    
+    // Add to Cart
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const quantity = document.getElementById('quantity')?.value || 1;
+            const selectedColor = document.querySelector('.color-option.active')?.dataset.color || '';
+            const selectedSize = document.querySelector('.size-option.active')?.dataset.size || '';
+            
+            if (window.cartManager) {
+                window.cartManager.addToCart(productId, parseInt(quantity));
+            } else {
+                showNotification(`Added ${quantity} item(s) to cart!`, 'success');
+            }
+        });
+    }
+    
+    // Buy Now
+    const buyNowBtn = document.getElementById('buyNowBtn');
+    if (buyNowBtn) {
+        buyNowBtn.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const quantity = document.getElementById('quantity')?.value || 1;
+            const selectedColor = document.querySelector('.color-option.active')?.dataset.color || '';
+            const selectedSize = document.querySelector('.size-option.active')?.dataset.size || '';
+            
+            if (window.cartManager && window.cartManager.redirectToPaymentSelection) {
+                // Use cart manager's buy now functionality
+                const product = { id: productId, quantity: quantity, selected_color: selectedColor, selected_size: selectedSize };
+                window.cartManager.buyNow(product);
+            } else {
+                showNotification('Redirecting to checkout...', 'success');
+                setTimeout(() => {
+                    // window.location.href = '?page=checkout';
+                }, 1500);
+            }
+        });
+    }
+    
+    // Wishlist
+    const wishlistBtn = document.getElementById('wishlistBtn');
+    if (wishlistBtn) {
+        wishlistBtn.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            if (window.cartManager) {
+                window.cartManager.addToWishlist(productId);
+            } else {
+                showNotification('Added to wishlist!', 'success');
+                this.innerHTML = '<i class="fas fa-heart"></i>';
+                this.style.color = 'var(--teal-primary)';
+            }
+        });
+    }
+    
+    // Notification Function
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: ${type === 'success' ? 'var(--teal-primary)' : 'var(--danger)'};
+            color: ${type === 'success' ? 'var(--bg-dark)' : 'white'};
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        `;
+        notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${message}`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+    
+    // CSRF helper function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Add animation styles if not present
+    if (!document.querySelector('#notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+</script>
+</body>
+</html>

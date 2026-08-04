@@ -1,0 +1,741 @@
+<!-- templates/payments/tax_dashboard.html -->
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Tax Management - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    :root {
+        --tax-primary: #4361ee;
+        --tax-success: #2ecc71;
+        --tax-warning: #f39c12;
+        --tax-danger: #e74c3c;
+        --tax-dark: #2c3e50;
+        --tax-light: #f8f9fa;
+    }
+
+    .tax-header {
+        background: linear-gradient(135deg, var(--tax-dark) 0%, #1a2634 100%);
+        color: white;
+        padding: 2.5rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .tax-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 80%);
+        transform: rotate(30deg);
+    }
+
+    .tax-header h1 {
+        font-size: 2.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .tax-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.8rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.02);
+        border: 1px solid #eef2f6;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(67, 97, 238, 0.1);
+        border-color: var(--tax-primary);
+    }
+
+    .stat-card .stat-icon {
+        position: absolute;
+        right: 1.5rem;
+        top: 1.5rem;
+        font-size: 2.5rem;
+        color: rgba(67, 97, 238, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover .stat-icon {
+        color: rgba(67, 97, 238, 0.2);
+        transform: scale(1.1);
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--tax-dark);
+        margin-bottom: 0.3rem;
+    }
+
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-trend {
+        margin-top: 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    .trend-up { color: var(--tax-success); }
+    .trend-down { color: var(--tax-danger); }
+
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 2px solid #eef2f6;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .action-card:hover {
+        border-color: var(--tax-primary);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(67, 97, 238, 0.1);
+    }
+
+    .action-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #f5f7ff 0%, #e8ecff 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2rem;
+        color: var(--tax-primary);
+        transition: all 0.3s ease;
+    }
+
+    .action-card:hover .action-icon {
+        transform: scale(1.1);
+        background: linear-gradient(135deg, #e8ecff 0%, #dbe0ff 100%);
+    }
+
+    .action-title {
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+        color: var(--tax-dark);
+    }
+
+    .action-desc {
+        font-size: 0.85rem;
+        color: #7f8c8d;
+    }
+
+    .tax-table {
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.02);
+        border: 1px solid #eef2f6;
+    }
+
+    .tax-table-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.2rem 1.5rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .tax-table-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--tax-dark);
+    }
+
+    .table {
+        margin: 0;
+    }
+
+    .table th {
+        border-top: none;
+        color: #7f8c8d;
+        font-weight: 500;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 1.5rem;
+    }
+
+    .table td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-color: #eef2f6;
+    }
+
+    .rate-badge {
+        background: #e8f5e9;
+        color: var(--tax-success);
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background: #e8f5e9;
+        color: #2ecc71;
+    }
+
+    .status-inactive {
+        background: #fdeded;
+        color: #e74c3c;
+    }
+
+    .quick-preset {
+        background: white;
+        border-radius: 20px;
+        padding: 1.8rem;
+        border: 1px solid #eef2f6;
+        margin-top: 2rem;
+    }
+
+    .preset-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        margin-left: 0.5rem;
+    }
+
+    .btn-tax {
+        padding: 0.6rem 1.2rem;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-tax-primary {
+        background: linear-gradient(135deg, var(--tax-primary) 0%, #3a0ca3 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-tax-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-tax-outline {
+        background: transparent;
+        border: 2px solid var(--tax-primary);
+        color: var(--tax-primary);
+    }
+
+    .btn-tax-outline:hover {
+        background: var(--tax-primary);
+        color: white;
+    }
+
+    .breadcrumb-custom {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin-bottom: 1rem;
+        gap: 0.5rem;
+    }
+
+    .breadcrumb-custom li {
+        color: #6c757d;
+    }
+
+    .breadcrumb-custom li a {
+        text-decoration: underline;
+        color: #6c757d;
+    }
+
+    .breadcrumb-custom li.active {
+        text-decoration: none;
+        color: #2c3e50;
+    }
+
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .tax-header {
+            padding: 1.5rem;
+        }
+        
+        .tax-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        
+        .breadcrumb-custom {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='taxes' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='taxes' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Breadcrumb -->
+            <ul class="breadcrumb-custom">
+                <li><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li>/</li>
+                <li><a href="{% url 'manage_products' subdomain=page.subdomain %}">{{ page.brand_name }}</a></li>
+                <li>/</li>
+                <li class="active">Tax Management</li>
+            </ul>
+
+            <!-- Header -->
+            <div class="tax-header">
+                <h1>
+                    <i class="fas fa-percent me-3"></i>
+                    Tax Management
+                </h1>
+                <p>Configure tax rates, manage exemptions, and track collections for {{ page.brand_name }}</p>
+                <div class="mt-4">
+                    <span class="badge bg-white text-dark p-2 me-2">
+                        <i class="fas fa-calendar me-1"></i>
+                        Last 30 days
+                    </span>
+                    <span class="badge bg-white text-dark p-2">
+                        <i class="fas fa-globe me-1"></i>
+                        {{ countries_count }} Countries
+                    </span>
+                </div>
+            </div>
+
+            <!-- Statistics Grid -->
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="stat-value">{{ tax_classes_count }}</div>
+                    <div class="stat-label">Tax Classes</div>
+                    <div class="stat-trend">
+                        <span class="trend-up"><i class="fas fa-arrow-up me-1"></i>{{ tax_classes|length }} active</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-percent"></i>
+                    </div>
+                    <div class="stat-value">{{ total_rates }}</div>
+                    <div class="stat-label">Tax Rates</div>
+                    <div class="stat-trend">
+                        <span class="trend-up"><i class="fas fa-check-circle me-1"></i>{{ active_rates }} active</span>
+                        <span class="ms-2 trend-down"><i class="fas fa-times-circle me-1"></i>{{ inactive_rates }} inactive</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-value">{{ exempt_customers_count|default:"0" }}</div>
+                    <div class="stat-label">Exempt Customers</div>
+                    <div class="stat-trend">
+                        <span class="trend-up"><i class="fas fa-check me-1"></i>Active exemptions</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-value">${{ monthly_tax|floatformat:0 }}</div>
+                    <div class="stat-label">Tax Collected</div>
+                    <div class="stat-trend">
+                        <span class="trend-up"><i class="fas fa-chart-line me-1"></i>Last 30 days</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="action-grid">
+                <a href="{% url 'payments:tax_classes_list' page.subdomain %}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <h5 class="action-title">Tax Classes</h5>
+                    <p class="action-desc">Manage tax classes and defaults</p>
+                </a>
+
+                <a href="{% url 'payments:tax_rates_list' page.subdomain %}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-percent"></i>
+                    </div>
+                    <h5 class="action-title">Tax Rates</h5>
+                    <p class="action-desc">Create and manage rates</p>
+                </a>
+
+                <a href="{% url 'payments:tax_exempt_customers' page.subdomain %}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h5 class="action-title">Exemptions</h5>
+                    <p class="action-desc">Manage tax-exempt customers</p>
+                </a>
+
+                <a href="{% url 'payments:tax_reports' page.subdomain %}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h5 class="action-title">Reports</h5>
+                    <p class="action-desc">View tax collection reports</p>
+                </a>
+
+                <a href="{% url 'payments:tax_settings' page.subdomain %}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h5 class="action-title">Settings</h5>
+                    <p class="action-desc">Configure tax preferences</p>
+                </a>
+
+                <a href="#" class="action-card" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+                    <div class="action-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h5 class="action-title">Quick Add</h5>
+                    <p class="action-desc">Add rate or class quickly</p>
+                </a>
+            </div>
+
+            <!-- Recent Tax Rates -->
+            <div class="tax-table">
+                <div class="tax-table-header d-flex justify-content-between align-items-center">
+                    <h3><i class="fas fa-history me-2"></i>Recently Added Tax Rates</h3>
+                    <a href="{% url 'payments:tax_rates_list' page.subdomain %}" class="btn btn-sm btn-tax-outline">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Rate Name</th>
+                                <th>Tax Class</th>
+                                <th>Jurisdiction</th>
+                                <th>Rate</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rate in recent_rates %}
+                            <tr>
+                                <td>
+                                    <strong>{{ rate.name }}</strong>
+                                </td>
+                                <td>{{ rate.tax_class.name }}</td>
+                                <td>
+                                    {% if rate.country_code %}
+                                        {{ rate.country_code }}
+                                        {% if rate.state_code %}-{{ rate.state_code }}{% endif %}
+                                    {% else %}
+                                        Global
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="rate-badge">{{ rate.rate }}%</span>
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if rate.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                        {% if rate.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ rate.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <a href="{% url 'payments:tax_rate_edit' page.subdomain rate.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No tax rates added yet. Click "Quick Add" to create one.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="quick-preset">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">
+                        <i class="fas fa-magic me-2" style="color: var(--tax-primary);"></i>
+                        Quick Tax Presets
+                        <span class="preset-badge">One-Click Setup</span>
+                    </h5>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6>
+                                    <i class="fas fa-flag-usa me-2" style="color: var(--tax-primary);"></i>
+                                    US Sales Tax
+                                </h6>
+                                <p class="small text-muted mb-3">Apply standard sales tax rates for all US states (0-10%)</p>
+                                <button class="btn btn-tax btn-tax-primary btn-sm w-100" onclick="applyUSTax()">
+                                    <i class="fas fa-bolt me-1"></i> Apply Preset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6>
+                                    <i class="fas fa-flag-eu me-2" style="color: var(--tax-primary);"></i>
+                                    EU VAT
+                                </h6>
+                                <p class="small text-muted mb-3">Apply standard 20% VAT rates for all EU countries</p>
+                                <button class="btn btn-tax btn-tax-primary btn-sm w-100" onclick="applyEUVAT()">
+                                    <i class="fas fa-bolt me-1"></i> Apply Preset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6>
+                                    <i class="fas fa-file-export me-2" style="color: var(--tax-primary);"></i>
+                                    Import/Export
+                                </h6>
+                                <p class="small text-muted mb-3">Bulk import tax rates from CSV or export current rates</p>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'payments:export_tax_rates' page.subdomain %}" class="btn btn-tax btn-tax-outline btn-sm flex-grow-1">
+                                        <i class="fas fa-download me-1"></i> Export
+                                    </a>
+                                    <a href="{% url 'payments:import_tax_rates' page.subdomain %}" class="btn btn-tax btn-tax-outline btn-sm flex-grow-1">
+                                        <i class="fas fa-upload me-1"></i> Import
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Modal -->
+<div class="modal fade" id="quickAddModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-bolt me-2"></i>
+                    Quick Add
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    <a href="{% url 'payments:tax_class_create' page.subdomain %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-tags fa-2x" style="color: var(--tax-primary);"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Add Tax Class</h6>
+                            <small class="text-muted">Create a new tax class for products</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'payments:tax_rate_create' page.subdomain %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-percent fa-2x" style="color: var(--tax-primary);"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Add Tax Rate</h6>
+                            <small class="text-muted">Create a new tax rate for a jurisdiction</small>
+                        </div>
+                    </a>
+                    <a href="{% url 'payments:tax_exempt_customer_create' page.subdomain %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-user-plus fa-2x" style="color: var(--tax-primary);"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Add Exempt Customer</h6>
+                            <small class="text-muted">Add a customer to tax exemption list</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function applyUSTax() {
+    if (confirm('Apply US Sales Tax rates for all states? This will create or update tax rates.')) {
+        fetch('{% url "payments:apply_us_tax" page.subdomain %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('error', data.error);
+            }
+        })
+        .catch(error => {
+            showToast('error', 'Failed to apply tax rates');
+        });
+    }
+}
+
+function applyEUVAT() {
+    if (confirm('Apply EU VAT (20%) rates for all EU countries?')) {
+        fetch('{% url "payments:apply_eu_vat" page.subdomain %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('error', data.error);
+            }
+        })
+        .catch(error => {
+            showToast('error', 'Failed to apply VAT rates');
+        });
+    }
+}
+
+function showToast(type, message) {
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    
+    const bgColor = type === 'success' ? '#2ecc71' : '#e74c3c';
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    
+    toast.innerHTML = `
+        <div class="text-white p-3 rounded-3 shadow-lg" style="background: ${bgColor}; min-width: 250px;">
+            <i class="fas ${icon} me-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
+{% endblock %}

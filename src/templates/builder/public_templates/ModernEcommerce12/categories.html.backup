@@ -1,0 +1,847 @@
+{% load style_filters %}
+{% load static %}
+{% load color_filters %}
+{% load currency_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collections | {{ page.brand_name|default:"Élan Noir" }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #e2a970;
+            --heading: #f1bb71;
+            --background: #fbca8a;
+            --primary: #626616;
+            --secondary: #ffffff;
+            --accent: #f9f6f2;
+            --border: #1a1a1a;
+            --success: #f8f8f8;
+            --warning: #333333;
+            --error: #e5e5e5;
+            --gray-medium: #999999;
+        }
+        {%generate_color_variables%}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            color: var(--warning);
+            line-height: 1.6;
+            background-color: var(--accent);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-padding {
+            padding: 5rem 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--background);
+            color: var(--secondary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--heading);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--primary);
+            color: var(--secondary);
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 138 200 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 138 200 %}
+        {%generate_hover_keyframes%}
+
+        /* Categories Page */
+        .categories-page {
+            padding: 8rem 0 4rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .page-header p {
+            color: var(--gray-medium);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 3rem;
+            margin-bottom: 5rem;
+        }
+
+        .category-card {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.4s ease;
+            height: 400px;
+            cursor: pointer;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .category-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--accent);
+        }
+
+        .category-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+
+        .category-card:hover .category-image img {
+            transform: scale(1.05);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%);
+        }
+
+        .category-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 2rem;
+            color: var(--secondary);
+            z-index: 2;
+        }
+
+        .category-title {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-description {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-count {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .category-link {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 45px;
+            height: 45px;
+            background-color: var(--secondary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .category-card:hover .category-link {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .category-link:hover {
+            background-color: var(--background);
+            color: var(--secondary);
+        }
+
+        /* Empty Categories */
+        .empty-categories {
+            text-align: center;
+            padding: 4rem 2rem;
+            grid-column: 1 / -1;
+        }
+
+        .empty-categories i {
+            font-size: 4rem;
+            color: var(--error);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-categories h3 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .empty-categories p {
+            color: var(--gray-medium);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Featured Products Section */
+        .featured-products {
+            padding: 4rem 0;
+            background-color: var(--secondary);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--gray-medium);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .featured-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .featured-image {
+            height: 350px;
+            background-color: var(--accent);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .featured-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .featured-card:hover .featured-image img {
+            transform: scale(1.05);
+        }
+
+        .featured-info {
+            text-align: center;
+        }
+
+        .featured-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .featured-price {
+            color: var(--background);
+            font-weight: 500;
+        }
+
+        .featured-category {
+            display: inline-block;
+            padding: 0.3rem 1rem;
+            background-color: var(--accent);
+            color: var(--primary);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .empty-featured {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-medium);
+        }
+
+        .empty-featured i {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: var(--error);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 2.5rem;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 2rem;
+            }
+            
+            .featured-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1.5rem;
+            }
+            
+            .categories-page {
+                padding: 6rem 0 3rem;
+            }
+            
+            .page-header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1.5rem;
+            }
+            
+            .category-card {
+                height: 350px;
+            }
+            
+            .section-header h2 {
+                font-size: 2rem;
+            }
+            
+            .featured-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            .categories-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .section-header h2 {
+                font-size: 1.8rem;
+            }
+            
+            .featured-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .category-title {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    {%include 'builder/public_templates/ModernEcommerce12/snippets/header1.html'%}
+    <!-- Categories Page -->
+    <section class="categories-page" id="section-138">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 id="section-139">{{ text_contents.107|default:"Collections" }}</h1>
+                <p id="section-140">{{ text_contents.108|default:"Browse our products by category" }}</p>
+            </div>
+
+            <!-- Categories Grid -->
+            <div class="categories-grid">
+                {% if categories %}
+                    {% for category in categories %}
+                        {% if category.is_active %}
+                        <div class="category-card" 
+                             data-category-id="{{ category.id }}"
+                             data-category-slug="{{ category.slug }}">
+                            <div class="category-image">
+                                {% comment %}
+                                Note: Your ProductCategory model doesn't have an image field.
+                                You might want to add one or use a representative product image.
+                                For now, using a placeholder with a dynamic color based on category ID.
+                                {% endcomment %}
+                                <img src="{{category.image}}" 
+                                     alt="{{ category.name }}"
+                                     style="background-color: {% cycle '#e2a970' '#f1bb71' '#fbca8a' '#626616' '#f9f6f2' '#1a1a1a' %};">
+                            </div>
+                            <div class="category-overlay"></div>
+                            <div class="category-content">
+                                <h3 class="category-title">{{ category.name }}</h3>
+                                {% if category.description %}
+                                <p class="category-description">{{ category.description|truncatechars:100 }}</p>
+                                {% else %}
+                                <p class="category-description">Explore our collection of {{ category.name|lower }}</p>
+                                {% endif %}
+                                <span class="category-count">
+                                    {{ category.get_active_products_count|default:0 }} 
+                                    {% if category.get_active_products_count == 1 %}Item{% else %}Items{% endif %}
+                                </span>
+                            </div>
+                            <a href="?page=products&category={{ category.slug }}" class="category-link">
+                                <i class="fas fa-arrow-right" data-icon="35"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty Categories -->
+                    <div class="empty-categories">
+                        <i class="fas fa-folder-open" data-icon="36"></i>
+                        <h3>No Categories Found</h3>
+                        <p>Product categories will appear here once they are created and marked as active.</p>
+                        {% if request.user.is_staff %}
+                        <a href="/admin/builder/productcategory/add/" class="btn btn-primary">Create Category</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '138' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Featured Products Section -->
+    <section class="featured-products" id="section-145">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-146">{{ text_contents.112|default:"Featured Products" }}</h2>
+                <p id="section-147">{{ text_contents.113|default:"Discover our handpicked selection of luxury items" }}</p>
+            </div>
+            
+            <div class="featured-grid">
+                {% comment %}
+                Get featured products from the page context.
+                In your public_page view, you might want to add:
+                featured_products = page.products.filter(featured=True, is_active=True)[:4]
+                {% endcomment %}
+                
+                
+                    {% for product in products %}
+                        {% if product.is_active and forloop.counter <= 4 %}
+                        <div class="featured-card" 
+                             data-product-id="{{ product.id }}"
+                             data-product-title="{{ product.title }}">
+                            <a href="/product/{{ product.slug }}/" class="product-link">
+                                <div class="featured-image">
+                                    {% if product.main_image %}
+                                    <img src="{{ product.main_image.url }}" 
+                                         alt="{{ product.title }}"
+                                         loading="lazy">
+                                    {% else %}
+                                    <img src="{% static 'builder/images/default-product.jpg' %}" 
+                                         alt="{{ product.title }}"
+                                         style="background-color: {% cycle '#e2a970' '#f1bb71' '#fbca8a' '#626616' %};"
+                                         loading="lazy">
+                                    {% endif %}
+                                </div>
+                                <div class="featured-info">
+                                    <h3 class="featured-name" >{{ product.title|truncatechars:40 }}</h3>
+                                    <p class="featured-price">{{ product.price|currency:page }}</p>
+                                    {% if product.category %}
+                                    <span class="featured-category">{{ product.category.name }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% empty %}
+                        <!-- Show regular products if no featured ones -->
+                        {% for product in products|slice:":4" %}
+                            {% if product.is_active %}
+                            <div class="featured-card" 
+                                 data-product-id="{{ product.id }}"
+                                 data-product-title="{{ product.title }}">
+                                <a href="/product/{{ product.slug }}/" class="product-link">
+                                    <div class="featured-image">
+                                        {% if product.main_image %}
+                                        <img src="{{ product.main_image.url }}" 
+                                             alt="{{ product.title }}"
+                                             loading="lazy">
+                                        {% else %}
+                                        <img src="{% static 'builder/images/default-product.jpg' %}" 
+                                             alt="{{ product.title }}"
+                                             style="background-color: {% cycle '#e2a970' '#f1bb71' '#fbca8a' '#626616' %};"
+                                             loading="lazy">
+                                        {% endif %}
+                                    </div>
+                                    <div class="featured-info">
+                                        <h3 class="featured-name">{{ product.title|truncatechars:40 }}</h3>
+                                        <p class="featured-price">{{ product.price|currency:page }}</p>
+                                        {% if product.category %}
+                                        <span class="featured-category">{{ product.category.name }}</span>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                            </div>
+                            {% endif %}
+                        {% empty %}
+                            <!-- Empty Featured Products -->
+                            <div class="empty-featured">
+                                <i class="fas fa-star" data-icon="37"></i>
+                                <h4>No Products Available</h4>
+                                <p>Products will appear here once they are added to your collection.</p>
+                                {% if request.user.is_staff %}
+                                <a href="/admin/builder/product/add/" class="btn btn-secondary">Add Products</a>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        {% endfor %}
+                   
+            </div>
+            
+            {% if products.count > 0 %}
+            <div style="text-align: center;">
+                <a href="?page=products" class="btn btn-secondary" id="section-152">{{ text_contents.117|default:"View All Products" }}</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '145' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {%include 'builder/public_templates/ModernEcommerce12/snippets/footer.html'%}
+
+    <!-- Load Cart Manager -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        // Initialize cart manager when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Categories page loaded');
+            
+            // Initialize Cart Manager
+            const subdomain = "{{ page.subdomain }}";
+            if (!window.cartManager) {
+                window.cartManager = new CartManager(subdomain, {
+                    autoDiscover: false,
+                    autoCreateButtons: false
+                });
+            }
+            
+            // Setup category card interactions
+            setupCategoryInteractions();
+            
+            // Setup product card interactions
+            setupProductInteractions();
+        });
+        
+        function setupCategoryInteractions() {
+            // Make category cards clickable
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Don't trigger if clicking the link icon
+                    if (e.target.closest('.category-link')) {
+                        return;
+                    }
+                    
+                    const slug = this.dataset.categorySlug;
+                    const id = this.dataset.categoryId;
+                    
+                    if (slug) {
+                        window.location.href = `?page=products&category=${slug}`;
+                    } else if (id) {
+                        window.location.href = `?page=products&category_id=${id}`;
+                    }
+                });
+                
+                // Add hover effects
+                card.addEventListener('mouseenter', function() {
+                    const link = this.querySelector('.category-link');
+                    if (link) {
+                        link.style.transform = 'translateY(0)';
+                        link.style.opacity = '1';
+                        link.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                    }
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    const link = this.querySelector('.category-link');
+                    if (link) {
+                        link.style.transform = 'translateY(10px)';
+                        link.style.opacity = '0';
+                        link.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                    }
+                });
+            });
+            
+            // Add click handlers for category links
+            document.querySelectorAll('.category-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Don't trigger parent card click
+                    // Link already has href, so just let it work
+                });
+            });
+        }
+        
+        function setupProductInteractions() {
+            // Add hover effects to product cards
+            document.querySelectorAll('.featured-card').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    const img = this.querySelector('.featured-image img');
+                    if (img) {
+                        img.style.transform = 'scale(1.05)';
+                        img.style.transition = 'transform 0.5s ease';
+                    }
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    const img = this.querySelector('.featured-image img');
+                    if (img) {
+                        img.style.transform = 'scale(1)';
+                        img.style.transition = 'transform 0.5s ease';
+                    }
+                });
+                
+                // Add click handler for quick add to cart (optional)
+                // You could add a quick-add button here
+            });
+            
+            // Initialize product data for CartManager
+            const productElements = document.querySelectorAll('.featured-card');
+            const productsData = [];
+            
+            productElements.forEach(card => {
+                const productId = card.dataset.productId;
+                const productTitle = card.dataset.productTitle;
+                const priceElement = card.querySelector('.featured-price');
+                const imageElement = card.querySelector('.featured-image img');
+                
+                if (productId && priceElement) {
+                    const priceText = priceElement.textContent;
+                    const price = parseFloat(priceText.replace('$', '').replace(',', '')) || 0;
+                    const imageUrl = imageElement ? imageElement.src : '';
+                    
+                    productsData.push({
+                        id: productId,
+                        title: productTitle || 'Product',
+                        price: price,
+                        image_url: imageUrl
+                    });
+                }
+            });
+            
+            // Store products data for CartManager
+            if (productsData.length > 0) {
+                window.productsData = productsData;
+            }
+        }
+        
+        // View Category function (for backward compatibility)
+        function viewCategory(categorySlug) {
+            console.log(`Viewing category: ${categorySlug}`);
+            window.location.href = `?page=products&category=${categorySlug}`;
+        }
+        
+        // Quick add to cart function (optional enhancement)
+        function quickAddToCart(productId, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            if (window.cartManager) {
+                window.cartManager.addToCart(productId, 1);
+                
+                // Visual feedback
+                const button = event ? event.target : null;
+                if (button) {
+                    const originalHTML = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Added';
+                    button.style.backgroundColor = 'var(--primary)';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                        button.style.backgroundColor = '';
+                    }, 1500);
+                }
+            }
+        }
+        
+        // Add quick-add buttons dynamically (optional)
+        function addQuickAddButtons() {
+            document.querySelectorAll('.featured-card').forEach(card => {
+                const productId = card.dataset.productId;
+                if (productId) {
+                    // Create quick add button
+                    const quickAddBtn = document.createElement('button');
+                    quickAddBtn.className = 'quick-add-btn';
+                    quickAddBtn.innerHTML = '<i class="fas fa-cart-plus" data-icon="38"></i>';
+                    quickAddBtn.style.cssText = `
+                        position: absolute;
+                        top: 15px;
+                        right: 15px;
+                        width: 40px;
+                        height: 40px;
+                        background-color: var(--secondary);
+                        border-radius: 50%;
+                        border: none;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: var(--primary);
+                        opacity: 0;
+                        transform: translateY(10px);
+                        transition: all 0.3s ease;
+                        z-index: 10;
+                    `;
+                    
+                    quickAddBtn.addEventListener('click', function(e) {
+                        quickAddToCart(productId, e);
+                    });
+                    
+                    card.style.position = 'relative';
+                    card.appendChild(quickAddBtn);
+                    
+                    // Show on hover
+                    card.addEventListener('mouseenter', function() {
+                        quickAddBtn.style.opacity = '1';
+                        quickAddBtn.style.transform = 'translateY(0)';
+                    });
+                    
+                    card.addEventListener('mouseleave', function() {
+                        quickAddBtn.style.opacity = '0';
+                        quickAddBtn.style.transform = 'translateY(10px)';
+                    });
+                }
+            });
+        }
+        
+        // Uncomment to enable quick-add buttons
+        // document.addEventListener('DOMContentLoaded', addQuickAddButtons);
+    </script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}CJ Sync Logs - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .logs-table {
+        font-size: 0.85rem;
+    }
+    .logs-table th {
+        font-weight: 600;
+        color: #495057;
+        background: #f8f9fa;
+        border-bottom-width: 2px;
+    }
+    .log-status-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+    }
+    .log-type-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+    .type-product_search { background: rgba(67, 97, 238, 0.1); color: #4361ee; }
+    .type-product_import { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+    .type-price_sync { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+    .type-inventory_sync { background: rgba(23, 162, 184, 0.1); color: #17a2b8; }
+    .type-order_submit { background: rgba(111, 66, 193, 0.1); color: #6f42c1; }
+    .type-order_status_check { background: rgba(253, 126, 20, 0.1); color: #fd7e14; }
+    .type-webhook { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    
+    .duration-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+    }
+    .api-calls-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+        background: #e7f4ff;
+        color: #0d6efd;
+        border-radius: 4px;
+    }
+    .filter-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .stats-card {
+        border: none;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .date-picker {
+        max-width: 150px;
+    }
+    .empty-state {
+        padding: 4rem 1rem;
+        text-align: center;
+    }
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+    .error-details {
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 4px;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-history me-2 text-primary"></i>
+                CJ Sync Logs
+            </h2>
+            <p class="text-muted mb-0">
+                Monitor synchronization activities for {{ page.brand_name }}
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" id="refreshLogs">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card stats-card bg-primary bg-opacity-10 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-number text-primary">{{ total_logs }}</div>
+                            <div class="stat-label">Total Logs</div>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-database fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stats-card bg-success bg-opacity-10 border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-number text-success">{{ success_rate|floatformat:1 }}%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stats-card bg-info bg-opacity-10 border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-number text-info">{{ api_calls }}</div>
+                            <div class="stat-label">API Calls</div>
+                        </div>
+                        <div class="text-info">
+                            <i class="fas fa-plug fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card">
+        <form method="get" id="filterForm">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Sync Type</label>
+                    <select class="form-select" name="sync_type">
+                        {% for value, label in sync_type_options %}
+                            <option value="{{ value }}" {% if current_sync_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="status">
+                        {% for value, label in status_options %}
+                            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">From Date</label>
+                    <input type="date" 
+                           class="form-control date-picker" 
+                           name="date_from" 
+                           value="{{ date_from }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">To Date</label>
+                    <input type="date" 
+                           class="form-control date-picker" 
+                           name="date_to" 
+                           value="{{ date_to }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-1"></i> Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if logs %}
+                <div class="table-responsive">
+                    <table class="table table-hover logs-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                                <th>Duration</th>
+                                <th>API Calls</th>
+                                <th>Time</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <!-- Type -->
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="log-type-icon me-2 type-{{ log.sync_type }}">
+                                            <i class="fas 
+                                                {% if log.sync_type == 'product_search' %}fa-search
+                                                {% elif log.sync_type == 'product_import' %}fa-box
+                                                {% elif log.sync_type == 'price_sync' or log.sync_type == 'inventory_sync' %}fa-sync-alt
+                                                {% elif log.sync_type == 'order_submit' %}fa-shopping-cart
+                                                {% elif log.sync_type == 'order_status_check' %}fa-truck
+                                                {% elif log.sync_type == 'webhook' %}fa-satellite-dish
+                                                {% else %}fa-cog{% endif %}">
+                                            </i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ log.get_sync_type_display }}</div>
+                                            <small class="text-muted">
+                                                {{ log.started_at|date:"M d, Y" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <!-- Status -->
+                                <td>
+                                    <span class="log-status-badge badge 
+                                        {% if log.status == 'success' %}bg-success
+                                        {% elif log.status == 'failed' %}bg-danger
+                                        {% elif log.status == 'partial' %}bg-warning
+                                        {% elif log.status == 'rate_limited' %}bg-info
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ log.get_status_display }}
+                                    </span>
+                                    
+                                    {% if log.items_processed > 0 %}
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                {{ log.items_succeeded }}/{{ log.items_processed }}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- Details -->
+                                <td>
+                                    {% if log.error_message %}
+                                        <div class="text-danger mb-1">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            {{ log.error_message|truncatechars:80 }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if log.items_processed > 0 %}
+                                        <small class="text-muted">
+                                            Processed: {{ log.items_processed }} items
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- Duration -->
+                                <td>
+                                    {% if log.duration_seconds %}
+                                        <span class="duration-badge">
+                                            {{ log.duration_seconds|floatformat:1 }}s
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- API Calls -->
+                                <td>
+                                    {% if log.api_calls_made > 0 %}
+                                        <span class="api-calls-badge">
+                                            {{ log.api_calls_made }} call{{ log.api_calls_made|pluralize }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">0</span>
+                                    {% endif %}
+                                </td>
+                                
+                                <!-- Time -->
+                                <td>
+                                    <div>{{ log.started_at|time }}</div>
+                                    <small class="text-muted">
+                                        {{ log.started_at|timesince }} ago
+                                    </small>
+                                </td>
+                                
+                                <!-- Actions -->
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary view-log-btn"
+                                            data-log-id="{{ log.id }}"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if logs.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Logs pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if logs.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ logs.previous_page_number }}{% if current_sync_type %}&sync_type={{ current_sync_type }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for i in logs.paginator.page_range %}
+                                {% if logs.number == i %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ i }}</span>
+                                    </li>
+                                {% elif i > logs.number|add:'-3' and i < logs.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ i }}{% if current_sync_type %}&sync_type={{ current_sync_type }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            {{ i }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if logs.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ logs.next_page_number }}{% if current_sync_type %}&sync_type={{ current_sync_type }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                
+            {% else %}
+                <!-- Empty State -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">No Sync Logs Found</h4>
+                    <p class="text-muted mb-4">
+                        {% if current_sync_type or current_status or date_from or date_to %}
+                            Try changing your filters
+                        {% else %}
+                            No synchronization activities recorded yet
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sync Log Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="logDetailsContent">
+                    <!-- Details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class CJSyncLogsManager {
+    constructor() {
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        // Refresh logs button
+        document.getElementById('refreshLogs').addEventListener('click', () => {
+            location.reload();
+        });
+        
+        // View log buttons
+        document.querySelectorAll('.view-log-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.viewLogDetails(btn.dataset.logId);
+            });
+        });
+    }
+    
+    async viewLogDetails(logId) {
+        // For now, we'll just show a simple message
+        // In a real implementation, you'd fetch log details from an API
+        
+        const modalContent = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Detailed log view would show:
+                <ul class="mb-0 mt-2">
+                    <li>Complete request/response data</li>
+                    <li>Error details and stack traces</li>
+                    <li>Product IDs and quantities processed</li>
+                    <li>API response codes and messages</li>
+                </ul>
+            </div>
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Loading log details...</p>
+            </div>
+        `;
+        
+        document.getElementById('logDetailsContent').innerHTML = modalContent;
+        
+        const modal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
+        modal.show();
+        
+        // Simulate loading
+        setTimeout(() => {
+            document.getElementById('logDetailsContent').innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Detailed log view API endpoint not implemented yet.
+                    This would require additional backend implementation.
+                </div>
+                <div class="mt-3">
+                    <h6>Request Data:</h6>
+                    <pre class="error-details">{
+  "log_id": "${logId}",
+  "status": "Loaded from database",
+  "note": "Implement /api/cj-logs/${logId}/ endpoint"
+}</pre>
+                </div>
+            `;
+        }, 1000);
+    }
+}
+
+// Initialize logs manager
+document.addEventListener('DOMContentLoaded', () => {
+    window.cjSyncLogsManager = new CJSyncLogsManager();
+});
+</script>
+{% endblock %}

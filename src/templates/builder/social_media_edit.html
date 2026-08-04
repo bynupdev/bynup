@@ -1,0 +1,1392 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Social Media • {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #F9F6F0;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    :root {
+        --primary: #2C3E50;
+        --secondary: #E8C07D;
+        --accent: #D4AF37;
+        --background: #F9F6F0;
+        --surface: #FFFFFF;
+        --text-primary: #2C3E50;
+        --text-secondary: #6B7A8A;
+        --border: #E5D9CC;
+        --success: #7A9E7E;
+        --success-light: #E8F0E9;
+        --error: #C44545;
+        --error-light: #F9E9E9;
+        --shadow-sm: 0 4px 20px rgba(44, 62, 80, 0.05);
+        --shadow-md: 0 8px 30px rgba(44, 62, 80, 0.08);
+        --shadow-lg: 0 20px 40px rgba(44, 62, 80, 0.12);
+    }
+
+    body {
+        background: var(--background);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .social-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .toast {
+        min-width: 320px;
+        padding: 1rem 1.5rem;
+        background: var(--surface);
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transform: translateX(120%);
+        animation: slideIn 0.3s ease forwards;
+        border-left: 4px solid var(--success);
+        border: 1px solid var(--border);
+    }
+
+    @keyframes slideIn {
+        to { transform: translateX(0); }
+    }
+
+    /* Elegant Header */
+    .elegant-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .elegant-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+    }
+
+    .elegant-header h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .elegant-header p {
+        color: var(--text-secondary);
+        font-size: 1rem;
+    }
+
+    .store-badge {
+        display: inline-block;
+        background: var(--surface);
+        padding: 0.5rem 2rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        margin-top: 1rem;
+    }
+
+    .store-badge i {
+        color: var(--secondary);
+        margin-right: 0.5rem;
+    }
+
+    .store-badge a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Main Card */
+    .social-card {
+        background: var(--surface);
+        border-radius: 30px;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .social-card-header {
+        padding: 1.5rem 2rem;
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .social-card-header h2 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .social-card-header h2 i {
+        color: var(--secondary);
+    }
+
+    .add-platform-btn {
+        padding: 0.6rem 1.5rem;
+        background: var(--primary);
+        color: var(--surface);
+        border: none;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .add-platform-btn:hover {
+        background: #1A2A38;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+    }
+
+    /* Social Grid */
+    .social-grid {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .social-item {
+        background: var(--background);
+        border-radius: 16px;
+        padding: 1.2rem;
+        border: 1px solid var(--border);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .social-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--secondary);
+    }
+
+    .social-item.inactive {
+        opacity: 0.6;
+        background: #f5f5f5;
+    }
+
+    .social-item-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .platform-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .platform-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .platform-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .platform-handle {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        word-break: break-all;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-top: 0.2rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--success);
+    }
+
+    .status-badge.inactive {
+        background: var(--text-secondary);
+    }
+
+    /* Platform Help Text */
+    .platform-help {
+        background: rgba(232, 192, 125, 0.1);
+        border-left: 3px solid var(--secondary);
+        padding: 0.8rem;
+        margin-bottom: 1rem;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.85rem;
+    }
+
+    .platform-help i {
+        color: var(--secondary);
+        margin-right: 0.3rem;
+    }
+
+    .platform-help strong {
+        color: var(--primary);
+    }
+
+    .platform-help .example {
+        color: var(--text-secondary);
+        font-family: monospace;
+        background: var(--surface);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-top: 0.3rem;
+        display: inline-block;
+    }
+
+    /* Social Form */
+    .social-form {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        display: none;
+    }
+
+    .social-form.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.6rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--secondary);
+        box-shadow: 0 0 0 3px rgba(232, 192, 125, 0.1);
+    }
+
+    .form-control::placeholder {
+        color: #B8C2CC;
+        font-style: italic;
+    }
+
+    .input-hint {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.3rem;
+    }
+
+    .input-hint i {
+        color: var(--secondary);
+        margin-right: 0.2rem;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .social-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: var(--surface);
+        flex: 1;
+    }
+
+    .btn-primary:hover {
+        background: #1A2A38;
+    }
+
+    .btn-outline {
+        background: var(--surface);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+        border-color: var(--secondary);
+        color: var(--secondary);
+    }
+
+    .btn-danger {
+        background: var(--error-light);
+        color: var(--error);
+        border: 1px solid var(--error-light);
+    }
+
+    .btn-danger:hover {
+        background: var(--error);
+        color: var(--surface);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--background);
+        border-radius: 20px;
+        border: 2px dashed var(--border);
+        grid-column: 1 / -1;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--secondary);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+    }
+
+    /* Platform Select Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal.show {
+        display: flex;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: var(--surface);
+        border-radius: 30px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 1;
+    }
+
+    .modal-header h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        color: var(--primary);
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.5rem;
+        transition: color 0.2s ease;
+    }
+
+    .modal-close:hover {
+        color: var(--error);
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .platforms-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .platform-option {
+        padding: 1rem;
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .platform-option:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--secondary);
+    }
+
+    .platform-option i {
+        font-size: 2rem;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .platform-option span {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .social-container {
+            padding: 0;
+        }
+        
+        .social-card-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .social-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+        }
+
+        .platforms-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .toast-container {
+            left: 1rem;
+            right: 1rem;
+        }
+
+        .toast {
+            min-width: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Platform Selection Modal -->
+<div class="modal" id="platformModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-hashtag" style="color: var(--secondary); margin-right: 0.5rem;"></i> Select Platform</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="platforms-grid" id="platformsGrid"></div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='social' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='social' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <div class="social-container">
+                <!-- Elegant Header -->
+                <div class="elegant-header">
+                    <h1>Social Media</h1>
+                    <p>Connect with your audience across platforms</p>
+                    <div class="store-badge">
+                        <a href="{% url 'manage_products' subdomain=page.subdomain %}">
+                            <i class="fas fa-store-alt"></i>
+                            {{ page.brand_name }}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Main Card -->
+                <div class="social-card">
+                    <div class="social-card-header">
+                        <h2>
+                            <i class="fas fa-share-alt"></i>
+                            Connected Platforms
+                        </h2>
+                        <button class="add-platform-btn" onclick="openModal()">
+                            <i class="fas fa-plus"></i> Add Platform
+                        </button>
+                    </div>
+
+                    <div class="social-grid" id="socialGrid">
+                        {% if social_media %}
+                            {% for social in social_media %}
+                                {% include "builder/partials/social_item.html" with social=social %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-share-alt"></i>
+                                <h3>No Social Media Connected</h3>
+                                <p>Add your social media handles to display them in your store's footer</p>
+                                <button class="add-platform-btn" onclick="openModal()">
+                                    <i class="fas fa-plus"></i> Add Your First Platform
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toast Notification System
+class Toast {
+    constructor() {
+        this.container = document.getElementById('toastContainer');
+    }
+
+    show(message, type = 'success', duration = 5000) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            info: 'fa-info-circle'
+        };
+
+        toast.innerHTML = `
+            <div class="toast-icon" style="color: var(--${type === 'success' ? 'success' : type === 'error' ? 'error' : 'secondary'})">
+                <i class="fas ${icons[type]}"></i>
+            </div>
+            <div class="toast-content">
+                <div class="toast-title">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <div class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </div>
+        `;
+
+        this.container.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        }, duration);
+    }
+}
+
+// Initialize toast
+const toast = new Toast();
+
+// Platform data with field information
+const platforms = [
+    {
+        id: 'facebook',
+        name: 'Facebook',
+        icon: 'fab fa-facebook-f',
+        color: '#1877F2',
+        field: {
+            type: 'text',
+            placeholder: 'yourpage or yourusername',
+            help: 'Enter your Facebook page name, username, or full URL',
+            example: 'mybrand or https://facebook.com/mybrand'
+        }
+    },
+    {
+        id: 'instagram',
+        name: 'Instagram',
+        icon: 'fab fa-instagram',
+        color: '#E4405F',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Instagram username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'twitter',
+        name: 'X (Twitter)',
+        icon: 'fab fa-x-twitter',
+        color: '#000000',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your X (Twitter) username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'whatsapp',
+        name: 'WhatsApp',
+        icon: 'fab fa-whatsapp',
+        color: '#25D366',
+        field: {
+            type: 'text',
+            placeholder: '+1234567890',
+            help: 'Enter your WhatsApp number with country code',
+            example: '+14155552671'
+        }
+    },
+    {
+        id: 'telegram',
+        name: 'Telegram',
+        icon: 'fab fa-telegram-plane',
+        color: '#26A5E4',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Telegram username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'pinterest',
+        name: 'Pinterest',
+        icon: 'fab fa-pinterest-p',
+        color: '#BD081C',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Pinterest username',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'linkedin',
+        name: 'LinkedIn',
+        icon: 'fab fa-linkedin-in',
+        color: '#0A66C2',
+        field: {
+            type: 'text',
+            placeholder: 'username or company name',
+            help: 'Enter your LinkedIn username or company name',
+            example: 'mybrand or my-company'
+        }
+    },
+    {
+        id: 'youtube',
+        name: 'YouTube',
+        icon: 'fab fa-youtube',
+        color: '#FF0000',
+        field: {
+            type: 'text',
+            placeholder: '@channel or channel URL',
+            help: 'Enter your YouTube channel handle or full URL',
+            example: '@mybrand or https://youtube.com/@mybrand'
+        }
+    },
+    {
+        id: 'tiktok',
+        name: 'TikTok',
+        icon: 'fab fa-tiktok',
+        color: '#000000',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your TikTok username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'snapchat',
+        name: 'Snapchat',
+        icon: 'fab fa-snapchat-ghost',
+        color: '#FFFC00',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Snapchat username',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'threads',
+        name: 'Threads',
+        icon: 'fab fa-threads',
+        color: '#000000',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Threads username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'discord',
+        name: 'Discord',
+        icon: 'fab fa-discord',
+        color: '#5865F2',
+        field: {
+            type: 'text',
+            placeholder: 'invite link or server ID',
+            help: 'Enter your Discord invite link or server ID',
+            example: 'https://discord.gg/invitecode or 123456789'
+        }
+    },
+    {
+        id: 'github',
+        name: 'GitHub',
+        icon: 'fab fa-github',
+        color: '#171515',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your GitHub username',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'medium',
+        name: 'Medium',
+        icon: 'fab fa-medium',
+        color: '#000000',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Medium username (with or without @)',
+            example: '@mybrand or mybrand'
+        }
+    },
+    {
+        id: 'tumblr',
+        name: 'Tumblr',
+        icon: 'fab fa-tumblr',
+        color: '#35465C',
+        field: {
+            type: 'text',
+            placeholder: 'blogname',
+            help: 'Enter your Tumblr blog name',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'reddit',
+        name: 'Reddit',
+        icon: 'fab fa-reddit-alien',
+        color: '#FF4500',
+        field: {
+            type: 'text',
+            placeholder: 'username',
+            help: 'Enter your Reddit username',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'etsy',
+        name: 'Etsy',
+        icon: 'fab fa-etsy',
+        color: '#D5641C',
+        field: {
+            type: 'text',
+            placeholder: 'shopname',
+            help: 'Enter your Etsy shop name',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'amazon',
+        name: 'Amazon',
+        icon: 'fab fa-amazon',
+        color: '#FF9900',
+        field: {
+            type: 'text',
+            placeholder: 'store ID or URL',
+            help: 'Enter your Amazon store ID or full URL',
+            example: 'mybrand-20 or https://amazon.com/shops/mybrand'
+        }
+    },
+    {
+        id: 'ebay',
+        name: 'eBay',
+        icon: 'fab fa-ebay',
+        color: '#E53238',
+        field: {
+            type: 'text',
+            placeholder: 'username or store name',
+            help: 'Enter your eBay username or store name',
+            example: 'mybrand'
+        }
+    },
+    {
+        id: 'aliexpress',
+        name: 'AliExpress',
+        icon: 'fas fa-store',
+        color: '#E42F2F',
+        field: {
+            type: 'text',
+            placeholder: 'store ID or URL',
+            help: 'Enter your AliExpress store ID or full URL',
+            example: '1234567 or https://aliexpress.com/store/1234567'
+        }
+    },
+    {
+        id: 'shopify',
+        name: 'Shopify',
+        icon: 'fab fa-shopify',
+        color: '#96BF48',
+        field: {
+            type: 'text',
+            placeholder: 'storename',
+            help: 'Enter your Shopify store name (with or without .myshopify.com)',
+            example: 'mybrand or mybrand.myshopify.com'
+        }
+    },
+    {
+        id: 'custom',
+        name: 'Custom Link',
+        icon: 'fas fa-link',
+        color: '#6B7A8A',
+        field: {
+            type: 'text',
+            placeholder: 'https://example.com/yourpage',
+            help: 'Enter the full URL to your custom page',
+            example: 'https://example.com/mybrand'
+        }
+    }
+];
+
+// Get existing platforms from Django template
+const existingPlatforms = [
+    {% for social in social_media %}
+        '{{ social.platform }}',
+    {% endfor %}
+];
+
+// Filter out platforms that are already added
+const availablePlatforms = platforms.filter(p => !existingPlatforms.includes(p.id));
+
+// Render platform options in modal
+function renderPlatforms() {
+    const grid = document.getElementById('platformsGrid');
+    if (!grid) return;
+    
+    if (availablePlatforms.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);">All platforms have been added</div>';
+        return;
+    }
+    
+    grid.innerHTML = availablePlatforms.map(p => `
+        <div class="platform-option" onclick="addPlatform('${p.id}', '${p.name}', '${p.icon}', '${p.color}')">
+            <i class="${p.icon}" style="color: ${p.color};"></i>
+            <span>${p.name}</span>
+        </div>
+    `).join('');
+}
+
+// Modal functions
+function openModal() {
+    renderPlatforms();
+    const modal = document.getElementById('platformModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('platformModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// Add new platform
+function addPlatform(platformId, platformName, platformIcon, platformColor) {
+    closeModal();
+    
+    const platform = platforms.find(p => p.id === platformId);
+    if (!platform) return;
+    
+    const socialGrid = document.getElementById('socialGrid');
+    if (!socialGrid) return;
+    
+    const emptyState = socialGrid.querySelector('.empty-state');
+    if (emptyState) {
+        socialGrid.innerHTML = '';
+    }
+    
+    const fieldInfo = platform.field;
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'social-item';
+    newItem.dataset.platform = platformId;
+    newItem.innerHTML = `
+        <div class="social-item-header">
+            <div class="platform-icon" style="background: ${platformColor};">
+                <i class="${platformIcon}"></i>
+            </div>
+            <div class="platform-info">
+                <div class="platform-name">
+                    ${platformName}
+                    <span class="status-badge"></span>
+                </div>
+                <div class="platform-handle">Not configured</div>
+            </div>
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.8rem;" onclick="toggleForm('${platformId}')">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="social-form" id="form-${platformId}">
+            <div class="platform-help">
+                <i class="fas fa-info-circle"></i>
+                <strong>${platformName}:</strong> ${fieldInfo.help}
+                <div class="example">Example: ${fieldInfo.example}</div>
+            </div>
+            <form onsubmit="event.preventDefault(); saveSocial('${platformId}')">
+                <input type="hidden" name="platform" value="${platformId}">
+                <div class="form-group">
+                    <label class="form-label">${platformName}</label>
+                    <input type="text" class="form-control" name="raw_handle" 
+                           placeholder="${fieldInfo.placeholder}" value="">
+                    <small class="input-hint"><i class="fas fa-lightbulb"></i> ${fieldInfo.help}</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Display Name (optional)</label>
+                    <input type="text" class="form-control" name="display_name" placeholder="${platformName}" value="">
+                    <small class="input-hint"><i class="fas fa-pencil-alt"></i> Custom text to show instead of icon</small>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="is_active" id="active-${platformId}" checked>
+                    <label class="form-check-label" for="active-${platformId}">Active</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="open_in_new_tab" id="newtab-${platformId}" checked>
+                    <label class="form-check-label" for="newtab-${platformId}">Open in new tab</label>
+                </div>
+                <div class="social-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="cancelAdd(this)">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    socialGrid.prepend(newItem);
+}
+
+// Cancel adding new platform
+function cancelAdd(btn) {
+    const item = btn.closest('.social-item');
+    if (item && confirm('Cancel adding this platform?')) {
+        item.remove();
+    }
+}
+
+// Save new social media
+async function saveSocial(platformId) {
+    const socialItem = document.querySelector(`[data-platform="${platformId}"]`);
+    if (!socialItem) return;
+    
+    const form = socialItem.querySelector('form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Save';
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+    }
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            toast.show(result.message || `${platformId} saved successfully!`, 'success');
+            
+            // Update the UI
+            const handleElement = socialItem.querySelector('.platform-handle');
+            const rawHandle = formData.get('raw_handle');
+            
+            if (handleElement) {
+                handleElement.textContent = rawHandle || 'Not configured';
+                handleElement.title = rawHandle || '';
+            }
+            
+            // Show success state
+            socialItem.style.backgroundColor = 'var(--success-light)';
+            setTimeout(() => {
+                socialItem.style.backgroundColor = '';
+            }, 1000);
+            
+            // Hide the form
+            socialItem.querySelector('.social-form').classList.remove('show');
+            
+            // Update toggle button icon
+            const toggleBtn = socialItem.querySelector('.btn-outline i');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('fa-chevron-up');
+                toggleBtn.classList.add('fa-chevron-down');
+            }
+        } else {
+            throw new Error(result.error || 'Failed to save');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        toast.show(error.message, 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+// Update existing social media
+async function updateSocial(platformId) {
+    const socialItem = document.querySelector(`[data-platform="${platformId}"]`);
+    if (!socialItem) {
+        toast.show('Error: Social item not found', 'error');
+        return;
+    }
+    
+    const form = socialItem.querySelector('form');
+    if (!form) {
+        toast.show('Error: Form not found', 'error');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    formData.append('update', 'true');
+    
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Update';
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        submitBtn.disabled = true;
+    }
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            toast.show(result.message || `${platformId} updated successfully!`, 'success');
+            
+            // Update the displayed handle
+            const handleElement = socialItem.querySelector('.platform-handle');
+            const rawHandle = formData.get('raw_handle');
+            
+            if (handleElement) {
+                handleElement.textContent = rawHandle || 'Not configured';
+                handleElement.title = rawHandle || '';
+            }
+            
+            // Show success state
+            socialItem.style.backgroundColor = 'var(--success-light)';
+            setTimeout(() => {
+                socialItem.style.backgroundColor = '';
+            }, 1000);
+            
+            // Hide the form
+            socialItem.querySelector('.social-form').classList.remove('show');
+            
+            // Update toggle button icon
+            const toggleBtn = socialItem.querySelector('.btn-outline i');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('fa-chevron-up');
+                toggleBtn.classList.add('fa-chevron-down');
+            }
+        } else {
+            throw new Error(result.error || 'Failed to update');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        toast.show(error.message, 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+// Toggle social media form
+function toggleForm(platformId) {
+    const socialItem = document.querySelector(`[data-platform="${platformId}"]`);
+    if (!socialItem) return;
+    
+    const form = socialItem.querySelector('.social-form');
+    const toggleBtn = socialItem.querySelector('.btn-outline i');
+    
+    if (form) {
+        form.classList.toggle('show');
+        
+        if (toggleBtn) {
+            if (form.classList.contains('show')) {
+                toggleBtn.classList.remove('fa-chevron-down');
+                toggleBtn.classList.add('fa-chevron-up');
+            } else {
+                toggleBtn.classList.remove('fa-chevron-up');
+                toggleBtn.classList.add('fa-chevron-down');
+            }
+        }
+    }
+}
+
+// Delete social media
+async function deleteSocial(platformId) {
+    if (!confirm('Remove this social media connection?')) return;
+    
+    const socialItem = document.querySelector(`[data-platform="${platformId}"]`);
+    if (!socialItem) return;
+    
+    socialItem.style.opacity = '0.5';
+    socialItem.style.pointerEvents = 'none';
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ platform: platformId })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            toast.show(result.message || 'Social media removed', 'success');
+            
+            // Remove with animation
+            socialItem.style.transition = 'all 0.3s ease';
+            socialItem.style.transform = 'scale(0.8)';
+            socialItem.style.opacity = '0';
+            
+            setTimeout(() => {
+                socialItem.remove();
+                
+                // Check if grid is empty
+                const grid = document.getElementById('socialGrid');
+                if (grid && grid.children.length === 0) {
+                    toast.show('No social media left. Add some!', 'info');
+                    setTimeout(() => location.reload(), 1000);
+                }
+            }, 300);
+        } else {
+            throw new Error(result.error || 'Failed to delete');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        toast.show(error.message, 'error');
+        socialItem.style.opacity = '1';
+        socialItem.style.pointerEvents = 'auto';
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('platformModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Social Media Editor initialized');
+    
+    // Add animation to existing items
+    document.querySelectorAll('.social-item').forEach((item, index) => {
+        item.style.animation = `fadeInUp 0.3s ease forwards ${index * 0.1}s`;
+    });
+});
+
+// Add animation keyframes
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

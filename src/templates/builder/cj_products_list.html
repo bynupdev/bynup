@@ -1,0 +1,423 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}CJ Products - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.products-table {
+    font-size: 0.9rem;
+}
+
+.product-image-small {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.sync-status-badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+}
+
+.stock-badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    min-width: 60px;
+    text-align: center;
+}
+
+.empty-state {
+    padding: 4rem 1rem;
+    text-align: center;
+}
+
+.search-box {
+    max-width: 300px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-boxes me-2 text-primary"></i>
+                CJ Products
+            </h2>
+            <p class="text-muted mb-0">
+                Products imported from CJ Dropshipping for {{ page.brand_name }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'cj_product_search' page.subdomain %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Import Products
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-value">{{ total_products }}</div>
+                            <div class="stat-label">Total Products</div>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-box fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-value text-success">{{ synced_count }}</div>
+                            <div class="stat-label">Synced</div>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-value text-warning">{{ pending_count }}</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="text-warning">
+                            <i class="fas fa-clock fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-value text-danger">{{ failed_count }}</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="text-danger">
+                            <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" id="filterForm">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Search Products</label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="q" 
+                                   placeholder="Search by name or ID..."
+                                   value="{{ search_query }}">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sync Status</label>
+                        <select class="form-select" name="sync_status">
+                            <option value="">All Status</option>
+                            <option value="synced" {% if current_sync_status == 'synced' %}selected{% endif %}>Synced</option>
+                            <option value="pending" {% if current_sync_status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="failed" {% if current_sync_status == 'failed' %}selected{% endif %}>Failed</option>
+                            <option value="out_of_sync" {% if current_sync_status == 'out_of_sync' %}selected{% endif %}>Out of Sync</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter me-1"></i> Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if products %}
+                <div class="table-responsive">
+                    <table class="table table-hover products-table mb-0">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Product</th>
+                                <th>CJ ID</th>
+                                <th>Price</th>
+                                <th>Sync Status</th>
+                                <th>Last Sync</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cj_product in products %}
+                            <tr>
+                                <!-- In the products list table -->
+<td>
+    {% if cj_product.local_product.main_image %}
+        <img src="{{ cj_product.local_product.main_image.url }}" 
+             class="product-image-small"
+             alt="{{ cj_product.local_product.title }}"
+             title="Main image imported">
+    {% elif cj_product.local_product.image_gallery and cj_product.local_product.image_gallery|length > 0 %}
+        <div class="product-image-small bg-info text-white d-flex align-items-center justify-content-center"
+             title="{{ cj_product.local_product.image_gallery|length }} gallery images">
+            <i class="fas fa-images"></i>
+        </div>
+    {% else %}
+        <div class="product-image-small bg-light d-flex align-items-center justify-content-center"
+             title="No images">
+            <i class="fas fa-box text-muted"></i>
+        </div>
+    {% endif %}
+</td>
+<td>
+    <div class="fw-bold">{{ cj_product.local_product.title|truncatechars:50 }}</div>
+    <div class="text-muted small">
+        {% if cj_product.local_product.colors %}
+            <span class="me-2"><i class="fas fa-palette"></i> {{ cj_product.local_product.colors|truncatechars:30 }}</span>
+        {% endif %}
+        {% if cj_product.local_product.sizes %}
+            <span><i class="fas fa-ruler-combined"></i> {{ cj_product.local_product.sizes|truncatechars:30 }}</span>
+        {% endif %}
+    </div>
+</td>
+                                <td>
+                                    <div class="fw-bold">{{ cj_product.local_product.title|truncatechars:50 }}</div>
+                                    <div class="text-muted small">
+                                        SKU: {{ cj_product.local_product.sku|default:"N/A" }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <code class="small">{{ cj_product.cj_product_id|truncatechars:10 }}</code>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">${{ cj_product.local_product.price|floatformat:2 }}</div>
+                                    <div class="text-muted small">
+                                        Cost: ${{ cj_product.cj_price_usd|floatformat:2 }}
+                                        (+{{ cj_product.profit_margin_applied|floatformat:1 }}%)
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="sync-status-badge badge 
+                                        {% if cj_product.sync_status == 'synced' %}bg-success
+                                        {% elif cj_product.sync_status == 'failed' %}bg-danger
+                                        {% elif cj_product.sync_status == 'pending' %}bg-warning
+                                        {% else %}bg-info{% endif %}">
+                                        {{ cj_product.get_sync_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if cj_product.last_full_sync %}
+                                        <span class="small text-muted">
+                                            {{ cj_product.last_full_sync|timesince }} ago
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary sync-product-btn"
+                                                data-product-id="{{ cj_product.cj_product_id }}"
+                                                title="Sync Now">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <a href="#" class="btn btn-outline-secondary"
+                                           title="Edit Product">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if products.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Products pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if products.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ products.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sync_status %}&sync_status={{ current_sync_status }}{% endif %}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for i in products.paginator.page_range %}
+                                {% if products.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ i }}</span>
+                                </li>
+                                {% elif i > products.number|add:'-3' and i < products.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sync_status %}&sync_status={{ current_sync_status }}{% endif %}">
+                                        {{ i }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if products.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ products.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sync_status %}&sync_status={{ current_sync_status }}{% endif %}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <!-- Empty State -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">No Products Found</h4>
+                    <p class="text-muted mb-4">
+                        {% if search_query or current_sync_status %}
+                            Try changing your filters or search terms
+                        {% else %}
+                            You haven't imported any products from CJ yet
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'cj_product_search' page.subdomain %}" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i> Import Products
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class CJProductsManager {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Clear search button
+        document.getElementById('clearSearch').addEventListener('click', () => {
+            document.querySelector('input[name="q"]').value = '';
+            document.getElementById('filterForm').submit();
+        });
+
+        // Sync product buttons
+        document.querySelectorAll('.sync-product-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.syncProduct(btn.dataset.productId, btn);
+            });
+        });
+    }
+
+    async syncProduct(productId, button) {
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+        button.disabled = true;
+
+        try {
+            const response = await fetch(`/builder/cj-sync/{{ page.subdomain }}/${productId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.showToast('success', 'Product synced successfully!');
+                // Reload page after delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                this.showToast('error', data.error || 'Sync failed');
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+            }
+        } catch (error) {
+            this.showToast('error', 'Network error: ' + error.message);
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        }
+    }
+
+    showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.appendChild(toast);
+        document.body.appendChild(container);
+
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+
+        toast.addEventListener('hidden.bs.toast', () => {
+            container.remove();
+        });
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    window.cjProductsManager = new CJProductsManager();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,85 @@
+<!-- payments/templates/payments/admin_pending.html -->
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<div class="module">
+    <h2>Pending Payment Verifications</h2>
+    
+    <!-- Search Form -->
+    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <form method="get" style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" 
+                   name="search" 
+                   placeholder="Search by email, name, or reference..." 
+                   value="{{ search_query }}"
+                   style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <button type="submit" class="button" style="padding: 10px 20px; background: #4361ee; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Search
+            </button>
+            {% if search_query %}
+            <a href="{% url 'payments:admin_pending_payments' %}" class="button" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">
+                Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+    
+    <!-- Stats -->
+    <div style="margin-bottom: 20px; display: flex; gap: 20px;">
+        <div style="padding: 15px; background: #fff3cd; border-radius: 8px; flex: 1;">
+            <strong>Pending:</strong> {{ pending|length }}
+        </div>
+        <div style="padding: 15px; background: #d4edda; border-radius: 8px; flex: 1;">
+            <strong>Activated Today:</strong> {{ activated_today }}
+        </div>
+    </div>
+    
+    {% if pending %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                <th style="padding: 12px; text-align: left;">User</th>
+                <th style="padding: 12px; text-align: left;">Plan</th>
+                <th style="padding: 12px; text-align: left;">Amount</th>
+                <th style="padding: 12px; text-align: left;">Period</th>
+                <th style="padding: 12px; text-align: left;">Payment Method</th>
+                <th style="padding: 12px; text-align: left;">Reference</th>
+                <th style="padding: 12px; text-align: left;">Date</th>
+                <th style="padding: 12px; text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in pending %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px;">
+                    <strong>{{ sub.user.email }}</strong><br>
+                    <small>{{ sub.user.get_full_name }}</small>
+                </td>
+                <td style="padding: 12px;">{{ sub.plan.name }}</td>
+                <td style="padding: 12px;">${{ sub.amount_paid }}</td>
+                <td style="padding: 12px;">{{ sub.billing_period|title }}</td>
+                <td style="padding: 12px;">{{ sub.payment_method }}</td>
+                <td style="padding: 12px;">
+                    <code>{{ sub.payment_reference }}</code>
+                    {% if sub.payment_notes %}
+                    <br><small class="text-muted">{{ sub.payment_notes|truncatechars:30 }}</small>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px;">{{ sub.created_at|date:"M d, Y H:i" }}</td>
+                <td style="padding: 12px; text-align: center;">
+                    <a href="{% url 'payments:admin_verify_payment' sub.id %}" 
+                       style="background: #10b981; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none; display: inline-block;">
+                        Verify & Activate
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+        <p style="color: #6c757d; margin: 0;">No pending payments.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

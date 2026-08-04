@@ -1,0 +1,500 @@
+<!-- builder/templates/ModernToyShop19/product_details.html -->
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details | Nook & Nest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-leaf: #5c8b39;
+            --terracotta: #c07436;
+            --warm-clay: #bf7f4a;
+            --olive-drab: #636a2f;
+            --deep-forest: #212615;
+            --bg-light: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        main { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: var(--deep-forest); line-height: 1.4; overflow-x: hidden;  }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .breadcrumb { padding: 1rem 0; margin-bottom: 2rem; font-size: 0.85rem; color: var(--deep-forest); opacity: 0.7; }
+        .breadcrumb a { color: var(--terracotta); text-decoration: none; transition: var(--transition-smooth); }
+        .breadcrumb a:hover { color: var(--warm-clay); text-decoration: underline; }
+        .breadcrumb span { margin: 0 0.5rem; }
+        .product-details-container { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 4rem; }
+        .product-gallery { position: relative; }
+        .main-image-container { width: 100%; aspect-ratio: 1 / 1; border-radius: var(--border-radius-card); overflow: hidden; margin-bottom: 1rem; background: white; box-shadow: var(--card-shadow); }
+        .main-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+        .main-image:hover { transform: scale(1.02); }
+        .thumbnail-container { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+        .thumbnail { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 2px solid transparent; transition: var(--transition-smooth); opacity: 0.7; }
+        .thumbnail:hover { opacity: 1; transform: translateY(-3px); }
+        .thumbnail.active { border-color: var(--terracotta); opacity: 1; transform: translateY(-3px); box-shadow: 0 5px 15px rgba(192,116,54,0.2); }
+        .product-info { padding: 1rem 0; }
+        .product-title { font-size: 2.2rem; font-weight: 700; color: var(--deep-forest); margin-bottom: 1rem; line-height: 1.2; }
+        .product-rating { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .stars { display: flex; gap: 0.2rem; color: var(--terracotta); font-size: 1rem; }
+        .rating-count { color: var(--deep-forest); opacity: 0.6; font-size: 0.9rem; }
+        .product-price { font-size: 2rem; font-weight: 700; color: var(--terracotta); margin-bottom: 1rem; }
+        .product-price .original-price { text-decoration: line-through; color: var(--olive-drab); font-size: 1.2rem; margin-left: 0.8rem; font-weight: normal; }
+        .product-price .discount-badge { background: var(--primary-leaf); color: white; padding: 0.2rem 0.6rem; border-radius: 40px; font-size: 0.8rem; margin-left: 0.8rem; }
+        .product-description { color: var(--deep-forest); line-height: 1.7; margin-bottom: 1.5rem; font-size: 0.95rem; opacity: 0.8; }
+        .variant-section { margin-bottom: 1.5rem; }
+        .variant-title { font-weight: 600; margin-bottom: 0.8rem; color: var(--deep-forest); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .color-options { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .color-option { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: var(--transition-smooth); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.active { border-color: var(--deep-forest); transform: scale(1.1); box-shadow: 0 0 0 2px var(--terracotta); }
+        .size-options { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .size-option { padding: 0.6rem 1.2rem; border: 1.5px solid rgba(99,106,47,0.2); border-radius: 40px; background: white; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; font-weight: 500; }
+        .size-option:hover { border-color: var(--terracotta); transform: translateY(-2px); }
+        .size-option.active { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+        .product-actions { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .buy-now-btn { flex: 2; background: linear-gradient(135deg, var(--deep-forest), var(--terracotta)); color: white; padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 40px; border: none; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 0.8rem; font-family: 'Quicksand', sans-serif; }
+        .buy-now-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(192,116,54,0.3); }
+        .add-to-cart-details-btn { flex: 1; background: white; color: var(--terracotta); padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 40px; border: 1.5px solid var(--terracotta); cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 0.8rem; font-family: 'Quicksand', sans-serif; }
+        .add-to-cart-details-btn:hover { background: var(--terracotta); color: white; transform: translateY(-3px); }
+        .wishlist-details-btn { width: 52px; background: white; border: 1.5px solid rgba(99,106,47,0.2); border-radius: 40px; color: var(--deep-forest); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition-smooth); font-size: 1.2rem; }
+        .wishlist-details-btn:hover { background: var(--terracotta); color: white; border-color: var(--terracotta); transform: translateY(-3px); }
+        .product-tabs { margin: 3rem 0; }
+        .tab-headers { display: flex; gap: 2rem; border-bottom: 2px solid rgba(99,106,47,0.15); margin-bottom: 2rem; }
+        .tab-header { padding: 1rem 0; background: none; border: none; color: var(--deep-forest); font-size: 1rem; font-weight: 600; cursor: pointer; position: relative; transition: var(--transition-smooth); font-family: 'Quicksand', sans-serif; }
+        .tab-header:hover { color: var(--terracotta); }
+        .tab-header.active { color: var(--terracotta); }
+        .tab-header.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--terracotta); }
+        .tab-content { display: none; padding: 1rem 0; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .review-form { background: white; padding: 2rem; border-radius: var(--border-radius-card); margin-bottom: 2rem; box-shadow: var(--card-shadow); }
+        .review-form h3 { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--deep-forest); }
+        .star-rating-input { display: flex; gap: 0.5rem; font-size: 1.5rem; cursor: pointer; margin-bottom: 1rem; }
+        .star-rating-input .star { color: #ddd; transition: var(--transition-smooth); }
+        .star-rating-input .star:hover, .star-rating-input .star.active { color: var(--terracotta); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .form-group input, .form-group textarea { width: 100%; padding: 0.8rem 1rem; border: 1px solid rgba(99,106,47,0.2); border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.9rem; transition: var(--transition-smooth); }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(192,116,54,0.1); }
+        .submit-review-btn { background: var(--terracotta); color: white; padding: 0.8rem 2rem; border: none; border-radius: 40px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); }
+        .submit-review-btn:hover { background: var(--warm-clay); transform: translateY(-2px); }
+        .review-item { background: white; padding: 1.5rem; border-radius: var(--border-radius-card); margin-bottom: 1rem; box-shadow: var(--card-shadow); }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.5rem; }
+        .reviewer-name { font-weight: 600; color: var(--deep-forest); }
+        .review-date { font-size: 0.8rem; color: var(--deep-forest); opacity: 0.5; }
+        .review-rating { margin-bottom: 0.8rem; color: var(--terracotta); font-size: 0.9rem; }
+        .review-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 1rem; }
+        .review-comment { color: var(--deep-forest); line-height: 1.6; font-size: 0.9rem; opacity: 0.8; }
+        .related-products { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(99,106,47,0.15); }
+        .related-products h2 { font-size: 1.8rem; text-align: center; margin-bottom: 2rem; color: var(--deep-forest); }
+        .related-products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; }
+        .related-product-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .related-product-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .related-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .related-product-info { padding: 1rem; }
+        .related-product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .related-product-price { color: var(--terracotta); font-weight: 500; font-size: 0.9rem; }
+        .empty-related { text-align: center; padding: 3rem; background: white; border-radius: var(--border-radius-card); grid-column: 1 / -1; }
+        .empty-related p { color: var(--deep-forest); opacity: 0.6; }
+        @media (max-width: 992px) { .product-details-container { grid-template-columns: 1fr; gap: 2rem; } .related-products-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {  .container { padding: 0 1.5rem; } .product-title { font-size: 1.8rem; } .product-actions { flex-direction: column; } .buy-now-btn, .add-to-cart-details-btn { width: 100%; } .wishlist-details-btn { width: 100%; height: 52px; } .related-products-grid { grid-template-columns: 1fr; max-width: 350px; margin: 0 auto; } .tab-headers { gap: 1rem; } .tab-header { font-size: 0.9rem; } .thumbnail { width: 60px; height: 60px; } .review-header { flex-direction: column; align-items: flex-start; } }
+    </style>
+</head>
+<body>
+
+<main>
+    <div class="container">
+    <!-- Breadcrumb - FULLY EDITABLE -->
+    <div class="breadcrumb editable-section no-drop-zone" data-section="550">
+        <a href="?page=home" class="editable-text editable-section no-drop-zone" data-section="551" data-text="335">Home</a>
+        <span class="editable-text editable-section no-drop-zone" data-section="552" data-text="336">/</span>
+        <a href="?page=products" class="editable-text editable-section no-drop-zone" data-section="553" data-text="337">Shop</a>
+        <span class="editable-text editable-section no-drop-zone" data-section="554" data-text="338">/</span>
+        <span class="current-product editable-text editable-section no-drop-zone" data-section="555" data-text="339">Wooden Building Blocks</span>
+    </div>
+
+    <!-- Product Details Container -->
+    <div class="product-details-container">
+        <!-- Product Gallery - FULLY EDITABLE -->
+        <div class="product-gallery editable-section no-drop-zone" data-section="556">
+            <div class="main-image-container editable-section no-drop-zone" data-section="557">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" alt="Main product image" class="main-image editable-image" data-image="57" id="main-product-image">
+            </div>
+            <div class="thumbnail-container editable-section no-drop-zone" data-section="558" id="thumbnail-container">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" alt="Thumbnail 1" class="thumbnail active editable-image" data-image="58" data-full="https://images.unsplash.com/photo-1598708742640-d747f5f2d26c?w=800&h=800&fit=crop">
+                <img src="{%static 'images/Ecom19/prod1.jpg'%}" alt="Thumbnail 2" class="thumbnail editable-image" data-image="59" data-full="https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&h=800&fit=crop">
+                <img src="{%static 'images/Ecom19/prod4.jpg'%}" alt="Thumbnail 3" class="thumbnail editable-image" data-image="60" data-full="https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&h=800&fit=crop">
+                <img src="{%static 'images/Ecom19/prod5.jpg'%}" alt="Thumbnail 4" class="thumbnail editable-image" data-image="61" data-full="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&h=800&fit=crop">
+            </div>
+        </div>
+
+        <!-- Product Info - FULLY EDITABLE -->
+        <div class="product-info editable-section no-drop-zone" data-section="559">
+            <h1 class="product-title editable-text editable-section no-drop-zone" data-section="560" data-text="340">Wooden Building Blocks</h1>
+
+            <div class="product-rating editable-section no-drop-zone" data-section="561">
+                <div class="stars editable-section no-drop-zone" data-section="562">
+                    <i class="fas fa-star editable-icon" data-icon="14"></i>
+                    <i class="fas fa-star editable-icon" data-icon="14"></i>
+                    <i class="fas fa-star editable-icon" data-icon="14"></i>
+                    <i class="fas fa-star editable-icon" data-icon="14"></i>
+                    <i class="fas fa-star-half-alt editable-icon" data-icon="14"></i>
+                </div>
+                <span class="rating-count editable-text editable-section no-drop-zone" data-section="563" data-text="341">(128 Reviews)</span>
+            </div>
+
+            <div class="product-price editable-section no-drop-zone" data-section="564">
+                <span class="editable-text editable-section no-drop-zone" data-section="565" data-text="342">$48.00</span>
+                <span class="original-price editable-text editable-section no-drop-zone" data-section="566" data-text="343">$65.00</span>
+                <span class="discount-badge editable-text editable-section no-drop-zone" data-section="567" data-text="344">Save 26%</span>
+            </div>
+
+            <p class="product-description editable-text editable-section no-drop-zone" data-section="568" data-text="345">Beautifully crafted wooden building blocks that inspire creativity and imagination. Made from sustainable wood with non-toxic finishes. Perfect for developing fine motor skills and spatial awareness in children aged 3 and up.</p>
+
+            <!-- Color Variants -->
+            <div class="variant-section editable-section no-drop-zone" data-section="569">
+                <div class="variant-title editable-text editable-section no-drop-zone" data-section="570" data-text="346">COLOR</div>
+                <div class="color-options editable-section no-drop-zone" data-section="571" id="color-options">
+                    <div class="color-option active editable-icon" data-icon="41" data-color="natural" style="background-color: #8B5A2B;"></div>
+                    <div class="color-option editable-icon" data-icon="42" data-color="terracotta" style="background-color: #C07436;"></div>
+                    <div class="color-option editable-icon" data-icon="43" data-color="green" style="background-color: #5C8B39;"></div>
+                    <div class="color-option editable-icon" data-icon="44" data-color="cream" style="background-color: #E8D9C5;"></div>
+                </div>
+            </div>
+
+            <!-- Size Variants -->
+            <div class="variant-section editable-section no-drop-zone" data-section="572">
+                <div class="variant-title editable-text editable-section no-drop-zone" data-section="573" data-text="347">SIZE</div>
+                <div class="size-options editable-section no-drop-zone" data-section="574" id="size-options">
+                    <div class="size-option active editable-text editable-section no-drop-zone" data-section="575" data-text="348" data-size="small">Small (50 pcs)</div>
+                    <div class="size-option editable-text editable-section no-drop-zone" data-section="576" data-text="349" data-size="medium">Medium (100 pcs)</div>
+                    <div class="size-option editable-text editable-section no-drop-zone" data-section="577" data-text="350" data-size="large">Large (200 pcs)</div>
+                </div>
+            </div>
+
+            <!-- Product Actions -->
+            <div class="product-actions editable-section no-drop-zone" data-section="578">
+                <button class="buy-now-btn editable-text editable-section no-drop-zone" data-section="579" data-text="351">
+                    <i class="fas fa-bolt editable-icon" data-icon="15"></i> Buy Now
+                </button>
+                <button class="add-to-cart-details-btn editable-text editable-section no-drop-zone" data-section="580" data-text="352">
+                    <i class="fas fa-shopping-bag editable-icon" data-icon="2"></i> Add to Cart
+                </button>
+                <button class="wishlist-details-btn editable-icon" data-icon="3">
+                    <i class="far fa-heart"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Tabs - FULLY EDITABLE -->
+    <div class="product-tabs editable-section no-drop-zone" data-section="581">
+        <div class="tab-headers editable-section no-drop-zone" data-section="582">
+            <button class="tab-header active editable-text editable-section no-drop-zone" data-section="583" data-text="353" data-tab="description">Description</button>
+            <button class="tab-header editable-text editable-section no-drop-zone" data-section="584" data-text="354" data-tab="specifications">Specifications</button>
+            <button class="tab-header editable-text editable-section no-drop-zone" data-section="585" data-text="355" data-tab="shipping">Shipping & Returns</button>
+            <button class="tab-header editable-text editable-section no-drop-zone" data-section="586" data-text="356" data-tab="reviews">Reviews</button>
+        </div>
+
+        <div class="tab-content active editable-section no-drop-zone" data-section="587" id="description-tab">
+            <h3 class="editable-text editable-section no-drop-zone" data-section="588" data-text="357">Product Description</h3>
+            <p class="editable-text editable-section no-drop-zone" data-section="589" data-text="358">These premium wooden building blocks are crafted from sustainably sourced beech wood and finished with child-safe, non-toxic paints. Each block is smooth-sanded with rounded edges for safe play.</p>
+            <p class="editable-text editable-section no-drop-zone" data-section="590" data-text="359">Perfect for open-ended play, these blocks help develop fine motor skills, spatial reasoning, and creative problem-solving. The set includes various shapes and sizes, allowing children to build anything from simple towers to complex structures.</p>
+            <p class="editable-text editable-section no-drop-zone" data-section="591" data-text="360">Ideal for ages 3 and up, these blocks encourage cooperative play and can be combined with other building sets for expanded creativity.</p>
+        </div>
+
+        <div class="tab-content editable-section no-drop-zone" data-section="592" id="specifications-tab">
+            <h3 class="editable-text editable-section no-drop-zone" data-section="593" data-text="361">Product Specifications</h3>
+            <ul class="editable-section no-drop-zone" data-section="594">
+                <li class="editable-text editable-section no-drop-zone" data-section="595" data-text="362"><strong>Material:</strong> Sustainable beech wood</li>
+                <li class="editable-text editable-section no-drop-zone" data-section="596" data-text="363"><strong>Finish:</strong> Non-toxic, water-based paint</li>
+                <li class="editable-text editable-section no-drop-zone" data-section="597" data-text="364"><strong>Piece Count:</strong> 100 pieces (Small set)</li>
+                <li class="editable-text editable-section no-drop-zone" data-section="598" data-text="365"><strong>Dimensions:</strong> Blocks range from 1-4 inches</li>
+                <li class="editable-text editable-section no-drop-zone" data-section="599" data-text="366"><strong>Age Recommendation:</strong> 3 years and up</li>
+                <li class="editable-text editable-section no-drop-zone" data-section="600" data-text="367"><strong>Safety:</strong> ASTM F963 certified</li>
+            </ul>
+        </div>
+
+        <div class="tab-content editable-section no-drop-zone" data-section="601" id="shipping-tab">
+            <h3 class="editable-text editable-section no-drop-zone" data-section="602" data-text="368">Shipping & Returns</h3>
+            <p class="editable-text editable-section no-drop-zone" data-section="603" data-text="369"><strong>Free Shipping:</strong> On all orders over $50 within the continental US.</p>
+            <p class="editable-text editable-section no-drop-zone" data-section="604" data-text="370"><strong>Processing Time:</strong> Orders ship within 1-2 business days.</p>
+            <p class="editable-text editable-section no-drop-zone" data-section="605" data-text="371"><strong>Return Policy:</strong> We offer a 30-day satisfaction guarantee. If you're not completely happy with your purchase, we'll provide a full refund or exchange.</p>
+            <p class="editable-text editable-section no-drop-zone" data-section="606" data-text="372"><strong>Warranty:</strong> All products come with a 1-year warranty against manufacturing defects.</p>
+        </div>
+
+        <div class="tab-content editable-section no-drop-zone" data-section="607" id="reviews-tab">
+            <!-- Review Form -->
+            <div class="review-form editable-section no-drop-zone" data-section="608">
+                <h3 class="editable-text editable-section no-drop-zone" data-section="609" data-text="373">Write a Review</h3>
+                <div class="star-rating-input editable-section no-drop-zone" data-section="610" id="star-rating-input">
+                    <i class="fas fa-star star editable-icon" data-icon="14" data-rating="1"></i>
+                    <i class="fas fa-star star editable-icon" data-icon="14" data-rating="2"></i>
+                    <i class="fas fa-star star editable-icon" data-icon="14" data-rating="3"></i>
+                    <i class="fas fa-star star editable-icon" data-icon="14" data-rating="4"></i>
+                    <i class="fas fa-star star editable-icon" data-icon="14" data-rating="5"></i>
+                </div>
+                <div class="form-group editable-section no-drop-zone" data-section="611">
+                    <label class="editable-text editable-section no-drop-zone" data-section="612" data-text="374">Your Name</label>
+                    <input type="text" class="editable-text editable-section no-drop-zone" data-section="613" data-text="375" id="reviewer-name" placeholder="Enter your name">
+                </div>
+                <div class="form-group editable-section no-drop-zone" data-section="614">
+                    <label class="editable-text editable-section no-drop-zone" data-section="615" data-text="376">Review Title</label>
+                    <input type="text" class="editable-text editable-section no-drop-zone" data-section="616" data-text="377" id="review-title" placeholder="Summarize your experience">
+                </div>
+                <div class="form-group editable-section no-drop-zone" data-section="617">
+                    <label class="editable-text editable-section no-drop-zone" data-section="618" data-text="378">Your Review</label>
+                    <textarea class="editable-text editable-section no-drop-zone" data-section="619" data-text="379" id="review-comment" rows="4" placeholder="Share your thoughts about this product..."></textarea>
+                </div>
+                <button class="submit-review-btn editable-text editable-section no-drop-zone" data-section="620" data-text="380">Submit Review</button>
+            </div>
+
+            <!-- Customer Reviews -->
+            <div class="customer-reviews editable-section no-drop-zone" data-section="621">
+                <h3 class="editable-text editable-section no-drop-zone" data-section="622" data-text="381">Customer Reviews</h3>
+                <div class="review-item editable-section no-drop-zone" data-section="623">
+                    <div class="review-header editable-section no-drop-zone" data-section="624">
+                        <span class="reviewer-name editable-text editable-section no-drop-zone" data-section="625" data-text="382">Sarah Johnson</span>
+                        <span class="review-date editable-text editable-section no-drop-zone" data-section="626" data-text="383">March 15, 2024</span>
+                    </div>
+                    <div class="review-rating editable-section no-drop-zone" data-section="627">
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                    </div>
+                    <div class="review-title editable-text editable-section no-drop-zone" data-section="628" data-text="384">Absolutely love these blocks!</div>
+                    <div class="review-comment editable-text editable-section no-drop-zone" data-section="629" data-text="385">My 4-year-old spends hours building with these. The quality is exceptional and the colors are beautiful. Highly recommend!</div>
+                </div>
+                <div class="review-item editable-section no-drop-zone" data-section="630">
+                    <div class="review-header editable-section no-drop-zone" data-section="631">
+                        <span class="reviewer-name editable-text editable-section no-drop-zone" data-section="632" data-text="386">Michael Chen</span>
+                        <span class="review-date editable-text editable-section no-drop-zone" data-section="633" data-text="387">February 28, 2024</span>
+                    </div>
+                    <div class="review-rating editable-section no-drop-zone" data-section="634">
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="fas fa-star editable-icon" data-icon="14"></i>
+                        <i class="far fa-star editable-icon" data-icon="14"></i>
+                    </div>
+                    <div class="review-title editable-text editable-section no-drop-zone" data-section="635" data-text="388">Great quality, wish there were more pieces</div>
+                    <div class="review-comment editable-text editable-section no-drop-zone" data-section="636" data-text="389">The blocks are beautifully made. My only suggestion would be to offer a larger set with more pieces. Otherwise, perfect!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products - FULLY EDITABLE -->
+    <div class="related-products editable-section no-drop-zone" data-section="637">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="638" data-text="390">You May Also Like</h2>
+        <div class="related-products-grid" id="related-products-grid">
+            <!-- Related Product 1 -->
+            <div class="related-product-card editable-section no-drop-zone" data-section="639">
+                <img src="{%static 'images/Ecom19/prod7.jpg'%}" alt="Plush bear" class="related-product-img editable-image" data-image="62">
+                <div class="related-product-info editable-section no-drop-zone" data-section="640">
+                    <div class="related-product-name editable-text editable-section no-drop-zone" data-section="641" data-text="391">Plush Teddy Bear</div>
+                    <div class="related-product-price editable-text editable-section no-drop-zone" data-section="642" data-text="392">$32.00</div>
+                </div>
+            </div>
+            <!-- Related Product 2 -->
+            <div class="related-product-card editable-section no-drop-zone" data-section="643">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" alt="Puzzle set" class="related-product-img editable-image" data-image="63">
+                <div class="related-product-info editable-section no-drop-zone" data-section="644">
+                    <div class="related-product-name editable-text editable-section no-drop-zone" data-section="645" data-text="393">Educational Puzzle Set</div>
+                    <div class="related-product-price editable-text editable-section no-drop-zone" data-section="646" data-text="394">$27.50</div>
+                </div>
+            </div>
+            <!-- Related Product 3 -->
+            <div class="related-product-card editable-section no-drop-zone" data-section="647">
+                <img src="{%static 'images/Ecom19/prod7.jpg'%}" alt="Activity kit" class="related-product-img editable-image" data-image="64">
+                <div class="related-product-info editable-section no-drop-zone" data-section="648">
+                    <div class="related-product-name editable-text editable-section no-drop-zone" data-section="649" data-text="395">Kids Activity Kit</div>
+                    <div class="related-product-price editable-text editable-section no-drop-zone" data-section="650" data-text="396">$39.00</div>
+                </div>
+            </div>
+            <!-- Related Product 4 -->
+            <div class="related-product-card editable-section no-drop-zone" data-section="651">
+                <img src="{%static 'images/Ecom19/prod3.jpg'%}" alt="Montessori toy" class="related-product-img editable-image" data-image="65">
+                <div class="related-product-info editable-section no-drop-zone" data-section="652">
+                    <div class="related-product-name editable-text editable-section no-drop-zone" data-section="653" data-text="397">Montessori Wooden Toy</div>
+                    <div class="related-product-price editable-text editable-section no-drop-zone" data-section="654" data-text="398">$52.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty Related Products State - FULLY EDITABLE -->
+    <div class="empty-related editable-section no-drop-zone" data-section="655" style="display: none;">
+        <p class="editable-text editable-section no-drop-zone" data-section="656" data-text="399">No related products available for this item.</p>
+    </div>
+</div>
+</main>
+
+<!-- <script>
+    // Product Details Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Image thumbnail switcher
+        const thumbnails = document.querySelectorAll('.thumbnail');
+        const mainImage = document.getElementById('main-product-image');
+
+        if (thumbnails.length > 0 && mainImage) {
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function() {
+                    thumbnails.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    const newImage = this.getAttribute('data-full');
+                    if (newImage) {
+                        mainImage.src = newImage;
+                    }
+                });
+            });
+        }
+
+        // Color variant selection
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                colorOptions.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Size variant selection
+        const sizeOptions = document.querySelectorAll('.size-option');
+        sizeOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                sizeOptions.forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Tab switching
+        const tabHeaders = document.querySelectorAll('.tab-header');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabHeaders.forEach(header => {
+            header.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                tabHeaders.forEach(h => h.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+
+        // Star rating for review form
+        const stars = document.querySelectorAll('.star-rating-input .star');
+        let selectedRating = 0;
+
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                selectedRating = parseInt(this.getAttribute('data-rating'));
+                stars.forEach((s, index) => {
+                    if (index < selectedRating) {
+                        s.classList.add('active');
+                    } else {
+                        s.classList.remove('active');
+                    }
+                });
+            });
+
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.getAttribute('data-rating'));
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.style.color = '#c07436';
+                    } else {
+                        s.style.color = '#ddd';
+                    }
+                });
+            });
+
+            star.addEventListener('mouseleave', function() {
+                stars.forEach((s, index) => {
+                    if (index < selectedRating) {
+                        s.style.color = '#c07436';
+                    } else {
+                        s.style.color = '#ddd';
+                    }
+                });
+            });
+        });
+
+        // Submit review button
+        const submitBtn = document.querySelector('.submit-review-btn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function() {
+                const name = document.getElementById('reviewer-name')?.value;
+                const title = document.getElementById('review-title')?.value;
+                const comment = document.getElementById('review-comment')?.value;
+
+                if (!name || !title || !comment || selectedRating === 0) {
+                    alert('Please fill in all fields and select a rating.');
+                    return;
+                }
+
+                alert('Thank you for your review! (Demo)');
+                document.getElementById('reviewer-name').value = '';
+                document.getElementById('review-title').value = '';
+                document.getElementById('review-comment').value = '';
+                stars.forEach(s => s.classList.remove('active'));
+                selectedRating = 0;
+            });
+        }
+
+        // Add to cart button
+        const addToCartBtn = document.querySelector('.add-to-cart-details-btn');
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', function() {
+                alert('Item added to cart! (Demo)');
+            });
+        }
+
+        // Buy now button
+        const buyNowBtn = document.querySelector('.buy-now-btn');
+        if (buyNowBtn) {
+            buyNowBtn.addEventListener('click', function() {
+                alert('Proceeding to checkout! (Demo)');
+            });
+        }
+
+        // Wishlist button
+        const wishlistBtn = document.querySelector('.wishlist-details-btn');
+        if (wishlistBtn) {
+            wishlistBtn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('far')) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    alert('Added to wishlist! (Demo)');
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    alert('Removed from wishlist! (Demo)');
+                }
+            });
+        }
+
+        // Related product card click
+        document.querySelectorAll('.related-product-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!e.target.closest('.add-to-cart-recommended')) {
+                    alert('View product details (Demo)');
+                }
+            });
+        });
+    });
+</script> -->
+</body>
+</html>

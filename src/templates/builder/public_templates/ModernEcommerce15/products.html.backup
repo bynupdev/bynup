@@ -1,0 +1,202 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - {{ page.brand_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-primary: #F0EFE6;
+            --color-bg-secondary: #EAEAEA;
+            --color-stone: #C6C9D2;
+            --color-warm: #DCCFC1;
+            --color-taupe: #BBAEA8;
+            --color-charcoal: #393831;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.01);
+            --shadow-hover: 0 20px 32px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            --transition-smooth: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        {% generate_color_variables %}
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--color-bg-primary);
+            color: var(--color-charcoal);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .section-title, .product-name, .btn-text {
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        .container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+        .page-header { text-align: center; padding: 40px 0 32px; margin-bottom: 16px; }
+        h1 { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; color: var(--color-charcoal); position: relative; display: inline-block; }
+        h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 2px; background: var(--color-charcoal); }
+        .page-header p { font-size: 1rem; color: var(--color-charcoal); opacity: 0.7; max-width: 600px; margin: 1rem auto 0; font-weight: 400; }
+        .shop-controls { display: flex; justify-content: space-between; align-items: center; margin: 40px 0 48px; flex-wrap: wrap; gap: 20px; }
+        .categories-btn { display: inline-flex; align-items: center; gap: 10px; background: transparent; border: 1px solid var(--color-charcoal); color: var(--color-charcoal); padding: 12px 28px; border-radius: 40px; font-family: 'Syne', sans-serif; font-weight: 500; font-size: 0.9rem; text-decoration: none; transition: var(--transition-smooth); cursor: pointer; }
+        .categories-btn:hover { background: var(--color-charcoal); color: var(--color-bg-primary); transform: translateY(-2px); }
+        .sort-select { background: var(--color-bg-secondary); border: 1px solid var(--color-stone); padding: 12px 20px; border-radius: 40px; color: var(--color-charcoal); font-family: 'Inter', sans-serif; font-size: 0.9rem; cursor: pointer; transition: var(--transition-smooth); }
+        .sort-select:hover { border-color: var(--color-taupe); }
+        .products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-bottom: 64px; }
+        .product-card { background: var(--color-bg-secondary); border-radius: 24px; overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--shadow-sm); position: relative; }
+        .product-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+        .product-img { width: 100%; aspect-ratio: 4 / 5; background-size: cover; background-position: center; transition: transform 0.5s ease; }
+        .product-card:hover .product-img { transform: scale(1.03); }
+        .product-info { padding: 1.2rem 1rem 1.2rem; }
+        .product-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--color-charcoal); }
+        .product-price { font-weight: 500; font-size: 1rem; color: #5a5650; margin-bottom: 1rem; }
+        .product-actions { display: flex; gap: 12px; margin-top: 8px; }
+        .add-to-cart-btn { flex: 1; background: var(--color-charcoal); color: var(--color-bg-primary); border: none; padding: 10px 16px; border-radius: 40px; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 0.85rem; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .add-to-cart-btn:hover { background: #4f4c45; transform: translateY(-2px); }
+        .wishlist-btn { width: 42px; background: transparent; border: 1px solid var(--color-stone); border-radius: 40px; color: var(--color-charcoal); cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; }
+        .wishlist-btn:hover { border-color: var(--color-charcoal); color: #d43f31; transform: translateY(-2px); }
+        .wishlist-btn i { font-size: 1rem; }
+        .empty-state { text-align: center; padding: 4rem; background: var(--color-bg-secondary); border-radius: 24px; margin: 2rem 0; grid-column: 1 / -1; }
+        .empty-state h3 { color: var(--color-charcoal); margin-bottom: 1rem; font-size: 1.5rem; }
+        .empty-state p { color: var(--color-charcoal); opacity: 0.7; margin-bottom: 1.5rem; }
+        .empty-state a { display: inline-block; background: var(--color-charcoal); color: var(--color-bg-primary); padding: 12px 28px; border-radius: 40px; text-decoration: none; font-family: 'Syne', sans-serif; font-weight: 500; transition: var(--transition-smooth); }
+        .empty-state a:hover { background: #4f4c45; transform: translateY(-2px); }
+        @media (max-width: 1200px) { .products-grid { grid-template-columns: repeat(3, 1fr); gap: 28px; } }
+        @media (max-width: 992px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; } h1 { font-size: 2.5rem; } .shop-controls { flex-direction: column; align-items: flex-start; } .sort-select { width: 100%; } }
+        @media (max-width: 768px) { .container { padding: 0 24px; } .products-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; } h1 { font-size: 2rem; } .page-header { padding: 30px 0 20px; } }
+        @media (max-width: 480px) { .container { padding: 0 20px; } h1 { font-size: 1.8rem; } }
+        {% generate_section_styles style_customizations 47 60 %}
+        {% generate_background_images background_images 47 60 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}">
+ {% include 'builder/public_templates/ModernEcommerce15/snippets/header1.html' %}
+<main>
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header" id="section-47">
+            <h1 id="section-48">{{ text_contents.35|default:"Shop the Collection" }}</h1>
+            <p id="section-49">{{ text_contents.36|default:"Discover refined streetwear pieces designed for the modern individual." }}</p>
+        </div>
+
+        {% for component in components %}{% if component.drop_zone == '47' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+
+        <!-- Shop Controls -->
+        <div class="shop-controls">
+            <a href="?page=categories" class="categories-btn" id="section-50">
+                <i class="fas fa-th-large" data-icon="10"></i>
+                {{ text_contents.37|default:"Browse Categories" }}
+            </a>
+            <select class="sort-select" id="sortProducts">
+                <option value="newest">Newest First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+            </select>
+        </div>
+
+        <!-- Products Grid -->
+        {% if products %}
+        <div class="products-grid" id="productsGrid">
+            {% for product in products %}
+            <a href="/product/{{ product.slug }}/" style="text-decoration: none;">
+            <div class="product-card" id="section-51" data-product-id="{{ product.id }}">
+                <div class="product-img" style="background-image: url('{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&auto=format{% endif %}');"></div>
+                <div class="product-info">
+                    <div class="product-name" id="section-52">{{ product.title|truncatechars:35 }}</div>
+                    <div class="product-price" id="section-53">{{ product.price|currency:page }}</div>
+                    <div class="product-actions">
+                        <button class="add-to-cart-btn" id="section-54" data-add-to-cart="{{ product.id }}">
+                            <i class="fas fa-shopping-bag" data-icon="11"></i>
+                            {{ text_contents.38|default:"Add to Cart" }}
+                        </button>
+                        <button class="wishlist-btn" data-add-to-wishlist="{{ product.id }}">
+                            <i class="far fa-heart" data-icon="12"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No Products Yet</h3>
+            <p>You haven't added any products to your collection yet.</p>
+            <a href="/admin/add-product">Add Your First Product</a>
+        </div>
+        {% endif %}
+
+        {% for component in components %}{% if component.drop_zone == '51' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+    </div>
+    
+</main>
+ {% include 'builder/public_templates/ModernEcommerce15/snippets/footer.html' %}
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+{% render_icon_script %}
+
+<script>
+    // Sort functionality
+    const sortSelect = document.getElementById('sortProducts');
+    const productsGrid = document.getElementById('productsGrid');
+    
+    if(sortSelect && productsGrid && productsGrid.children.length > 0) {
+        sortSelect.addEventListener('change', function() {
+            const products = Array.from(productsGrid.children);
+            const sortBy = this.value;
+            
+            products.sort((a, b) => {
+                const priceA = parseFloat(a.querySelector('.product-price')?.textContent.replace(/[^0-9.-]/g, '') || 0);
+                const priceB = parseFloat(b.querySelector('.product-price')?.textContent.replace(/[^0-9.-]/g, '') || 0);
+                const dateA = parseInt(a.dataset.productCreated || 0);
+                const dateB = parseInt(b.dataset.productCreated || 0);
+                
+                if(sortBy === 'price-low') return priceA - priceB;
+                if(sortBy === 'price-high') return priceB - priceA;
+                if(sortBy === 'newest') return dateB - dateA;
+                return 0;
+            });
+            
+            products.forEach(product => productsGrid.appendChild(product));
+        });
+    }
+    
+    // Cart and wishlist handlers (will be overridden by cart-manager.js)
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const productId = btn.dataset.addToCart;
+            if(window.cartManager) {
+                window.cartManager.addToCart(productId, 1);
+            } else {
+                alert('Item added to cart!');
+            }
+        });
+    });
+    
+    document.querySelectorAll('.wishlist-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const productId = btn.dataset.addToWishlist;
+            if(window.cartManager) {
+                window.cartManager.addToWishlist(productId);
+            } else {
+                alert('Item added to wishlist!');
+            }
+        });
+    });
+</script>
+</body>
+</html>

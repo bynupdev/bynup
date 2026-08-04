@@ -1,0 +1,368 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Tax Reports - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reports-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .reports-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        border: 1px solid #eef2f6;
+    }
+
+    .summary-card-title {
+        color: #64748b;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-card-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .summary-card-change {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid #eef2f6;
+    }
+
+    .chart-container {
+        height: 300px;
+        margin-top: 1rem;
+    }
+
+    .report-table {
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid #eef2f6;
+    }
+
+    .report-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        padding: 1rem 1.5rem;
+    }
+
+    .report-table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #eef2f6;
+    }
+
+    .date-range-picker {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid #eef2f6;
+    }
+
+    .export-btn {
+        background: white;
+        border: 2px solid #10b981;
+        color: #10b981;
+        padding: 0.6rem 1.5rem;
+        border-radius: 30px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .export-btn:hover {
+        background: #10b981;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="reports-container">
+        <!-- Header -->
+        <div class="reports-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-2">Tax Reports</h1>
+                <p class="mb-0 opacity-75">Tax collection analytics for {{ page.brand_name }}</p>
+            </div>
+            <div>
+                <a href="{% url 'payments:tax_dashboard' page.subdomain %}" class="btn btn-light me-2">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+                <button class="btn btn-light" onclick="exportReport()">
+                    <i class="fas fa-download me-2"></i>Export Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Date Range Picker -->
+        <div class="date-range-picker">
+            <form method="get" class="row align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">From</label>
+                    <input type="date" class="form-control" name="from" 
+                           value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">To</label>
+                    <input type="date" class="form-control" name="to" 
+                           value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-filter me-2"></i>Apply
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="?period=this_month" class="btn btn-outline-success w-100">This Month</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-card-title">Total Tax Collected</div>
+                <div class="summary-card-value">${{ total_tax_collected|floatformat:2 }}</div>
+                <div class="summary-card-change text-success">
+                    <i class="fas fa-arrow-up me-1"></i>12% vs last period
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-title">Taxable Orders</div>
+                <div class="summary-card-value">{{ monthly_tax|length }}</div>
+                <div class="summary-card-change text-muted">
+                    <i class="fas fa-shopping-cart me-1"></i>Orders with tax
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-title">Average Tax Rate</div>
+                <div class="summary-card-value">{{ avg_rate|floatformat:2 }}%</div>
+                <div class="summary-card-change text-info">
+                    <i class="fas fa-percent me-1"></i>Across all transactions
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-card-title">Exempt Orders</div>
+                <div class="summary-card-value">0</div>
+                <div class="summary-card-change text-warning">
+                    <i class="fas fa-file-invoice me-1"></i>Tax-exempt transactions
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Tax Chart -->
+        <div class="chart-card">
+            <h5 class="mb-3">Monthly Tax Collection</h5>
+            <div class="chart-container">
+                <canvas id="monthlyTaxChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tax by Country -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h5 class="mb-3">Tax by Country</h5>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="countryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h5 class="mb-3">Top Tax Rates Used</h5>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="ratesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Table -->
+        <div class="report-table">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Orders</th>
+                        <th>Total Sales</th>
+                        <th>Tax Collected</th>
+                        <th>Avg Tax Rate</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month in monthly_tax %}
+                    <tr>
+                        <td><strong>{{ month.month|date:"F Y" }}</strong></td>
+                        <td>{{ month.order_count }}</td>
+                        <td>${{ month.total_sales|floatformat:2 }}</td>
+                        <td class="text-success fw-bold">${{ month.tax_collected|floatformat:2 }}</td>
+                        <td>
+                            {% if month.total_sales %}
+                                {{ month.tax_collected|divisibleby:month.total_sales|floatformat:2 }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-success" onclick="viewMonthDetails('{{ month.month|date:'Y-m' }}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            No tax data available for this period
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Tax Chart
+    const monthlyCtx = document.getElementById('monthlyTaxChart').getContext('2d');
+    
+    {% if monthly_tax %}
+    new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for month in monthly_tax %}'{{ month.month|date:"M Y" }}',{% endfor %}],
+            datasets: [{
+                label: 'Tax Collected',
+                data: [{% for month in monthly_tax %}{{ month.tax_collected }},{% endfor %}],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    {% endif %}
+
+    // Country Chart
+    const countryCtx = document.getElementById('countryChart').getContext('2d');
+    
+    {% if tax_by_country %}
+    new Chart(countryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for country in tax_by_country %}'{{ country.country_code|default:"Other" }}',{% endfor %}],
+            datasets: [{
+                data: [{% for country in tax_by_country %}{{ country.total_tax }},{% endfor %}],
+                backgroundColor: [
+                    '#10b981',
+                    '#3b82f6',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#8b5cf6',
+                    '#ec4899'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    {% endif %}
+
+    // Rates Chart
+    const ratesCtx = document.getElementById('ratesChart').getContext('2d');
+    
+    {% if top_rates %}
+    new Chart(ratesCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for rate in top_rates %}'{{ rate.name }}',{% endfor %}],
+            datasets: [{
+                label: 'Usage Count',
+                data: [{% for rate in top_rates %}{{ rate.usage_count }},{% endfor %}],
+                backgroundColor: '#f59e0b'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+
+function exportReport() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const from = urlParams.get('from') || '{{ start_date|date:"Y-m-d" }}';
+    const to = urlParams.get('to') || '{{ end_date|date:"Y-m-d" }}';
+    
+    window.location.href = `{% url 'payments:export_tax_rates' page.subdomain %}?from=${from}&to=${to}`;
+}
+
+function viewMonthDetails(yearMonth) {
+    window.location.href = `{% url 'payments:tax_rates_list' page.subdomain %}?month=${yearMonth}`;
+}
+</script>
+{% endblock %}

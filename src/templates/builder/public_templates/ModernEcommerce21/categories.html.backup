@@ -1,0 +1,617 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    
+    {% render_icon_data icon_customizations %}
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-deep-teal: #273b40;
+            --color-mist: #cae9ea;
+            --color-charcoal: #1d1d1d;
+            --color-slate: #3c4748;
+            --color-emerald-teal: #208c8c;
+        }
+
+        {% generate_color_variables %}
+
+        body {
+            background-color: var(--color-charcoal);
+            color: #eef2f3;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.4;
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+            padding-top: 90px;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 48px;
+            padding: 40px 0 20px;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--color-mist) 0%, var(--color-emerald-teal) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .categories-subtitle {
+            font-size: 1rem;
+            color: rgba(202, 233, 234, 0.6);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Categories Filter */
+        .categories-filter {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+
+        .filter-cat-btn {
+            padding: 10px 24px;
+            background: rgba(60, 71, 72, 0.3);
+            border: 1px solid rgba(32, 140, 140, 0.3);
+            border-radius: 40px;
+            color: var(--color-mist);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .filter-cat-btn:hover, .filter-cat-btn.active {
+            background: var(--color-emerald-teal);
+            color: var(--color-charcoal);
+            border-color: var(--color-emerald-teal);
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            margin-bottom: 64px;
+        }
+
+        .category-card {
+            background: rgba(60, 71, 72, 0.2);
+            backdrop-filter: blur(2px);
+            border-radius: 28px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            border: 1px solid rgba(32, 140, 140, 0.2);
+            text-decoration: none;
+            display: block;
+        }
+
+        .category-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 30px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(32, 140, 140, 0.4);
+            background: rgba(39, 59, 64, 0.5);
+        }
+
+        .category-image {
+            width: 100%;
+            aspect-ratio: 1 / 0.8;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .category-card:hover .category-image {
+            transform: scale(1.02);
+        }
+
+        .category-info {
+            padding: 24px;
+            text-align: center;
+        }
+
+        .category-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .category-count {
+            font-size: 0.85rem;
+            color: var(--color-emerald-teal);
+            margin-bottom: 16px;
+        }
+
+        .category-description {
+            font-size: 0.85rem;
+            color: rgba(202, 233, 234, 0.7);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .explore-btn {
+            display: inline-block;
+            padding: 8px 24px;
+            background: rgba(32, 140, 140, 0.2);
+            border: 1px solid var(--color-emerald-teal);
+            border-radius: 40px;
+            color: var(--color-emerald-teal);
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .category-card:hover .explore-btn {
+            background: var(--color-emerald-teal);
+            color: var(--color-charcoal);
+        }
+
+        /* Featured Collections Section */
+        .featured-collections {
+            margin-bottom: 64px;
+            padding-top: 48px;
+            border-top: 1px solid rgba(60, 71, 72, 0.5);
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 32px;
+            color: var(--color-mist);
+            text-align: center;
+        }
+
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        .collection-card {
+            background: rgba(60, 71, 72, 0.2);
+            border-radius: 28px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(32, 140, 140, 0.2);
+            text-decoration: none;
+            display: block;
+        }
+
+        .collection-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--color-emerald-teal);
+        }
+
+        .collection-image {
+            width: 100%;
+            aspect-ratio: 1 / 0.7;
+            object-fit: cover;
+        }
+
+        .collection-info {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .collection-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .collection-description {
+            font-size: 0.85rem;
+            color: rgba(202, 233, 234, 0.7);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .view-collection-btn {
+            display: inline-block;
+            padding: 6px 20px;
+            background: rgba(32, 140, 140, 0.2);
+            border: 1px solid var(--color-emerald-teal);
+            border-radius: 40px;
+            color: var(--color-emerald-teal);
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .collection-card:hover .view-collection-btn {
+            background: var(--color-emerald-teal);
+            color: var(--color-charcoal);
+        }
+
+        /* Gaming Guide Section */
+        .gaming-guide {
+            margin-bottom: 64px;
+            padding: 48px 0;
+            border-top: 1px solid rgba(60, 71, 72, 0.5);
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            margin-top: 32px;
+        }
+
+        .guide-card {
+            background: rgba(60, 71, 72, 0.2);
+            border-radius: 28px;
+            padding: 32px 24px;
+            text-align: center;
+            border: 1px solid rgba(32, 140, 140, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .guide-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--color-emerald-teal);
+        }
+
+        .guide-icon {
+            font-size: 2.5rem;
+            color: var(--color-emerald-teal);
+            margin-bottom: 20px;
+        }
+
+        .guide-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+
+        .guide-description {
+            font-size: 0.85rem;
+            color: rgba(202, 233, 234, 0.7);
+            line-height: 1.6;
+        }
+
+        /* Empty State */
+        .empty-categories {
+            text-align: center;
+            padding: 80px 40px;
+            background: rgba(60, 71, 72, 0.2);
+            border-radius: 28px;
+            grid-column: 1 / -1;
+        }
+
+        .empty-categories-icon {
+            font-size: 4rem;
+            color: var(--color-emerald-teal);
+            opacity: 0.5;
+            margin-bottom: 24px;
+        }
+
+        .empty-categories h3 {
+            font-size: 1.8rem;
+            color: var(--color-mist);
+            margin-bottom: 16px;
+        }
+
+        .empty-categories p {
+            color: rgba(202, 233, 234, 0.7);
+            margin-bottom: 24px;
+        }
+
+        .add-category-btn {
+            display: inline-block;
+            padding: 12px 32px;
+            background: var(--color-emerald-teal);
+            color: var(--color-charcoal);
+            text-decoration: none;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .add-category-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(32, 140, 140, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .categories-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .collections-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .guide-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .page-title { font-size: 2.5rem; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding-top: 80px; }
+            .container { padding: 0 24px; }
+            .categories-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto 48px;
+            }
+            .collections-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .guide-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .categories-filter { gap: 12px; }
+            .filter-cat-btn { padding: 8px 20px; font-size: 0.85rem; }
+            .page-title { font-size: 2rem; }
+            .section-title { font-size: 1.5rem; }
+        }
+
+        @media (max-width: 576px) {
+            .categories-filter { gap: 8px; }
+            .filter-cat-btn { padding: 6px 16px; font-size: 0.8rem; }
+            .category-info { padding: 20px; }
+            .category-name { font-size: 1.2rem; }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 141 170 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 141 170 %}
+
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}">
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce21/snippets/header.html' %}
+
+    <!-- Dynamic Components -->
+    {% for component in components %}
+        {% if component.drop_zone == '141' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header" id="section-141">
+            <h1 class="page-title" id="section-142">{{ text_contents.96|default:"Gaming Categories" }}</h1>
+            <p class="categories-subtitle" id="section-143">{{ text_contents.97|default:"Explore our curated collections of premium gaming gear and accessories" }}</p>
+        </div>
+
+        <!-- Categories Filter -->
+        <div class="categories-filter" id="section-144">
+            <button class="filter-cat-btn active" id="section-145">{{ text_contents.98|default:"All Categories" }}</button>
+            {% for category in categories %}
+                <button class="filter-cat-btn" data-category="{{ category.slug }}" id="section-146">{{ category.name }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Categories Grid -->
+        {% if categories %}
+        <div class="categories-grid" id="categoriesGrid">
+            {% for category in categories %}
+                <div class="category-card" data-category="{{ category.slug }}" id="section-151">
+                    {% if category.image %}
+                        <img class="category-image" src="{{ category.image.url }}" alt="{{ category.name }}">
+                    {% else %}
+                        <div class="category-image" style="background: var(--color-slate); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-folder" style="font-size: 3rem; color: var(--color-emerald-teal); opacity: 0.5;"></i>
+                        </div>
+                    {% endif %}
+                    <div class="category-info">
+                        <h3 class="category-name" id="section-152">{{ category.name }}</h3>
+                        <div class="category-count" id="section-153">{{ category.get_active_products_count }} Products</div>
+                        <p class="category-description" id="section-154">{{ category.description|default:"Premium gaming gear designed for peak performance and immersive gameplay."|truncatechars:80 }}</p>
+                        <a href="?page=products&category={{ category.slug }}" class="explore-btn">Explore →</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-categories">
+            <div class="empty-categories-icon">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>No Categories Available</h3>
+            <p>There are no gaming categories to display at the moment. Categories will appear here once they are added to your store.</p>
+            <a href="/admin/add-category" class="add-category-btn">Add Your First Category</a>
+        </div>
+        {% endif %}
+
+        <!-- Featured Collections Section -->
+        <div class="featured-collections" id="section-155">
+            <h2 class="section-title" id="section-156">{{ text_contents.107|default:"Featured Collections" }}</h2>
+            <div class="collections-grid">
+                {% if featured_collections %}
+                    {% for collection in featured_collections|slice:":3" %}
+                        <div class="collection-card" id="section-157">
+                            {% if collection.image %}
+                                <img class="collection-image" src="{{ collection.image.url }}" alt="{{ collection.name }}">
+                            {% else %}
+                                <div class="collection-image" style="background: var(--color-slate); display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-star" style="font-size: 2rem; color: var(--color-emerald-teal); opacity: 0.5;"></i>
+                                </div>
+                            {% endif %}
+                            <div class="collection-info">
+                                <h3 class="collection-name" id="section-158">{{ collection.name }}</h3>
+                                <p class="collection-description" id="section-159">{{ collection.description|default:"Discover our curated selection of premium gaming gear."|truncatechars:80 }}</p>
+                                <a href="?page=products&collection={{ collection.slug }}" class="view-collection-btn">View Collection →</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Default featured collections when none exist -->
+                    <div class="collection-card">
+                        <div class="collection-image" style="background: var(--color-slate); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-keyboard" style="font-size: 2rem; color: var(--color-emerald-teal); opacity: 0.5;"></i>
+                        </div>
+                        <div class="collection-info">
+                            <h3 class="collection-name">RGB Pro Series</h3>
+                            <p class="collection-description">Fully customizable RGB lighting across all your gear for a synchronized gaming setup.</p>
+                            <a href="?page=products" class="view-collection-btn">View Collection →</a>
+                        </div>
+                    </div>
+                    <div class="collection-card">
+                        <div class="collection-image" style="background: var(--color-slate); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-wifi" style="font-size: 2rem; color: var(--color-emerald-teal); opacity: 0.5;"></i>
+                        </div>
+                        <div class="collection-info">
+                            <h3 class="collection-name">Wireless Elite</h3>
+                            <p class="collection-description">Cutting-edge wireless technology with zero latency and extended battery life.</p>
+                            <a href="?page=products" class="view-collection-btn">View Collection →</a>
+                        </div>
+                    </div>
+                    <div class="collection-card">
+                        <div class="collection-image" style="background: var(--color-slate); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-trophy" style="font-size: 2rem; color: var(--color-emerald-teal); opacity: 0.5;"></i>
+                        </div>
+                        <div class="collection-info">
+                            <h3 class="collection-name">Pro Series</h3>
+                            <p class="collection-description">Professional-grade gear trusted by esports athletes worldwide for peak performance.</p>
+                            <a href="?page=products" class="view-collection-btn">View Collection →</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Gaming Guide Section -->
+        <div class="gaming-guide" id="section-160">
+            <h2 class="section-title" id="section-161">{{ text_contents.110|default:"Gaming Gear Guide" }}</h2>
+            <div class="guide-grid">
+                <div class="guide-card" id="section-162">
+                    <div class="guide-icon">
+                        <i class="fas fa-keyboard" data-icon="15"></i>
+                    </div>
+                    <h3 class="guide-title" id="section-163">{{ text_contents.111|default:"Switch Types Explained" }}</h3>
+                    <p class="guide-description" id="section-164">{{ text_contents.112|default:"Learn about linear, tactile, and clicky switches to find your perfect mechanical keyboard feel." }}</p>
+                </div>
+                <div class="guide-card">
+                    <div class="guide-icon">
+                        <i class="fas fa-mouse"></i>
+                    </div>
+                    <h3 class="guide-title">{{ text_contents.113|default:"DPI & Sensor Technology" }}</h3>
+                    <p class="guide-description">{{ text_contents.114|default:"Understand how sensor precision and DPI settings affect your aiming accuracy and responsiveness." }}</p>
+                </div>
+                <div class="guide-card">
+                    <div class="guide-icon">
+                        <i class="fas fa-headphones"></i>
+                    </div>
+                    <h3 class="guide-title">{{ text_contents.115|default:"Audio Immersion Guide" }}</h3>
+                    <p class="guide-description">{{ text_contents.116|default:"Discover the difference between surround sound and spatial audio for competitive advantage." }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce21/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+    
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        // Category Filtering
+        let activeFilter = 'all';
+        
+        document.querySelectorAll('.filter-cat-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-cat-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const filterValue = this.textContent.toLowerCase().replace(/\s+/g, '-');
+                activeFilter = filterValue === 'all-categories' ? 'all' : this.getAttribute('data-category') || filterValue;
+                filterCategories();
+            });
+        });
+        
+        function filterCategories() {
+            const categories = document.querySelectorAll('.category-card');
+            let visibleCount = 0;
+            
+            categories.forEach(category => {
+                const categorySlug = category.getAttribute('data-category');
+                
+                if (activeFilter === 'all' || categorySlug === activeFilter) {
+                    category.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+            
+            const categoriesGrid = document.getElementById('categoriesGrid');
+            const existingEmpty = categoriesGrid?.querySelector('.empty-filter-message');
+            
+            if (visibleCount === 0 && categories.length > 0) {
+                if (!existingEmpty) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'empty-filter-message';
+                    emptyMsg.style.cssText = 'text-align: center; padding: 60px; background: rgba(60, 71, 72, 0.2); border-radius: 28px; grid-column: 1 / -1;';
+                    emptyMsg.innerHTML = `
+                        <i class="fas fa-filter" style="font-size: 3rem; color: var(--color-emerald-teal); opacity: 0.5; margin-bottom: 16px;"></i>
+                        <p style="color: rgba(202, 233, 234, 0.7);">No categories match your filter. Try selecting a different category.</p>
+                    `;
+                    categoriesGrid.appendChild(emptyMsg);
+                }
+            } else if (existingEmpty) {
+                existingEmpty.remove();
+            }
+        }
+    </script>
+</body>
+</html>

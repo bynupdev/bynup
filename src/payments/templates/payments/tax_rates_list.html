@@ -1,0 +1,394 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Tax Rates - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rates-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .rates-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+
+    .filter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid #eef2f6;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+    }
+
+    .filter-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+
+    .rate-table {
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid #eef2f6;
+    }
+
+    .rate-table thead th {
+        background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+        border-bottom: 2px solid #e2e8f0;
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 1rem 1.5rem;
+    }
+
+    .rate-table tbody td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .rate-badge {
+        background: #e8f5e9;
+        color: #2ecc71;
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 1rem;
+        display: inline-block;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: #e8f5e9;
+        color: #2ecc71;
+    }
+
+    .status-inactive {
+        background: #fee9e7;
+        color: #e74c3c;
+    }
+
+    .jurisdiction-tag {
+        background: #f1f5f9;
+        color: #475569;
+        padding: 0.2rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        display: inline-block;
+        margin: 0.2rem;
+    }
+
+    .btn-rate {
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-rate-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-rate-outline {
+        background: transparent;
+        border: 2px solid #667eea;
+        color: #667eea;
+    }
+
+    .btn-rate-outline:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .bulk-actions {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .pagination {
+        margin-top: 2rem;
+        justify-content: center;
+    }
+
+    .page-link {
+        border: none;
+        padding: 0.5rem 1rem;
+        margin: 0 0.2rem;
+        border-radius: 8px;
+        color: #4a5568;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="rates-container">
+        <!-- Header -->
+        <div class="rates-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-2">Tax Rates</h1>
+                <p class="mb-0 opacity-75">Manage all tax rates for {{ page.brand_name }}</p>
+            </div>
+            <div>
+                <a href="{% url 'payments:tax_dashboard' page.subdomain %}" class="btn btn-light me-2">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+                <a href="{% url 'payments:tax_rate_create' page.subdomain %}" class="btn btn-light">
+                    <i class="fas fa-plus me-2"></i>New Rate
+                </a>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-card">
+            <div class="filter-title">
+                <i class="fas fa-filter me-2"></i>Filter Rates
+            </div>
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <select name="country" class="form-select">
+                        <option value="">All Countries</option>
+                        {% for country in countries %}
+                        <option value="{{ country }}" {% if filters.country == country %}selected{% endif %}>
+                            {{ country }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="state" placeholder="State" 
+                           value="{{ filters.state|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="tax_class" class="form-select">
+                        <option value="">All Tax Classes</option>
+                        {% for class in tax_classes %}
+                        <option value="{{ class.id }}" {% if filters.tax_class == class.id|stringformat:'i' %}selected{% endif %}>
+                            {{ class.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-rate-primary w-100">
+                        <i class="fas fa-search me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="bulk-actions d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted">Total: {{ tax_rates.paginator.count }} rates</span>
+                <span class="mx-2">|</span>
+                <span class="text-success">{{ active_rates }} active</span>
+                <span class="mx-2">|</span>
+                <span class="text-muted">{{ inactive_rates }} inactive</span>
+            </div>
+            <div>
+                <a href="{% url 'payments:export_tax_rates' page.subdomain %}" class="btn btn-rate-outline btn-sm me-2">
+                    <i class="fas fa-download me-1"></i>Export
+                </a>
+                <a href="{% url 'payments:import_tax_rates' page.subdomain %}" class="btn btn-rate-outline btn-sm">
+                    <i class="fas fa-upload me-1"></i>Import
+                </a>
+            </div>
+        </div>
+
+        <!-- Rates Table -->
+        <div class="rate-table">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Rate Name</th>
+                        <th>Tax Class</th>
+                        <th>Jurisdiction</th>
+                        <th>Rate</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rate in tax_rates %}
+                    <tr>
+                        <td>
+                            <strong>{{ rate.name }}</strong>
+                            {% if rate.is_price_inclusive %}
+                            <span class="badge bg-info ms-2">Inclusive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rate.tax_class.name }}</td>
+                        <td>
+                            {% if rate.country_code %}
+                            <span class="jurisdiction-tag">
+                                <i class="fas fa-globe me-1"></i>{{ rate.country_code }}
+                            </span>
+                            {% endif %}
+                            {% if rate.state_code %}
+                            <span class="jurisdiction-tag">
+                                <i class="fas fa-map-pin me-1"></i>{{ rate.state_code }}
+                            </span>
+                            {% endif %}
+                            {% if rate.city %}
+                            <span class="jurisdiction-tag">
+                                <i class="fas fa-city me-1"></i>{{ rate.city }}
+                            </span>
+                            {% endif %}
+                            {% if not rate.country_code and not rate.state_code %}
+                            <span class="jurisdiction-tag">Global</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="rate-badge">{{ rate.rate }}%</span>
+                        </td>
+                        <td>{{ rate.priority }}</td>
+                        <td>
+                            <span class="status-badge {% if rate.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if rate.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'payments:tax_rate_edit' page.subdomain rate.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-success" 
+                                        onclick="toggleStatus({{ rate.id }})"
+                                        title="Toggle Status">
+                                    <i class="fas fa-power-off"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteRate({{ rate.id }}, '{{ rate.name }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="fas fa-percent fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Tax Rates Found</h5>
+                            <p class="text-muted mb-3">Get started by creating your first tax rate</p>
+                            <a href="{% url 'payments:tax_rate_create' page.subdomain %}" class="btn btn-rate-primary">
+                                <i class="fas fa-plus me-2"></i>Create Tax Rate
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if tax_rates.has_other_pages %}
+        <nav class="pagination-container">
+            <ul class="pagination">
+                {% if tax_rates.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tax_rates.previous_page_number }}{% for key,value in filters.items %}&{{ key }}={{ value }}{% endfor %}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for i in tax_rates.paginator.page_range %}
+                {% if tax_rates.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ i }}{% for key,value in filters.items %}&{{ key }}={{ value }}{% endfor %}">{{ i }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if tax_rates.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tax_rates.next_page_number }}{% for key,value in filters.items %}&{{ key }}={{ value }}{% endfor %}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleStatus(rateId) {
+    fetch(`/payments/tax/{{ page.subdomain }}/rate/${rateId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function deleteRate(rateId, rateName) {
+    if (confirm(`Are you sure you want to delete "${rateName}"?`)) {
+        fetch(`/payments/tax/{{ page.subdomain }}/rate/${rateId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

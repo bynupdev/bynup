@@ -1,0 +1,62 @@
+<!-- payments/templates/payments/admin_subscriptions.html -->
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<div class="module">
+    <h2>Manage Subscriptions</h2>
+    
+    <!-- Filter Tabs -->
+    <div style="margin-bottom: 20px;">
+        <a href="?status=active" class="button" style="background: {% if current_status == 'active' %}#4361ee{% else %}#6c757d{% endif %}; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;">Active</a>
+        <a href="?status=pending" class="button" style="background: {% if current_status == 'pending' %}#4361ee{% else %}#6c757d{% endif %}; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;">Pending</a>
+        <a href="?status=canceled" class="button" style="background: {% if current_status == 'canceled' %}#4361ee{% else %}#6c757d{% endif %}; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;">Canceled</a>
+        <a href="?status=expired" class="button" style="background: {% if current_status == 'expired' %}#4361ee{% else %}#6c757d{% endif %}; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;">Expired</a>
+    </div>
+    
+    <!-- Search -->
+    <div style="margin-bottom: 20px;">
+        <form method="get">
+            <input type="hidden" name="status" value="{{ current_status }}">
+            <input type="text" name="search" placeholder="Search by email..." value="{{ search_query }}" style="padding: 10px; width: 300px; border: 1px solid #ddd; border-radius: 5px;">
+            <button type="submit" class="button" style="padding: 10px 20px;">Search</button>
+        </form>
+    </div>
+    
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 12px;">User</th>
+                <th style="padding: 12px;">Plan</th>
+                <th style="padding: 12px;">Status</th>
+                <th style="padding: 12px;">Start Date</th>
+                <th style="padding: 12px;">End Date</th>
+                <th style="padding: 12px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td>{{ sub.user.email }}</td>
+                <td>{{ sub.plan.name }}</td>
+                <td>
+                    {% if sub.status == 'active' %}
+                        <span style="color: #10b981;">● Active</span>
+                    {% elif sub.status == 'pending' %}
+                        <span style="color: #f59e0b;">● Pending</span>
+                    {% elif sub.status == 'canceled' %}
+                        <span style="color: #ef4444;">● Canceled</span>
+                    {% else %}
+                        {{ sub.status }}
+                    {% endif %}
+                </td>
+                <td>{{ sub.start_date|date:"M d, Y"|default:"-" }}</td>
+                <td>{{ sub.end_date|date:"M d, Y"|default:"-" }}</td>
+                <td>
+                    <a href="{% url 'payments:admin_verify_payment' sub.id %}">Manage</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

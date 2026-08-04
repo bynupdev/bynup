@@ -1,0 +1,1223 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | Luxe Essence</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1A3D63;
+            --secondary: #4A7FA7;
+            --accent: #B3CFE5;
+            --highlight: #6A1931;
+            --light: #F6FAFD;
+        }
+        {%generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary);
+            background-color: var(--light);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Cart Header */
+        .cart-header {
+            padding: 100px 0 40px;
+            background: linear-gradient(135deg, var(--light) 0%, rgba(179, 207, 229, 0.1) 100%);
+        }
+
+        .cart-title {
+            font-size: 42px;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .cart-subtitle {
+            font-size: 18px;
+            color: var(--secondary);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Cart Content */
+        .cart-content {
+            padding: 40px 0 60px;
+        }
+
+        .cart-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+        }
+
+        /* Cart Items */
+        .cart-items {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(26, 61, 99, 0.08);
+            padding: 30px;
+        }
+
+        .cart-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cart-table th {
+            text-align: left;
+            padding: 15px 10px;
+            border-bottom: 2px solid var(--accent);
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cart-table td {
+            padding: 25px 10px;
+            border-bottom: 1px solid rgba(179, 207, 229, 0.5);
+            vertical-align: middle;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .cart-item-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 3px 10px rgba(26, 61, 99, 0.1);
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .cart-item-category {
+            font-size: 12px;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .cart-item-variant {
+            font-size: 14px;
+            color: var(--secondary);
+        }
+
+        /* Quantity Control */
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--accent);
+            background: white;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .quantity-btn:hover {
+            background-color: var(--accent);
+        }
+
+        .quantity-input {
+            width: 50px;
+            text-align: center;
+            padding: 8px;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* Price and Actions */
+        .cart-item-price {
+            font-size: 18px;
+            color: var(--highlight);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .cart-item-remove {
+            color: var(--secondary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .cart-item-remove:hover {
+            color: var(--highlight);
+        }
+
+        /* Cart Empty State */
+        .cart-empty {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .cart-empty-icon {
+            font-size: 64px;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .cart-empty-title {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .cart-empty-text {
+            color: var(--secondary);
+            margin-bottom: 30px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .continue-shopping-btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            padding: 12px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .continue-shopping-btn:hover {
+            background-color: var(--highlight);
+            transform: translateY(-3px);
+        }
+
+        /* Cart Summary */
+        .cart-summary {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(26, 61, 99, 0.08);
+            padding: 30px;
+            position: sticky;
+            top: 120px;
+            height: fit-content;
+        }
+
+        .summary-title {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+
+        .summary-row.total {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 18px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--accent);
+        }
+
+        .summary-value {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .checkout-btn {
+            display: block;
+            width: 100%;
+            background-color: var(--highlight);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 16px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 30px;
+            transition: all 0.3s;
+        }
+
+        .checkout-btn:hover {
+            background-color: #4A0A20;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(106, 25, 49, 0.3);
+        }
+
+        .continue-shopping-summary {
+            display: block;
+            text-align: center;
+            color: var(--secondary);
+            text-decoration: none;
+            margin-top: 15px;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .continue-shopping-summary:hover {
+            color: var(--highlight);
+        }
+
+        /* Promo Code */
+        .promo-code {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(179, 207, 229, 0.5);
+        }
+
+        .promo-title {
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .promo-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .apply-promo-btn {
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .apply-promo-btn:hover {
+            background-color: var(--secondary);
+        }
+
+        /* You May Also Like */
+        .related-products {
+            padding: 60px 0;
+            border-top: 1px solid rgba(179, 207, 229, 0.5);
+        }
+
+        .section-title {
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .related-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(26, 61, 99, 0.08);
+            transition: all 0.3s;
+        }
+
+        .related-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(26, 61, 99, 0.15);
+        }
+
+        .related-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .related-info {
+            padding: 20px;
+        }
+
+        .related-name {
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .related-price {
+            color: var(--highlight);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .related-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-to-cart-btn {
+            flex: 1;
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .add-to-cart-btn:hover {
+            background-color: var(--highlight);
+        }
+
+        .wishlist-btn {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wishlist-btn:hover {
+            background-color: var(--primary);
+            color: var(--nav-text, white);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .cart-container {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .cart-summary {
+                position: static;
+            }
+            
+            .cart-table th:nth-child(3),
+            .cart-table td:nth-child(3) {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cart-title {
+                font-size: 36px;
+            }
+            
+            .cart-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .cart-table th:nth-child(2),
+            .cart-table td:nth-child(2) {
+                display: none;
+            }
+            
+            .related-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+
+        @media (max-width: 576px) {
+            .cart-header {
+                padding: 80px 0 30px;
+            }
+            
+            .cart-items,
+            .cart-summary {
+                padding: 20px;
+            }
+            
+            .cart-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .cart-item-info {
+                text-align: center;
+            }
+            
+            .related-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 99 150 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 99 150 %}
+        {%generate_hover_keyframes%}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}" data-page-subdomain="{{ page.subdomain }}">
+    {% load icon_filters %}
+    {% render_icon_data icon_customizations %}
+    
+    <!-- header -->
+    {%include 'builder/public_templates/ModernEcommerce7/snippets/header1.html'%}
+    
+    <!-- Cart Header -->
+    <section class="cart-header" id="section-99">
+        <div class="container">
+            <h1 class="cart-title" id="section-100">{{ text_contents.71|default:"Your Shopping Cart" }}</h1>
+            <p class="cart-subtitle" id="section-101">{{ text_contents.72|default:"Review your luxury selections" }}</p>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '99' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Cart Content -->
+    <section class="cart-content" id="section-102">
+        <div class="container">
+            <div class="cart-container">
+                <!-- Cart Items -->
+                <div class="cart-items">
+                    {% if cart and cart.items.all %}
+                    <table class="cart-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in cart.items.all %}
+                            <tr class="cart-item-row" data-cart-item-id="{{ item.product.id }}" data-cart-item="{{ item.product.id }}" id="section-103">
+                                <td>
+                                    <div class="cart-item">
+                                        {% if item.product.main_image %}
+                                        <img src="{{ item.product.main_image.url }}" alt="{{ item.product.title }}" class="cart-item-image">
+                                        {% else %}
+                                        <div class="cart-item-image" style="background-color: var(--accent); display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-image" data-icon="61" style="color: var(--nav-text, white); font-size: 24px;"></i>
+                                        </div>
+                                        {% endif %}
+                                        <div class="cart-item-info">
+                                            <div class="cart-item-name product-title" id="section-104">{{ item.product.title|truncatewords:5 }}</div>
+                                            <div class="cart-item-category" id="section-105">
+                                                {% if item.product.category %}{{ item.product.category.name|default:item.product.category|truncatewords:3 }}{% else %}Uncategorized{% endif %}
+                                            </div>
+                                            <div class="cart-item-variant" id="section-106">
+                                                {% if item.selected_size %}<span class="product-size">{{ item.selected_size }}</span>{% endif %}
+                                                {% if item.selected_size and item.selected_color %} • {% endif %}
+                                                {% if item.selected_color %}<span class="product-color">{{ item.selected_color }}</span>{% endif %}
+                                            </div>
+                                            <input class="product-id" type="hidden" value="{{ item.product.id }}">
+                                            <input class="cj-vid" type="hidden" value="{{ item.product.cj_vid|default:'' }}">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span id="section-107">
+                                        {% if item.product.category %}{{ item.product.category.name|default:item.product.category|truncatewords:3 }}{% else %}Uncategorized{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="quantity-control">
+                                        <button class="quantity-btn decrement-cart" data-product-id="{{ item.product.id }}">-</button>
+                                        <input type="text" class="quantity-input cart-item-quantity" value="{{ item.quantity }}" readonly data-product-id="{{ item.product.id }}" id="section-108">
+                                        <button class="quantity-btn increment-cart" data-product-id="{{ item.product.id }}">+</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="cart-item-price product-price" data-product-price="{{ item.product.price|floatformat:2 }}" id="section-109">{{ item.product.price|currency:page }}</div>
+                                </td>
+                                <td>
+                                    <button class="cart-item-remove remove-cart-item" data-product-id="{{ item.product.id }}">
+                                        <i class="fas fa-trash" {% if forloop.first %}data-icon="59"{% endif %}></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="cart-empty">
+                        <div class="cart-empty-icon">
+                            <i class="fas fa-shopping-bag" data-icon="60"></i>
+                        </div>
+                        <h3 class="cart-empty-title">Your cart is empty</h3>
+                        <p class="cart-empty-text">Looks like you haven't added any luxury items to your cart yet.</p>
+                        <a href="?page=shop" class="continue-shopping-btn">Continue Shopping</a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Cart Summary -->
+                <div class="cart-summary" id="section-110">
+                    <h3 class="summary-title" id="section-111">{{ text_contents.78|default:"Order Summary" }}</h3>
+                    
+                    <div class="summary-row">
+                        <span id="section-112">{{ text_contents.79|default:"Subtotal" }}</span>
+                        <span class="summary-value cart-subtotal" id="section-113">{{ cart_subtotal|currency:page }}</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span id="section-114">{{ text_contents.81|default:"Shipping" }}</span>
+                        <span class="summary-value cart-shipping" id="section-115">{{ shipping_cost|currency:page }}</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span id="section-116">{{ text_contents.83|default:"Tax" }}</span>
+                        <span class="summary-value cart-tax" id="section-117">{{ tax_amount|currency:page }}</span>
+                    </div>
+                    
+                    <div class="summary-row total">
+                        <span id="section-118">{{ text_contents.85|default:"Total" }}</span>
+                        <span class="summary-value cart-total" id="section-119">{{ cart_total|currency:page }}</span>
+                    </div>
+
+                    <!-- Promo Code -->
+                    <div class="promo-code">
+                        <div class="promo-title" id="section-120">{{ text_contents.87|default:"Promo Code" }}</div>
+                        <div class="promo-input-group">
+                            <input type="text" class="promo-input" id="section-121" placeholder="Enter code">
+                            <button class="apply-promo-btn" id="section-122">{{ text_contents.88|default:"APPLY" }}</button>
+                        </div>
+                    </div>
+
+                    <button class="checkout-btn" id="section-123">{{ text_contents.89|default:"PROCEED TO CHECKOUT" }}</button>
+                    <a href="?page=shop" class="continue-shopping-summary" id="section-124">{{ text_contents.90|default:"Continue Shopping" }}</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '102' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- You May Also Like -->
+    <section class="related-products" id="section-125">
+        <div class="container">
+            <h2 class="section-title" id="section-126">{{ text_contents.91|default:"You May Also Like" }}</h2>
+            <div class="related-grid">
+                {% for product in related_products|slice:":4" %}
+                <div class="related-card" id="section-127" data-product-id="{{ product.id }}" data-product-title="{{ product.title }}" data-product-price="{{ product.price }}" data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}">
+                    {% if product.main_image %}
+                    <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="related-image">
+                    {% else %}
+                    <div class="related-image" style="background-color: var(--accent); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-image" data-icon="61" style="color: var(--nav-text, white); font-size: 32px;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="related-info">
+                        <div class="related-name" id="section-128">{{ product.title|truncatewords:4 }}</div>
+                        <div class="related-price" id="section-129">{{ product.price|currency:page }}</div>
+                        <div class="related-actions">
+                            <button class="add-to-cart-btn" id="section-130" data-add-to-cart="{{ product.id }}">{{ text_contents.94|default:"Add to Cart" }}</button>
+                            <button class="wishlist-btn" data-add-to-wishlist="{{ product.id }}">
+                                <i class="far fa-heart" {% if forloop.first %}data-icon="3"{% endif %}></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <!-- Default related products if none provided -->
+                <div class="related-card" id="section-127">
+                    <h2 style="text-align: center;">Empty</h2>                    
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '125' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    {%include 'builder/public_templates/ModernEcommerce7/snippets/footer.html'%}
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+    
+    {% render_icon_script %}
+    
+    <input type="hidden" value="{{page.currency_symbol}}" name="" id="page-currency-symbol">
+    <!-- Hidden inputs for backend data -->
+    <input type="hidden" value="{{ page.subdomain }}" id="page-subdomain">
+
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <!-- Backend cart data -->
+    <script>
+        // Backend cart data for initialization
+        const BACKEND_CART_DATA = {
+            cart_items_count: {{ cart.items.all|length|default:0 }},
+            cart_total: {{ cart_total|default:0 }},
+            cart_subtotal: {{ cart_subtotal|default:0 }},
+            shipping_cost: {{ shipping_cost|default:0 }},
+            tax_amount: {{ tax_amount|default:0 }}
+        };
+
+        console.log('📦 Backend cart data:', BACKEND_CART_DATA);
+    </script>
+
+    <!-- Custom cart operations script - FIXED VERSION -->
+    <script>
+        /* ======================================================
+           CART BUTTON HANDLERS - WITH REAL-TIME UPDATES
+        ====================================================== */
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🛒 Initializing cart page...');
+            
+            // Initialize Cart Manager buttons
+            initializeCartButtons();
+            
+            // Update summary display with backend data
+            updateCartSummaryFromBackend();
+            
+            // Initial check for empty cart
+            checkEmptyCart();
+        });
+
+        function initializeCartButtons() {
+            console.log('🔧 Initializing cart buttons...');
+            
+            // Increment buttons
+            document.querySelectorAll('.increment-cart').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const productId = this.dataset.productId;
+                    console.log(`➕ Incrementing product ${productId}`);
+                    
+                    if (window.cartManager) {
+                        await window.cartManager.incrementCartItem(productId, 1);
+                        // Update local quantity display
+                        updateLocalQuantity(productId, 'increment');
+                        // Recalculate and update summary
+                        calculateAndUpdateCartSummary();
+                    }
+                });
+            });
+
+            // Decrement buttons
+            document.querySelectorAll('.decrement-cart').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const productId = this.dataset.productId;
+                    console.log(`➖ Decrementing product ${productId}`);
+                    
+                    if (window.cartManager) {
+                        await window.cartManager.decrementCartItem(productId, 1);
+                        // Update local quantity display
+                        updateLocalQuantity(productId, 'decrement');
+                        // Recalculate and update summary
+                        calculateAndUpdateCartSummary();
+                    }
+                });
+            });
+
+            // Remove buttons
+            document.querySelectorAll('.remove-cart-item').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const productId = this.dataset.productId;
+                    console.log(`🗑️ Removing product ${productId}`);
+                    
+                    if (!confirm('Remove this item from your cart?')) {
+                        return;
+                    }
+                    
+                    if (window.cartManager) {
+                        await window.cartManager.removeFromCart(productId);
+                        // Remove row from UI
+                        removeCartItemRow(productId);
+                        // Recalculate and update summary
+                        calculateAndUpdateCartSummary();
+                    }
+                });
+            });
+
+            // Related products Add to Cart
+            document.querySelectorAll('.add-to-cart-btn[data-add-to-cart]').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const productId = this.dataset.addToCart;
+                    console.log(`🛒 Adding related product ${productId} to cart`);
+                    
+                    if (window.cartManager) {
+                        await window.cartManager.addToCart(productId, 1);
+                        // Reload page or update cart
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    }
+                });
+            });
+
+            // Related products Add to Wishlist
+            document.querySelectorAll('.wishlist-btn[data-add-to-wishlist]').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const productId = this.dataset.addToWishlist;
+                    if (window.cartManager) {
+                        window.cartManager.addToWishlist(productId);
+                    }
+                });
+            });
+
+            // Proceed to Checkout button
+            document.getElementById('section-123')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                redirectCartToPaymentSelection();
+            });
+
+            // Apply Promo Code button
+            document.getElementById('section-122')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                applyPromoCode();
+            });
+        }
+
+        /* ======================================================
+           UPDATE LOCAL QUANTITY DISPLAY
+        ====================================================== */
+        function updateLocalQuantity(productId, action) {
+            const row = document.querySelector(`[data-cart-item-id="${productId}"]`);
+            if (!row) return;
+            
+            const quantityInput = row.querySelector('.cart-item-quantity');
+            if (!quantityInput) return;
+            
+            let currentQuantity = parseInt(quantityInput.value) || 1;
+            
+            if (action === 'increment') {
+                currentQuantity += 1;
+            } else if (action === 'decrement') {
+                currentQuantity = Math.max(1, currentQuantity - 1);
+            }
+            
+            quantityInput.value = currentQuantity;
+            console.log(`📊 Updated quantity for ${productId}: ${currentQuantity}`);
+        }
+
+        /* ======================================================
+           CALCULATE AND UPDATE CART SUMMARY IN REAL-TIME
+        ====================================================== */
+        function calculateAndUpdateCartSummary() {
+            console.log('🧮 Calculating cart summary...');
+            
+            let subtotal = 0;
+            const rows = document.querySelectorAll('.cart-item-row');
+            
+            rows.forEach(row => {
+                const priceElement = row.querySelector('.product-price');
+                const quantityInput = row.querySelector('.cart-item-quantity');
+                
+                if (priceElement && quantityInput) {
+                    currencySymbol = document.getElementById('page-currency-symbol')?.value || '$';
+                    const priceText = priceElement.textContent.replace(currencySymbol, '');
+                    const price = parseFloat(priceText) || 0;
+                    const quantity = parseInt(quantityInput.value) || 1;
+                    const itemTotal = price * quantity;
+                    
+                    console.log(`💰 Item: ${currencySymbol}${price} x ${quantity} = ${currencySymbol}${itemTotal.toFixed(2)}`);
+                    subtotal += itemTotal;
+                }
+            });
+            
+            // Calculate shipping, tax, and total
+            const shipping = 0;
+            const tax = 0;
+            const total = subtotal + shipping + tax;
+            
+            // Update summary display
+            updateCartSummary({
+                subtotal: subtotal,
+                shipping: shipping,
+                tax: tax,
+                total: total
+            });
+            
+            console.log(`📈 Cart totals: Subtotal: $${subtotal.toFixed(2)}, Shipping: $${shipping.toFixed(2)}, Tax: $${tax.toFixed(2)}, Total: $${total.toFixed(2)}`);
+        }
+
+        function calculateShipping(subtotal) {
+            // Free shipping for orders over $100, otherwise $12
+            if (subtotal >= 100) {
+                return 0;
+            } else if (subtotal > 0) {
+                return 12.00;
+            }
+            return 0;
+        }
+
+        function calculateTax(subtotal) {
+            // 8% tax rate
+            return subtotal * 0.08;
+        }
+
+        /* ======================================================
+           UPDATE CART SUMMARY DISPLAY
+        ====================================================== */
+        function updateCartSummary(totals) {
+            const subtotalElement = document.querySelector('.cart-subtotal');
+            const shippingElement = document.querySelector('.cart-shipping');
+            const taxElement = document.querySelector('.cart-tax');
+            const totalElement = document.querySelector('.cart-total');
+            const currencySymbol = document.getElementById('page-currency-symbol')?.value || '$';
+            
+            if (subtotalElement) {
+                subtotalElement.textContent = `${currencySymbol}${totals.subtotal.toFixed(2)}`;
+            }
+            
+            if (shippingElement) {
+                shippingElement.textContent = `${currencySymbol}${totals.shipping.toFixed(2)}`;
+            }
+            
+            if (taxElement) {
+                taxElement.textContent = `${currencySymbol}${totals.tax.toFixed(2)}`;
+            }
+            
+            if (totalElement) {
+                totalElement.textContent = `${currencySymbol}${totals.total.toFixed(2)}`;
+            }
+        }
+
+        function updateCartSummaryFromBackend() {
+            if (BACKEND_CART_DATA.cart_subtotal > 0) {
+                updateCartSummary({
+                    subtotal: BACKEND_CART_DATA.cart_subtotal,
+                    shipping: BACKEND_CART_DATA.shipping_cost,
+                    tax: BACKEND_CART_DATA.tax_amount,
+                    total: BACKEND_CART_DATA.cart_total
+                });
+            } else {
+                // Calculate from current items on page
+                calculateAndUpdateCartSummary();
+            }
+        }
+
+        /* ======================================================
+           REMOVE CART ITEM ROW
+        ====================================================== */
+        function removeCartItemRow(productId) {
+            const row = document.querySelector(`[data-cart-item-id="${productId}"]`);
+            if (row) {
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    row.remove();
+                    checkEmptyCart();
+                }, 300);
+            }
+        }
+
+        /* ======================================================
+           CHECKOUT REDIRECT
+        ====================================================== */
+        function redirectCartToPaymentSelection() {
+            const cartData = getCartData();
+
+            if (!cartData.items.length) {
+                alert('Your cart is empty');
+                return;
+            }
+
+            const hostname = window.location.hostname;
+            const page_domain = document.getElementById('page-subdomain').value;
+            const subdomain = hostname.includes('localhost')
+                ? page_domain
+                : hostname.split('.')[0];
+
+            const params = new URLSearchParams({
+                type: 'cart',
+                cart: JSON.stringify(cartData)
+            });
+
+            window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+        }
+
+        /* ======================================================
+           COLLECT CART DATA FOR CHECKOUT
+        ====================================================== */
+        function getCartData() {
+            const items = [];
+            let subtotal = 0;
+
+            document.querySelectorAll('.cart-item-row').forEach(itemRow => {
+                const productId = itemRow.querySelector('.product-id')?.value;
+                const title = itemRow.querySelector('.product-title')?.textContent || '';
+                const priceElement = itemRow.querySelector('.product-price');
+                const quantityInput = itemRow.querySelector('.cart-item-quantity');
+                const sizeElement = itemRow.querySelector('.product-size');
+                const colorElement = itemRow.querySelector('.product-color');
+                const cjVidInput = itemRow.querySelector('.cj-vid');
+                const currencySymbol = document.getElementById('page-currency-symbol')?.value || '$';
+                const price = parseFloat(priceElement?.textContent.replace(currencySymbol, '')) || 0;
+                const quantity = parseInt(quantityInput?.value) || 1;
+                const selected_size = sizeElement?.textContent || '';
+                const selected_color = colorElement?.textContent || '';
+                const cj_vid = cjVidInput?.value || '';
+
+                const itemTotal = price * quantity;
+                subtotal += itemTotal;
+
+                items.push({
+                    id: productId,
+                    title: title,
+                    price: price,
+                    quantity: quantity,
+                    selected_size: selected_size,
+                    selected_color: selected_color,
+                    cj_vid: cj_vid,
+                    total_price: itemTotal
+                });
+            });
+
+            const shipping = 0;
+            const tax = 0;
+            const total = subtotal + shipping + tax;
+
+            return {
+                items: items,
+                subtotal: subtotal.toFixed(2),
+                shipping_amount: shipping.toFixed(2),
+                tax_amount: tax.toFixed(2),
+                total_amount: total.toFixed(2)
+            };
+        }
+
+        /* ======================================================
+           DEFAULT TEMPLATE FUNCTIONS
+        ====================================================== */
+        function applyPromoCode() {
+            const input = document.getElementById('section-121');
+            const code = input.value.trim().toUpperCase();
+            const currencySymbol = document.getElementById('page-currency-symbol')?.value || '$';
+            if (code === 'LUXE10') {
+                alert('Promo code applied! 10% discount has been added.');
+                // Apply discount to current totals
+                const totalElement = document.querySelector('.cart-total');
+                if (totalElement) {
+                    const currentTotal = parseFloat(totalElement.textContent.replace(currencySymbol, ''));
+                    const discountedTotal = currentTotal * 0.9;
+                    totalElement.textContent = `${currencySymbol}${discountedTotal.toFixed(2)}`;
+                }
+            } else if (code) {
+                alert('Invalid promo code. Please try again.');
+            } else {
+                alert('Please enter a promo code.');
+            }
+            
+            input.value = '';
+        }
+
+        function checkEmptyCart() {
+            const rows = document.querySelectorAll('.cart-item-row');
+            const cartItemsDiv = document.querySelector('.cart-items');
+            
+            if (rows.length === 0 && cartItemsDiv) {
+                cartItemsDiv.innerHTML = `
+                    <div class="cart-empty">
+                        <div class="cart-empty-icon">
+                            <i class="fas fa-shopping-bag" data-icon="60"></i>
+                        </div>
+                        <h3 class="cart-empty-title">Your cart is empty</h3>
+                        <p class="cart-empty-text">Looks like you haven't added any luxury items to your cart yet.</p>
+                        <a href="?page=products" class="continue-shopping-btn">Continue Shopping</a>
+                    </div>
+                `;
+                
+                // Hide summary when cart is empty
+                const summary = document.querySelector('.cart-summary');
+                if (summary) {
+                    summary.style.display = 'none';
+                }
+                
+                // Reset totals
+                updateCartSummary({
+                    subtotal: 0,
+                    shipping: 0,
+                    tax: 0,
+                    total: 0
+                });
+            } else if (rows.length > 0) {
+                // Show summary when cart has items
+                const summary = document.querySelector('.cart-summary');
+                if (summary) {
+                    summary.style.display = 'block';
+                }
+            }
+        }
+
+        /* ======================================================
+           CART MANAGER INTEGRATION OVERRIDES
+        ====================================================== */
+        // Wait for CartManager to be available
+        function waitForCartManager() {
+            return new Promise((resolve) => {
+                if (window.cartManager) {
+                    resolve(window.cartManager);
+                    return;
+                }
+                
+                const checkInterval = setInterval(() => {
+                    if (window.cartManager) {
+                        clearInterval(checkInterval);
+                        resolve(window.cartManager);
+                    }
+                }, 100);
+                
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve(null);
+                }, 5000);
+            });
+        }
+
+        // Initialize Cart Manager integration
+        waitForCartManager().then(cartManager => {
+            if (cartManager) {
+                console.log('✅ Cart Manager integration ready');
+                
+                // Override updateCartUI to also update our totals
+                const originalUpdateCartUI = cartManager.updateCartUI;
+                cartManager.updateCartUI = function(data) {
+                    // Call original method
+                    if (originalUpdateCartUI) {
+                        originalUpdateCartUI.call(this, data);
+                    }
+                    
+                    // Update our cart summary if data contains totals
+                    if (data.cart_total !== undefined || data.cart_subtotal !== undefined) {
+                        console.log('🔄 CartManager updated totals:', data);
+                        calculateAndUpdateCartSummary();
+                    }
+                };
+
+                // Override updateCartItemDisplay to update quantity in UI
+                cartManager.updateCartItemDisplay = function(productId, quantity) {
+                    console.log(`📝 Updating display for ${productId}: ${quantity}`);
+                    
+                    const row = document.querySelector(`[data-cart-item-id="${productId}"]`);
+                    if (row) {
+                        const quantityInput = row.querySelector('.cart-item-quantity');
+                        if (quantityInput) {
+                            quantityInput.value = quantity;
+                        }
+                        
+                        // Recalculate totals
+                        calculateAndUpdateCartSummary();
+                        
+                        // Remove item if quantity is 0
+                        if (quantity === 0) {
+                            removeCartItemRow(productId);
+                        }
+                    }
+                };
+
+                // Override removeCartItemDisplay to match our function
+                cartManager.removeCartItemDisplay = function(productId) {
+                    removeCartItemRow(productId);
+                };
+            }
+        });
+    </script>
+</body>
+</html>

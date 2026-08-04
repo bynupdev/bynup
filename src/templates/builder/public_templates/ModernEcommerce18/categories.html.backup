@@ -1,0 +1,680 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Categories | {{ page.brand_name }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+{% render_icon_data icon_customizations %}
+
+<style>
+:root {
+    --cream-warm: #E3C2A3;
+    --terracotta-light: #E1A16F;
+    --terracotta: #D08650;
+    --sienna-deep: #93523B;
+    --espresso-dark: #662F17;
+    --bg-light: #FDF7F0;
+    --shadow-soft: rgba(102, 47, 23, 0.08);
+    --shadow-hover: rgba(102, 47, 23, 0.15);
+    --white-pure: #FFFFFF;
+    --black-soft: #2E241F;
+    --spacing-xl: 6rem;
+    --spacing-lg: 4rem;
+    --spacing-md: 2rem;
+    --spacing-sm: 1rem;
+    --border-radius: 12px;
+    --transition: all 0.3s ease;
+}
+
+{% generate_color_variables %}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--espresso-dark);
+    overflow-x: hidden;
+    line-height: 1.6;
+    padding-top: 100px;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Page Header */
+.page-header {
+    text-align: center;
+    padding: var(--spacing-lg) 0 var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.page-header h1 {
+    font-size: 3rem;
+    color: var(--espresso-dark);
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+.page-header h1::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--terracotta), var(--sienna-deep));
+}
+
+.page-header p {
+    color: var(--sienna-deep);
+    font-size: 1rem;
+    max-width: 700px;
+    margin: 1rem auto 0;
+    opacity: 0.8;
+}
+
+/* Categories Filter */
+.categories-filter {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.filter-category-btn {
+    padding: 0.6rem 1.5rem;
+    background: var(--white-pure);
+    border: 1px solid rgba(102, 47, 23, 0.2);
+    border-radius: 2rem;
+    color: var(--sienna-deep);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.filter-category-btn:hover {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+    transform: translateY(-2px);
+}
+
+.filter-category-btn.active {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: var(--white-pure);
+}
+
+/* Categories Grid */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    margin-bottom: var(--spacing-xl);
+}
+
+.category-card {
+    background: var(--white-pure);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: 0 6px 12px var(--shadow-soft);
+    cursor: pointer;
+    position: relative;
+}
+
+.category-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 28px var(--shadow-hover);
+}
+
+.category-image-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+.category-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.category-card:hover .category-image {
+    transform: scale(1.05);
+}
+
+.category-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(102, 47, 23, 0.8), transparent);
+    padding: 1.5rem 1rem 1rem;
+    color: var(--white-pure);
+}
+
+.category-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.category-count {
+    font-size: 0.7rem;
+    opacity: 0.9;
+    letter-spacing: 1px;
+}
+
+.category-info {
+    padding: 1.2rem;
+    text-align: center;
+    border-top: 1px solid rgba(102, 47, 23, 0.05);
+}
+
+.category-description {
+    color: var(--sienna-deep);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.explore-btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--terracotta);
+    color: var(--terracotta);
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.explore-btn:hover {
+    background: var(--terracotta);
+    color: var(--white-pure);
+}
+
+/* Category Badge */
+.category-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--terracotta);
+    color: var(--white-pure);
+    padding: 0.2rem 0.6rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    z-index: 2;
+}
+
+/* Empty State */
+.empty-categories {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-md);
+    background: var(--white-pure);
+    border-radius: var(--border-radius);
+    box-shadow: 0 6px 12px var(--shadow-soft);
+    margin: var(--spacing-lg) 0;
+    grid-column: 1 / -1;
+}
+
+.empty-categories-icon {
+    font-size: 4rem;
+    color: var(--terracotta-light);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-categories h2 {
+    font-size: 1.6rem;
+    color: var(--espresso-dark);
+    margin-bottom: var(--spacing-sm);
+}
+
+.empty-categories p {
+    color: var(--sienna-deep);
+    margin-bottom: var(--spacing-md);
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 0.9rem;
+}
+
+.add-category-btn {
+    display: inline-block;
+    background: var(--terracotta);
+    color: var(--white-pure);
+    padding: 0.8rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-decoration: none;
+    border-radius: 3rem;
+    transition: var(--transition);
+}
+
+.add-category-btn:hover {
+    background: var(--espresso-dark);
+    transform: translateY(-2px);
+}
+
+/* Featured Collections Section */
+.featured-collections {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid rgba(102, 47, 23, 0.1);
+}
+
+.featured-collections h2 {
+    font-size: 1.8rem;
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    color: var(--espresso-dark);
+}
+
+.collections-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.collection-card {
+    background: var(--white-pure);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: 0 6px 12px var(--shadow-soft);
+    cursor: pointer;
+}
+
+.collection-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 28px var(--shadow-hover);
+}
+
+.collection-image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+    background-color: var(--cream-warm);
+}
+
+.collection-card:hover .collection-image {
+    transform: scale(1.02);
+}
+
+.collection-info {
+    padding: 1.2rem;
+    text-align: center;
+}
+
+.collection-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--espresso-dark);
+    margin-bottom: 0.5rem;
+}
+
+.collection-description {
+    color: var(--sienna-deep);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.view-collection-btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--terracotta);
+    color: var(--terracotta);
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.view-collection-btn:hover {
+    background: var(--terracotta);
+    color: var(--white-pure);
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .categories-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .collections-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 80px;
+    }
+    .categories-grid {
+        grid-template-columns: 1fr;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .collections-grid {
+        grid-template-columns: 1fr;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .categories-filter {
+        gap: 0.6rem;
+    }
+    .filter-category-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+    }
+    .page-header h1 {
+        font-size: 2rem;
+    }
+    .featured-collections h2 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding: 0 1.2rem;
+    }
+    .categories-filter {
+        flex-wrap: wrap;
+    }
+    .filter-category-btn {
+        flex: 1;
+        text-align: center;
+        min-width: 80px;
+    }
+}
+
+/* Dynamic Section Styles */
+{% generate_section_styles style_customizations 341 399 %}
+
+/* Dynamic Background Images */
+{% generate_background_images background_images 341 399 %}
+
+{% generate_hover_keyframes %}
+</style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+<!-- Header -->
+{% include 'builder/public_templates/ModernEcommerce18/snippets/header1.html' %}
+
+{% for component in components %}
+{% if component.drop_zone == '1' %}
+<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+    {{ component.html_content|safe }}
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- Page Header -->
+<div class="page-header" id="section-341">
+    <div class="container">
+        <h1 id="section-342">{{ text_contents.600|default:"Shop by Category" }}</h1>
+        <p id="section-343">{{ text_contents.601|default:"Explore our curated collections of premium pet essentials, thoughtfully designed for comfort, style, and durability." }}</p>
+    </div>
+</div>
+
+{% for component in components %}
+{% if component.drop_zone == '341' %}
+<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+    {{ component.html_content|safe }}
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- Categories Filter -->
+<div class="container">
+    <div class="categories-filter">
+        <button class="filter-category-btn active" data-filter="all" id="section-344">{{ text_contents.602|default:"All Categories" }}</button>
+        {% for category in categories|slice:":8" %}
+        <button class="filter-category-btn" data-filter="{{ category.slug|default:category.name|slugify }}" id="section-345">{{ category.name }}</button>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Categories Grid -->
+<div class="container">
+    <div class="categories-grid" id="categories-grid">
+        {% if categories %}
+        {% for category in categories %}
+        <div class="category-card" id="section-350"
+            data-category="{{ category.slug|default:category.name|slugify }}"
+            data-category-id="{{ category.id }}">
+            <div class="category-image-container">
+                {% if category.image %}
+                <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                {% else %}
+                <div class="category-image" style="background-color: var(--cream-warm); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-paw" style="font-size: 3rem; color: var(--terracotta); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                <div class="category-overlay">
+                    <div class="category-name" id="section-351">{{ category.name }}</div>
+                    <div class="category-count">{{ category.get_active_products_count }} Products</div>
+                </div>
+                {% if category.get_active_products_count > 10 %}
+                <div class="category-badge" id="section-352">{{ text_contents.609|default:"BESTSELLER" }}</div>
+                {% elif forloop.counter == 3 %}
+                <div class="category-badge" id="section-352" style="background: var(--sienna-deep);">{{ text_contents.348|default:"NEW" }}</div>
+                {% endif %}
+            </div>
+            <div class="category-info">
+                <div class="category-description" id="section-353">{{ category.description|default:"Explore our curated collection of premium products."|truncatechars:80 }}</div>
+                <a href="?page=products&category={{ category.slug }}" class="explore-btn" id="section-354">{{ text_contents.611|default:"Explore →" }}</a>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-categories">
+            <div class="empty-categories-icon">
+                <i class="fas fa-folder-open" data-icon="500"></i>
+            </div>
+            <h2 id="section-350">{{ text_contents.616|default:"No Categories Available" }}</h2>
+            <p id="section-351">{{ text_contents.617|default:"There are no product categories to display at the moment. Categories will appear here once they are added to your store." }}</p>
+            <a href="{{ SITE_DOMAIN }}/manage-product-categories/{{ page.subdomain }}/" class="add-category-btn" id="section-352">{{ text_contents.618|default:"Add Your First Category" }}</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% for component in components %}
+{% if component.drop_zone == '350' %}
+<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+    {{ component.html_content|safe }}
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- Featured Collections Section -->
+<div class="container">
+    <div class="featured-collections" id="section-355">
+        <h2 id="section-356">{{ text_contents.612|default:"Featured Collections" }}</h2>
+        <div class="collections-grid">
+            {% for category in categories|slice:":3" %}
+            <div class="collection-card">
+                {% if category.image %}
+                <img src="{{ category.image.url }}" alt="{{ category.name }}" class="collection-image">
+                {% else %}
+                <div class="collection-image" style="background-color: var(--cream-warm); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-paw" style="font-size: 2.5rem; color: var(--terracotta); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                <div class="collection-info">
+                    <div class="collection-name" id="section-357">{{ category.name }}</div>
+                    <div class="collection-description" id="section-358">{{ category.description|default:"Discover our exclusive collection of premium products."|truncatechars:80 }}</div>
+                    <a href="?page=products&category={{ category.slug }}" class="view-collection-btn" id="section-359">{{ text_contents.615|default:"View Collection →" }}</a>
+                </div>
+            </div>
+            {% empty %}
+            
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% for component in components %}
+{% if component.drop_zone == '355' %}
+<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+    {{ component.html_content|safe }}
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- Footer -->
+{% include 'builder/public_templates/ModernEcommerce18/snippets/footer.html' %}
+
+{% for component in components %}
+{% if component.drop_zone == 'end' %}
+<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+    {{ component.html_content|safe }}
+</section>
+{% endif %}
+{% endfor %}
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+<script>
+// Category Filtering
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBtns = document.querySelectorAll('.filter-category-btn');
+    const categoryCards = document.querySelectorAll('.category-card');
+    
+    if (filterBtns.length > 0 && categoryCards.length > 0) {
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const filterValue = this.getAttribute('data-filter');
+                filterCategories(filterValue);
+            });
+        });
+    }
+    
+    // Category card click for navigation
+    categoryCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (e.target.classList.contains('explore-btn') || e.target.closest('.explore-btn')) {
+                return;
+            }
+            const exploreBtn = this.querySelector('.explore-btn');
+            if (exploreBtn) {
+                window.location.href = exploreBtn.getAttribute('href');
+            }
+        });
+    });
+    
+    // Collection card click
+    document.querySelectorAll('.collection-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (e.target.classList.contains('view-collection-btn') || e.target.closest('.view-collection-btn')) {
+                return;
+            }
+            const viewBtn = this.querySelector('.view-collection-btn');
+            if (viewBtn) {
+                window.location.href = viewBtn.getAttribute('href');
+            }
+        });
+    });
+});
+
+function filterCategories(filterValue) {
+    const categoryCards = document.querySelectorAll('.category-card');
+    let visibleCount = 0;
+    
+    categoryCards.forEach(card => {
+        const category = card.getAttribute('data-category');
+        if (filterValue === 'all' || category === filterValue) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    const categoriesGrid = document.getElementById('categories-grid');
+    const existingEmpty = document.querySelector('.empty-categories-message');
+    
+    if (visibleCount === 0 && !existingEmpty && categoryCards.length > 0) {
+        const emptyHtml = `
+            <div class="empty-categories empty-categories-message" style="grid-column: 1 / -1;">
+                <div class="empty-categories-icon">
+                    <i class="fas fa-folder-open" data-icon="500"></i>
+                </div>
+                <h2 id="section-365">{{ text_contents.616|default:"No Categories Found" }}</h2>
+                <p id="section-366">{{ text_contents.617|default:"No products match your selected category. Try browsing another category." }}</p>
+                <button class="add-category-btn" id="section-367" onclick="resetCategories()">{{ text_contents.618|default:"View All Categories" }}</button>
+            </div>
+        `;
+        categoriesGrid.insertAdjacentHTML('beforeend', emptyHtml);
+    } else if (visibleCount > 0) {
+        const emptyMessage = document.querySelector('.empty-categories-message');
+        if (emptyMessage) emptyMessage.remove();
+    }
+}
+
+function resetCategories() {
+    const filterBtns = document.querySelectorAll('.filter-category-btn');
+    filterBtns.forEach(btn => btn.classList.remove('active'));
+    const allBtn = document.querySelector('.filter-category-btn[data-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
+    filterCategories('all');
+}
+
+window.resetCategories = resetCategories;
+</script>
+</body>
+</html>

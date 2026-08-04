@@ -1,0 +1,302 @@
+<!-- builder/templates/ModernToyShop19/cart.html -->
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | Nook & Nest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --background: #5c8b39;
+            --text: #c07436;
+            --heading: #bf7f4a;
+            --primary: #636a2f;
+            --secondary: #212615;
+            --accent: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        main { background-color: var(--accent); font-family: 'Inter', sans-serif; color: var(--secondary); line-height: 1.4; overflow-x: hidden;  }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .page-header { text-align: center; padding: 2rem 0 3rem; margin-bottom: 1rem; }
+        .page-header h1 { font-size: 3rem; font-weight: 600; color: var(--secondary); margin-bottom: 1rem; position: relative; display: inline-block; }
+        .page-header h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, var(--text), var(--heading)); border-radius: 2px; }
+        .page-header p { font-size: 1.1rem; color: var(--secondary); opacity: 0.7; max-width: 600px; margin: 1.5rem auto 0; line-height: 1.6; }
+        .cart-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-bottom: 4rem; }
+        .cart-items-container { background: white; border-radius: var(--border-radius-card); box-shadow: var(--card-shadow); overflow: hidden; }
+        .cart-header { display: grid; grid-template-columns: 2fr 1fr 1fr 0.5fr; padding: 1.2rem 1.5rem; background: var(--accent); border-bottom: 1px solid rgba(99,106,47,0.1); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--secondary); }
+        .cart-item { display: grid; grid-template-columns: 2fr 1fr 1fr 0.5fr; align-items: center; padding: 1.5rem; border-bottom: 1px solid rgba(99,106,47,0.1); transition: var(--transition-smooth); }
+        .cart-item:hover { background: rgba(254,250,245,0.5); }
+        .product-info-cell { display: flex; gap: 1rem; align-items: center; }
+        .cart-product-image { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; background: var(--accent); }
+        .cart-product-details h3 { font-size: 1rem; margin-bottom: 0.3rem; font-weight: 600; }
+        .cart-product-category { font-size: 0.7rem; color: var(--text); text-transform: uppercase; letter-spacing: 1px; }
+        .cart-product-variant { font-size: 0.75rem; color: var(--secondary); opacity: 0.6; margin-top: 0.3rem; }
+        .cart-product-price { font-weight: 600; color: var(--text); }
+        .quantity-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .quantity-btn { width: 32px; height: 32px; border-radius: 40px; border: 1px solid rgba(99,106,47,0.2); background: white; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .quantity-btn:hover { border-color: var(--text); color: var(--text); transform: translateY(-2px); }
+        .quantity-input { width: 50px; text-align: center; padding: 0.4rem; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; font-size: 0.9rem; }
+        .cart-item-total { font-weight: 700; color: var(--secondary); }
+        .remove-item-btn { background: none; border: none; color: var(--secondary); opacity: 0.4; cursor: pointer; font-size: 1.1rem; transition: var(--transition-smooth); }
+        .remove-item-btn:hover { opacity: 1; color: var(--text); transform: scale(1.1); }
+        .cart-summary { background: white; border-radius: var(--border-radius-card); box-shadow: var(--card-shadow); padding: 1.5rem; height: fit-content; position: sticky; top: 120px; }
+        .cart-summary h2 { font-size: 1.3rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(99,106,47,0.1); }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.95rem; }
+        .summary-row.total { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(99,106,47,0.1); font-weight: 700; font-size: 1.2rem; color: var(--text); }
+        .promo-code-section { margin: 1.5rem 0; }
+        .promo-code-section h3 { font-size: 0.9rem; margin-bottom: 0.8rem; }
+        .promo-input-group { display: flex; gap: 0.5rem; }
+        .promo-input { flex: 1; padding: 0.7rem 1rem; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; font-size: 0.85rem; }
+        .apply-promo-btn { padding: 0.7rem 1.2rem; background: white; border: 1px solid var(--text); color: var(--text); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-weight: 500; }
+        .apply-promo-btn:hover { background: var(--text); color: white; transform: translateY(-2px); }
+        .checkout-btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--text), var(--heading)); color: white; border: none; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-top: 1rem; }
+        .checkout-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(192,116,54,0.3); }
+        .continue-shopping { text-align: center; margin-top: 1rem; }
+        .continue-shopping a { color: var(--text); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .continue-shopping a:hover { text-decoration: underline; }
+        .empty-cart { text-align: center; padding: 4rem; background: white; border-radius: var(--border-radius-card); grid-column: 1 / -1; }
+        .empty-cart-icon { font-size: 4rem; color: var(--heading); margin-bottom: 1rem; }
+        .empty-cart h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+        .empty-cart p { color: var(--secondary); opacity: 0.6; margin-bottom: 2rem; }
+        .shop-now-btn { display: inline-block; padding: 1rem 2rem; background: var(--text); color: white; text-decoration: none; border-radius: 40px; font-weight: 600; transition: var(--transition-smooth); }
+        .shop-now-btn:hover { background: var(--heading); transform: translateY(-3px); }
+        .you-may-also-like { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(99,106,47,0.15); }
+        .you-may-also-like h2 { font-size: 1.8rem; text-align: center; margin-bottom: 2rem; color: var(--secondary); }
+        .recommended-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; }
+        .recommended-product-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .recommended-product-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .recommended-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .recommended-product-info { padding: 1rem; }
+        .recommended-product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .recommended-product-price { color: var(--text); font-weight: 500; font-size: 0.9rem; margin-bottom: 0.8rem; }
+        .add-to-cart-recommended { width: 100%; padding: 0.6rem; background: white; border: 1px solid var(--text); color: var(--text); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.8rem; font-weight: 500; }
+        .add-to-cart-recommended:hover { background: var(--text); color: white; }
+        @media (max-width: 992px) { .cart-layout { grid-template-columns: 1fr; gap: 2rem; } .cart-summary { position: static; } .recommended-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {  .container { padding: 0 1.5rem; } .cart-header { display: none; } .cart-item { grid-template-columns: 1fr; gap: 1rem; padding: 1rem; position: relative; } .product-info-cell { flex-direction: column; text-align: center; } .cart-product-price, .cart-item-total { text-align: center; } .quantity-controls { justify-content: center; } .remove-item-btn { position: absolute; top: 1rem; right: 1rem; } .recommended-grid { grid-template-columns: 1fr; max-width: 350px; margin: 0 auto; } .page-header h1 { font-size: 2rem; } }
+        @media (max-width: 576px) { .cart-product-image { width: 100px; height: 100px; } .promo-input-group { flex-direction: column; } .apply-promo-btn { width: 100%; } }
+    </style>
+</head>
+<body>
+
+<main>
+    <div class="container">
+    <!-- Page Header - EDITABLE -->
+    <div class="page-header editable-section" data-section="221">
+        <h1 class="editable-text editable-section no-drop-zone" data-section="222" data-text="133">Your Shopping Cart</h1>
+        <p class="editable-text editable-section no-drop-zone" data-section="223" data-text="134">Review your items and proceed to checkout when you're ready to bring these toys home.</p>
+    </div>
+
+    <!-- Cart Layout -->
+    <div class="cart-layout">
+        <!-- Cart Items Container - EDITABLE -->
+        <div class="cart-items-container editable-section no-drop-zone" data-section="224">
+            <div class="cart-header editable-section no-drop-zone" data-section="225">
+                <span class="editable-text" data-text="135">Product</span>
+                <span class="editable-text" data-text="136">Price</span>
+                <span class="editable-text" data-text="137">Quantity</span>
+                <span class="editable-text" data-text="138">Total</span>
+            </div>
+            
+            <!-- Cart Item 1 - EDITABLE -->
+            <div class="cart-item editable-section no-drop-zone" data-section="226">
+                <div class="product-info-cell editable-section no-drop-zone" data-section="227">
+                    <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="cart-product-image editable-image" data-image="34">
+                    <div class="cart-product-details editable-section no-drop-zone" data-section="228">
+                        <h3 class="editable-text editable-section no-drop-zone" data-section="229" data-text="139">Wooden Building Blocks</h3>
+                        <div class="cart-product-category editable-text editable-section no-drop-zone" data-section="230" data-text="140">WOODEN TOYS</div>
+                        <div class="cart-product-variant editable-text editable-section no-drop-zone" data-section="231" data-text="141">Color: Natural | Size: Medium</div>
+                    </div>
+                </div>
+                <div class="cart-product-price editable-text editable-section no-drop-zone" data-section="232" data-text="142" data-price="48">$48.00</div>
+                <div class="quantity-controls editable-section no-drop-zone" data-section="233">
+                    <button class="quantity-btn decrement editable-icon" data-icon="45">-</button>
+                    <input type="number" class="quantity-input editable-text editable-section no-drop-zone" data-section="234" data-text="143" value="1" min="1" max="10">
+                    <button class="quantity-btn increment editable-icon" data-icon="46">+</button>
+                </div>
+                <div class="cart-item-total editable-text editable-section no-drop-zone" data-section="235" data-text="144">$48.00</div>
+                <button class="remove-item-btn editable-icon" data-icon="16"><i class="fas fa-trash-alt"></i></button>
+            </div>
+
+            <!-- Cart Item 2 - EDITABLE -->
+            <div class="cart-item editable-section no-drop-zone" data-section="236">
+                <div class="product-info-cell editable-section no-drop-zone" data-section="237">
+                    <img src="{%static 'images/Ecom19/prod7.jpg'%}" class="cart-product-image editable-image" data-image="35">
+                    <div class="cart-product-details editable-section no-drop-zone" data-section="238">
+                        <h3 class="editable-text editable-section no-drop-zone" data-section="239" data-text="145">Plush Teddy Bear</h3>
+                        <div class="cart-product-category editable-text editable-section no-drop-zone" data-section="240" data-text="146">PLUSH TOYS</div>
+                        <div class="cart-product-variant editable-text editable-section no-drop-zone" data-section="241" data-text="147">Color: Brown | Size: Medium</div>
+                    </div>
+                </div>
+                <div class="cart-product-price editable-text editable-section no-drop-zone" data-section="242" data-text="148" data-price="32">$32.00</div>
+                <div class="quantity-controls editable-section no-drop-zone" data-section="243">
+                    <button class="quantity-btn decrement editable-icon" data-icon="45">-</button>
+                    <input type="number" class="quantity-input editable-text editable-section no-drop-zone" data-section="244" data-text="149" value="2" min="1" max="10">
+                    <button class="quantity-btn increment editable-icon" data-icon="46">+</button>
+                </div>
+                <div class="cart-item-total editable-text editable-section no-drop-zone" data-section="245" data-text="150">$64.00</div>
+                <button class="remove-item-btn editable-icon" data-icon="16"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+        
+        <!-- Cart Summary - EDITABLE -->
+        <div class="cart-summary editable-section no-drop-zone" data-section="246">
+            <h2 class="editable-text editable-section no-drop-zone" data-section="247" data-text="151">Order Summary</h2>
+            <div class="summary-row editable-section no-drop-zone" data-section="248">
+                <span class="editable-text" data-text="152">Subtotal</span>
+                <span class="editable-text editable-section no-drop-zone" data-section="249" data-text="153" id="subtotal">$139.50</span>
+            </div>
+            <div class="summary-row editable-section no-drop-zone" data-section="250">
+                <span class="editable-text" data-text="154">Shipping</span>
+                <span class="editable-text editable-section no-drop-zone" data-section="251" data-text="155" id="shipping">$5.00</span>
+            </div>
+            <div class="summary-row editable-section no-drop-zone" data-section="252">
+                <span class="editable-text" data-text="156">Tax (8%)</span>
+                <span class="editable-text editable-section no-drop-zone" data-section="253" data-text="157" id="tax">$11.16</span>
+            </div>
+            <div class="summary-row total editable-section no-drop-zone" data-section="254">
+                <span class="editable-text" data-text="158">Total</span>
+                <span class="editable-text editable-section no-drop-zone" data-section="255" data-text="159" id="total">$155.66</span>
+            </div>
+            
+            <!-- Promo Code -->
+            <div class="promo-code-section editable-section no-drop-zone" data-section="256">
+                <h3 class="editable-text editable-section no-drop-zone" data-section="257" data-text="160">Promo Code</h3>
+                <div class="promo-input-group editable-section no-drop-zone" data-section="258">
+                    <input type="text" class="promo-input editable-text editable-section no-drop-zone" data-section="259" data-text="161" placeholder="Enter code" id="promo-code">
+                    <button class="apply-promo-btn editable-text editable-section no-drop-zone" data-section="260" data-text="162" id="apply-promo">Apply</button>
+                </div>
+            </div>
+            
+            <button class="checkout-btn editable-text editable-section no-drop-zone" data-section="261" data-text="163">
+                <i class="fas fa-lock editable-icon" data-icon="17"></i> Proceed to Checkout
+            </button>
+            
+            <div class="continue-shopping editable-section no-drop-zone" data-section="262">
+                <a href="?page=products" class="editable-text editable-section no-drop-zone" data-section="263" data-text="164"><i class="fas fa-arrow-left editable-icon" data-icon="18"></i> Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Empty Cart State - EDITABLE -->
+    <div class="empty-cart editable-section no-drop-zone" data-section="264" style="display: none;">
+        <div class="empty-cart-icon editable-icon" data-icon="2"><i class="fas fa-shopping-bag"></i></div>
+        <h2 class="editable-text editable-section no-drop-zone" data-section="265" data-text="165">Your Cart is Empty</h2>
+        <p class="editable-text editable-section no-drop-zone" data-section="266" data-text="166">Looks like you haven't added any toys to your cart yet.</p>
+        <a href="?page=products" class="shop-now-btn editable-text editable-section no-drop-zone" data-section="267" data-text="167">Start Shopping</a>
+    </div>
+    
+    <!-- You May Also Like - EDITABLE -->
+    <div class="you-may-also-like editable-section no-drop-zone" data-section="268">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="269" data-text="168">You May Also Like</h2>
+        <div class="recommended-grid">
+            <div class="recommended-product-card editable-section no-drop-zone" data-section="270">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="recommended-product-img editable-image" data-image="37">
+                <div class="recommended-product-info editable-section no-drop-zone" data-section="271">
+                    <div class="recommended-product-name editable-text editable-section no-drop-zone" data-section="272" data-text="169">Montessori Wooden Toy Set</div>
+                    <div class="recommended-product-price editable-text editable-section no-drop-zone" data-section="273" data-text="170">$52.00</div>
+                    <button class="add-to-cart-recommended editable-text editable-section no-drop-zone" data-section="274" data-text="171">Add to Cart</button>
+                </div>
+            </div>
+            <div class="recommended-product-card editable-section no-drop-zone" data-section="275">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" class="recommended-product-img editable-image" data-image="38">
+                <div class="recommended-product-info editable-section no-drop-zone" data-section="276">
+                    <div class="recommended-product-name editable-text editable-section no-drop-zone" data-section="277" data-text="172">Kids Activity Kit</div>
+                    <div class="recommended-product-price editable-text editable-section no-drop-zone" data-section="278" data-text="173">$39.00</div>
+                    <button class="add-to-cart-recommended editable-text editable-section no-drop-zone" data-section="279" data-text="174">Add to Cart</button>
+                </div>
+            </div>
+            <div class="recommended-product-card editable-section no-drop-zone" data-section="280">
+                <img src="{%static 'images/Ecom19/prod3.jpg'%}" class="recommended-product-img editable-image" data-image="39">
+                <div class="recommended-product-info editable-section no-drop-zone" data-section="281">
+                    <div class="recommended-product-name editable-text editable-section no-drop-zone" data-section="282" data-text="175">Premium Art Supplies Set</div>
+                    <div class="recommended-product-price editable-text editable-section no-drop-zone" data-section="283" data-text="176">$24.99</div>
+                    <button class="add-to-cart-recommended editable-text editable-section no-drop-zone" data-section="284" data-text="177">Add to Cart</button>
+                </div>
+            </div>
+            <div class="recommended-product-card editable-section no-drop-zone" data-section="285">
+                <img src="{%static 'images/Ecom19/prod5.jpg'%}" class="recommended-product-img editable-image" data-image="40">
+                <div class="recommended-product-info editable-section no-drop-zone" data-section="286">
+                    <div class="recommended-product-name editable-text editable-section no-drop-zone" data-section="287" data-text="178">Wooden Puzzle Collection</div>
+                    <div class="recommended-product-price editable-text editable-section no-drop-zone" data-section="288" data-text="179">$34.50</div>
+                    <button class="add-to-cart-recommended editable-text editable-section no-drop-zone" data-section="289" data-text="180">Add to Cart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function updateCartTotals() {
+            let subtotal = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                const totalText = item.querySelector('.cart-item-total').textContent;
+                subtotal += parseFloat(totalText.replace('$', ''));
+            });
+            let shipping = subtotal > 0 ? 5 : 0;
+            const tax = subtotal * 0.08;
+            const total = subtotal + shipping + tax;
+            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('shipping').textContent = `$${shipping.toFixed(2)}`;
+            document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+        }
+        
+        function updateItemTotal(cartItem) {
+            const price = parseFloat(cartItem.querySelector('.cart-product-price').getAttribute('data-price'));
+            const quantity = parseInt(cartItem.querySelector('.quantity-input').value);
+            cartItem.querySelector('.cart-item-total').textContent = `$${(price * quantity).toFixed(2)}`;
+        }
+        
+        document.querySelectorAll('.quantity-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const cartItem = this.closest('.cart-item');
+                const input = cartItem.querySelector('.quantity-input');
+                let value = parseInt(input.value);
+                if (this.classList.contains('increment')) value = Math.min(value + 1, 10);
+                else if (this.classList.contains('decrement')) value = Math.max(value - 1, 1);
+                input.value = value;
+                updateItemTotal(cartItem);
+                updateCartTotals();
+            });
+        });
+        
+        document.querySelectorAll('.remove-item-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.cart-item').remove();
+                updateCartTotals();
+                if (document.querySelectorAll('.cart-item').length === 0) {
+                    document.querySelector('.cart-layout').style.display = 'none';
+                    document.querySelector('.empty-cart').style.display = 'block';
+                }
+            });
+        });
+        
+        document.getElementById('apply-promo')?.addEventListener('click', function() {
+            const promo = document.getElementById('promo-code').value.trim();
+            if (promo === 'WELCOME10') alert('10% discount applied!');
+            else if (promo === 'FREESHIP') { document.getElementById('shipping').textContent = '$0.00'; updateCartTotals(); alert('Free shipping applied!'); }
+            else alert('Invalid promo code');
+        });
+        
+        document.querySelector('.checkout-btn')?.addEventListener('click', function() {
+            alert('Proceeding to checkout!');
+        });
+        
+        updateCartTotals();
+    });
+</script>
+</body>
+</html>

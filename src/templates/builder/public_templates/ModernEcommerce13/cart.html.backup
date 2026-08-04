@@ -1,0 +1,1384 @@
+{% load static %}
+{% load style_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Cart Page Specific Styles */
+        .cart-container#section-103 {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 4rem 5%;
+            margin-top: 80px;
+        }
+        
+        .cart-header#section-104 {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .cart-title {
+            font-size: 2.5rem;
+            color: var(--deep-elegance);
+            margin-bottom: 1rem;
+        }
+        
+        .cart-subtitle {
+            color: var(--warm-neutral);
+            font-size: 1.1rem;
+        }
+        
+        .cart-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 3rem;
+            margin-bottom: 5rem;
+        }
+        
+        .cart-items#section-107 {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .cart-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            background-color: var(--white);
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            transition: var(--transition);
+        }
+        
+        .cart-item:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .cart-item-image {
+            height: 200px;
+            overflow: hidden;
+        }
+        
+        .cart-item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .cart-item:hover .cart-item-image img {
+            transform: scale(1.03);
+        }
+        
+        .cart-item-details {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+        
+        .item-title {
+            font-size: 1.4rem;
+            color: var(--deep-elegance);
+            margin-bottom: 0.5rem;
+        }
+        
+        .item-location {
+            color: var(--warm-neutral);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        
+        .item-features {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .item-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--luxury-accent);
+            font-size: 0.9rem;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .action-link {
+            color: var(--warm-neutral);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .action-link:hover {
+            color: var(--deep-elegance);
+        }
+        
+        .cart-item-price {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0.5rem 0;
+        }
+        
+        .item-price {
+            font-size: 1.8rem;
+            color: var(--deep-elegance);
+            font-weight: 400;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .quantity-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            background-color: var(--white);
+            color: var(--deep-elegance);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .quantity-btn:hover {
+            background-color: rgba(126, 112, 83, 0.1);
+        }
+        
+        .quantity-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .quantity-input {
+            width: 50px;
+            height: 30px;
+            text-align: center;
+            border: 1px solid rgba(126, 112, 83, 0.3);
+            background-color: var(--white);
+            color: var(--deep-elegance);
+            font-weight: 500;
+        }
+        
+        .remove-item {
+            color: #dc3545;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 1rem;
+            transition: var(--transition);
+        }
+        
+        .remove-item:hover {
+            color: #c82333;
+        }
+        
+        .cart-summary#section-119 {
+            background-color: var(--white);
+            padding: 2.5rem;
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .summary-title {
+            font-size: 1.5rem;
+            color: var(--deep-elegance);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(126, 112, 83, 0.1);
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: var(--deep-elegance);
+        }
+        
+        .summary-row.total {
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(126, 112, 83, 0.2);
+        }
+        
+        .summary-note {
+            color: var(--warm-neutral);
+            font-size: 0.9rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(126, 112, 83, 0.1);
+            line-height: 1.5;
+        }
+        
+        .btn-checkout {
+            display: block;
+            width: 100%;
+            padding: 1.2rem;
+            background-color: var(--warm-neutral);
+            color: var(--white);
+            border: none;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 2rem;
+            text-align: center;
+            text-decoration: none;
+        }
+        
+        .btn-checkout:hover {
+            background-color: var(--deep-elegance);
+            transform: translateY(-2px);
+        }
+        
+        .btn-checkout:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-checkout:disabled:hover {
+            background-color: var(--warm-neutral);
+            transform: none;
+        }
+        
+        .continue-shopping {
+            display: block;
+            text-align: center;
+            color: var(--warm-neutral);
+            text-decoration: none;
+            margin-top: 1rem;
+            transition: var(--transition);
+        }
+        
+        .continue-shopping:hover {
+            color: var(--deep-elegance);
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 4rem 2rem;
+            grid-column: 1 / -1;
+            display: {% if cart and cart.items.count > 0 %}none{% else %}block{% endif %};
+        }
+        
+        .empty-cart i {
+            font-size: 3.5rem;
+            color: var(--luxury-accent);
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-cart h3 {
+            margin-bottom: 1rem;
+            color: var(--deep-elegance);
+        }
+        
+        .empty-cart p {
+            color: var(--warm-neutral);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn-shop {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background-color: var(--luxury-accent);
+            color: var(--white);
+            border: none;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1.5px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .btn-shop:hover {
+            background-color: var(--warm-neutral);
+            transform: translateY(-3px);
+        }
+        
+        .you-may-like#section-134 {
+            margin-top: 5rem;
+            padding-top: 3rem;
+            border-top: 1px solid rgba(126, 112, 83, 0.2);
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: var(--deep-elegance);
+            text-align: center;
+        }
+        
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .related-card {
+            background-color: var(--white);
+            border: 1px solid rgba(126, 112, 83, 0.1);
+            transition: var(--transition);
+        }
+        
+        .related-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        
+        .related-image {
+            height: 200px;
+            overflow: hidden;
+        }
+        
+        .related-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .related-card:hover .related-image img {
+            transform: scale(1.05);
+        }
+        
+        .related-info {
+            padding: 1.5rem;
+        }
+        
+        .related-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--deep-elegance);
+        }
+        
+        .related-price {
+            color: var(--warm-neutral);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .related-btn {
+            display: block;
+            width: 100%;
+            padding: 0.8rem;
+            background-color: var(--warm-neutral);
+            color: var(--white);
+            border: none;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            transition: var(--transition);
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .related-btn:hover {
+            background-color: var(--deep-elegance);
+        }
+        
+        .empty-related {
+            text-align: center;
+            padding: 3rem;
+            grid-column: 1 / -1;
+            display: {% if recommendations %}none{% else %}block{% endif %};
+        }
+        
+        .empty-related i {
+            font-size: 2.5rem;
+            color: var(--luxury-accent);
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-related h3 {
+            margin-bottom: 1rem;
+            color: var(--deep-elegance);
+        }
+        
+        .empty-related p {
+            color: var(--warm-neutral);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        /* Cart notification */
+        .cart-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Loading indicator */
+        .loading-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+        }
+        
+        /* Price updating animation */
+        .price-update {
+            animation: priceFlash 0.5s ease;
+        }
+        
+        @keyframes priceFlash {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); color: var(--luxury-accent); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 103 150 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 103 150 %}
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .cart-content {
+                grid-template-columns: 1.5fr 1fr;
+                gap: 2rem;
+            }
+            
+            .cart-item {
+                grid-template-columns: 1fr 2fr;
+                gap: 1.5rem;
+            }
+            
+            .cart-item-price {
+                grid-column: 1 / -1;
+                flex-direction: row;
+                align-items: center;
+                padding-top: 1.5rem;
+                border-top: 1px solid rgba(126, 112, 83, 0.1);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .cart-container#section-103 {
+                padding: 3rem 5%;
+                margin-top: 70px;
+            }
+            
+            .cart-title {
+                font-size: 2rem;
+            }
+            
+            .cart-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .cart-summary#section-119 {
+                position: static;
+            }
+            
+            .cart-item {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .cart-item-image {
+                height: 250px;
+            }
+            
+            .cart-item-price {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .cart-item {
+                padding: 1.5rem;
+            }
+            
+            .item-title {
+                font-size: 1.2rem;
+            }
+            
+            .item-price {
+                font-size: 1.5rem;
+            }
+            
+            .item-actions {
+                flex-wrap: wrap;
+            }
+            
+            .related-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .cart-header#section-104 {
+                margin-bottom: 2rem;
+            }
+            
+            .cart-title {
+                font-size: 1.7rem;
+            }
+            
+            .summary-title {
+                font-size: 1.3rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loadingIndicator">
+        <div style="text-align: center;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color: var(--luxury-accent); margin-bottom: 10px;"></i>
+            <p>Updating cart...</p>
+        </div>
+    </div>
+    
+    <!-- Hidden inputs for cart data -->
+    <input type="hidden" id="page-subdomain" value="{{ page.subdomain }}">
+    {% csrf_token %}
+    
+    <!-- Cart Content -->
+    <div class="cart-container" id="section-103">
+        <div class="cart-header" id="section-104">
+            <h1 class="cart-title" id="section-105">{{ text_contents.80|default:"Your Luxury Portfolio" }}</h1>
+            <p class="cart-subtitle" id="section-106">{{ text_contents.81|default:"Review and manage your selected properties" }}</p>
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '103' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <div class="cart-content">
+            <!-- Cart Items -->
+            <div class="cart-items" id="section-107">
+                {% if cart and cart.items.count > 0 %}
+                    {% for item in cart.items.all %}
+                    <div class="cart-item {% if forloop.first %}id="section-108"{% endif %}" 
+                         data-cart-item-id="{{ item.product.id }}"
+                         data-cart-item="{{ item.id }}"
+                         data-item-price="{{ item.product.price }}">
+                        <div class="cart-item-image">
+                            {% if item.product.main_image %}
+                            <img src="{{ item.product.main_image.url }}" alt="{{ item.product.title }}">
+                            {% else %}
+                            <img src="https://via.placeholder.com/300x200?text=Property+Image" alt="{{ item.product.title }}">
+                            {% endif %}
+                        </div>
+                        
+                        <div class="cart-item-details">
+                            <div>
+                                <h3 class="item-title {% if forloop.first %}id="section-109"{% endif %}">
+                                    {{ item.product.title }}
+                                </h3>
+                                <div class="item-location {% if forloop.first %}id="section-110"{% endif %}">
+                                    {{ item.product.category_name|default:"Premium Property" }}
+                                </div>
+                                
+                                <div class="item-features">
+                                    <div class="item-feature {% if forloop.first %}id="section-111"{% endif %}">
+                                        <i class="fas fa-bed"></i>
+                                        <span>{% if forloop.first %}{{ text_contents.84|default:"5 Beds" }}{% else %}4 Beds{% endif %}</span>
+                                    </div>
+                                    <div class="item-feature {% if forloop.first %}id="section-112"{% endif %}">
+                                        <i class="fas fa-bath"></i>
+                                        <span>{% if forloop.first %}{{ text_contents.85|default:"6 Baths" }}{% else %}4 Baths{% endif %}</span>
+                                    </div>
+                                    <div class="item-feature {% if forloop.first %}id="section-113"{% endif %}">
+                                        <i class="fas fa-ruler-combined"></i>
+                                        <span>{% if forloop.first %}{{ text_contents.86|default:"8,500 sqft" }}{% else %}6,500 sqft{% endif %}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="item-actions">
+                                <a href="/product/{{ item.product.slug }}/" class="action-link">
+                                    <i class="fas fa-eye"></i> View Details
+                                </a>
+                                <a href="#" class="action-link save-for-later" data-product-id="{{ item.product.id }}">
+                                    <i class="fas fa-bookmark"></i> Save for Later
+                                </a>
+                                <a href="#" class="action-link compare-property" data-product-id="{{ item.product.id }}">
+                                    <i class="fas fa-exchange-alt"></i> Compare
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="cart-item-price">
+                            <div class="item-price {% if forloop.first %}id="section-114"{% endif %}" 
+                                 data-item-price="{{ item.product.price }}">
+                                $<span class="price-amount">{{ item.product.price|floatformat:2 }}</span>
+                            </div>
+                            
+                            <div class="quantity-controls">
+                                <button class="quantity-btn decrement-btn" 
+                                        data-product-id="{{ item.product.id }}"
+                                        data-cart-item-id="{{ item.id }}">-</button>
+                                <input type="text" class="quantity-input {% if forloop.first %}id="section-115"{% endif %}" 
+                                       value="{{ item.quantity }}" 
+                                       data-cart-item="{{ item.product.id }}"
+                                       data-product-id="{{ item.product.id }}"
+                                       readonly>
+                                <button class="quantity-btn increment-btn" 
+                                        data-product-id="{{ item.product.id }}"
+                                        data-cart-item-id="{{ item.id }}">+</button>
+                            </div>
+                            
+                            <button class="remove-item remove-btn" 
+                                    data-product-id="{{ item.product.id }}"
+                                    data-cart-item-id="{{ item.id }}">
+                                <i class="fas fa-trash"></i> 
+                                {% if forloop.first %}{{ text_contents.88|default:"Remove" }}{% else %}Remove{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty Cart State -->
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h3 id="section-116">{{ text_contents.89|default:"Your Portfolio is Empty" }}</h3>
+                        <p id="section-117">{{ text_contents.90|default:"Begin building your luxury property portfolio by exploring our exclusive collection of premium residences." }}</p>
+                        <a href="?page=shop" class="btn-shop" id="section-118">{{ text_contents.91|default:"Browse Properties" }}</a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% for component in components %}
+            {% if component.drop_zone == '107' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+            {% endif %}
+            {% endfor %}
+            
+            <!-- Cart Summary -->
+            <div class="cart-summary" id="section-119">
+                <h2 class="summary-title" id="section-120">{{ text_contents.92|default:"Portfolio Summary" }}</h2>
+                
+                <div class="summary-row">
+                    <span id="section-121">{{ text_contents.93|default:"Subtotal" }}</span>
+                    <span id="section-122" class="summary-subtotal">
+                        {% if cart and cart.items.count > 0 %}
+                            $<span class="subtotal-amount">{{ cart.get_subtotal|floatformat:2 }}</span>
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="summary-row">
+                    <span id="section-123">{{ text_contents.95|default:"Luxury Concierge Fee" }}</span>
+                    <span id="section-124" class="concierge-fee">$25,000.00</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span id="section-125">{{ text_contents.97|default:"Due Diligence Services" }}</span>
+                    <span id="section-126" class="due-diligence">$15,000.00</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span id="section-127">{{ text_contents.99|default:"Legal & Documentation" }}</span>
+                    <span id="section-128" class="legal-fee">$35,000.00</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span>Tax (8%)</span>
+                    <span class="tax-amount">
+                        {% if cart and cart.items.count > 0 %}
+                            ${{ cart.get_tax|floatformat:2 }}
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="summary-row total">
+                    <span id="section-129">{{ text_contents.101|default:"Total Investment" }}</span>
+                    <span id="section-130" class="summary-total">
+                        {% if cart and cart.items.count > 0 %}
+                            $<span class="total-amount">{{ cart.get_total_with_fees|floatformat:2 }}</span>
+                        {% else %}
+                            $0.00
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="summary-note" id="section-131">
+                    {{ text_contents.103|default:"All prices are in USD. Luxury concierge services include personalized property viewing coordination, investment analysis, and negotiation support. Due diligence includes property inspection, title verification, and compliance checks." }}
+                </div>
+                
+                {% if cart and cart.items.count > 0 %}
+                <button class="btn-checkout" id="section-132" onclick="redirectCartToPaymentSelection()">
+                    {{ text_contents.104|default:"Proceed to Secure Checkout" }}
+                </button>
+                {% else %}
+                <button class="btn-checkout" id="section-132" disabled>
+                    {{ text_contents.104|default:"Proceed to Secure Checkout" }}
+                </button>
+                {% endif %}
+                
+                <a href="?page=shop" class="continue-shopping" id="section-133">{{ text_contents.105|default:"Continue Exploring Properties" }}</a>
+            </div>
+        </div>
+        
+        {% for component in components %}
+        {% if component.drop_zone == '134' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+        {% endfor %}
+        
+        <!-- You May Also Like Section -->
+        <div class="you-may-like" id="section-134">
+            <h2 class="section-title" id="section-135">{{ text_contents.106|default:"Properties You May Like" }}</h2>
+            
+            <div class="related-grid">
+                {% if recommendations %}
+                    {% for recommendation in recommendations|slice:":4" %}
+                    <div class="related-card {% if forloop.first %}id="section-136"{% endif %}" 
+                         data-product-id="{{ recommendation.id }}">
+                        <div class="related-image">
+                            {% if recommendation.main_image %}
+                            <img src="{{ recommendation.main_image.url }}" alt="{{ recommendation.title }}">
+                            {% else %}
+                            <img src="https://via.placeholder.com/300x200?text=Property" alt="{{ recommendation.title }}">
+                            {% endif %}
+                        </div>
+                        <div class="related-info">
+                            <h3 class="related-title {% if forloop.first %}id="section-137"{% endif %}">
+                                {{ recommendation.title }}
+                            </h3>
+                            <div class="related-price {% if forloop.first %}id="section-138"{% endif %}">
+                                ${{ recommendation.price }}
+                            </div>
+                            <button class="related-btn add-to-cart-btn" 
+                                    {% if forloop.first %}id="section-139"{% endif %}
+                                    data-product-id="{{ recommendation.id }}"
+                                    data-product-title="{{ recommendation.title }}"
+                                    data-product-price="{{ recommendation.price }}">
+                                {% if forloop.first %}
+                                    {{ text_contents.109|default:"Add to Portfolio" }}
+                                {% else %}
+                                    Add to Portfolio
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State -->
+                    <div class="empty-related">
+                        <i class="fas fa-home"></i>
+                        <h3 id="section-140">{{ text_contents.110|default:"No Recommendations Available" }}</h3>
+                        <p id="section-141">{{ text_contents.111|default:"Personalized property recommendations will appear here as you browse our collection." }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        // CSRF Token for AJAX requests
+        function getCSRFToken() {
+            const token = document.querySelector('[name=csrfmiddlewaretoken]');
+            return token ? token.value : '';
+        }
+
+        // Show/hide loading indicator
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            // Remove existing notifications
+            document.querySelectorAll('.cart-notification').forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `cart-notification alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
+
+        // Calculate and update cart summary in real-time
+        function updateCartSummary() {
+            let subtotal = 0;
+            const taxRate = 0.08; // 8% tax
+            
+            // Calculate subtotal from all items
+            document.querySelectorAll('.cart-item').forEach(itemElement => {
+                const priceElement = itemElement.querySelector('.price-amount');
+                const quantityInput = itemElement.querySelector('.quantity-input');
+                
+                if (priceElement && quantityInput) {
+                    const price = parseFloat(priceElement.textContent.replace(/,/g, '')) || 0;
+                    const quantity = parseInt(quantityInput.value) || 1;
+                    const itemTotal = price * quantity;
+                    subtotal += itemTotal;
+                }
+            });
+            
+            // Calculate tax
+            const tax = subtotal * taxRate;
+            
+            // Fixed fees
+            const conciergeFee = 25000.00;
+            const dueDiligence = 15000.00;
+            const legalFee = 35000.00;
+            
+            // Calculate total
+            const total = subtotal + tax + conciergeFee + dueDiligence + legalFee;
+            
+            // Update displayed amounts with animation
+            const subtotalElement = document.querySelector('.subtotal-amount');
+            const taxElement = document.querySelector('.tax-amount');
+            const totalElement = document.querySelector('.total-amount');
+            
+            if (subtotalElement) {
+                subtotalElement.textContent = subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                subtotalElement.parentElement.classList.add('price-update');
+                setTimeout(() => {
+                    subtotalElement.parentElement.classList.remove('price-update');
+                }, 500);
+            }
+            
+            if (taxElement) {
+                taxElement.textContent = `$${tax.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+                taxElement.classList.add('price-update');
+                setTimeout(() => {
+                    taxElement.classList.remove('price-update');
+                }, 500);
+            }
+            
+            if (totalElement) {
+                totalElement.textContent = total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                totalElement.parentElement.classList.add('price-update');
+                setTimeout(() => {
+                    totalElement.parentElement.classList.remove('price-update');
+                }, 500);
+            }
+            
+            // Update item count in summary
+            const itemCount = document.querySelectorAll('.cart-item').length;
+            const subtotalLabel = document.querySelector('#section-121');
+            if (subtotalLabel && itemCount > 0) {
+                subtotalLabel.textContent = `Subtotal (${itemCount} propert${itemCount === 1 ? 'y' : 'ies'})`;
+            }
+            
+            // Update checkout button state
+            const checkoutBtn = document.querySelector('.btn-checkout');
+            if (checkoutBtn) {
+                checkoutBtn.disabled = itemCount === 0;
+            }
+            
+            // Update empty cart state
+            const emptyCart = document.querySelector('.empty-cart');
+            const cartItems = document.querySelector('.cart-items');
+            if (itemCount === 0) {
+                if (emptyCart) emptyCart.style.display = 'block';
+                if (cartItems) cartItems.style.display = 'none';
+            } else {
+                if (emptyCart) emptyCart.style.display = 'none';
+                if (cartItems) cartItems.style.display = 'flex';
+            }
+            
+            return {
+                subtotal: subtotal,
+                tax: tax,
+                total: total,
+                itemCount: itemCount
+            };
+        }
+
+        // Update quantity on the page immediately (optimistic update)
+        function updateItemQuantity(productId, newQuantity, isIncrement = true) {
+            const quantityInput = document.querySelector(`[data-product-id="${productId}"] .quantity-input`);
+            if (quantityInput) {
+                const currentQuantity = parseInt(quantityInput.value) || 1;
+                let updatedQuantity = newQuantity;
+                
+                if (!updatedQuantity) {
+                    updatedQuantity = isIncrement ? currentQuantity + 1 : Math.max(1, currentQuantity - 1);
+                }
+                
+                quantityInput.value = updatedQuantity;
+                
+                // Update cart summary immediately
+                updateCartSummary();
+                
+                return updatedQuantity;
+            }
+            return null;
+        }
+
+        // Remove item from DOM immediately (optimistic update)
+        function removeItemFromDisplay(productId) {
+            const itemElement = document.querySelector(`[data-cart-item-id="${productId}"]`);
+            if (itemElement) {
+                itemElement.remove();
+                updateCartSummary();
+            }
+        }
+
+        // Direct API calls that update the UI immediately
+        async function incrementCartItem(productId, amount = 1) {
+            showLoading();
+            try {
+                // Optimistic update: Update UI immediately
+                const newQuantity = updateItemQuantity(productId, null, true);
+                
+                // Make API call
+                const response = await fetch(`/builder/cart/increment/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        amount: amount
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Update with actual quantity from server
+                    if (data.item_quantity) {
+                        updateItemQuantity(productId, data.item_quantity, true);
+                    }
+                    
+                    // Also update cart manager's counters if it exists
+                    if (window.cartManager && window.cartManager.updateCartUI) {
+                        window.cartManager.updateCartUI(data);
+                    }
+                    
+                    showNotification(data.message || 'Item quantity increased', 'success');
+                } else {
+                    // Revert optimistic update if failed
+                    const quantityInput = document.querySelector(`[data-product-id="${productId}"] .quantity-input`);
+                    if (quantityInput) {
+                        const currentQuantity = parseInt(quantityInput.value) || 1;
+                        quantityInput.value = Math.max(1, currentQuantity - amount);
+                        updateCartSummary();
+                    }
+                    showNotification(data.error || 'Error updating quantity', 'error');
+                }
+            } catch (error) {
+                console.error('Error incrementing cart item:', error);
+                showNotification('Error updating cart item', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function decrementCartItem(productId, amount = 1) {
+            showLoading();
+            try {
+                // Get current quantity before decrementing
+                const quantityInput = document.querySelector(`[data-product-id="${productId}"] .quantity-input`);
+                const currentQuantity = parseInt(quantityInput?.value) || 1;
+                
+                // If quantity would become 0, ask for confirmation
+                if (currentQuantity === 1 && amount >= 1) {
+                    if (!confirm('Remove this item from your cart?')) {
+                        hideLoading();
+                        return;
+                    }
+                }
+                
+                // Optimistic update: Update UI immediately
+                const newQuantity = updateItemQuantity(productId, null, false);
+                
+                // Make API call
+                const response = await fetch(`/builder/cart/decrement/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        amount: amount
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Update with actual quantity from server
+                    if (data.item_quantity !== undefined) {
+                        if (data.item_quantity === 0) {
+                            removeItemFromDisplay(productId);
+                        } else {
+                            updateItemQuantity(productId, data.item_quantity, false);
+                        }
+                    }
+                    
+                    // Also update cart manager's counters if it exists
+                    if (window.cartManager && window.cartManager.updateCartUI) {
+                        window.cartManager.updateCartUI(data);
+                    }
+                    
+                    showNotification(data.message || 'Item quantity decreased', 'success');
+                } else {
+                    // Revert optimistic update if failed
+                    if (quantityInput) {
+                        quantityInput.value = currentQuantity;
+                        updateCartSummary();
+                    }
+                    showNotification(data.error || 'Error updating quantity', 'error');
+                }
+            } catch (error) {
+                console.error('Error decrementing cart item:', error);
+                showNotification('Error updating cart item', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function removeFromCart(productId) {
+            showLoading();
+            try {
+                // Optimistic update: Remove from UI immediately
+                removeItemFromDisplay(productId);
+                
+                // Make API call
+                const response = await fetch(`/builder/cart/remove/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        product_id: productId
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Also update cart manager's counters if it exists
+                    if (window.cartManager && window.cartManager.updateCartUI) {
+                        window.cartManager.updateCartUI(data);
+                    }
+                    
+                    showNotification(data.message || 'Item removed from cart', 'success');
+                } else {
+                    showNotification(data.error || 'Error removing item', 'error');
+                    // Note: We can't easily revert UI removal, but the page could be refreshed
+                }
+            } catch (error) {
+                console.error('Error removing from cart:', error);
+                showNotification('Error removing item from cart', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function addToCart(productId, quantity = 1) {
+            showLoading();
+            try {
+                // Make API call
+                const response = await fetch(`/builder/cart/add/{{ page.subdomain }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        quantity: quantity
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Update cart manager's counters
+                    if (window.cartManager && window.cartManager.updateCartUI) {
+                        window.cartManager.updateCartUI(data);
+                    }
+                    
+                    // Force reload cart data to get updated items
+                    await loadCartData();
+                    
+                    showNotification(data.message || 'Item added to cart', 'success');
+                } else {
+                    showNotification(data.error || 'Error adding to cart', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showNotification('Error adding item to cart', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function loadCartData() {
+            try {
+                const response = await fetch(`/builder/cart/data/{{ page.subdomain }}/`);
+                const data = await response.json();
+                
+                if (data.success !== false) {
+                    // Update cart manager's UI
+                    if (window.cartManager && window.cartManager.updateCartUI) {
+                        window.cartManager.updateCartUI(data);
+                    }
+                    
+                    // Update our cart summary
+                    updateCartSummary();
+                }
+            } catch (error) {
+                console.error('Error loading cart data:', error);
+            }
+        }
+
+        // Get cart data for checkout
+        function getCartData() {
+            const items = [];
+            const totals = updateCartSummary();
+            
+            // Collect cart items from the page
+            document.querySelectorAll('.cart-item').forEach(itemElement => {
+                const productId = itemElement.getAttribute('data-cart-item-id');
+                const title = itemElement.querySelector('.item-title')?.textContent || 'Property';
+                const priceElement = itemElement.querySelector('.price-amount');
+                const price = parseFloat(priceElement?.textContent.replace(/,/g, '')) || 0;
+                const quantityInput = itemElement.querySelector('.quantity-input');
+                const quantity = parseInt(quantityInput?.value) || 1;
+                const total = price * quantity;
+                
+                items.push({
+                    id: productId,
+                    title: title,
+                    description: 'Luxury Property',
+                    price: price,
+                    quantity: quantity,
+                    total_price: total
+                });
+            });
+            
+            // Add fixed fees
+            const conciergeFee = 25000.00;
+            const dueDiligence = 15000.00;
+            const legalFee = 35000.00;
+            
+            return {
+                items: items,
+                subtotal: totals.subtotal,
+                concierge_fee: conciergeFee,
+                due_diligence_fee: dueDiligence,
+                legal_fee: legalFee,
+                tax_amount: totals.tax,
+                total_amount: totals.total,
+                page_id: '{{ page.id }}',
+                subdomain: '{{ page.subdomain }}'
+            };
+        }
+
+        // Redirect to checkout
+        function redirectCartToPaymentSelection() {
+            const cartData = getCartData();
+            
+            if (!cartData.items || cartData.items.length === 0) {
+                showNotification('Your cart is empty', 'error');
+                return;
+            }
+            
+            showLoading();
+            
+            // Get current page subdomain
+            const hostname = window.location.hostname;
+            const page_domain = document.getElementById('page-subdomain').value;
+            const subdomain = hostname.includes('localhost') ? page_domain : hostname.split('.')[0];
+            
+            // Create form to submit data
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/payments/select-payment/${subdomain}/`;
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = getCSRFToken();
+            form.appendChild(csrfInput);
+            
+            // Add cart data
+            const cartInput = document.createElement('input');
+            cartInput.type = 'hidden';
+            cartInput.name = 'cart_data';
+            cartInput.value = JSON.stringify(cartData);
+            form.appendChild(cartInput);
+            
+            // Add page info
+            const pageInput = document.createElement('input');
+            pageInput.type = 'hidden';
+            pageInput.name = 'page_id';
+            pageInput.value = '{{ page.id }}';
+            form.appendChild(pageInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize cart summary
+            updateCartSummary();
+            
+            // Event delegation for cart buttons
+            document.addEventListener('click', function(e) {
+                // Increment buttons
+                if (e.target.classList.contains('increment-btn') || 
+                    e.target.closest('.increment-btn')) {
+                    e.preventDefault();
+                    const button = e.target.classList.contains('increment-btn') ? 
+                                  e.target : e.target.closest('.increment-btn');
+                    const productId = button.dataset.productId;
+                    incrementCartItem(productId, 1);
+                }
+                
+                // Decrement buttons
+                if (e.target.classList.contains('decrement-btn') || 
+                    e.target.closest('.decrement-btn')) {
+                    e.preventDefault();
+                    const button = e.target.classList.contains('decrement-btn') ? 
+                                  e.target : e.target.closest('.decrement-btn');
+                    const productId = button.dataset.productId;
+                    decrementCartItem(productId, 1);
+                }
+                
+                // Remove buttons
+                if (e.target.classList.contains('remove-btn') || 
+                    e.target.closest('.remove-btn')) {
+                    e.preventDefault();
+                    const button = e.target.classList.contains('remove-btn') ? 
+                                  e.target : e.target.closest('.remove-btn');
+                    const productId = button.dataset.productId;
+                    removeFromCart(productId);
+                }
+                
+                // Add to cart from recommendations
+                if (e.target.classList.contains('add-to-cart-btn') || 
+                    e.target.closest('.add-to-cart-btn')) {
+                    e.preventDefault();
+                    const button = e.target.classList.contains('add-to-cart-btn') ? 
+                                  e.target : e.target.closest('.add-to-cart-btn');
+                    const productId = button.dataset.productId;
+                    addToCart(productId, 1);
+                }
+                
+                // Save for later
+                if (e.target.classList.contains('save-for-later') || 
+                    e.target.closest('.save-for-later')) {
+                    e.preventDefault();
+                    const link = e.target.classList.contains('save-for-later') ? 
+                                e.target : e.target.closest('.save-for-later');
+                    const productId = link.dataset.productId;
+                    
+                    // Move item to wishlist
+                    removeFromCart(productId);
+                    if (window.cartManager) {
+                        window.cartManager.addToWishlist(productId);
+                    }
+                    showNotification('Property saved for later in your wishlist');
+                }
+                
+                // Compare property
+                if (e.target.classList.contains('compare-property') || 
+                    e.target.closest('.compare-property')) {
+                    e.preventDefault();
+                    showNotification('Property added to comparison list');
+                }
+            });
+            
+            console.log('Cart page initialized with direct API calls for real-time updates');
+        });
+    </script>
+</body>
+</html>

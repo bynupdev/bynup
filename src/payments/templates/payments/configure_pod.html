@@ -1,0 +1,266 @@
+<!-- payments/templates/payments/configure_pod.html -->
+{% extends 'payments/base_payments.html' %}
+
+{% block title %}Configure Pay on Delivery - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.pod-config-section {
+    background: #f8fff8;
+    border: 1px solid #d4edda;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.pod-features {
+    background: #e7f3ff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+.feature-icon {
+    color: #28a745;
+    margin-right: 0.75rem;
+    margin-top: 0.25rem;
+}
+.zones-input {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block payment_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Features Overview -->
+        <div class="pod-features">
+            <h5 class="text-success mb-3"><i class="fas fa-truck me-2"></i>Pay on Delivery Features</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-icon"></i>
+                        <div>
+                            <strong>Increase Conversions</strong>
+                            <p class="small mb-0">Customers trust paying when they receive items</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-icon"></i>
+                        <div>
+                            <strong>Cash Flow Control</strong>
+                            <p class="small mb-0">Set minimum/maximum order amounts</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-icon"></i>
+                        <div>
+                            <strong>Zone Management</strong>
+                            <p class="small mb-0">Limit to specific delivery areas</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-icon"></i>
+                        <div>
+                            <strong>Admin Controls</strong>
+                            <p class="small mb-0">Confirm payments after delivery</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-truck me-2"></i>Configure Pay on Delivery
+                </h5>
+                <div>
+                    {% if pod_gateway.is_active %}
+                        <span class="badge bg-light text-success me-2">Active</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post" id="podConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Activation Toggle -->
+                    <div class="pod-config-section">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                   {% if pod_gateway.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                <strong>Enable Pay on Delivery</strong>
+                                <small class="text-muted d-block">
+                                    Allow customers to pay when their order is delivered
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Amount Limits -->
+                    <div class="pod-config-section">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-money-bill-wave me-2"></i>Amount Limits
+                        </h6>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="pod_minimum_amount" class="form-label">Minimum Order Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" 
+                                           id="pod_minimum_amount" name="pod_minimum_amount"
+                                           value="{{ pod_gateway.pod_minimum_amount|default:'0' }}">
+                                </div>
+                                <div class="form-text">
+                                    Minimum order total required for Pay on Delivery (0 for no minimum)
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="pod_maximum_amount" class="form-label">Maximum Order Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" 
+                                           id="pod_maximum_amount" name="pod_maximum_amount"
+                                           value="{{ pod_gateway.pod_maximum_amount|default:'500' }}">
+                                </div>
+                                <div class="form-text">
+                                    Maximum order total allowed for Pay on Delivery
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Zones -->
+                    <!-- <div class="pod-config-section">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-map-marker-alt me-2"></i>Delivery Zones
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label for="pod_available_zones" class="form-label">Available Zones (Optional)</label>
+                            <textarea class="form-control zones-input" id="pod_available_zones" 
+                                      name="pod_available_zones" rows="3"
+                                      placeholder="Downtown, West Side, North District, Suburbs">{{ pod_gateway.pod_available_zones|join:", " }}</textarea>
+                            <div class="form-text">
+                                Enter delivery zone names separated by commas. Leave empty to allow all zones.
+                            </div>
+                        </div>
+                    </div> -->
+
+                    <!-- Instructions & Settings -->
+                    <div class="pod-config-section">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Instructions & Settings
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label for="pod_instructions" class="form-label">Customer Instructions</label>
+                            <textarea class="form-control" id="pod_instructions" name="pod_instructions" 
+                                      rows="3" placeholder="Please have exact change ready. Our delivery hours are 9AM-6PM.">{{ pod_gateway.pod_instructions|default:'' }}</textarea>
+                            <div class="form-text">
+                                Instructions shown to customers who choose Pay on Delivery
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="pod_requires_confirmation" 
+                                   name="pod_requires_confirmation"
+                                   {% if pod_gateway.pod_requires_confirmation %}checked{% endif %}>
+                            <label class="form-check-label" for="pod_requires_confirmation">
+                                <strong>Require Admin Confirmation</strong>
+                                <small class="text-muted d-block">
+                                    Orders will remain "pending" until you confirm payment was received
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'payments:manage_gateways' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Information -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Pay on Delivery Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>How It Works:</h6>
+                        <ol class="small">
+                            <li class="mb-2">Customer selects "Pay on Delivery" at checkout</li>
+                            <li class="mb-2">Order is created with status "Pending Pay on Delivery"</li>
+                            <li class="mb-2">You process and deliver the order</li>
+                            <li class="mb-2">Customer pays upon delivery</li>
+                            <li>You confirm payment in admin panel</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Best Practices:</h6>
+                        <ul class="small">
+                            <li class="mb-2">Set reasonable maximum amounts to minimize risk</li>
+                            <li class="mb-2">Use delivery zones for areas you service well</li>
+                            <li class="mb-2">Provide clear instructions to customers</li>
+                            <li class="mb-2">Confirm payments promptly after delivery</li>
+                            <li>Track delivery personnel for accountability</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    document.getElementById('podConfigForm').addEventListener('submit', function(e) {
+        const minAmount = parseFloat(document.getElementById('pod_minimum_amount').value);
+        const maxAmount = parseFloat(document.getElementById('pod_maximum_amount').value);
+        
+        if (minAmount < 0) {
+            alert('Minimum amount cannot be negative');
+            e.preventDefault();
+            return;
+        }
+        
+        if (maxAmount < 0) {
+            alert('Maximum amount cannot be negative');
+            e.preventDefault();
+            return;
+        }
+        
+        if (maxAmount > 0 && minAmount > maxAmount) {
+            alert('Minimum amount cannot be greater than maximum amount');
+            e.preventDefault();
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

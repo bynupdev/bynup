@@ -1,0 +1,236 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - {{ page.brand_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --background: #F0EFE6;
+            --secondary: #EAEAEA;
+            --primary: #C6C9D2;
+            --heading: #DCCFC1;
+            --accent: #BBAEA8;
+            --text: #393831;
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.01);
+            --shadow-hover: 0 20px 32px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            --transition-smooth: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        {% generate_color_variables %}
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .section-title { font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: -0.02em; }
+        .container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+        .page-header { text-align: center; padding: 40px 0 32px; margin-bottom: 16px; }
+        h1 { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; color: var(--text); position: relative; display: inline-block; }
+        h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 2px; background: var(--text); }
+        .page-header p { font-size: 1rem; color: var(--text); opacity: 0.7; max-width: 600px; margin: 1rem auto 0; }
+        .category-filters { display: flex; justify-content: center; gap: 16px; margin: 40px 0 48px; flex-wrap: wrap; }
+        .filter-chip { padding: 10px 24px; border-radius: 40px; background: var(--secondary); border: 1px solid var(--primary); font-family: 'Inter', sans-serif; font-size: 0.85rem; cursor: pointer; transition: var(--transition-smooth); color: var(--text); }
+        .filter-chip:hover { border-color: var(--text); background: var(--text); color: var(--background); }
+        .filter-chip.active { background: var(--text); color: var(--background); border-color: var(--text); }
+        .categories-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-bottom: 64px; }
+        .category-card { background: var(--secondary); border-radius: 24px; overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--shadow-sm); cursor: pointer; text-decoration: none; color: inherit; display: block; }
+        .category-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+        .category-img { width: 100%; aspect-ratio: 4 / 3; background-size: cover; background-position: center; transition: transform 0.5s ease; }
+        .category-card:hover .category-img { transform: scale(1.03); }
+        .category-info { padding: 1.5rem; text-align: center; }
+        .category-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text); }
+        .category-count { font-size: 0.85rem; color: var(--accent); margin-bottom: 1rem; }
+        .category-description { font-size: 0.85rem; color: var(--text); opacity: 0.7; line-height: 1.5; margin-bottom: 1rem; }
+        .explore-btn { display: inline-block; background: transparent; border: 1px solid var(--text); color: var(--text); padding: 8px 20px; border-radius: 40px; font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: var(--transition-smooth); text-decoration: none; }
+        .explore-btn:hover { background: var(--text); color: var(--background); }
+        .empty-categories { text-align: center; padding: 80px 20px; background: var(--secondary); border-radius: 24px; margin: 32px 0; grid-column: 1 / -1; }
+        .empty-categories-icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
+        .empty-categories h2 { font-size: 1.8rem; margin-bottom: 12px; }
+        .empty-categories p { opacity: 0.7; margin-bottom: 24px; }
+        .add-category-btn { display: inline-block; background: var(--text); color: var(--background); padding: 14px 32px; border-radius: 40px; text-decoration: none; font-family: 'Syne', sans-serif; font-weight: 500; transition: var(--transition-smooth); }
+        .add-category-btn:hover { background: #4f4c45; transform: translateY(-2px); }
+        .featured-collections { margin: 64px 0 48px; }
+        .featured-collections h2 { font-size: 1.8rem; margin-bottom: 32px; text-align: center; }
+        .featured-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+        .featured-card { background: var(--secondary); border-radius: 24px; overflow: hidden; transition: var(--transition-smooth); text-decoration: none; color: inherit; position: relative; }
+        .featured-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+        .featured-img { width: 100%; aspect-ratio: 3 / 2; background-size: cover; background-position: center; transition: transform 0.5s ease; }
+        .featured-card:hover .featured-img { transform: scale(1.03); }
+        .featured-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); padding: 24px; color: white; }
+        .featured-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 1.2rem; margin-bottom: 8px; }
+        .featured-link { font-size: 0.8rem; text-decoration: none; color: var(--heading); }
+        @media (max-width: 1200px) { .categories-grid { grid-template-columns: repeat(3, 1fr); gap: 28px; } .featured-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 992px) { .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; } h1 { font-size: 2.5rem; } }
+        @media (max-width: 768px) { .container { padding: 0 24px; } .categories-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto 64px; } .featured-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } h1 { font-size: 2rem; } .category-filters { gap: 12px; } .filter-chip { padding: 8px 18px; font-size: 0.8rem; } }
+        @media (max-width: 480px) { .container { padding: 0 20px; } h1 { font-size: 1.8rem; } .filter-chip { padding: 6px 14px; font-size: 0.75rem; } }
+        {% generate_section_styles style_customizations 88 100 %}
+        {% generate_background_images background_images 88 100 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}" style="margin-top: 80px;">
+
+<main>
+     {% include 'builder/public_templates/ModernEcommerce15/snippets/header1.html' %}
+     
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header" id="section-88">
+            <h1 id="section-89">{{ text_contents.63|default:"Shop by Category" }}</h1>
+            <p id="section-90">{{ text_contents.64|default:"Explore our curated collections of refined streetwear" }}</p>
+        </div>
+
+        {% for component in components %}{% if component.drop_zone == '88' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+
+        <!-- Category Filters -->
+        <div class="category-filters" id="categoryFilters">
+            <button class="filter-chip active" data-filter="all">All Categories</button>
+            {% for category in categories %}
+            <button class="filter-chip" data-filter="{{ category.slug|default:category.name|slugify }}">{{ category.name }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Categories Grid -->
+        {% if categories %}
+        <div id="categoriesWithItems">
+            <div class="categories-grid" id="categoriesGrid">
+                {% for category in categories %}
+                <div class="category-card" id="section-91" data-category="{{ category.slug|default:category.name|slugify }}">
+                    <div class="category-img" style="background-image: url('{% if category.image %}{{ category.image.url }}{% else %}https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&auto=format{% endif %}');"></div>
+                    <div class="category-info">
+                        <div class="category-name" id="section-95">{{ category.name }}</div>
+                        <div class="category-count" id="section-96">{{ category.get_active_products_count|default:category.get_total_products_count|default:"0" }} Products</div>
+                        <div class="category-description" id="section-97">{{ category.description|default:"Explore our collection of premium pieces"|truncatechars:80 }}</div>
+                        <a href="?page=products&category={{ category.slug|default:category.name|slugify }}" class="explore-btn">Explore →</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty Categories State -->
+        <div id="emptyCategoriesState">
+            <div class="empty-categories">
+                <div class="empty-categories-icon">
+                    <i class="fas fa-tags"></i>
+                </div>
+                <h2>No Categories Yet</h2>
+                <p>Start adding categories to organize your products and make browsing easier for your customers.</p>
+                <a href="/admin/add-category" class="add-category-btn" id="section-92">{{ text_contents.68|default:"Add Your First Category" }}</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% for component in components %}{% if component.drop_zone == '92' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+
+        <!-- Featured Collections Section -->
+        <div class="featured-collections" id="section-93">
+            <h2 id="section-94">{{ text_contents.69|default:"Featured Collections" }}</h2>
+            <div class="featured-grid">
+                {% for category in categories|slice:":3" %}
+                <a href="?page=products&category={{ category.slug|default:category.name|slugify }}" class="featured-card">
+                    <div class="featured-img" style="background-image: url('{% if category.image %}{{ category.image.url }}{% else %}https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format{% endif %}');"></div>
+                    <div class="featured-overlay">
+                        <div class="featured-name">{{ category.name }}</div>
+                        <div class="featured-link">Shop Now →</div>
+                    </div>
+                </a>
+                {% empty %}
+                <!-- Default featured collections -->
+                <a href="?page=products&collection=limited" class="featured-card">
+                    <div class="featured-img" style="background-image: url('https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format');"></div>
+                    <div class="featured-overlay">
+                        <div class="featured-name">Limited Edition</div>
+                        <div class="featured-link">Shop Now →</div>
+                    </div>
+                </a>
+                <a href="?page=products&collection=essential" class="featured-card">
+                    <div class="featured-img" style="background-image: url('https://images.unsplash.com/photo-1584278860047-22db4c9ecccd?w=600&auto=format');"></div>
+                    <div class="featured-overlay">
+                        <div class="featured-name">Essential Basics</div>
+                        <div class="featured-link">Shop Now →</div>
+                    </div>
+                </a>
+                <a href="?page=products&collection=premium" class="featured-card">
+                    <div class="featured-img" style="background-image: url('https://images.unsplash.com/photo-1582418702059-97ebafb35d09?w=600&auto=format');"></div>
+                    <div class="featured-overlay">
+                        <div class="featured-name">Premium Selection</div>
+                        <div class="featured-link">Shop Now →</div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% for component in components %}{% if component.drop_zone == '93' %}<section class="dynamic-component" data-instance-id="{{ component.instance_id }}">{{ component.html_content|safe }}</section>{% endif %}{% endfor %}
+    </div>
+     {% include 'builder/public_templates/ModernEcommerce15/snippets/footer.html' %}
+</main>
+
+{% render_icon_script %}
+
+<script>
+    // Category filtering functionality
+    const filterChips = document.querySelectorAll('.filter-chip');
+    const categoryCards = document.querySelectorAll('.category-card');
+    const categoriesGrid = document.getElementById('categoriesGrid');
+    const emptyCategoriesState = document.getElementById('emptyCategoriesState');
+    const categoriesWithItems = document.getElementById('categoriesWithItems');
+    
+    function filterCategories(filterValue) {
+        let visibleCount = 0;
+        
+        categoryCards.forEach(card => {
+            const category = card.dataset.category;
+            if(filterValue === 'all' || category === filterValue) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty state
+        if(visibleCount === 0 && categoriesWithItems && emptyCategoriesState) {
+            categoriesWithItems.style.display = 'none';
+            emptyCategoriesState.style.display = 'block';
+        } else if(categoriesWithItems && emptyCategoriesState) {
+            categoriesWithItems.style.display = 'block';
+            emptyCategoriesState.style.display = 'none';
+        }
+    }
+    
+    // Add click handlers to filter chips
+    if(filterChips.length) {
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const filterValue = chip.dataset.filter;
+                filterCategories(filterValue);
+            });
+        });
+    }
+    
+    // Initial filter (show all)
+    if(categoryCards.length) {
+        filterCategories('all');
+    }
+</script>
+</body>
+</html>

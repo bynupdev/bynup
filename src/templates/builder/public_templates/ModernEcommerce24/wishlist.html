@@ -1,0 +1,851 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishlist | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --text: #2A3330;
+            --heading: #74B267;
+            --primary: #EBEA8E;
+            --background: #C6CBD1;
+            --secondary: #CB7A81;
+            --accent: #FFFFFF;
+            --success: #2A3330;
+            --warning: #5A6B66;
+            --border: rgba(42, 51, 48, 0.1);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        {% generate_color_variables %}
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--accent);
+            color: var(--success);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .wishlist-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .wishlist-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .wishlist-header h1 {
+            font-size: 3rem;
+            font-weight: 600;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .wishlist-header p {
+            color: var(--warning);
+            font-size: 1rem;
+        }
+
+        .wishlist-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem 2rem;
+            background: var(--accent);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--warning);
+            margin-top: 0.25rem;
+        }
+
+        .wishlist-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .wishlist-filters {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 0.5rem 1.25rem;
+            background: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+        }
+
+        .filter-chip:hover {
+            border-color: var(--heading);
+            color: var(--heading);
+        }
+
+        .filter-chip.active {
+            background: var(--text);
+            color: white;
+            border-color: var(--text);
+        }
+
+        .clear-wishlist-btn {
+            padding: 0.5rem 1.25rem;
+            background: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clear-wishlist-btn:hover {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .wishlist-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .wishlist-item {
+            background: var(--accent);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .wishlist-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .wishlist-image-container {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+        }
+
+        .wishlist-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .wishlist-item:hover .wishlist-image {
+            transform: scale(1.05);
+        }
+
+        .wishlist-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--secondary);
+            color: white;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .wishlist-remove {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--warning);
+            z-index: 2;
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .wishlist-item:hover .wishlist-remove {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .wishlist-remove:hover {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .wishlist-info {
+            padding: 1.25rem;
+        }
+
+        .wishlist-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--heading);
+            margin-bottom: 0.5rem;
+        }
+
+        .wishlist-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .wishlist-price {
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .original-price {
+            text-decoration: line-through;
+            font-size: 0.9rem;
+            color: var(--warning);
+            margin-right: 0.5rem;
+        }
+
+        .wishlist-actions-bottom {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .add-to-cart-wishlist {
+            flex: 1;
+            padding: 0.6rem;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .add-to-cart-wishlist:hover {
+            background: var(--heading);
+        }
+
+        .add-to-cart-wishlist:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .view-details-btn {
+            width: 40px;
+            padding: 0.6rem;
+            background: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: var(--success);
+        }
+
+        .view-details-btn:hover {
+            border-color: var(--heading);
+            color: var(--heading);
+        }
+
+        .empty-wishlist {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--accent);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .empty-wishlist-icon {
+            font-size: 4rem;
+            color: var(--background);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-wishlist h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .empty-wishlist p {
+            color: var(--warning);
+            margin-bottom: 2rem;
+        }
+
+        .shop-now-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--text);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .shop-now-btn:hover {
+            background: var(--heading);
+            transform: translateY(-2px);
+        }
+
+        .recently-viewed {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .recently-viewed h2 {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            text-align: center;
+        }
+
+        .recently-viewed-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .recent-card {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .recent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .recent-image {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .recent-info {
+            padding: 1rem;
+        }
+
+        .recent-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .recent-price {
+            color: var(--secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1024px) {
+            .wishlist-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .recently-viewed-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .wishlist-container {
+                padding: 2rem 1.5rem;
+            }
+            .wishlist-header h1 {
+                font-size: 2.2rem;
+            }
+            .wishlist-stats {
+                gap: 1rem;
+            }
+            .stat-card {
+                min-width: 120px;
+                padding: 0.75rem 1rem;
+            }
+            .wishlist-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            .recently-viewed-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .wishlist-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .wishlist-filters {
+                justify-content: center;
+            }
+            .clear-wishlist-btn {
+                justify-content: center;
+            }
+            .wishlist-remove {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .wishlist-grid {
+                grid-template-columns: 1fr;
+                max-width: 320px;
+                margin: 0 auto;
+            }
+            .recently-viewed-grid {
+                grid-template-columns: 1fr;
+                max-width: 320px;
+                margin: 0 auto;
+            }
+            .stat-card {
+                min-width: 100px;
+            }
+            .stat-number {
+                font-size: 1.5rem;
+            }
+        }
+
+        {% generate_section_styles style_customizations 400 450 %}
+        {% generate_background_images background_images 400 450 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+{% include 'builder/public_templates/ModernEcommerce24/snippets/header1.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == '1' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<div class="wishlist-container">
+    
+    <!-- Wishlist Header -->
+    <div class="wishlist-header" id="section-400">
+        <h1 id="section-401">{{ text_contents.400|default:"My Wishlist" }}</h1>
+        <p id="section-402">{{ text_contents.401|default:"Save your favorite pieces and come back to them whenever you're ready" }}</p>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '400' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Wishlist Stats -->
+    <div class="wishlist-stats" id="section-403">
+        <div class="stat-card">
+            <div class="stat-number" id="total-items">{{ wishlist_items|length|default:"0" }}</div>
+            <div class="stat-label" id="section-404">{{ text_contents.402|default:"Total Items" }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="total-value">{{ wishlist_total|currency:page|default:"$0" }}</div>
+            <div class="stat-label" id="section-405">{{ text_contents.403|default:"Total Value" }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="on-sale-count">{{ wishlist_on_sale_count|default:"0" }}</div>
+            <div class="stat-label" id="section-406">{{ text_contents.404|default:"On Sale" }}</div>
+        </div>
+    </div>
+
+    <!-- Wishlist Actions -->
+    <div class="wishlist-actions">
+        <div class="wishlist-filters">
+            <button class="filter-chip active" data-filter="all">{{ text_contents.405|default:"All Items" }}</button>
+            <button class="filter-chip" data-filter="in-stock">{{ text_contents.406|default:"In Stock" }}</button>
+            <button class="filter-chip" data-filter="on-sale">{{ text_contents.407|default:"On Sale" }}</button>
+            <button class="filter-chip" data-filter="new">{{ text_contents.408|default:"New Arrivals" }}</button>
+        </div>
+        <button class="clear-wishlist-btn" id="section-407">
+            <i class="fas fa-trash-alt"></i> {{ text_contents.409|default:"Clear Wishlist" }}
+        </button>
+    </div>
+
+    <!-- Wishlist Grid -->
+    {% if wishlist_items %}
+    <div class="wishlist-grid" id="wishlistGrid">
+        {% for item in wishlist_items %}
+        <div class="wishlist-item" id="section-408" data-category="{{ item.product.category.slug|default:item.product.category_name|slugify }}" data-stock="{% if item.product.quantity > 0 %}in-stock{% else %}out-of-stock{% endif %}" data-sale="{% if item.product.compare_at_price and item.product.compare_at_price > item.product.price %}true{% else %}false{% endif %}" data-new="false" data-wishlist-item-id="{{ item.id }}">
+            <div class="wishlist-image-container">
+                {% if item.product.main_image %}
+                <img class="wishlist-image" src="{{ item.product.main_image.url }}" alt="{{ item.product.title }}">
+                {% else %}
+                <div class="wishlist-image" style="background: var(--background); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-gem" style="font-size: 2rem; color: var(--heading); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                {% if item.product.compare_at_price and item.product.compare_at_price > item.product.price %}
+                <div class="wishlist-badge">{{ text_contents.410|default:"SALE" }}</div>
+                {% elif item.product.quantity < 5 and item.product.quantity > 0 %}
+                <div class="wishlist-badge" style="background: var(--heading);">{{ text_contents.411|default:"LOW STOCK" }}</div>
+                {% elif item.product.quantity == 0 %}
+                <div class="wishlist-badge" style="background: var(--warning);">{{ text_contents.412|default:"OUT OF STOCK" }}</div>
+                {% endif %}
+                <button class="wishlist-remove" data-remove-from-wishlist="{{ item.product.id }}" data-wishlist-item-id="{{ item.id }}">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category" id="section-409">{{ item.product.category.name|default:"HOME"|upper }}</div>
+                <div class="wishlist-name" id="section-410">{{ item.product.title|truncatechars:50 }}</div>
+                <div class="wishlist-price" id="section-411">
+                    {% if item.product.compare_at_price and item.product.compare_at_price > item.product.price %}
+                    <span class="original-price">{{ item.product.compare_at_price|currency:page }}</span>
+                    {% endif %}
+                    {{ item.product.price|currency:page }}
+                </div>
+                <div class="wishlist-actions-bottom">
+                    {% if item.product.quantity > 0 %}
+                    <button class="add-to-cart-wishlist" data-add-to-cart="{{ item.product.id }}">
+                        <i class="fas fa-shopping-bag"></i> {{ text_contents.413|default:"Add to Cart" }}
+                    </button>
+                    {% else %}
+                    <button class="add-to-cart-wishlist" disabled>
+                        <i class="fas fa-bell"></i> {{ text_contents.414|default:"Notify Me" }}
+                    </button>
+                    {% endif %}
+                    <a href="/product/{{ item.product.slug }}/" class="view-details-btn">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty Wishlist State -->
+    <div class="empty-wishlist">
+        <div class="empty-wishlist-icon">
+            <i class="far fa-heart"></i>
+        </div>
+        <h2>{{ text_contents.415|default:"Your wishlist is empty" }}</h2>
+        <p>{{ text_contents.416|default:"Save your favorite items by clicking the heart icon on any product. They'll appear here for easy access." }}</p>
+        <a href="?page=shop" class="shop-now-btn">{{ text_contents.417|default:"Start Shopping" }}</a>
+    </div>
+    {% endif %}
+
+    <!-- Empty Filter State (JavaScript controlled) -->
+    <div class="empty-wishlist" id="filterEmptyState" style="display: none;">
+        <div class="empty-wishlist-icon">
+            <i class="fas fa-filter"></i>
+        </div>
+        <h2>{{ text_contents.418|default:"No items match your filter" }}</h2>
+        <p>{{ text_contents.419|default:"Try changing your filter to see more items." }}</p>
+        <button class="clear-all-filters-btn shop-now-btn" style="background: var(--background); color: var(--text);">{{ text_contents.420|default:"Clear Filters" }}</button>
+    </div>
+
+    <!-- Recently Viewed Section -->
+    {% if recently_viewed_products %}
+    <div class="recently-viewed" id="section-412">
+        <h2 id="section-413">{{ text_contents.421|default:"Recently Viewed" }}</h2>
+        <div class="recently-viewed-grid">
+            {% for rvp in recently_viewed_products|slice:":4" %}
+            <a href="/product/{{ rvp.product.slug }}/" class="recent-card">
+                {% if rvp.product.main_image %}
+                <img class="recent-image" src="{{ rvp.product.main_image.url }}" alt="{{ rvp.product.title }}">
+                {% else %}
+                <div class="recent-image" style="background: var(--background); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-gem" style="font-size: 1.5rem; color: var(--heading); opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                <div class="recent-info">
+                    <div class="recent-name">{{ rvp.product.title|truncatechars:40 }}</div>
+                    <div class="recent-price">{{ rvp.product.price|currency:page }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% for component in components %}
+    {% if component.drop_zone == '412' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+{% include 'builder/public_templates/ModernEcommerce24/snippets/footer.html' %}
+
+{% for component in components %}
+    {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+    {% endif %}
+{% endfor %}
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize cart manager
+        if (window.cartManager) {
+            window.cartManager.loadCartData();
+        }
+        
+        let currentFilter = 'all';
+        
+        // Filter wishlist items
+        function filterWishlist() {
+            const items = document.querySelectorAll('.wishlist-item');
+            const wishlistGrid = document.getElementById('wishlistGrid');
+            const filterEmptyState = document.getElementById('filterEmptyState');
+            const emptyWishlist = document.querySelector('.empty-wishlist:not(#filterEmptyState)');
+            
+            if (!items.length) {
+                if (wishlistGrid) wishlistGrid.style.display = 'none';
+                if (filterEmptyState) filterEmptyState.style.display = 'none';
+                return;
+            }
+            
+            let visibleCount = 0;
+            
+            items.forEach(item => {
+                const category = item.getAttribute('data-category');
+                const stock = item.getAttribute('data-stock');
+                const sale = item.getAttribute('data-sale') === 'true';
+                const isNew = item.getAttribute('data-new') === 'true';
+                
+                let show = false;
+                
+                switch(currentFilter) {
+                    case 'all':
+                        show = true;
+                        break;
+                    case 'in-stock':
+                        show = stock === 'in-stock';
+                        break;
+                    case 'on-sale':
+                        show = sale;
+                        break;
+                    case 'new':
+                        show = isNew;
+                        break;
+                }
+                
+                if (show) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Show/hide empty filter state
+            if (visibleCount === 0 && items.length > 0) {
+                if (wishlistGrid) wishlistGrid.style.display = 'none';
+                if (filterEmptyState) filterEmptyState.style.display = 'block';
+            } else {
+                if (wishlistGrid) wishlistGrid.style.display = 'grid';
+                if (filterEmptyState) filterEmptyState.style.display = 'none';
+            }
+        }
+        
+        // Filter chip click handlers
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.getAttribute('data-filter');
+                filterWishlist();
+            });
+        });
+        
+        // Clear all filters button
+        const clearFiltersBtn = document.querySelector('#filterEmptyState .clear-all-filters-btn');
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+                if (allChip) allChip.classList.add('active');
+                currentFilter = 'all';
+                filterWishlist();
+            });
+        }
+        
+        // Remove item from wishlist
+        document.querySelectorAll('.wishlist-remove').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const productId = this.getAttribute('data-remove-from-wishlist');
+                const wishlistItemId = this.getAttribute('data-wishlist-item-id');
+                
+                if (window.cartManager) {
+                    window.cartManager.removeFromWishlist(productId);
+                    // Remove the item from DOM
+                    const itemElement = this.closest('.wishlist-item');
+                    if (itemElement) itemElement.remove();
+                    
+                    // Update stats
+                    updateWishlistStats();
+                    filterWishlist();
+                } else {
+                    const itemElement = this.closest('.wishlist-item');
+                    if (itemElement) {
+                        itemElement.remove();
+                        updateWishlistStats();
+                        filterWishlist();
+                    }
+                }
+            });
+        });
+        
+        // Clear entire wishlist
+        const clearWishlistBtn = document.querySelector('.clear-wishlist-btn');
+        if (clearWishlistBtn) {
+            clearWishlistBtn.addEventListener('click', function() {
+                if (confirm('{{ text_contents.422|default:"Are you sure you want to clear your entire wishlist? This action cannot be undone." }}')) {
+                    if (window.cartManager) {
+                        window.cartManager.clearWishlist();
+                    } else {
+                        const wishlistGrid = document.getElementById('wishlistGrid');
+                        if (wishlistGrid) wishlistGrid.innerHTML = '';
+                        updateWishlistStats();
+                        filterWishlist();
+                        
+                        // Show empty wishlist state
+                        const emptyWishlist = document.querySelector('.empty-wishlist:not(#filterEmptyState)');
+                        if (emptyWishlist) emptyWishlist.style.display = 'block';
+                    }
+                }
+            });
+        }
+        
+        // Add to cart from wishlist
+        document.querySelectorAll('.add-to-cart-wishlist:not(:disabled)').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const productId = this.getAttribute('data-add-to-cart');
+                if (window.cartManager) {
+                    window.cartManager.addToCart(productId, 1);
+                } else {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-check"></i> Added';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                    }, 1500);
+                }
+            });
+        });
+        
+        // Update wishlist stats (for frontend only, when cartManager not available)
+        function updateWishlistStats() {
+            const items = document.querySelectorAll('.wishlist-item');
+            const totalItems = items.length;
+            let totalValue = 0;
+            let onSaleCount = 0;
+            
+            items.forEach(item => {
+                const priceText = item.querySelector('.wishlist-price')?.textContent || '';
+                const priceMatch = priceText.match(/\$([0-9,]+\.?[0-9]*)/);
+                if (priceMatch) {
+                    totalValue += parseFloat(priceMatch[1].replace(',', ''));
+                }
+                if (item.getAttribute('data-sale') === 'true') {
+                    onSaleCount++;
+                }
+            });
+            
+            const totalItemsEl = document.getElementById('total-items');
+            const totalValueEl = document.getElementById('total-value');
+            const onSaleCountEl = document.getElementById('on-sale-count');
+            
+            if (totalItemsEl) totalItemsEl.textContent = totalItems;
+            if (totalValueEl) totalValueEl.textContent = `$${totalValue.toLocaleString()}`;
+            if (onSaleCountEl) onSaleCountEl.textContent = onSaleCount;
+        }
+        
+        // Initialize
+        filterWishlist();
+        
+        // Listen for cart updates
+        document.addEventListener('cartUpdated', function() {
+            filterWishlist();
+            updateWishlistStats();
+        });
+    });
+</script>
+</body>
+</html>

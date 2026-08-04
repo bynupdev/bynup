@@ -1,0 +1,541 @@
+{% extends 'payments/base_payments.html' %}
+{% load static %}
+
+{% block title %}Tax Settings - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .settings-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.2);
+    }
+
+    .settings-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid #eef2f6;
+        margin-bottom: 2rem;
+    }
+
+    .settings-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 2px solid #f0f4f8;
+    }
+
+    .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-title i {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1rem;
+    }
+
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .setting-item:hover {
+        background: #edf2f7;
+    }
+
+    .setting-info h6 {
+        margin-bottom: 0.25rem;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .setting-info p {
+        margin-bottom: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .3s;
+        border-radius: 34px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+    .select-setting {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .select-setting label {
+        font-weight: 500;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .select-setting select {
+        width: 100%;
+        padding: 0.6rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        background: white;
+        color: #2c3e50;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .preview-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin-top: 2rem;
+    }
+
+    .preview-card h5 {
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .preview-amount {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .preview-breakdown {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .tooltip-icon {
+        color: #94a3b8;
+        margin-left: 0.5rem;
+        cursor: help;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="settings-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-2">Tax Settings</h1>
+                <p class="mb-0 opacity-75">Configure tax preferences for {{ page.brand_name }}</p>
+            </div>
+            <a href="{% url 'payments:tax_dashboard' page.subdomain %}" class="btn btn-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Settings Form -->
+        <form method="post" id="taxSettingsForm">
+            {% csrf_token %}
+            
+            <div class="settings-card">
+                <!-- Display Settings -->
+                <div class="settings-section">
+                    <div class="section-title">
+                        <i class="fas fa-eye"></i>
+                        Display Settings
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Show tax in cart</h6>
+                            <p>Display tax breakdown during checkout</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="show_tax_in_cart" 
+                                   id="showTaxInCart" 
+                                   {% if settings.show_tax_in_cart %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Show tax on product pages</h6>
+                            <p>Display "tax included/excluded" on product prices</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="show_tax_on_product" 
+                                   id="showTaxOnProduct"
+                                   {% if settings.show_tax_on_product %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Display tax as</h6>
+                            <p>How tax amounts should be shown</p>
+                        </div>
+                        <select name="display_tax_as" class="form-select w-auto">
+                            <option value="inclusive" {% if settings.display_tax_as == 'inclusive' %}selected{% endif %}>
+                                Included in price
+                            </option>
+                            <option value="exclusive" {% if settings.display_tax_as == 'exclusive' %}selected{% endif %}>
+                                Added at checkout
+                            </option>
+                            <option value="both" {% if settings.display_tax_as == 'both' %}selected{% endif %}>
+                                Show both
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Calculation Settings -->
+                <div class="settings-section">
+                    <div class="section-title">
+                        <i class="fas fa-calculator"></i>
+                        Calculation Settings
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Prices include tax</h6>
+                            <p>All product prices already include tax</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="prices_include_tax" 
+                                   id="pricesIncludeTax"
+                                   {% if settings.prices_include_tax %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Charge tax on shipping</h6>
+                            <p>Apply tax rates to shipping costs</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="tax_shipping" 
+                                   id="taxShipping"
+                                   {% if settings.tax_shipping %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Apply tax to discounts</h6>
+                            <p>Calculate tax on discounted amounts</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="tax_discounts" 
+                                   id="taxDiscounts"
+                                   {% if settings.tax_discounts %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="select-setting">
+                        <label>Tax Rounding Method</label>
+                        <select name="tax_rounding">
+                            <option value="round_per_item" {% if settings.tax_rounding == 'round_per_item' %}selected{% endif %}>
+                                Round per item
+                            </option>
+                            <option value="round_per_line" {% if settings.tax_rounding == 'round_per_line' %}selected{% endif %}>
+                                Round per line
+                            </option>
+                            <option value="round_total" {% if settings.tax_rounding == 'round_total' %}selected{% endif %}>
+                                Round total only
+                            </option>
+                        </select>
+                        <small class="text-muted d-block mt-2">
+                            How tax rounding should be applied during calculation
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Regional Settings -->
+                <div class="settings-section">
+                    <div class="section-title">
+                        <i class="fas fa-globe"></i>
+                        Regional Settings
+                    </div>
+
+                    <div class="select-setting">
+                        <label>Default Tax Origin</label>
+                        <select name="default_tax_origin" class="form-select" id="defaultTaxOrigin">
+                            <option value="">Select Country</option>
+                            <option value="US" {% if settings.default_tax_origin == 'US' %}selected{% endif %}>United States</option>
+                            <option value="CA" {% if settings.default_tax_origin == 'CA' %}selected{% endif %}>Canada</option>
+                            <option value="GB" {% if settings.default_tax_origin == 'GB' %}selected{% endif %}>United Kingdom</option>
+                            <option value="AU" {% if settings.default_tax_origin == 'AU' %}selected{% endif %}>Australia</option>
+                            <option value="DE" {% if settings.default_tax_origin == 'DE' %}selected{% endif %}>Germany</option>
+                            <option value="FR" {% if settings.default_tax_origin == 'FR' %}selected{% endif %}>France</option>
+                            <option value="JP" {% if settings.default_tax_origin == 'JP' %}selected{% endif %}>Japan</option>
+                            <option value="IN" {% if settings.default_tax_origin == 'IN' %}selected{% endif %}>India</option>
+                        </select>
+                        <small class="text-muted d-block mt-2">
+                            The country your store is based in (affects tax rules)
+                        </small>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Apply EU VAT rules</h6>
+                            <p>Follow EU VAT regulations for digital goods</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="eu_vat_rules" 
+                                   id="euVatRules"
+                                   {% if settings.eu_vat_rules %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Validate VAT numbers</h6>
+                            <p>Check VAT numbers against EU database</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="validate_vat" 
+                                   id="validateVat"
+                                   {% if settings.validate_vat %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Automation Settings -->
+                <div class="settings-section">
+                    <div class="section-title">
+                        <i class="fas fa-robot"></i>
+                        Automation
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Auto-apply tax rates</h6>
+                            <p>Automatically apply tax rates to orders based on customer location</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="auto_apply_rates" 
+                                   id="autoApplyRates"
+                                   {% if settings.auto_apply_rates %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h6>Auto-update tax rates</h6>
+                            <p>Automatically update tax rates when tax laws change</p>
+                            <small class="text-muted">(Requires subscription)</small>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="auto_update_rates" 
+                                   id="autoUpdateRates"
+                                   {% if settings.auto_update_rates %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="select-setting">
+                        <label>Tax Report Frequency</label>
+                        <select name="report_frequency">
+                            <option value="monthly" {% if settings.report_frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                            <option value="quarterly" {% if settings.report_frequency == 'quarterly' %}selected{% endif %}>Quarterly</option>
+                            <option value="yearly" {% if settings.report_frequency == 'yearly' %}selected{% endif %}>Yearly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tax Preview -->
+                <div class="preview-card">
+                    <h5><i class="fas fa-chart-line me-2"></i>Tax Calculation Preview</h5>
+                    <div class="preview-amount" id="taxPreview">
+                        $0.00
+                    </div>
+                    <div class="preview-breakdown" id="taxBreakdown">
+                        Based on your current settings and sample cart
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <button type="submit" class="btn-save mt-4">
+                    <i class="fas fa-save me-2"></i>
+                    Save Tax Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Live preview update
+    const pricesIncludeTax = document.getElementById('pricesIncludeTax');
+    const taxShipping = document.getElementById('taxShipping');
+    const taxPreview = document.getElementById('taxPreview');
+    const taxBreakdown = document.getElementById('taxBreakdown');
+    
+    function updatePreview() {
+        const sampleCartTotal = 100.00;
+        const sampleTaxRate = 10; // 10%
+        
+        let taxAmount = sampleCartTotal * (sampleTaxRate / 100);
+        let totalWithTax = sampleCartTotal + taxAmount;
+        
+        if (pricesIncludeTax.checked) {
+            taxPreview.textContent = `$${taxAmount.toFixed(2)} (included)`;
+            taxBreakdown.textContent = `Sample: $${sampleCartTotal} includes $${taxAmount.toFixed(2)} tax`;
+        } else {
+            taxPreview.textContent = `$${taxAmount.toFixed(2)} (added)`;
+            taxBreakdown.textContent = `Sample: $${sampleCartTotal} + $${taxAmount.toFixed(2)} tax = $${totalWithTax.toFixed(2)} total`;
+        }
+        
+        if (taxShipping.checked) {
+            taxBreakdown.textContent += ' + shipping tax';
+        }
+    }
+    
+    pricesIncludeTax.addEventListener('change', updatePreview);
+    taxShipping.addEventListener('change', updatePreview);
+    
+    // Initial preview
+    updatePreview();
+    
+    // Auto-save functionality
+    const settingsForm = document.getElementById('taxSettingsForm');
+    const autoSave = document.querySelectorAll('.toggle-switch input, select');
+    
+    autoSave.forEach(element => {
+        element.addEventListener('change', function() {
+            // Show saving indicator
+            showSavingIndicator();
+            
+            // Auto-save could be implemented here
+            // For now, just show the indicator
+            setTimeout(hideSavingIndicator, 1000);
+        });
+    });
+    
+    function showSavingIndicator() {
+        let indicator = document.getElementById('savingIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'savingIndicator';
+            indicator.className = 'position-fixed bottom-0 end-0 p-3';
+            indicator.style.zIndex = '9999';
+            indicator.innerHTML = `
+                <div class="bg-primary text-white p-2 rounded-3 shadow">
+                    <i class="fas fa-sync fa-spin me-2"></i>Saving...
+                </div>
+            `;
+            document.body.appendChild(indicator);
+        }
+    }
+    
+    function hideSavingIndicator() {
+        const indicator = document.getElementById('savingIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+    
+    // Tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => {
+        new bootstrap.Tooltip(tooltip);
+    });
+});
+</script>
+{% endblock %}

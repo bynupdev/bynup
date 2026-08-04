@@ -1,0 +1,377 @@
+<!-- payments/templates/payments/manage_gateways.html -->
+{% extends 'payments/base_payments.html' %}
+{% load static %}
+
+{% block title %}Payment Gateways - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    /* Payment Gateway Styles */
+    .payment-gateway-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .payment-gateway-card:hover {
+        border-color: #4361ee;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .payment-gateway-card.active {
+        border-left: 4px solid #28a745;
+    }
+    
+    .gateway-logo {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        object-fit: contain;
+        background: #f8f9fa;
+        padding: 8px;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .test-mode-badge {
+        background: #ffc107;
+        color: #856404;
+    }
+    
+    .live-mode-badge {
+        background: #28a745;
+        color: white;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .container-fluid.py-4 {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+        }
+        
+        .payment-gateway-card .row {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .payment-gateway-card .col-auto {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='gateways' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='gateways' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-credit-card me-2 text-primary"></i>
+                        Payment Gateways
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Configure payment methods for {{ page.brand_name }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'manage_products' subdomain=page.subdomain %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Store
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Available Payment Gateways -->
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-plug me-2"></i>Available Payment Gateways
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Pay on Delivery Gateway Card -->
+                            <div class="payment-gateway-card {% if pod_gateway.is_active %}active{% endif %}">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <img src="https://cdn-icons-png.flaticon.com/512/3063/3063812.png" alt="Pay on Delivery" 
+                                                class="gateway-logo" style="background: #28a745; padding: 10px;">
+                                        </div>
+                                        <div class="col">
+                                            <h5 class="mb-1">Pay on Delivery</h5>
+                                            <p class="text-muted mb-2">Customer pays when order is delivered</p>
+                                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                                {% if pod_gateway.is_active %}
+                                                    <span class="badge status-badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>Active
+                                                    </span>
+                                                    <span class="badge status-badge bg-info">
+                                                        Free to Use
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge status-badge bg-secondary">
+                                                        <i class="fas fa-times me-1"></i>Inactive
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <a href="{% url 'payments:configure_pod' page.subdomain %}" class="btn {% if pod_gateway.is_active %}btn-outline-success{% else %}btn-success{% endif %}">
+                                                {% if pod_gateway.is_active %}
+                                                    <i class="fas fa-cog me-1"></i>Configure
+                                                {% else %}
+                                                    <i class="fas fa-plus me-1"></i>Setup
+                                                {% endif %}
+                                            </a>
+                                            {% if pod_gateway.is_active %}
+                                            <a href="{% url 'payments:manage_pod_orders' page.subdomain %}" class="btn btn-outline-primary btn-sm ms-2">
+                                                <i class="fas fa-list me-1"></i>Orders
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Stripe Gateway Card -->
+                            <div class="payment-gateway-card {% if stripe_gateway.is_active %}active{% endif %}">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <img src="https://stripe.com/img/v3/home/twitter.png" alt="Stripe" class="gateway-logo">
+                                        </div>
+                                        <div class="col">
+                                            <h5 class="mb-1">Stripe</h5>
+                                            <p class="text-muted mb-2">Accept credit cards, digital wallets, and more</p>
+                                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                                {% if stripe_gateway.is_active %}
+                                                    <span class="badge status-badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>Active
+                                                    </span>
+                                                    <span class="badge status-badge {% if stripe_gateway.is_test_mode %}test-mode-badge{% else %}live-mode-badge{% endif %}">
+                                                        {% if stripe_gateway.is_test_mode %}Test Mode{% else %}Live Mode{% endif %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge status-badge bg-secondary">
+                                                        <i class="fas fa-times me-1"></i>Inactive
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <a href="{% url 'payments:configure_stripe' page.subdomain %}" class="btn {% if stripe_gateway.is_active %}btn-outline-primary{% else %}btn-primary{% endif %}">
+                                                {% if stripe_gateway.is_active %}
+                                                    <i class="fas fa-cog me-1"></i>Configure
+                                                {% else %}
+                                                    <i class="fas fa-plus me-1"></i>Setup
+                                                {% endif %}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PayPal Gateway Card -->
+                            <div class="payment-gateway-card {% if paypal_gateway.is_active %}active{% endif %}">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" class="gateway-logo">
+                                        </div>
+                                        <div class="col">
+                                            <h5 class="mb-1">PayPal</h5>
+                                            <p class="text-muted mb-2">Accept PayPal, Venmo, and credit cards</p>
+                                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                                {% if paypal_gateway.is_active %}
+                                                    <span class="badge status-badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>Active
+                                                    </span>
+                                                    <span class="badge status-badge {% if paypal_gateway.is_test_mode %}test-mode-badge{% else %}live-mode-badge{% endif %}">
+                                                        {% if paypal_gateway.is_test_mode %}Test Mode{% else %}Live Mode{% endif %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge status-badge bg-secondary">
+                                                        <i class="fas fa-times me-1"></i>Inactive
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <a href="{% url 'payments:configure_paypal' page.subdomain %}" class="btn {% if paypal_gateway.is_active %}btn-outline-primary{% else %}btn-primary{% endif %}">
+                                                {% if paypal_gateway.is_active %}
+                                                    <i class="fas fa-cog me-1"></i>Configure
+                                                {% else %}
+                                                    <i class="fas fa-plus me-1"></i>Setup
+                                                {% endif %}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Social Media Gateway Card -->
+                            <div class="payment-gateway-card {% if social_gateway.is_active %}active{% endif %}">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <div class="gateway-logo d-flex align-items-center justify-content-center bg-primary text-white">
+                                                <i class="fas fa-share-alt fa-2x"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <h5 class="mb-1">Social Media Payments</h5>
+                                            <p class="text-muted mb-2">Accept orders via WhatsApp, Messenger, Instagram, Telegram, X.com</p>
+                                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                                {% if social_gateway.is_active %}
+                                                    <span class="badge status-badge bg-success">
+                                                        <i class="fas fa-check me-1"></i>Active
+                                                    </span>
+                                                    {% if social_gateway.social_media_platforms %}
+                                                        {% for platform in social_gateway.social_media_platforms %}
+                                                            <span class="badge bg-light text-dark border">
+                                                                {% if platform == 'whatsapp' %}<i class="fab fa-whatsapp text-success me-1"></i>{% endif %}
+                                                                {% if platform == 'facebook' %}<i class="fab fa-facebook text-primary me-1"></i>{% endif %}
+                                                                {% if platform == 'instagram' %}<i class="fab fa-instagram text-danger me-1"></i>{% endif %}
+                                                                {% if platform == 'telegram' %}<i class="fab fa-telegram text-info me-1"></i>{% endif %}
+                                                                {% if platform == 'x' %}<i class="fab fa-x-twitter me-1"></i>{% endif %}
+                                                                {{ platform|title }}
+                                                            </span>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge status-badge bg-secondary">
+                                                        <i class="fas fa-times me-1"></i>Inactive
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <a href="{% url 'payments:configure_social_media' page.subdomain %}" class="btn {% if social_gateway.is_active %}btn-outline-primary{% else %}btn-primary{% endif %}">
+                                                {% if social_gateway.is_active %}
+                                                    <i class="fas fa-cog me-1"></i>Configure
+                                                {% else %}
+                                                    <i class="fas fa-plus me-1"></i>Setup
+                                                {% endif %}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Setup Guide -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-rocket me-2"></i>Quick Setup Guide
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <ol class="mb-0">
+                                <li class="mb-2">Choose a payment gateway from above</li>
+                                <li class="mb-2">Create an account with the payment provider</li>
+                                <li class="mb-2">Get your API keys from their dashboard</li>
+                                <li class="mb-2">Configure the gateway in test mode first</li>
+                                <li class="mb-2">Test payments with test card numbers</li>
+                                <li>Switch to live mode when ready</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Status Overview -->
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Payment Status
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>Active Gateways:</strong>
+                                <span class="badge bg-primary ms-2">{{ active_gateways_count }}</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Test Mode:</strong>
+                                <span class="badge bg-warning ms-2">{{ test_mode_gateways_count }}</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Live Mode:</strong>
+                                <span class="badge bg-success ms-2">{{ live_mode_gateways_count }}</span>
+                            </div>
+                            <hr>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                You can configure multiple payment gateways but only one can be active at a time.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Test Card Information -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-warning">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-credit-card me-2"></i>Test Card Numbers
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="small mb-2"><strong>Stripe Test Cards:</strong></p>
+                            <ul class="small ps-3 mb-3">
+                                <li>Success: <code>4242 4242 4242 4242</code></li>
+                                <li>Fail: <code>4000 0000 0000 0002</code></li>
+                                <li>Auth: <code>4000 0025 0000 3155</code></li>
+                            </ul>
+                            <p class="small mb-0 text-muted">
+                                Use these cards in test mode. Any future date and CVC works.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

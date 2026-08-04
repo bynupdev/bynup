@@ -1,0 +1,194 @@
+<!-- payments/templates/payments/pod_success.html -->
+{% extends 'builder/base.html' %}
+
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% block title %}Order Confirmed - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white text-center">
+                    <i class="fas fa-clipboard-check fa-3x mb-3"></i>
+                    <h2 class="card-title mb-0">Order Confirmed!</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Success Message -->
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                        <h3 class="text-success mb-3">Thank You for Your Order</h3>
+                        <p class="lead">
+                            Your order has been received and will be processed for delivery.
+                            <strong>You will pay when your order is delivered.</strong>
+                        </p>
+                    </div>
+
+                    <!-- Order Details -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">Order Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <strong>Order Number:</strong><br>
+                                    <code>{{ order_number }}</code>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Order Status:</strong><br>
+                                    <span class="badge bg-warning">Pending Pay on Delivery</span>
+                                </div>
+                            </div>
+                            
+                            {% if order %}
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <strong>Customer Name:</strong><br>
+                                    {{ order.customer_name }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Customer Email:</strong><br>
+                                    {{ order.customer_email }}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <strong>Order Total:</strong><br>
+                                    <h4 class="text-primary">{{ order.total_amount|currency:page }}</h4>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Payment Instructions -->
+                    <div class="card mb-4 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Pay on Delivery Instructions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if pod_gateway and pod_gateway.pod_instructions %}
+                                <p>{{ pod_gateway.pod_instructions }}</p>
+                            {% else %}
+                                <ol>
+                                    <li>Please have the exact amount ready when our delivery agent arrives</li>
+                                    <li>You can pay with cash or mobile payment (if available)</li>
+                                    <li>Our delivery hours are typically 9AM-6PM</li>
+                                    <li>You will receive a call before delivery</li>
+                                    <li>Inspect your items before making payment</li>
+                                </ol>
+                            {% endif %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-phone me-2"></i>
+                                <strong>Need to update your order?</strong> Contact us at {{ page.business_phone|default:"the phone number on our website" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Steps -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">What Happens Next?</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <div class="timeline-step">
+                                    <div class="timeline-step-number">1</div>
+                                    <div class="timeline-step-content">
+                                        <h6>Order Processing</h6>
+                                        <p class="small mb-0">We're preparing your order for delivery</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-step-number">2</div>
+                                    <div class="timeline-step-content">
+                                        <h6>Delivery Scheduled</h6>
+                                        <p class="small mb-0">We'll contact you to schedule delivery</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-step-number">3</div>
+                                    <div class="timeline-step-content">
+                                        <h6>Delivery Day</h6>
+                                        <p class="small mb-0">Our agent delivers your order</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-step-number">4</div>
+                                    <div class="timeline-step-content">
+                                        <h6>Payment & Completion</h6>
+                                        <p class="small mb-0">You pay upon delivery and receive your items</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="text-center mt-4">
+                        <div class="d-grid gap-2 d-md-flex justify-content-center">
+                            <a href="{{ page.get_domain_url }}" class="btn btn-primary">
+                                <i class="fas fa-home me-2"></i>Return to Store
+                            </a>
+                            <button onclick="window.print()" class="btn btn-outline-secondary">
+                                <i class="fas fa-print me-2"></i>Print Order Details
+                            </button>
+                        </div>
+                        <p class="text-muted small mt-3">
+                            A confirmation email has been sent to your email address.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+.timeline-step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+.timeline-step:not(:last-child):before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 30px;
+    bottom: -20px;
+    width: 2px;
+    background: #dee2e6;
+}
+.timeline-step-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #4361ee;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+.timeline-step-content {
+    flex: 1;
+}
+</style>
+{% endblock %}

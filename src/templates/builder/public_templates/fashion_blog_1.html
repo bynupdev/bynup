@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ text_contents.brand_name|default:"ChicChronicles" }} - Fashion Blog</title>
+    <style>
+        :root {
+            --primary-color: {{ style_customizations.colors.primary_color|default:"#e6b89c" }};
+            --secondary-color: {{ style_customizations.colors.secondary_color|default:"#9c7a97" }};
+            --accent-color: {{ style_customizations.colors.accent_color|default:"#4281a4" }};
+            --dark-color: {{ style_customizations.colors.dark_color|default:"#2d3047" }};
+            --light-color: {{ style_customizations.colors.light_color|default:"#fefefe" }};
+            --gold: {{ style_customizations.colors.gold_color|default:"#d4af37" }};
+            --text-dark: {{ style_customizations.colors.text_dark|default:"#333333" }};
+            --text-light: {{ style_customizations.colors.text_light|default:"#666666" }};
+            --font-main: 'Playfair Display', serif;
+            --font-secondary: 'Montserrat', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-secondary);
+            background-color: var(--light-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: {% if style_customizations.navbar.background_color %}{{ style_customizations.navbar.background_color }}{% else %}var(--dark-color){% endif %};
+            color: {% if style_customizations.navbar.text_color %}{{ style_customizations.navbar.text_color }}{% else %}white{% endif %};
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: var(--font-main);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: {% if style_customizations.navbar.logo_color %}{{ style_customizations.navbar.logo_color }}{% else %}var(--gold){% endif %};
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: inherit;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--gold);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .social-links a:hover {
+            color: var(--gold);
+        }
+
+        /* Page Sections */
+        .page-section {
+            display: none;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: {% if background_images.hero.image_url %}url('{{ background_images.hero.image_url }}'){% else %}linear-gradient(135deg, rgba(230,184,156,0.9) 0%, rgba(156,122,151,0.9) 100%){% endif %};
+            background-size: cover;
+            background-position: center;
+            color: {% if style_customizations.hero.text_color %}{{ style_customizations.hero.text_color }}{% else %}white{% endif %};
+            padding: 6rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-family: var(--font-main);
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-button {
+            background: {% if style_customizations.hero.button_background %}{{ style_customizations.hero.button_background }}{% else %}var(--gold){% endif %};
+            color: {% if style_customizations.hero.button_text_color %}{{ style_customizations.hero.button_text_color }}{% else %}var(--dark-color){% endif %};
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-family: var(--font-main);
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: {% if style_customizations.featured_posts.text_color %}{{ style_customizations.featured_posts.text_color }}{% else %}var(--dark-color){% endif %};
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--gold);
+            margin: 1rem auto;
+        }
+
+        /* Featured Posts */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .featured-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        .card-image {
+            height: 250px;
+            background: {% if style_customizations.featured_posts.card_background %}{{ style_customizations.featured_posts.card_background }}{% else %}linear-gradient(45deg, var(--primary-color), var(--secondary-color)){% endif %};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        .card-category {
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-family: var(--font-main);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+            line-height: 1.3;
+        }
+
+        .card-excerpt {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .read-time {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Recent Posts */
+        .recent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .recent-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+
+        .recent-image {
+            height: 200px;
+            background: {% if style_customizations.recent_posts.card_background %}{{ style_customizations.recent_posts.card_background }}{% else %}linear-gradient(45deg, var(--secondary-color), var(--accent-color)){% endif %};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .recent-content {
+            padding: 1.5rem;
+        }
+
+        /* Category Pages */
+        .category-hero {
+            background: {% if style_customizations.category_hero.background_color %}{{ style_customizations.category_hero.background_color }}{% else %}linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%){% endif %};
+            color: {% if style_customizations.category_hero.text_color %}{{ style_customizations.category_hero.text_color }}{% else %}white{% endif %};
+            padding: 6rem 0 4rem;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .category-title {
+            font-family: var(--font-main);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .category-description {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        /* About Page */
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+
+        .about-text h2 {
+            font-family: var(--font-main);
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark-color);
+        }
+
+        .about-image {
+            background: {% if background_images.about.image_url %}url('{{ background_images.about.image_url }}'){% else %}linear-gradient(45deg, var(--primary-color), var(--gold)){% endif %};
+            background-size: cover;
+            background-position: center;
+            height: 400px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 4rem;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .team-member {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .team-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: {% if style_customizations.team.avatar_background %}{{ style_customizations.team.avatar_background }}{% else %}linear-gradient(45deg, var(--secondary-color), var(--accent-color)){% endif %};
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        /* Newsletter */
+        .newsletter {
+            background: {% if style_customizations.newsletter.background_color %}{{ style_customizations.newsletter.background_color }}{% else %}linear-gradient(135deg, var(--dark-color) 0%, #2d3047 100%){% endif %};
+            color: {% if style_customizations.newsletter.text_color %}{{ style_customizations.newsletter.text_color }}{% else %}white{% endif %};
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .newsletter-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .newsletter-title {
+            font-family: var(--font-main);
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .newsletter-input {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .newsletter-button {
+            background: {% if style_customizations.newsletter.button_background %}{{ style_customizations.newsletter.button_background }}{% else %}var(--gold){% endif %};
+            color: {% if style_customizations.newsletter.button_text_color %}{{ style_customizations.newsletter.button_text_color }}{% else %}var(--dark-color){% endif %};
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .newsletter-button:hover {
+            background: white;
+        }
+
+        /* Footer */
+        .footer {
+            background: {% if style_customizations.footer.background_color %}{{ style_customizations.footer.background_color }}{% else %}var(--dark-color){% endif %};
+            color: {% if style_customizations.footer.text_color %}{{ style_customizations.footer.text_color }}{% else %}white{% endif %};
+            padding: 3rem 0 1rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h3 {
+            font-family: var(--font-main);
+            margin-bottom: 1rem;
+            color: {% if style_customizations.footer.heading_color %}{{ style_customizations.footer.heading_color }}{% else %}var(--gold){% endif %};
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+
+        .copyright {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #444;
+            color: #999;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+                display: none;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .category-title {
+                font-size: 2.2rem;
+            }
+
+            .newsletter-form {
+                flex-direction: column;
+            }
+
+            .featured-grid,
+            .recent-grid,
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .about-content {
+                grid-template-columns: 1fr;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                padding: 0 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <header class="navbar" style="background: {% if style_customizations.navbar.background_color %}{{ style_customizations.navbar.background_color }}{% else %}#2d3047{% endif %}; color: {% if style_customizations.navbar.text_color %}{{ style_customizations.navbar.text_color }}{% else %}white{% endif %}; padding: 1rem 0; position: fixed; width: 100%; top: 0; z-index: 1000;">
+        <div class="container">
+            <div class="nav-container">
+                <div class="logo" style="font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: {% if style_customizations.navbar.logo_color %}{{ style_customizations.navbar.logo_color }}{% else %}#d4af37{% endif %};">
+                    {{ text_contents.brand_name|default:"ChicChronicles" }}
+                </div>
+                
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+                
+                <ul class="nav-links" id="mobileMenu">
+                    <li><a href="#home" onclick="showPage('home')" class="nav-link active" style="color: {% if style_customizations.navbar.active_link_color %}{{ style_customizations.navbar.active_link_color }}{% else %}#d4af37{% endif %}; text-decoration: none;">{{ text_contents.nav_home|default:"Home" }}</a></li>
+                    <li><a href="#fashion" onclick="showPage('fashion')" class="nav-link" style="color: inherit; text-decoration: none;">{{ text_contents.nav_fashion|default:"Fashion" }}</a></li>
+                    <li><a href="#beauty" onclick="showPage('beauty')" class="nav-link" style="color: inherit; text-decoration: none;">{{ text_contents.nav_beauty|default:"Beauty" }}</a></li>
+                    <li><a href="#lifestyle" onclick="showPage('lifestyle')" class="nav-link" style="color: inherit; text-decoration: none;">{{ text_contents.nav_lifestyle|default:"Lifestyle" }}</a></li>
+                    <li><a href="#about" onclick="showPage('about')" class="nav-link" style="color: inherit; text-decoration: none;">{{ text_contents.nav_about|default:"About" }}</a></li>
+                </ul>
+                
+                <div class="social-links">
+                    <a href="#" style="color: inherit; text-decoration: none;">{{ text_contents.social_instagram|default:"📷" }}</a>
+                    <a href="#" style="color: inherit; text-decoration: none;">{{ text_contents.social_pinterest|default:"📌" }}</a>
+                    <a href="#" style="color: inherit; text-decoration: none;">{{ text_contents.social_twitter|default:"🐦" }}</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Home Page -->
+    <section id="home" class="page-section active">
+        <!-- Hero Section -->
+        <section class="hero" style="background: {% if background_images.hero.image_url %}url('{{ background_images.hero.image_url }}'){% else %}linear-gradient(135deg, rgba(230,184,156,0.9) 0%, rgba(156,122,151,0.9) 100%){% endif %}; background-size: cover; background-position: center; color: {% if style_customizations.hero.text_color %}{{ style_customizations.hero.text_color }}{% else %}white{% endif %}; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title" style="font-family: 'Playfair Display', serif; font-size: 3.5rem; font-weight: 700; margin-bottom: 1rem;">
+                        {{ text_contents.hero_title|default:"Elevate Your Style Journey" }}
+                    </h1>
+                    <p class="hero-subtitle" style="font-size: 1.3rem; margin-bottom: 2rem;">
+                        {{ text_contents.hero_subtitle|default:"Discover the latest trends, styling tips, and fashion inspiration from runway to real life" }}
+                    </p>
+                    <a href="#fashion" onclick="showPage('fashion')" class="cta-button" style="background: {% if style_customizations.hero.button_background %}{{ style_customizations.hero.button_background }}{% else %}#d4af37{% endif %}; color: {% if style_customizations.hero.button_text_color %}{{ style_customizations.hero.button_text_color }}{% else %}#2d3047{% endif %}; padding: 1rem 2rem; border-radius: 30px; text-decoration: none; display: inline-block;">
+                        {{ text_contents.hero_cta|default:"Explore Latest Trends" }}
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Posts -->
+        <section class="featured-posts" style="padding: 4rem 0; background: {% if style_customizations.featured_posts.background_color %}{{ style_customizations.featured_posts.background_color }}{% else %}#fefefe{% endif %};">
+            <div class="container">
+                <h2 class="section-title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin-bottom: 3rem; color: {% if style_customizations.featured_posts.text_color %}{{ style_customizations.featured_posts.text_color }}{% else %}#2d3047{% endif %};">
+                    {{ text_contents.featured_title|default:"Featured Stories" }}
+                </h2>
+                
+                <div class="featured-grid">
+                    {% for post in blog_posts|slice:":2" %}
+                    <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="card-image" style="height: 250px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="card-image" style="height: 250px; background: {% if style_customizations.featured_posts.card_background %}{{ style_customizations.featured_posts.card_background }}{% else %}linear-gradient(45deg, #e6b89c, #9c7a97){% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            {% if post.category == 'fashion' %}👗
+                            {% elif post.category == 'beauty' %}💄
+                            {% elif post.category == 'lifestyle' %}🏡
+                            {% else %}📝{% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ post.get_category_display }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ post.title }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ post.excerpt|default:post.content|truncatewords:30 }}
+                            </p>
+                            <div class="card-meta">
+                                <span style="color: #666666; font-size: 0.9rem;">By {{ post.author }}</span>
+                                <span class="read-time">
+                                    ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ post.read_time|default:"5" }} min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <!-- Default featured posts when no content exists -->
+                    <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            👗
+                        </div>
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ text_contents.featured_category_1|default:"Spring Fashion" }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ text_contents.featured_title_1|default:"The Ultimate Spring Wardrobe Refresh" }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ text_contents.featured_excerpt_1|default:"Discover how to transition your wardrobe with key pieces that blend comfort and style for the new season." }}
+                            </p>
+                            <div class="card-meta">
+                                <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.featured_author_1|default:"By Sarah Chen" }}</span>
+                                <span class="read-time">
+                                    ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.featured_read_time_1|default:"5 min read" }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Posts -->
+        <section class="recent-posts" style="padding: 4rem 0; background: {% if style_customizations.recent_posts.background_color %}{{ style_customizations.recent_posts.background_color }}{% else %}#f8f9fa{% endif %};">
+            <div class="container">
+                <h2 class="section-title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin-bottom: 3rem; color: {% if style_customizations.recent_posts.text_color %}{{ style_customizations.recent_posts.text_color }}{% else %}#2d3047{% endif %};">
+                    {{ text_contents.recent_title|default:"Latest Articles" }}
+                </h2>
+                
+                <div class="recent-grid">
+                    {% for post in blog_posts|slice:"2:5" %}
+                    <article class="recent-card" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="recent-image" style="height: 200px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="recent-image" style="height: 200px; background: {% if style_customizations.recent_posts.card_background %}{{ style_customizations.recent_posts.card_background }}{% else %}linear-gradient(45deg, #9c7a97, #4281a4){% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                            {% if post.category == 'fashion' %}👠
+                            {% elif post.category == 'beauty' %}💆‍♀️
+                            {% elif post.category == 'lifestyle' %}☕
+                            {% else %}📚{% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="recent-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ post.get_category_display }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ post.title }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ post.excerpt|default:post.content|truncatewords:20 }}
+                            </p>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <!-- Default recent posts when no content exists -->
+                    <article class="recent-card" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+                        <div class="recent-image" style="height: 200px; background: linear-gradient(45deg, #9c7a97, #4281a4); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                            👠
+                        </div>
+                        <div class="recent-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ text_contents.recent_category_1|default:"Street Style" }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ text_contents.recent_title_1|default:"Urban Fashion: NYC Street Style Guide" }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ text_contents.recent_excerpt_1|default:"Capturing the essence of New York City street fashion and how to incorporate it into your daily looks." }}
+                            </p>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <!-- Fashion Page -->
+    <section id="fashion" class="page-section">
+        <div class="category-hero" style="background: {% if style_customizations.fashion_hero.background_color %}{{ style_customizations.fashion_hero.background_color }}{% else %}linear-gradient(135deg, #4281a4 0%, #9c7a97 100%){% endif %}; color: {% if style_customizations.fashion_hero.text_color %}{{ style_customizations.fashion_hero.text_color }}{% else %}white{% endif %}; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    {{ text_contents.fashion_title|default:"Fashion & Style" }}
+                </h1>
+                <p class="category-description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    {{ text_contents.fashion_description|default:"Discover the latest fashion trends, styling tips, and inspiration to elevate your personal style" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                {% for post in blog_posts %}
+                    {% if post.category == 'fashion' %}
+                    <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="card-image" style="height: 250px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="card-image" style="height: 250px; background: {% if style_customizations.fashion_posts.card_background %}{{ style_customizations.fashion_posts.card_background }}{% else %}linear-gradient(45deg, #e6b89c, #9c7a97){% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            👘
+                        </div>
+                        {% endif %}
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ post.get_category_display }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ post.title }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ post.excerpt|default:post.content|truncatewords:30 }}
+                            </p>
+                            <div class="card-meta">
+                                <span style="color: #666666; font-size: 0.9rem;">By {{ post.author }}</span>
+                                <span class="read-time">
+                                    ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ post.read_time|default:"5" }} min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                    {% endif %}
+                {% empty %}
+                <!-- Default fashion posts when no content exists -->
+                <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        👘
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            {{ text_contents.fashion_category_1|default:"Seasonal Trends" }}
+                        </div>
+                        <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            {{ text_contents.fashion_title_1|default:"Fall 2024: Cozy Chic Essentials" }}
+                        </h3>
+                        <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            {{ text_contents.fashion_excerpt_1|default:"Embrace the autumn season with these must-have pieces that combine comfort and sophistication." }}
+                        </p>
+                        <div class="card-meta">
+                            <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.fashion_author_1|default:"By Emma Wilson" }}</span>
+                            <span class="read-time">
+                                ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.fashion_read_time_1|default:"6 min read" }}</span>
+                            </span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Beauty Page -->
+    <section id="beauty" class="page-section">
+        <div class="category-hero" style="background: {% if style_customizations.beauty_hero.background_color %}{{ style_customizations.beauty_hero.background_color }}{% else %}linear-gradient(135deg, #9c7a97 0%, #e6b89c 100%){% endif %}; color: {% if style_customizations.beauty_hero.text_color %}{{ style_customizations.beauty_hero.text_color }}{% else %}white{% endif %}; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    {{ text_contents.beauty_title|default:"Beauty & Wellness" }}
+                </h1>
+                <p class="category-description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    {{ text_contents.beauty_description|default:"Explore the latest beauty trends, skincare routines, and wellness tips for radiant living" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                {% for post in blog_posts %}
+                    {% if post.category == 'beauty' %}
+                    <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="card-image" style="height: 250px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="card-image" style="height: 250px; background: {% if style_customizations.beauty_posts.card_background %}{{ style_customizations.beauty_posts.card_background }}{% else %}linear-gradient(45deg, #e6b89c, #9c7a97){% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            💆‍♀️
+                        </div>
+                        {% endif %}
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ post.get_category_display }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ post.title }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ post.excerpt|default:post.content|truncatewords:30 }}
+                            </p>
+                            <div class="card-meta">
+                                <span style="color: #666666; font-size: 0.9rem;">By {{ post.author }}</span>
+                                <span class="read-time">
+                                    ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ post.read_time|default:"5" }} min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                    {% endif %}
+                {% empty %}
+                <!-- Default beauty posts when no content exists -->
+                <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        💆‍♀️
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            {{ text_contents.beauty_category_1|default:"Skincare" }}
+                        </div>
+                        <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            {{ text_contents.beauty_title_1|default:"Glass Skin: The Korean Beauty Routine" }}
+                        </h3>
+                        <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            {{ text_contents.beauty_excerpt_1|default:"Achieve that coveted glass skin glow with this step-by-step Korean skincare routine." }}
+                        </p>
+                        <div class="card-meta">
+                            <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.beauty_author_1|default:"By Sofia Kim" }}</span>
+                            <span class="read-time">
+                                ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.beauty_read_time_1|default:"10 min read" }}</span>
+                            </span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Lifestyle Page -->
+    <section id="lifestyle" class="page-section">
+        <div class="category-hero" style="background: {% if style_customizations.lifestyle_hero.background_color %}{{ style_customizations.lifestyle_hero.background_color }}{% else %}linear-gradient(135deg, #4281a4 0%, #e6b89c 100%){% endif %}; color: {% if style_customizations.lifestyle_hero.text_color %}{{ style_customizations.lifestyle_hero.text_color }}{% else %}white{% endif %}; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    {{ text_contents.lifestyle_title|default:"Lifestyle & Wellness" }}
+                </h1>
+                <p class="category-description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    {{ text_contents.lifestyle_description|default:"Discover ways to enhance your daily life with wellness tips, home decor, and mindful living" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="featured-grid">
+                {% for post in blog_posts %}
+                    {% if post.category == 'lifestyle' %}
+                    <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="card-image" style="height: 250px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="card-image" style="height: 250px; background: {% if style_customizations.lifestyle_posts.card_background %}{{ style_customizations.lifestyle_posts.card_background }}{% else %}linear-gradient(45deg, #e6b89c, #9c7a97){% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                            🏡
+                        </div>
+                        {% endif %}
+                        <div class="card-content" style="padding: 1.5rem;">
+                            <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                                {{ post.get_category_display }}
+                            </div>
+                            <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                                {{ post.title }}
+                            </h3>
+                            <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                                {{ post.excerpt|default:post.content|truncatewords:30 }}
+                            </p>
+                            <div class="card-meta">
+                                <span style="color: #666666; font-size: 0.9rem;">By {{ post.author }}</span>
+                                <span class="read-time">
+                                    ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ post.read_time|default:"5" }} min read</span>
+                                </span>
+                            </div>
+                        </div>
+                    </article>
+                    {% endif %}
+                {% empty %}
+                <!-- Default lifestyle posts when no content exists -->
+                <article class="featured-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="card-image" style="height: 250px; background: linear-gradient(45deg, #e6b89c, #9c7a97); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">
+                        🏡
+                    </div>
+                    <div class="card-content" style="padding: 1.5rem;">
+                        <div class="card-category" style="color: #4281a4; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">
+                            {{ text_contents.lifestyle_category_1|default:"Home Decor" }}
+                        </div>
+                        <h3 class="card-title" style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1rem; color: #2d3047;">
+                            {{ text_contents.lifestyle_title_1|default:"Creating Your Perfect Reading Nook" }}
+                        </h3>
+                        <p class="card-excerpt" style="color: #666666; margin-bottom: 1rem; line-height: 1.5;">
+                            {{ text_contents.lifestyle_excerpt_1|default:"Transform any corner into a cozy retreat perfect for relaxing with your favorite books." }}
+                        </p>
+                        <div class="card-meta">
+                            <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.lifestyle_author_1|default:"By Olivia Parker" }}</span>
+                            <span class="read-time">
+                                ⏱️ <span style="color: #666666; font-size: 0.9rem;">{{ text_contents.lifestyle_read_time_1|default:"5 min read" }}</span>
+                            </span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- About Page -->
+    <section id="about" class="page-section">
+        <div class="category-hero" style="background: {% if style_customizations.about_hero.background_color %}{{ style_customizations.about_hero.background_color }}{% else %}linear-gradient(135deg, #e6b89c 0%, #4281a4 100%){% endif %}; color: {% if style_customizations.about_hero.text_color %}{{ style_customizations.about_hero.text_text_color }}{% else %}white{% endif %}; padding: 6rem 0 4rem; text-align: center;">
+            <div class="container">
+                <h1 class="category-title" style="font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 1rem;">
+                    {{ text_contents.about_title|default:"About ChicChronicles" }}
+                </h1>
+                <p class="category-description" style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">
+                    {{ text_contents.about_description|default:"Your trusted source for fashion inspiration, beauty expertise, and lifestyle guidance" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 1.5rem; color: #2d3047;">
+                        {{ text_contents.about_story_title|default:"Our Story" }}
+                    </h2>
+                    <p style="color: #666666; line-height: 1.6; margin-bottom: 1.5rem;">
+                        {{ text_contents.about_story_content|default:"Founded in 2020, ChicChronicles began as a passion project between three friends who shared a love for fashion, beauty, and creating meaningful content. What started as a small blog has grown into a trusted resource for thousands of readers seeking authentic style advice and lifestyle inspiration." }}
+                    </p>
+                    <p style="color: #666666; line-height: 1.6;">
+                        {{ text_contents.about_mission|default:"Our mission is to empower individuals to express their unique style with confidence while promoting sustainable fashion practices and self-care rituals that nurture both inner and outer beauty." }}
+                    </p>
+                </div>
+                <div class="about-image" style="background: {% if background_images.about.image_url %}url('{{ background_images.about.image_url }}'){% else %}linear-gradient(45deg, #e6b89c, #d4af37){% endif %}; background-size: cover; background-position: center; height: 400px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">
+                    {% if not background_images.about.image_url %}✨{% endif %}
+                </div>
+            </div>
+
+            <h2 class="section-title" style="font-family: 'Playfair Display', serif; font-size: 2.5rem; text-align: center; margin: 4rem 0 3rem;">
+                {{ text_contents.team_title|default:"Meet Our Team" }}
+            </h2>
+
+            <div class="team-grid">
+                {% for member in team_members|slice:":3" %}
+                <div class="team-member" style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    {% if member.avatar %}
+                    <img src="{{ member.avatar.url }}" alt="{{ member.name }}" class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 1rem;">
+                    {% else %}
+                    <div class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; background: {% if style_customizations.team.avatar_background %}{{ style_customizations.team.avatar_background }}{% else %}linear-gradient(45deg, #9c7a97, #4281a4){% endif %}; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        👩‍💼
+                    </div>
+                    {% endif %}
+                    <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; color: #2d3047;">
+                        {{ member.name }}
+                    </h3>
+                    <p style="color: #4281a4; font-weight: 600; margin-bottom: 1rem;">
+                        {{ member.role }}
+                    </p>
+                    <p style="color: #666666; font-size: 0.9rem; line-height: 1.5;">
+                        {{ member.bio }}
+                    </p>
+                </div>
+                {% empty %}
+                <!-- Default team members when no content exists -->
+                <div class="team-member" style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <div class="team-avatar" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(45deg, #9c7a97, #4281a4); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        👩‍💼
+                    </div>
+                    <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.5rem; color: #2d3047;">
+                        {{ text_contents.team_name_1|default:"Sarah Chen" }}
+                    </h3>
+                    <p style="color: #4281a4; font-weight: 600; margin-bottom: 1rem;">
+                        {{ text_contents.team_role_1|default:"Editor-in-Chief" }}
+                    </p>
+                    <p style="color: #666666; font-size: 0.9rem; line-height: 1.5;">
+                        {{ text_contents.team_bio_1|default:"With over 10 years in fashion journalism, Sarah brings expert insight into seasonal trends and styling techniques." }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter (Global Section) -->
+    <section class="newsletter" style="background: {% if style_customizations.newsletter.background_color %}{{ style_customizations.newsletter.background_color }}{% else %}linear-gradient(135deg, #2d3047 0%, #2d3047 100%){% endif %}; color: {% if style_customizations.newsletter.text_color %}{{ style_customizations.newsletter.text_color }}{% else %}white{% endif %}; padding: 4rem 0; text-align: center;">
+        <div class="container">
+            <div class="newsletter-content">
+                <h2 class="newsletter-title" style="font-family: 'Playfair Display', serif; font-size: 2.2rem; margin-bottom: 1rem;">
+                    {{ text_contents.newsletter_title|default:"Style Insider" }}
+                </h2>
+                <p style="margin-bottom: 2rem;">
+                    {{ text_contents.newsletter_subtitle|default:"Get exclusive fashion tips, early access to sales, and curated style guides delivered to your inbox weekly." }}
+                </p>
+                <form class="newsletter-form website-form" data-form-name="newsletter" id="newsletter-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_name" value="newsletter">
+                    <input type="email" name="email" placeholder="{{ text_contents.newsletter_placeholder|default:'Your email address' }}" 
+                           class="newsletter-input" style="flex: 1; padding: 1rem; border: none; border-radius: 6px; font-size: 1rem;" required>
+                    <button type="submit" class="newsletter-button" style="background: {% if style_customizations.newsletter.button_background %}{{ style_customizations.newsletter.button_background }}{% else %}#d4af37{% endif %}; color: {% if style_customizations.newsletter.button_text_color %}{{ style_customizations.newsletter.button_text_color }}{% else %}#2d3047{% endif %}; border: none; padding: 1rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        {{ text_contents.newsletter_button|default:"Subscribe" }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer" style="background: {% if style_customizations.footer.background_color %}{{ style_customizations.footer.background_color }}{% else %}#2d3047{% endif %}; color: {% if style_customizations.footer.text_color %}{{ style_customizations.footer.text_color }}{% else %}white{% endif %}; padding: 3rem 0 1rem;">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: {% if style_customizations.footer.heading_color %}{{ style_customizations.footer.heading_color }}{% else %}#d4af37{% endif %};">
+                        {{ text_contents.footer_about_title|default:"About ChicChronicles" }}
+                    </h3>
+                    <p style="color: #ccc; line-height: 1.6;">
+                        {{ text_contents.footer_about_text|default:"Your premier destination for fashion inspiration, beauty tips, and lifestyle content that empowers your personal style journey." }}
+                    </p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: {% if style_customizations.footer.heading_color %}{{ style_customizations.footer.heading_color }}{% else %}#d4af37{% endif %};">
+                        {{ text_contents.footer_quick_links|default:"Quick Links" }}
+                    </h3>
+                    <ul class="footer-links">
+                        <li><a href="#home" onclick="showPage('home')" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_link_home|default:"Home" }}</a></li>
+                        <li><a href="#fashion" onclick="showPage('fashion')" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_link_fashion|default:"Fashion" }}</a></li>
+                        <li><a href="#beauty" onclick="showPage('beauty')" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_link_beauty|default:"Beauty" }}</a></li>
+                        <li><a href="#lifestyle" onclick="showPage('lifestyle')" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_link_lifestyle|default:"Lifestyle" }}</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 style="font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: {% if style_customizations.footer.heading_color %}{{ style_customizations.footer.heading_color }}{% else %}#d4af37{% endif %};">
+                        {{ text_contents.footer_connect|default:"Connect With Us" }}
+                    </h3>
+                    <ul class="footer-links">
+                        <li><a href="#" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_social_insta|default:"Instagram" }}</a></li>
+                        <li><a href="#" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_social_pinterest|default:"Pinterest" }}</a></li>
+                        <li><a href="#" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_social_twitter|default:"Twitter" }}</a></li>
+                        <li><a href="#" style="color: #ccc; text-decoration: none;">{{ text_contents.footer_social_newsletter|default:"Newsletter" }}</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p style="color: #999; text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #444;">
+                    {{ text_contents.footer_copyright|default:"&copy; 2024 ChicChronicles. All rights reserved. | Crafted with 💖 for fashion lovers" }}
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Multi-page navigation functionality
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-section').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.style.color = '';
+                link.classList.remove('active');
+            });
+            
+            const activeLink = document.querySelector(`a[href="#${pageId}"]`);
+            if (activeLink) {
+                activeLink.style.color = '{% if style_customizations.navbar.active_link_color %}{{ style_customizations.navbar.active_link_color }}{% else %}#d4af37{% endif %}';
+                activeLink.classList.add('active');
+            }
+            
+            // Close mobile menu
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu) {
+                mobileMenu.classList.remove('active');
+            }
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+            
+            // Update URL hash
+            window.location.hash = pageId;
+        }
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+        }
+
+        // Form submission handling
+        document.addEventListener('DOMContentLoaded', function() {
+            // Newsletter form handling
+            const newsletterForm = document.getElementById('newsletter-form');
+            if (newsletterForm) {
+                newsletterForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const button = this.querySelector('button');
+                    
+                    // Show loading state
+                    const originalText = button.textContent;
+                    button.textContent = 'Subscribing...';
+                    button.disabled = true;
+                    
+                    try {
+                        const response = await fetch('/builder/submit-form/{{ page.subdomain }}/', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Thank you for subscribing to our newsletter!');
+                            this.reset();
+                        } else {
+                            alert('Subscription failed. Please try again.');
+                        }
+                    } catch (error) {
+                        alert('Subscription failed. Please try again.');
+                    } finally {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }
+                });
+            }
+
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                const menu = document.getElementById('mobileMenu');
+                const btn = document.querySelector('.mobile-menu-btn');
+                if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.classList.remove('active');
+                }
+            });
+
+            // Handle URL hash changes
+            window.addEventListener('hashchange', function() {
+                const hash = window.location.hash.substring(1);
+                if (['home', 'fashion', 'beauty', 'lifestyle', 'about'].includes(hash)) {
+                    showPage(hash);
+                }
+            });
+
+            // Initialize page based on URL hash
+            const hash = window.location.hash.substring(1);
+            if (hash && ['home', 'fashion', 'beauty', 'lifestyle', 'about'].includes(hash)) {
+                showPage(hash);
+            } else {
+                showPage('home');
+            }
+        });
+    </script>
+</body>
+</html>

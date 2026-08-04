@@ -1,0 +1,619 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Form Submissions - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Management Layout */
+.management-layout {
+    display: flex;
+    min-height: calc(100vh - 200px);
+}
+
+.management-content {
+    flex: 1;
+    padding: 1.5rem;
+    background: white;
+}
+
+/* Form Submissions Specific Styles */
+.submission-row {
+    transition: background-color 0.2s ease;
+}
+.submission-row:hover {
+    background-color: #f8f9ff !important;
+}
+.message-preview {
+    color: #4a5568;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.table td {
+    vertical-align: middle;
+}
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+.pagination .page-link {
+    border: none;
+    margin: 0 3px;
+    border-radius: 8px;
+    color: #4a5568;
+}
+.pagination .page-item.active .page-link {
+    background-color: #4361ee;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .management-layout {
+        flex-direction: column;
+    }
+    
+    .management-content {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .container-fluid.py-5 {
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='forms' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='forms' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'manage_products' page.subdomain %}">{{ page.brand_name }}</a></li>
+                            <li class="breadcrumb-item active">Form Submissions</li>
+                        </ol>
+                    </nav>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="display-6 fw-bold text-primary mb-2">
+                                <i class="fas fa-envelope me-3"></i>Form Submissions
+                            </h1>
+                            <p class="text-muted mb-0">
+                                {{ page.brand_name }} • {{ submissions_count }} total submissions
+                            </p>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-primary" id="exportBtn" onclick="exportSubmissions()">
+                                <i class="fas fa-download me-2"></i>Export CSV
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="window.location.reload()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <form id="filterForm" method="get" class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-muted">Form Type</label>
+                                    <select name="form_name" class="form-select" onchange="this.form.submit()">
+                                        <option value="">All Forms</option>
+                                        {% for name in form_names %}
+                                        <option value="{{ name }}" {% if request.GET.form_name == name %}selected{% endif %}>
+                                            {{ name|title }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-muted">Date Range</label>
+                                    <select name="date_range" class="form-select" onchange="this.form.submit()">
+                                        <option value="">All Time</option>
+                                        <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
+                                        <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>This Week</option>
+                                        <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This Month</option>
+                                        <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>This Year</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-muted">Search</label>
+                                    <div class="input-group">
+                                        <input type="text" name="search" class="form-control" placeholder="Search by email or name..." value="{{ request.GET.search }}">
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <a href="?" class="btn btn-outline-secondary">Clear Filters</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submissions Stats Cards -->
+            <div class="row mb-4 g-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">Total Submissions</h6>
+                                    <h2 class="mb-0">{{ submissions_count }}</h2>
+                                </div>
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="fas fa-envelope fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">This Month</h6>
+                                    <h2 class="mb-0">{{ monthly_count }}</h2>
+                                </div>
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="fas fa-calendar-alt fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">Unique Contacts</h6>
+                                    <h2 class="mb-0">{{ unique_contacts }}</h2>
+                                </div>
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="fas fa-users fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-2">Response Rate</h6>
+                                    <h2 class="mb-0">{{ response_rate }}%</h2>
+                                </div>
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="fas fa-chart-line fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submissions Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0 fw-bold">Recent Submissions</h5>
+                        </div>
+                        
+                        <div class="card-body p-0">
+                            {% if submissions %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="py-3 px-4">#</th>
+                                            <th class="py-3">Form</th>
+                                            <th class="py-3">Contact Info</th>
+                                            <th class="py-3">Subject</th>
+                                            <th class="py-3">Message Preview</th>
+                                            <th class="py-3">Date</th>
+                                            <th class="py-3 text-end px-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for submission in submissions %}
+                                        <tr class="submission-row" data-id="{{ submission.id }}">
+                                            <td class="px-4 fw-medium">{{ forloop.counter }}</td>
+                                            <td>
+                                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+                                                    {{ submission.form_name|title }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-medium">{{ submission.submitted_data.first_name }} {{ submission.submitted_data.last_name }}</span>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-envelope fa-xs me-1"></i>{{ submission.submitted_data.email }}
+                                                    </small>
+                                                    {% if submission.submitted_data.phone %}
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-phone fa-xs me-1"></i>{{ submission.submitted_data.phone }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">{{ submission.submitted_data.subject|default:"No Subject"|truncatechars:30 }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="message-preview" style="max-width: 250px;">
+                                                    {{ submission.submitted_data.message|truncatechars:60 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-medium">{{ submission.submitted_at|date:"M d, Y" }}</span>
+                                                    <small class="text-muted">{{ submission.submitted_at|time:"H:i" }}</small>
+                                                </div>
+                                            </td>
+                                            <td class="text-end px-4">
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-outline-primary view-submission" data-id="{{ submission.id }}">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-submission" data-id="{{ submission.id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-inbox fa-4x text-muted opacity-50"></i>
+                                </div>
+                                <h5 class="text-muted">No Submissions Yet</h5>
+                                <p class="text-muted mb-4">When visitors submit forms on your site, they'll appear here.</p>
+                                <a href="{{ page.get_absolute_url }}" target="_blank" class="btn btn-primary">
+                                    <i class="fas fa-external-link-alt me-2"></i>View Your Site
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if submissions.paginator.num_pages > 1 %}
+                        <div class="card-footer bg-white py-3">
+                            <nav>
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if submissions.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if request.GET.form_name %}&form_name={{ request.GET.form_name }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="First">
+                                            <span aria-hidden="true">&laquo;&laquo;</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ submissions.previous_page_number }}{% if request.GET.form_name %}&form_name={{ request.GET.form_name }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in submissions.paginator.page_range %}
+                                        {% if submissions.number == num %}
+                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                        {% elif num > submissions.number|add:'-3' and num < submissions.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if request.GET.form_name %}&form_name={{ request.GET.form_name }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if submissions.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ submissions.next_page_number }}{% if request.GET.form_name %}&form_name={{ request.GET.form_name }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Next">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ submissions.paginator.num_pages }}{% if request.GET.form_name %}&form_name={{ request.GET.form_name }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Last">
+                                            <span aria-hidden="true">&raquo;&raquo;</span>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Submission Modal -->
+<div class="modal fade" id="viewSubmissionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-envelope-open-text me-2"></i>
+                    Submission Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="submissionDetails">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="markAsReadBtn">
+                    <i class="fas fa-check-circle me-2"></i>Mark as Read
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <i class="fas fa-trash-alt fa-4x text-danger mb-3"></i>
+                <h5>Are you sure?</h5>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSubmissionId = null;
+let viewModal = null;
+let deleteModal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize modals
+    viewModal = new bootstrap.Modal(document.getElementById('viewSubmissionModal'));
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    
+    // View submission
+    document.querySelectorAll('.view-submission').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            viewSubmission(id);
+        });
+    });
+    
+    // Delete submission
+    document.querySelectorAll('.delete-submission').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentSubmissionId = this.dataset.id;
+            deleteModal.show();
+        });
+    });
+    
+    // Confirm delete
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (currentSubmissionId) {
+            deleteSubmission(currentSubmissionId);
+        }
+    });
+    
+    // Mark as read
+    document.getElementById('markAsReadBtn').addEventListener('click', function() {
+        if (currentSubmissionId) {
+            markAsRead(currentSubmissionId);
+        }
+    });
+});
+
+async function viewSubmission(id) {
+    const detailsEl = document.getElementById('submissionDetails');
+    
+    try {
+        const response = await fetch(`/builder/api/submission/${id}/`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const sub = data.submission;
+            detailsEl.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="bg-light p-3 rounded">
+                            <small class="text-muted d-block mb-1">Form Name</small>
+                            <strong>${escapeHtml(sub.form_name)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="bg-light p-3 rounded">
+                            <small class="text-muted d-block mb-1">Submitted</small>
+                            <strong>${new Date(sub.submitted_at).toLocaleString()}</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3 fw-bold">Contact Information</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block mb-1">Name</small>
+                            <strong>${escapeHtml(sub.data.first_name)} ${escapeHtml(sub.data.last_name || '')}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block mb-1">Email</small>
+                            <strong><a href="mailto:${escapeHtml(sub.data.email)}">${escapeHtml(sub.data.email)}</a></strong>
+                        </div>
+                    </div>
+                    ${sub.data.phone ? `
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block mb-1">Phone</small>
+                            <strong><a href="tel:${escapeHtml(sub.data.phone)}">${escapeHtml(sub.data.phone)}</a></strong>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${sub.data.subject ? `
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block mb-1">Subject</small>
+                            <strong>${escapeHtml(sub.data.subject)}</strong>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <h6 class="mt-3 mb-3 fw-bold">Message</h6>
+                <div class="border rounded p-3 bg-light">
+                    <p class="mb-0" style="white-space: pre-wrap;">${escapeHtml(sub.data.message)}</p>
+                </div>
+                
+                <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-globe text-primary me-3 fa-lg"></i>
+                        <div>
+                            <small class="text-muted d-block">IP Address</small>
+                            <strong>${sub.ip_address || 'N/A'}</strong>
+                        </div>
+                        <div class="ms-auto">
+                            <small class="text-muted d-block">Device</small>
+                            <strong>${sub.user_agent ? sub.user_agent.split(' ')[0] : 'Unknown'}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            detailsEl.innerHTML = '<div class="alert alert-danger">Failed to load submission details.</div>';
+        }
+    } catch (error) {
+        detailsEl.innerHTML = '<div class="alert alert-danger">Network error. Please try again.</div>';
+    }
+    
+    viewModal.show();
+}
+
+async function deleteSubmission(id) {
+    try {
+        const response = await fetch(`/builder/api/submission/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            deleteModal.hide();
+            // Remove row from table
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if (row) row.remove();
+            showNotification('Submission deleted successfully', 'success');
+            // Reload page if no submissions left
+            if (document.querySelectorAll('.submission-row').length === 0) {
+                setTimeout(() => location.reload(), 1000);
+            }
+        } else {
+            showNotification('Failed to delete submission', 'error');
+        }
+    } catch (error) {
+        showNotification('Network error', 'error');
+    }
+}
+
+async function markAsRead(id) {
+    // Implement mark as read functionality
+    viewModal.hide();
+    showNotification('Marked as read', 'success');
+}
+
+function exportSubmissions() {
+    const formName = new URLSearchParams(window.location.search).get('form_name') || '';
+    window.location.href = `/builder/export-submissions/{{ page.subdomain }}/?format=csv&form_name=${formName}`;
+}
+
+function showNotification(message, type) {
+    // Enhanced notification system
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'error' ? 'alert-danger' : 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 99999; min-width: 300px; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px;';
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} me-2 fa-lg"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

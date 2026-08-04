@@ -1,0 +1,1027 @@
+<!-- templates/builder/analytics_dashboard.html -->
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Analytics - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Management Layout */
+.management-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.management-content {
+    flex: 1;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Analytics Styles */
+.analytics-header { 
+    background: white; 
+    border-bottom: 1px solid #e9ecef; 
+    padding: 1.5rem 0; 
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+}
+
+.metric-card { 
+    background: white; 
+    border-radius: 12px; 
+    padding: 1.5rem; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+    border: 1px solid #e9ecef; 
+    transition: all 0.3s ease; 
+    height: 100%; 
+}
+
+.metric-card:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+}
+
+.metric-value { 
+    font-size: 2rem; 
+    font-weight: 700; 
+    color: #2c3e50; 
+    margin-bottom: 0.5rem; 
+}
+
+.metric-label { 
+    font-size: 0.9rem; 
+    color: #6c757d; 
+    text-transform: uppercase; 
+    font-weight: 600; 
+    letter-spacing: 0.5px; 
+}
+
+.metric-change { 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+    padding: 0.25rem 0.5rem; 
+    border-radius: 20px; 
+    display: inline-block;
+}
+
+.metric-change.positive { 
+    background: #d4edda; 
+    color: #155724; 
+}
+
+.metric-change.negative { 
+    background: #f8d7da; 
+    color: #721c24; 
+}
+
+.chart-container { 
+    background: white; 
+    border-radius: 12px; 
+    padding: 1.5rem; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+    border: 1px solid #e9ecef; 
+    margin-bottom: 1.5rem; 
+}
+
+.chart-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 1.5rem; 
+}
+
+.chart-title { 
+    font-size: 1.25rem; 
+    font-weight: 600; 
+    color: #2c3e50; 
+    margin: 0; 
+}
+
+.period-selector { 
+    display: flex; 
+    gap: 0.5rem; 
+    flex-wrap: wrap;
+}
+
+.period-btn { 
+    padding: 0.5rem 1rem; 
+    border: 1px solid #dee2e6; 
+    background: white; 
+    border-radius: 6px; 
+    font-size: 0.85rem; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+}
+
+.period-btn.active { 
+    background: #4361ee; 
+    color: white; 
+    border-color: #4361ee; 
+}
+
+.real-time-indicator { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    padding: 0.5rem 1rem; 
+    background: #e8f5e8; 
+    color: #2d5016; 
+    border-radius: 20px; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+}
+
+.pulse-dot { 
+    width: 8px; 
+    height: 8px; 
+    background: #28a745; 
+    border-radius: 50%; 
+    animation: pulse 2s infinite; 
+}
+
+@keyframes pulse { 
+    0% { transform: scale(0.95); opacity: 0.7; } 
+    50% { transform: scale(1.1); opacity: 1; } 
+    100% { transform: scale(0.95); opacity: 0.7; } 
+}
+
+.traffic-source-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 1rem 0; 
+    border-bottom: 1px solid #f8f9fa; 
+}
+
+.traffic-source-item:last-child { 
+    border-bottom: none; 
+}
+
+.source-name { 
+    display: flex; 
+    align-items: center; 
+    gap: 0.75rem; 
+    flex: 1; 
+}
+
+.source-icon { 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 6px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-weight: 600; 
+    font-size: 0.8rem; 
+    color: white; 
+}
+
+.source-organic { background: #28a745; } 
+.source-direct { background: #6c757d; } 
+.source-social { background: #4361ee; } 
+.source-referral { background: #ff6b6b; } 
+.source-email { background: #ffd166; } 
+.source-paid { background: #7209b7; }
+
+.source-stats { 
+    text-align: right; 
+}
+
+.source-visits { 
+    font-weight: 600; 
+    color: #2c3e50; 
+}
+
+.source-percentage { 
+    font-size: 0.85rem; 
+    color: #6c757d; 
+}
+
+.loading-spinner { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    padding: 3rem; 
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .management-layout {
+        flex-direction: column;
+    }
+    
+    .management-content {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .analytics-header {
+        padding: 1rem;
+    }
+    
+    .period-selector {
+        margin-top: 1rem;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Debug Panel - Optional, can be removed after testing */
+.debug-panel {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.debug-info {
+    font-family: monospace;
+    font-size: 0.8rem;
+    background: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='analytics' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='analytics' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            
+
+            <!-- Header -->
+            <div class="analytics-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">My Pages</a></li>
+                                <li class="breadcrumb-item"><a href="{% url 'editor_with_page' page.template.name page.subdomain %}">{{ page.brand_name }}</a></li>
+                                <li class="breadcrumb-item active">Analytics</li>
+                            </ol>
+                        </nav>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <h1 class="h3 fw-bold mb-1">Analytics Dashboard</h1>
+                                <p class="text-muted mb-0">{{ page.brand_name }} • {{ page.get_domain_url }}</p>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <span class="real-time-indicator">
+                                    <span class="pulse-dot"></span>
+                                    <span id="activeVisitors">0</span> active now
+                                </span>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-primary btn-sm" id="refreshData">
+                                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" id="exportData">
+                                        <i class="fas fa-download me-1"></i>Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Period Selector -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="period-selector">
+                            <button class="period-btn" data-period="24h">24 Hours</button>
+                            <button class="period-btn" data-period="7d">7 Days</button>
+                            <button class="period-btn active" data-period="30d">30 Days</button>
+                            <button class="period-btn" data-period="90d">90 Days</button>
+                        </div>
+                        <div class="text-muted small" id="dateRange">
+                            Loading date range...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overview Metrics -->
+            <div class="row mb-4" id="overviewMetrics">
+                <div class="col-md-3 mb-3">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Visits</div>
+                        <div class="metric-value" id="totalVisits">0</div>
+                        <div class="metric-change positive" id="visitsChange">+0%</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="metric-card">
+                        <div class="metric-label">Unique Visitors</div>
+                        <div class="metric-value" id="uniqueVisitors">0</div>
+                        <div class="metric-label">People</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="metric-card">
+                        <div class="metric-label">Bounce Rate</div>
+                        <div class="metric-value" id="bounceRate">0%</div>
+                        <div class="metric-label">Single-page sessions</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="metric-card">
+                        <div class="metric-label">Avg. Session</div>
+                        <div class="metric-value" id="avgSession">0s</div>
+                        <div class="metric-label">Duration</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row">
+                <div class="col-lg-8 mb-4">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Traffic Overview</h3>
+                        </div>
+                        <div id="trafficChart" style="height: 300px;">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading chart...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Traffic Sources</h3>
+                        </div>
+                        <div id="trafficSources">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading traffic sources...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Row -->
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Visitors by Country</h3>
+                        </div>
+                        <div id="geoChart" style="height: 300px;">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading geographic data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 mb-4">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Devices</h3>
+                        </div>
+                        <div id="deviceChart" style="height: 300px;">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading device data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 mb-4">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Top Pages</h3>
+                        </div>
+                        <div id="topPages">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading top pages...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.4/build/global/luxon.min.js"></script>
+
+<script>
+class AnalyticsDashboard {
+    constructor() {
+        this.subdomain = '{{ page.subdomain }}';
+        this.currentPeriod = '30d';
+        this.charts = {};
+        this.baseApiUrl = `/api/${this.subdomain}/`; // Single API endpoint
+        
+        console.log('Analytics Dashboard Initialized:', {
+            subdomain: this.subdomain,
+            baseApiUrl: this.baseApiUrl
+        });
+        
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadAllData();
+        this.startRealTimeUpdates();
+    }
+
+    setupEventListeners() {
+        // Period selector
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentPeriod = e.target.dataset.period;
+                this.reloadAllData();
+            });
+        });
+
+        // Refresh button
+        document.getElementById('refreshData').addEventListener('click', () => {
+            this.reloadAllData();
+        });
+
+        // Export button
+        document.getElementById('exportData').addEventListener('click', () => {
+            this.exportData();
+        });
+    }
+
+    async loadAllData() {
+        try {
+            console.log('Loading all analytics data...');
+            
+            // Try single API call first
+            const response = await fetch(`${this.baseApiUrl}?period=${this.currentPeriod}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text.substring(0, 200));
+                throw new Error('Server returned HTML instead of JSON');
+            }
+            
+            const data = await response.json();
+            console.log('API Response:', data);
+            
+            this.updateAllData(data);
+            
+        } catch (error) {
+            console.error('Error loading analytics data:', error);
+            this.showError(`Failed to load analytics: ${error.message}`);
+            this.showFallbackData();
+        }
+    }
+
+    updateAllData(data) {
+        console.log('Real data received:', data);
+        
+        // Update overview metrics
+        if (data.overview) {
+            this.updateOverviewMetrics(data.overview);
+        } else {
+            // Fallback if overview is at root level
+            this.updateOverviewMetrics(data);
+        }
+        
+        // Update charts with real data
+        if (data.time_series) {
+            this.createTrafficChart(data.time_series);
+        }
+        
+        if (data.traffic_sources) {
+            this.updateTrafficSources(data.traffic_sources);
+        }
+        
+        if (data.geography) {
+            this.createGeoChart(data.geography);
+        }
+        
+        if (data.devices) {
+            this.createDeviceChart(data.devices);
+        }
+        
+        if (data.pages) {
+            this.updateTopPages(data.pages);
+        }
+        
+        // Update real-time data
+        if (data.real_time) {
+            this.updateRealTimeDisplay(data.real_time);
+        }
+        
+        // Update date range
+        if (data.period) {
+            this.updateDateRange(data.period);
+        }
+    }
+
+    updateRealTimeDisplay(realTimeData) {
+        const activeVisitors = realTimeData.active_visitors || 0;
+        document.getElementById('activeVisitors').textContent = activeVisitors;
+        
+        // You could also update the real-time activity section here
+        const container = document.getElementById('realTimeActivity');
+        if (container && realTimeData.active_pages) {
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Active Visitors: ${activeVisitors}</h5>
+                        <div class="mb-3">
+            `;
+            
+            if (realTimeData.active_pages.length > 0) {
+                html += `<h6 class="text-muted mb-2">Currently Viewing:</h6>`;
+                realTimeData.active_pages.forEach(page => {
+                    html += `
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-truncate">${this.formatPageName(page.page_url)}</span>
+                            <span class="badge bg-primary">${page.active_visitors || 0}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                html += `<p class="text-muted">No active visitors at the moment</p>`;
+            }
+            
+            html += `</div></div></div>`;
+            container.innerHTML = html;
+        }
+    }
+
+    updateOverviewMetrics(data) {
+        const metrics = {
+            'totalVisits': data.total_visits || 0,
+            'uniqueVisitors': data.unique_visitors || 0,
+            'bounceRate': data.bounce_rate || 0,
+            'avgSession': data.avg_session_duration || '0s',
+            'visitsChange': data.visits_change || 0
+        };
+
+        // Update main metrics
+        if (document.getElementById('totalVisits')) {
+            document.getElementById('totalVisits').textContent = metrics.totalVisits.toLocaleString();
+        }
+        if (document.getElementById('uniqueVisitors')) {
+            document.getElementById('uniqueVisitors').textContent = metrics.uniqueVisitors.toLocaleString();
+        }
+        if (document.getElementById('bounceRate')) {
+            document.getElementById('bounceRate').textContent = metrics.bounceRate + '%';
+        }
+        if (document.getElementById('avgSession')) {
+            document.getElementById('avgSession').textContent = metrics.avgSession;
+        }
+        
+        // Update change indicator
+        const changeElement = document.getElementById('visitsChange');
+        if (changeElement) {
+            changeElement.textContent = (metrics.visitsChange > 0 ? '+' : '') + metrics.visitsChange + '%';
+            changeElement.className = `metric-change ${metrics.visitsChange >= 0 ? 'positive' : 'negative'}`;
+        }
+    }
+
+    createTrafficChart(timeSeriesData) {
+        const ctx = document.getElementById('trafficChart');
+        if (!ctx) return;
+        
+        // Clear loading spinner
+        ctx.innerHTML = '<canvas></canvas>';
+        const canvas = ctx.querySelector('canvas');
+        const chartCtx = canvas.getContext('2d');
+        
+        if (this.charts.traffic) {
+            this.charts.traffic.destroy();
+        }
+        
+        const visits = timeSeriesData.visits || [];
+        const visitors = timeSeriesData.visitors || [];
+        
+        this.charts.traffic = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: visits.map(item => {
+                    try {
+                        return luxon.DateTime.fromISO(item.date).toFormat('MMM dd');
+                    } catch {
+                        return item.date;
+                    }
+                }),
+                datasets: [
+                    {
+                        label: 'Visits',
+                        data: visits.map(item => item.visits || 0),
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Unique Visitors',
+                        data: visitors.map(item => item.visitors || 0),
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { drawBorder: false } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    updateTrafficSources(sources) {
+        const container = document.getElementById('trafficSources');
+        if (!container) return;
+        
+        if (!sources || sources.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-muted">No traffic data available</div>';
+            return;
+        }
+        
+        const totalVisits = sources.reduce((sum, source) => sum + (source.total_visits || source.visits || 0), 0);
+        
+        let html = '';
+        sources.forEach(source => {
+            const visits = source.total_visits || source.visits || 0;
+            const percentage = totalVisits > 0 ? ((visits / totalVisits) * 100).toFixed(1) : 0;
+            const iconClass = `source-${source.source_type || 'direct'}`;
+            const sourceName = this.formatSourceName(source.source_type);
+            
+            html += `
+                <div class="traffic-source-item">
+                    <div class="source-name">
+                        <div class="source-icon ${iconClass}">${sourceName.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <div class="fw-semibold">${sourceName}</div>
+                            <div class="text-muted small">${source.source_name || 'Direct'}</div>
+                        </div>
+                    </div>
+                    <div class="source-stats">
+                        <div class="source-visits">${visits.toLocaleString()}</div>
+                        <div class="source-percentage">${percentage}%</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    createGeoChart(geoData) {
+    const ctx = document.getElementById('geoChart');
+    if (!ctx) return;
+    
+    console.log('📊 Geography data received:', geoData); // ADD THIS DEBUG
+    
+    // Check if data is valid
+    if (!geoData || geoData.length === 0) {
+        ctx.innerHTML = '<div class="text-center py-5 text-muted">No geographic data yet</div>';
+        return;
+    }
+    
+    ctx.innerHTML = '<canvas></canvas>';
+    const canvas = ctx.querySelector('canvas');
+    const chartCtx = canvas.getContext('2d');
+    
+    if (this.charts.geo) {
+        this.charts.geo.destroy();
+    }
+    
+    // Filter out any items with null country
+    const validData = geoData.filter(item => item.country && item.country !== 'None');
+    
+    if (validData.length === 0) {
+        ctx.innerHTML = '<div class="text-center py-5 text-muted">Waiting for visitor location data...</div>';
+        return;
+    }
+    
+    const limitedData = validData.slice(0, 10);
+    
+    console.log('✅ Creating chart with data:', limitedData); // ADD THIS DEBUG
+    
+    this.charts.geo = new Chart(chartCtx, {
+        type: 'bar',
+        data: {
+            labels: limitedData.map(item => item.country),
+            datasets: [{
+                label: 'Visits',
+                data: limitedData.map(item => item.visits || 0),
+                backgroundColor: '#4361ee',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            return `${context.raw} visits`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    beginAtZero: true, 
+                    grid: { drawBorder: false },
+                    title: {
+                        display: true,
+                        text: 'Number of Visits'
+                    }
+                },
+                y: { 
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
+    createDeviceChart(deviceData) {
+        const ctx = document.getElementById('deviceChart');
+        if (!ctx) return;
+        
+        ctx.innerHTML = '<canvas></canvas>';
+        const canvas = ctx.querySelector('canvas');
+        const chartCtx = canvas.getContext('2d');
+        
+        if (this.charts.device) {
+            this.charts.device.destroy();
+        }
+        
+        this.charts.device = new Chart(chartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: (deviceData || []).map(item => this.formatDeviceName(item.device_type)),
+                datasets: [{
+                    data: (deviceData || []).map(item => item.visits || 0),
+                    backgroundColor: ['#4361ee', '#f72585', '#4cc9f0', '#ff6b6b', '#ffd166'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    // Replace the updateTopPages function in your dashboard
+updateTopPages(pages) {
+    const container = document.getElementById('topPages');
+    if (!container) return;
+    
+    if (!pages || pages.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">No page data available</div>';
+        return;
+    }
+    
+    let html = '';
+    pages.forEach((page, index) => {
+        // ✅ FIX: Use display_name from backend, fallback to page_name, then format
+        const pageName = page.display_name || 
+                        page.page_name || 
+                        this.formatPageNameFromReferrer(page.page_url);
+        const visits = page.visits || 0;
+        const uniqueVisitors = page.unique_visitors || 0;
+        
+        html += `
+            <div class="traffic-source-item">
+                <div class="source-name">
+                    <div class="text-muted fw-bold">${index + 1}.</div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold text-truncate" title="${pageName}">${pageName}</div>
+                        <div class="text-muted small">
+                            ${visits.toLocaleString()} visits • ${uniqueVisitors} unique
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Add this helper method to format referrer URLs if needed
+formatPageNameFromReferrer(url) {
+    if (!url) return 'Direct';
+    
+    try {
+        // Parse the URL
+        const urlObj = new URL(url, window.location.origin);
+        const pageParam = urlObj.searchParams.get('page');
+        
+        if (pageParam) {
+            // Capitalize first letter
+            return pageParam.charAt(0).toUpperCase() + pageParam.slice(1);
+        }
+        
+        // Fallback to path
+        const path = urlObj.pathname;
+        if (path === '/' || path === '') return 'Home';
+        
+        return path.split('/').pop().replace(/-/g, ' ') || 'Page';
+    } catch (e) {
+        return 'Page';
+    }
+}
+
+    updateDateRange(period) {
+        const dateRangeElement = document.getElementById('dateRange');
+        if (dateRangeElement && period) {
+            dateRangeElement.textContent = period;
+        }
+    }
+
+    startRealTimeUpdates() {
+        // Update every 30 seconds
+        setInterval(() => {
+            this.updateRealTimeData();
+        }, 30000);
+    }
+
+    async updateRealTimeData() {
+        try {
+            // Try to get real-time data from the same API
+            const response = await fetch(`${this.baseApiUrl}?metric=real-time`);
+            if (response.ok) {
+                const data = await response.json();
+                const activeVisitors = data.active_visitors || data.real_time?.active_visitors || 0;
+                document.getElementById('activeVisitors').textContent = activeVisitors;
+            }
+        } catch (error) {
+            console.log('Real-time update failed:', error.message);
+        }
+    }
+
+    reloadAllData() {
+        this.loadAllData();
+    }
+
+    showFallbackData() {
+        // Show placeholder data when API fails
+        const metrics = {
+            'totalVisits': 0,
+            'uniqueVisitors': 0,
+            'bounceRate': 0,
+            'avgSession': '0s',
+            'visitsChange': 0
+        };
+        
+        this.updateOverviewMetrics(metrics);
+        
+        // Show error messages in chart containers
+        const containers = ['trafficSources', 'topPages'];
+        containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = '<div class="text-center py-4 text-muted">Data temporarily unavailable</div>';
+            }
+        });
+    }
+
+    formatSourceName(sourceType) {
+        const names = {
+            'direct': 'Direct', 'organic': 'Organic', 'social': 'Social',
+            'referral': 'Referral', 'email': 'Email', 'paid': 'Paid'
+        };
+        return names[sourceType] || sourceType || 'Direct';
+    }
+
+    formatDeviceName(deviceType) {
+        const names = {
+            'desktop': 'Desktop', 'mobile': 'Mobile', 'tablet': 'Tablet'
+        };
+        return names[deviceType] || deviceType || 'Unknown';
+    }
+
+    formatPageName(pageUrl) {
+        if (!pageUrl) return 'Unknown Page';
+        if (pageUrl === '/') return 'Home';
+        return pageUrl.split('/').pop().replace(/-/g, ' ').replace(/\?.*$/, '') || 'Page';
+    }
+
+    async exportData() {
+        try {
+            const response = await fetch(`${this.baseApiUrl}?export=csv`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `analytics-${this.subdomain}-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                this.createBasicExport();
+            }
+        } catch (error) {
+            this.createBasicExport();
+        }
+    }
+
+    createBasicExport() {
+        const overviewData = {
+            'Total Visits': document.getElementById('totalVisits')?.textContent || '0',
+            'Unique Visitors': document.getElementById('uniqueVisitors')?.textContent || '0',
+            'Bounce Rate': document.getElementById('bounceRate')?.textContent || '0%',
+            'Average Session Duration': document.getElementById('avgSession')?.textContent || '0s'
+        };
+        
+        let csvContent = "Analytics Data\\n\\n";
+        csvContent += "Metric,Value\\n";
+        Object.entries(overviewData).forEach(([metric, value]) => {
+            csvContent += `${metric},${value}\\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `analytics-${this.subdomain}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    showError(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alert.innerHTML = `
+            <strong>Error:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    window.analyticsDashboard = new AnalyticsDashboard();
+});
+</script>
+{% endblock %}

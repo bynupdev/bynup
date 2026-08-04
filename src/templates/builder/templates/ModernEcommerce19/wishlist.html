@@ -1,0 +1,317 @@
+<!-- builder/templates/ModernToyShop19/wishlist.html -->
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wishlist | Nook & Nest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --background: #5c8b39;
+            --text: #c07436;
+            --heading: #bf7f4a;
+            --primary: #636a2f;
+            --secondary: #212615;
+            --accent: #fefaf5;
+            --card-shadow: 0 12px 28px -8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02);
+            --hover-shadow: 0 20px 32px -12px rgba(33,38,21,0.12);
+            --border-radius-card: 28px;
+            --border-radius-element: 40px;
+            --transition-smooth: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+        }
+        main { background-color: var(--accent); font-family: 'Inter', sans-serif; color: var(--secondary); line-height: 1.4; overflow-x: hidden; }
+        h1, h2, h3 { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .page-header { text-align: center; padding: 2rem 0 3rem; margin-bottom: 1rem; }
+        .page-header h1 { font-size: 3rem; font-weight: 600; color: var(--secondary); margin-bottom: 1rem; position: relative; display: inline-block; }
+        .page-header h1::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 80px; height: 3px; background: linear-gradient(90deg, var(--text), var(--heading)); border-radius: 2px; }
+        .page-header p { font-size: 1.1rem; color: var(--secondary); opacity: 0.7; max-width: 600px; margin: 1.5rem auto 0; line-height: 1.6; }
+        .wishlist-stats { background: white; border-radius: var(--border-radius-card); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--card-shadow); }
+        .stats-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1.5rem; }
+        .stat-item { text-align: center; flex: 1; min-width: 120px; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--secondary); opacity: 0.6; }
+        .wishlist-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .filter-buttons { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .filter-btn { padding: 0.6rem 1.2rem; background: white; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; font-weight: 500; }
+        .filter-btn:hover, .filter-btn.active { background: var(--text); color: white; border-color: var(--text); }
+        .clear-wishlist-btn { padding: 0.6rem 1.2rem; background: transparent; border: 1px solid rgba(99,106,47,0.3); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+        .clear-wishlist-btn:hover { border-color: var(--text); color: var(--text); transform: translateY(-2px); }
+        .wishlist-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-bottom: 4rem; }
+        .wishlist-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); position: relative; }
+        .wishlist-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .wishlist-image-container { position: relative; overflow: hidden; aspect-ratio: 1 / 1; }
+        .wishlist-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .wishlist-card:hover .wishlist-img { transform: scale(1.05); }
+        .wishlist-badge { position: absolute; top: 1rem; left: 1rem; background: var(--text); color: white; padding: 0.3rem 0.8rem; border-radius: 40px; font-size: 0.7rem; font-weight: 600; z-index: 2; }
+        .wishlist-badge.sale { background: var(--background); }
+        .remove-wishlist-btn { position: absolute; top: 1rem; right: 1rem; background: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; color: var(--secondary); opacity: 0; z-index: 3; }
+        .wishlist-card:hover .remove-wishlist-btn { opacity: 1; }
+        .remove-wishlist-btn:hover { background: var(--text); color: white; transform: scale(1.1); }
+        .wishlist-info { padding: 1.2rem; }
+        .wishlist-category { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 0.5rem; }
+        .wishlist-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem; line-height: 1.3; }
+        .wishlist-price { font-weight: 600; color: var(--text); font-size: 1rem; margin-bottom: 1rem; }
+        .wishlist-price .original-price { text-decoration: line-through; color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem; font-weight: normal; }
+        .wishlist-actions-bottom { display: flex; gap: 0.8rem; }
+        .add-to-cart-wishlist { flex: 1; padding: 0.6rem; background: var(--text); color: white; border: none; border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .add-to-cart-wishlist:hover { background: var(--heading); transform: translateY(-2px); }
+        .view-details-btn { width: 38px; background: white; border: 1px solid rgba(99,106,47,0.2); border-radius: 40px; cursor: pointer; transition: var(--transition-smooth); display: flex; align-items: center; justify-content: center; }
+        .view-details-btn:hover { border-color: var(--text); color: var(--text); transform: translateY(-2px); }
+        .empty-wishlist { text-align: center; padding: 4rem; background: white; border-radius: var(--border-radius-card); margin-bottom: 2rem; grid-column: 1 / -1; }
+        .empty-wishlist-icon { font-size: 4rem; color: var(--heading); margin-bottom: 1rem; }
+        .empty-wishlist h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+        .empty-wishlist p { color: var(--secondary); opacity: 0.6; margin-bottom: 2rem; }
+        .shop-now-btn { display: inline-block; padding: 1rem 2rem; background: var(--text); color: white; text-decoration: none; border-radius: 40px; font-weight: 600; transition: var(--transition-smooth); }
+        .recently-viewed { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(99,106,47,0.15); }
+        .recently-viewed h2 { font-size: 1.8rem; text-align: center; margin-bottom: 2rem; color: var(--secondary); }
+        .recently-viewed-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; }
+        .recent-product-card { background: white; border-radius: var(--border-radius-card); overflow: hidden; transition: var(--transition-smooth); box-shadow: var(--card-shadow); text-decoration: none; color: inherit; display: block; }
+        .recent-product-card:hover { transform: translateY(-8px); box-shadow: var(--hover-shadow); }
+        .recent-product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+        .recent-product-info { padding: 1rem; }
+        .recent-product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .recent-product-price { color: var(--text); font-weight: 500; font-size: 0.9rem; }
+        @media (max-width: 1200px) { .wishlist-grid, .recently-viewed-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 992px) { .wishlist-grid, .recently-viewed-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {  .container { padding: 0 1.5rem; } .wishlist-grid, .recently-viewed-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } .wishlist-actions { flex-direction: column; align-items: stretch; } .filter-buttons { justify-content: center; } .stats-container { flex-direction: column; align-items: center; } .remove-wishlist-btn { opacity: 1; } .page-header h1 { font-size: 2rem; } }
+        @media (max-width: 576px) { .wishlist-actions-bottom { flex-direction: column; } .add-to-cart-wishlist { width: 100%; } .view-details-btn { width: 100%; padding: 0.6rem; } }
+    </style>
+</head>
+<body>
+
+<main>
+    <div class="container">
+    <!-- Page Header - EDITABLE -->
+    <div class="page-header editable-section" data-section="290">
+        <h1 class="editable-text editable-section no-drop-zone" data-section="291" data-text="181">My Wishlist</h1>
+        <p class="editable-text editable-section no-drop-zone" data-section="292" data-text="182">Save your favorite toys and come back to them whenever you're ready to play.</p>
+    </div>
+
+    <!-- Wishlist Stats - EDITABLE -->
+    <div class="wishlist-stats editable-section" data-section="293">
+        <div class="stats-container editable-section no-drop-zone" data-section="294">
+            <div class="stat-item editable-section no-drop-zone" data-section="295">
+                <div class="stat-value editable-text editable-section no-drop-zone" data-section="296" data-text="183" id="items-count">4</div>
+                <div class="stat-label editable-text editable-section no-drop-zone" data-section="297" data-text="184">Items Saved</div>
+            </div>
+            <div class="stat-item editable-section no-drop-zone" data-section="298">
+                <div class="stat-value editable-text editable-section no-drop-zone" data-section="299" data-text="185" id="sale-count">1</div>
+                <div class="stat-label editable-text editable-section no-drop-zone" data-section="300" data-text="186">On Sale</div>
+            </div>
+            <div class="stat-item editable-section no-drop-zone" data-section="301">
+                <div class="stat-value editable-text editable-section no-drop-zone" data-section="302" data-text="187" id="total-value">$147.50</div>
+                <div class="stat-label editable-text editable-section no-drop-zone" data-section="303" data-text="188">Total Value</div>
+            </div>
+            <div class="stat-item editable-section no-drop-zone" data-section="304">
+                <div class="stat-value editable-text editable-section no-drop-zone" data-section="305" data-text="189" id="low-stock-count">0</div>
+                <div class="stat-label editable-text editable-section no-drop-zone" data-section="306" data-text="190">Low in Stock</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wishlist Actions - EDITABLE -->
+    <div class="wishlist-actions editable-section no-drop-zone" data-section="307">
+        <div class="filter-buttons editable-section no-drop-zone" data-section="308">
+            <button class="filter-btn active editable-text editable-section no-drop-zone" data-section="309" data-text="191" data-filter="all">All Items</button>
+            <button class="filter-btn editable-text editable-section no-drop-zone" data-section="310" data-text="192" data-filter="sale">On Sale</button>
+            <button class="filter-btn editable-text editable-section no-drop-zone" data-section="311" data-text="193" data-filter="in-stock">In Stock</button>
+            <button class="filter-btn editable-text editable-section no-drop-zone" data-section="312" data-text="194" data-filter="new">New Arrivals</button>
+        </div>
+        <button class="clear-wishlist-btn editable-text editable-section no-drop-zone" data-section="313" data-text="195" id="clear-wishlist-btn">
+            <i class="fas fa-trash-alt editable-icon" data-icon="16"></i> Clear All
+        </button>
+    </div>
+
+    <!-- Wishlist Grid - FIRST ITEM EDITABLE -->
+    <div class="wishlist-grid" id="wishlist-grid">
+        <!-- Wishlist Item 1 - EDITABLE -->
+        <div class="wishlist-card editable-section no-drop-zone" data-section="314" data-category="wooden" data-stock="in-stock" data-badge="new">
+            <div class="wishlist-image-container editable-section no-drop-zone" data-section="315">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="wishlist-img editable-image" data-image="41">
+                <div class="wishlist-badge new editable-text editable-section no-drop-zone" data-section="316" data-text="196">NEW</div>
+                <button class="remove-wishlist-btn editable-icon" data-icon="5"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="wishlist-info editable-section no-drop-zone" data-section="317">
+                <div class="wishlist-category editable-text editable-section no-drop-zone" data-section="318" data-text="197">WOODEN TOYS</div>
+                <div class="wishlist-name editable-text editable-section no-drop-zone" data-section="319" data-text="198">Wooden Building Blocks</div>
+                <div class="wishlist-price editable-text editable-section no-drop-zone" data-section="320" data-text="199">$48.00</div>
+                <div class="wishlist-actions-bottom editable-section no-drop-zone" data-section="321">
+                    <button class="add-to-cart-wishlist editable-text editable-section no-drop-zone" data-section="322" data-text="200"><i class="fas fa-shopping-bag editable-icon" data-icon="2"></i> Add to Cart</button>
+                    <button class="view-details-btn editable-icon" data-icon="21"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 2 - Sample -->
+        <div class="wishlist-card" data-category="plush" data-stock="in-stock" data-badge="">
+            <div class="wishlist-image-container">
+                <img src="{%static 'images/Ecom19/prod7.jpg'%}" class="wishlist-img">
+                <button class="remove-wishlist-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">PLUSH TOYS</div>
+                <div class="wishlist-name">Plush Teddy Bear</div>
+                <div class="wishlist-price">$32.00</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist"><i class="fas fa-shopping-bag"></i> Add to Cart</button>
+                    <button class="view-details-btn"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 3 - Sample -->
+        <div class="wishlist-card" data-category="puzzles" data-stock="in-stock" data-badge="sale">
+            <div class="wishlist-image-container">
+                <img src="{%static 'images/Ecom19/prod3.jpg'%}" class="wishlist-img">
+                <div class="wishlist-badge sale">SALE</div>
+                <button class="remove-wishlist-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">PUZZLES</div>
+                <div class="wishlist-name">Educational Puzzle Set</div>
+                <div class="wishlist-price">$27.50 <span class="original-price">$35.00</span></div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist"><i class="fas fa-shopping-bag"></i> Add to Cart</button>
+                    <button class="view-details-btn"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wishlist Item 4 - Sample -->
+        <div class="wishlist-card" data-category="activity" data-stock="low-stock" data-badge="">
+            <div class="wishlist-image-container">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" class="wishlist-img">
+                <div class="wishlist-badge" style="background: #FF9800;">LOW STOCK</div>
+                <button class="remove-wishlist-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="wishlist-info">
+                <div class="wishlist-category">ACTIVITY KITS</div>
+                <div class="wishlist-name">Kids Activity Kit</div>
+                <div class="wishlist-price">$39.00</div>
+                <div class="wishlist-actions-bottom">
+                    <button class="add-to-cart-wishlist"><i class="fas fa-shopping-bag"></i> Add to Cart</button>
+                    <button class="view-details-btn"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty Wishlist State - EDITABLE -->
+    <div class="empty-wishlist editable-section no-drop-zone" data-section="323" style="display: none;">
+        <div class="empty-wishlist-icon editable-icon" data-icon="3"><i class="far fa-heart"></i></div>
+        <h2 class="editable-text editable-section no-drop-zone" data-section="324" data-text="201">Your Wishlist is Empty</h2>
+        <p class="editable-text editable-section no-drop-zone" data-section="325" data-text="202">Save items you love by clicking the heart icon. Come back here to view them all.</p>
+        <a href="?page=products" class="shop-now-btn editable-text editable-section no-drop-zone" data-section="326" data-text="203">Start Shopping</a>
+    </div>
+
+    <!-- Recently Viewed Section - EDITABLE -->
+    <div class="recently-viewed editable-section" data-section="327">
+        <h2 class="editable-text editable-section no-drop-zone" data-section="328" data-text="204">Recently Viewed</h2>
+        <div class="recently-viewed-grid">
+            <div class="recent-product-card editable-section no-drop-zone" data-section="329">
+                <img src="{%static 'images/Ecom19/prod2.jpg'%}" class="recent-product-img editable-image" data-image="42">
+                <div class="recent-product-info editable-section no-drop-zone" data-section="330">
+                    <div class="recent-product-name editable-text editable-section no-drop-zone" data-section="331" data-text="205">Montessori Wooden Toy Set</div>
+                    <div class="recent-product-price editable-text editable-section no-drop-zone" data-section="332" data-text="206">$52.00</div>
+                </div>
+            </div>
+            <div class="recent-product-card">
+                <img src="{%static 'images/Ecom19/prod8.jpg'%}" class="recent-product-img">
+                <div class="recent-product-info">
+                    <div class="recent-product-name">Kids Activity Kit</div>
+                    <div class="recent-product-price">$39.00</div>
+                </div>
+            </div>
+            <div class="recent-product-card">
+                <img src="{%static 'images/Ecom19/prod6.jpg'%}" class="recent-product-img">
+                <div class="recent-product-info">
+                    <div class="recent-product-name">Premium Art Supplies Set</div>
+                    <div class="recent-product-price">$24.99</div>
+                </div>
+            </div>
+            <div class="recent-product-card">
+                <img src="{%static 'images/Ecom19/prod3.jpg'%}" class="recent-product-img">
+                <div class="recent-product-info">
+                    <div class="recent-product-name">Wooden Puzzle Collection</div>
+                    <div class="recent-product-price">$34.50</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function updateWishlistStats() {
+            const cards = document.querySelectorAll('.wishlist-card');
+            let saleCount = 0, totalValue = 0, lowStockCount = 0;
+            cards.forEach(card => {
+                if (card.getAttribute('data-badge') === 'sale') saleCount++;
+                if (card.getAttribute('data-stock') === 'low-stock') lowStockCount++;
+                const price = parseFloat(card.querySelector('.wishlist-price')?.textContent.replace('$', '')) || 0;
+                totalValue += price;
+            });
+            document.getElementById('items-count').textContent = cards.length;
+            document.getElementById('sale-count').textContent = saleCount;
+            document.getElementById('total-value').textContent = `$${totalValue.toFixed(2)}`;
+            document.getElementById('low-stock-count').textContent = lowStockCount;
+        }
+        
+        function filterWishlistItems(filter) {
+            const cards = document.querySelectorAll('.wishlist-card');
+            let visible = 0;
+            cards.forEach(card => {
+                let show = true;
+                if (filter === 'sale') show = card.getAttribute('data-badge') === 'sale';
+                else if (filter === 'in-stock') show = card.getAttribute('data-stock') === 'in-stock';
+                else if (filter === 'new') show = card.getAttribute('data-badge') === 'new';
+                card.style.display = show ? 'block' : 'none';
+                if (show) visible++;
+            });
+            const emptyDiv = document.querySelector('.empty-wishlist');
+            if (visible === 0 && cards.length > 0 && emptyDiv) emptyDiv.style.display = 'block';
+            else if (emptyDiv) emptyDiv.style.display = 'none';
+        }
+        
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                filterWishlistItems(this.getAttribute('data-filter'));
+            });
+        });
+        
+        document.querySelectorAll('.remove-wishlist-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.closest('.wishlist-card').remove();
+                updateWishlistStats();
+                if (document.querySelectorAll('.wishlist-card').length === 0) {
+                    document.querySelector('.empty-wishlist').style.display = 'block';
+                    document.querySelector('.wishlist-grid').style.display = 'none';
+                }
+            });
+        });
+        
+        document.getElementById('clear-wishlist-btn')?.addEventListener('click', function() {
+            if (confirm('Clear entire wishlist?')) {
+                document.querySelectorAll('.wishlist-card').forEach(c => c.remove());
+                updateWishlistStats();
+                document.querySelector('.empty-wishlist').style.display = 'block';
+                document.querySelector('.wishlist-grid').style.display = 'none';
+            }
+        });
+        
+        updateWishlistStats();
+    });
+</script>
+</body>
+</html>

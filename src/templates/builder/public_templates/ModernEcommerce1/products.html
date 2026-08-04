@@ -1,0 +1,208 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - {{ page.brand_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .product-card { transition: all 0.3s ease; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+.universal-buy-now-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--nav-text, white);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.universal-buy-now-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="?page=home">{{ page.brand_name }}</a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="?page=home">Home</a>
+                    <a class="nav-link active" href="?page=products">Products</a>
+                    <a class="nav-link" href="?page=cart">Cart</a>
+                    <a class="nav-link" href="?page=wishlist">Wishlist</a>
+                </div>
+            </div>
+        </nav>
+
+
+        <ul class="navbar-nav ms-auto">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'payments:customer_order_history' page.subdomain %}">
+            <i class="fas fa-history me-1"></i> My Orders
+        </a>
+    </li>
+    
+</ul>
+
+
+        <h1 class="text-center mb-5">Our Products</h1>
+
+        <div class="row" id="products-grid">
+            {% for product in products %}
+            <!-- <a href="/product/{{ product.slug }}/" class="product-image-link"> -->
+            <div class="col-md-4 mb-4">
+                <div class="card product-card h-100"
+                    
+             data-product-id="{{ product.id }}"
+             data-product-title="{{ product.title }}"
+             data-product-price="{{ product.price }}"
+             data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}"
+                >
+
+                
+                    {% if product.main_image %}
+                    <img src="{{ product.main_image.url }}" class="card-img-top" alt="{{ product.title }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="fas fa-image fa-3x text-muted"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body d-flex flex-column">
+                        <a href="/product/{{ product.slug }}/" class="product-image-link">
+                            <h5 class="card-title">{{ product.title }}</h5>
+                        </a>
+                         <!-- Product Rating -->
+                        <div class="product-rating mb-2">
+                            <div class="star-rating-display" 
+                                data-rating="{{ product.get_average_rating }}" 
+                                data-review-count="{{ product.get_review_count }}">
+                            </div>
+                        </div>
+                        <p class="card-text text-muted flex-grow-1">{{ product.description|truncatewords:20 }}</p>
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="h4 text-primary">{{ product.price|currency:page }}</span>
+                                <div>
+                                    <!-- Add to Wishlist Button -->
+                                    {% if product in wishlist.items.all %}
+                                    <button class="btn btn-outline-danger btn-sm me-2"
+                                            data-remove-from-wishlist="{{ product.id }}"
+                                            title="Remove from wishlist">
+                                        <i class="fas fa-heart"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-outline-danger btn-sm me-2"
+                                            data-add-to-wishlist="{{ product.id }}"
+                                            title="Add to wishlist">
+                                        <i class="far fa-heart"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                       <!-- Add to Cart Button -->
+<button style="color: red;" class="btn btn-primary " data-add-to-cart="{{ product.id }}">
+    Add to Cart
+</button> 
+                            <button class="universal-buy-now-btn" 
+                                    data-product-id="{{ product.id }}"
+                                    data-product-title="{{ product.title }}"
+                                    data-product-price="{{ product.price }}"
+                                    data-product-description="{{ product.description }}"
+                                    onclick="redirectToPaymentSelection(this)">
+                                <i class="fas fa-bolt"></i>
+                                Buy Now - {{ product.price|currency:page }}
+                            </button>               
+                
+                            <!-- Full Add to Cart Form -->
+                             <input type="hidden" value="1" id="product-id" class="product-quantity-{{product.id}}">
+                              <input type="text" class="product-market_type-{{product.id}}" value="shop">
+                             <input type="hidden" class="product-id-{{product.id}}" value="{{product.id}}">
+                            <input type="hidden" class="product-title-{{product.id}}" value="{{product.title}}">
+                             <input type="hidden" class="current-product-price-{{product.id}}" value="{{product.price}}">
+                            <button class="add-to-cart-btn" data-index="{{product.id}}">Add to Cart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">No Products Available</h3>
+                <p class="text-muted">Check back later for new products!</p>
+            </div>
+            <!-- </a> -->
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <!-- CSRF Token for AJAX -->
+    <meta name="csrf-token" content="{{ csrf_token }}">z
+
+
+
+
+
+
+
+
+
+
+    <!-- <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script> -->
+
+
+
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script> -->
+    <!-- <script src="/static/js/ecommerce.js"></script> -->
+     <script src="https://js.stripe.com/v3/"></script>
+    {%csrf_token%}
+
+    <script>
+function redirectToPaymentSelection(button) {
+    const productData = {
+        id: button.dataset.productId,
+        title: button.dataset.productTitle,
+        price: parseFloat(button.dataset.productPrice),
+        description: button.dataset.productDescription,
+        quantity: 1
+    };
+    
+    // Get current page subdomain
+    const hostname = window.location.hostname;
+    const subdomain = hostname.includes('localhost') ? 'jtest' : hostname.split('.')[0];
+    
+    // Redirect to payment selection page with product data
+    const params = new URLSearchParams({
+        type: 'instant',
+        product: JSON.stringify(productData)
+    });
+    
+    window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+}
+</script>
+</body>
+</html>

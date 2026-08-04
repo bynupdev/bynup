@@ -1,0 +1,487 @@
+{% extends 'payments/base_payments.html' %}
+{% load payment_tags %}
+{% block title %}Orders - {{ page.brand_name }}{% endblock %}
+
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% block extra_css %}
+<style>
+.order-row {
+    transition: all 0.3s ease;
+}
+.order-row:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+}
+.filter-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+.order-actions {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.order-row:hover .order-actions {
+    opacity: 1;
+}
+.export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}
+
+{% block payment_content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-primary">
+                <i class="fas fa-shopping-cart me-2"></i>Orders
+            </h1>
+            <p class="text-muted">Manage orders for {{ page.brand_name }}</p>
+        </div>
+        <a href="{% url 'payments:order_dashboard' page.subdomain %}" class="btn btn-outline-primary">
+            <i class="fas fa-chart-line me-2"></i>Dashboard
+        </a>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1">Order Summary</h5>
+                            <p class="text-muted mb-0">{{ total_orders }} total orders</p>
+                        </div>
+                        <div class="text-end">
+                            <h4 class="text-success mb-0">{{ total_revenue|currency:page }}</h4>
+                            <small class="text-muted">Total Revenue</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for status, display in status_choices %}
+                        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                            {{ display }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_status" class="form-label">Payment Status</label>
+                    <select name="payment_status" id="payment_status" class="form-select">
+                        <option value="">All Payment Statuses</option>
+                        {% for status, display in payment_status_choices %}
+                        <option value="{{ status }}" {% if payment_status_filter == status %}selected{% endif %}>
+                            {{ display }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" name="date_from" id="date_from" 
+                           class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" name="date_to" id="date_to" 
+                           class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="q" class="form-label">Search</label>
+                    <input type="text" name="q" id="q" class="form-control" 
+                           placeholder="Search by order #, customer name, email, or phone"
+                           value="{{ search_query }}">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-2"></i>Apply Filters
+                        </button>
+                        <a href="{% url 'payments:order_list' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Order List</h5>
+            <div class="d-flex gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                            data-bs-toggle="dropdown">
+                        <i class="fas fa-download me-2"></i>Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'payments:export_orders' page.subdomain %}">
+                                Export All to CSV
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'payments:export_orders' page.subdomain %}?status={{ status_filter }}">
+                                Export Filtered to CSV
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Items</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr class="order-row">
+                            <td>
+                                <strong>{{ order.order_number }}</strong><br>
+                                <small class="text-muted">{{ order.get_payment_method_display }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <strong>{{ order.customer_name }}</strong>
+                                    <small class="text-muted">{{ order.customer_email }}</small>
+                                    {% if order.customer_phone %}
+                                    <small class="text-muted">{{ order.customer_phone }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {{ order.created_at|date:"M d, Y" }}<br>
+                                <small>{{ order.created_at|time:"g:i A" }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ order.total_amount|currency:page }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge status-badge bg-{{ order.get_status_display_class }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge status-badge bg-{{ order.get_payment_status_display_class }}">
+                                    {{ order.get_payment_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ order.items.count }} items<br>
+                                <small>{{ order.get_items_total_quantity }} total qty</small>
+                            </td>
+                            <td>
+                                <div class="order-actions d-flex gap-1">
+                                    <a href="{% url 'payments:order_detail' page.subdomain order.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if order.can_cancel %}
+                                    <button class="btn btn-sm btn-outline-danger cancel-order-btn" 
+                                            data-order-id="{{ order.id }}" title="Cancel">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if order.can_refund %}
+                                    <button class="btn btn-sm btn-outline-warning refund-order-btn" 
+                                            data-order-id="{{ order.id }}" title="Refund">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if orders.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if orders.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ orders.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in orders.paginator.page_range %}
+                        {% if orders.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > orders.number|add:'-3' and num < orders.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if orders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ orders.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No orders found</h5>
+                <p class="text-muted">
+                    {% if status_filter or payment_status_filter or date_from or date_to or search_query %}
+                    Try adjusting your filters
+                    {% else %}
+                    Start by making your first sale!
+                    {% endif %}
+                </p>
+                <a href="{{ page.get_domain_url }}" target="_blank" class="btn btn-primary mt-2">
+                    <i class="fas fa-external-link-alt me-2"></i>Visit Store
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Distribution -->
+    {% if status_counts %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Order Status Distribution</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for status in status_counts %}
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <span class="badge status-badge bg-{{ status.status|status_class }}">
+                                {{ status.status|title }}
+                            </span>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-0">{{ status.count }}</h6>
+                            <small class="text-muted">orders</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Floating Export Button -->
+<a href="{% url 'payments:export_orders' page.subdomain %}?{% for key,value in request.GET.items %}{{ key }}={{ value }}&{% endfor %}" 
+   class="btn btn-primary export-btn rounded-pill shadow-lg">
+    <i class="fas fa-download me-2"></i>Export CSV
+</a>
+
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Cancel Order</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this order?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This action cannot be undone. The customer will be notified.
+                </div>
+                <div class="mb-3">
+                    <label for="cancelReason" class="form-label">Reason for cancellation</label>
+                    <textarea class="form-control" id="cancelReason" rows="3" 
+                              placeholder="Optional: Provide a reason for cancellation"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">Cancel Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Order Modal -->
+<div class="modal fade" id="refundOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Refund Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Process refund for this order?</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This will initiate a refund through the original payment method.
+                </div>
+                <div class="mb-3">
+                    <label for="refundAmount" class="form-label">Refund Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">{{page.currency_symbol}}</span>
+                        <input type="number" class="form-control" id="refundAmount" 
+                               min="0" step="0.01" value="0.00">
+                    </div>
+                    <div class="form-text">
+                        Full amount: {{page.currency_symbol}}<span id="fullAmount">0.00</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="refundReason" class="form-label">Reason for refund</label>
+                    <textarea class="form-control" id="refundReason" rows="3" 
+                              placeholder="Optional: Provide a reason for refund"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="confirmRefund">Process Refund</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentOrderId = null;
+    const csrfToken = getCSRFToken();
+    
+    // Cancel order buttons
+    document.querySelectorAll('.cancel-order-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentOrderId = this.dataset.orderId;
+            new bootstrap.Modal(document.getElementById('cancelOrderModal')).show();
+        });
+    });
+    
+    // Refund order buttons
+    document.querySelectorAll('.refund-order-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentOrderId = this.dataset.orderId;
+            // TODO: Fetch order amount and set in modal
+            new bootstrap.Modal(document.getElementById('refundOrderModal')).show();
+        });
+    });
+    
+    // Confirm cancellation
+    document.getElementById('confirmCancel').addEventListener('click', async function() {
+        const reason = document.getElementById('cancelReason').value;
+        
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Cancelling...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch(`/payments/api/orders/${currentOrderId}/cancel/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ reason: reason })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Reload page to see updated status
+                window.location.reload();
+            } else {
+                throw new Error(data.error || 'Cancellation failed');
+            }
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+            this.innerHTML = 'Cancel Order';
+            this.disabled = false;
+        }
+    });
+    
+    // Date range picker enhancement
+    const dateFrom = document.getElementById('date_from');
+    const dateTo = document.getElementById('date_to');
+    
+    if (dateFrom && dateTo) {
+        dateFrom.max = dateTo.value || new Date().toISOString().split('T')[0];
+        dateTo.min = dateFrom.value || '';
+        
+        dateFrom.addEventListener('change', function() {
+            dateTo.min = this.value;
+        });
+        
+        dateTo.addEventListener('change', function() {
+            dateFrom.max = this.value;
+        });
+    }
+    
+    // Quick status filter
+    document.querySelectorAll('.status-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const status = this.dataset.status;
+            document.getElementById('status').value = status;
+            document.querySelector('form').submit();
+        });
+    });
+    
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+});
+</script>
+{% endblock %}

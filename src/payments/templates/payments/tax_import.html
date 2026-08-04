@@ -1,0 +1,447 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Import Tax Rates - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .import-header {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(243, 156, 18, 0.2);
+    }
+
+    .import-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid #eef2f6;
+    }
+
+    .upload-area {
+        border: 3px dashed #cbd5e1;
+        border-radius: 20px;
+        padding: 3rem;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+    }
+
+    .upload-area:hover {
+        border-color: #f39c12;
+        background: #fff5e6;
+    }
+
+    .upload-area i {
+        font-size: 4rem;
+        color: #f39c12;
+        margin-bottom: 1rem;
+    }
+
+    .upload-area h4 {
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+
+    .upload-area p {
+        color: #64748b;
+        margin-bottom: 1rem;
+    }
+
+    .file-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 1rem;
+        display: none;
+    }
+
+    .file-info.active {
+        display: block;
+    }
+
+    .csv-preview {
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 1rem;
+        color: #e2e8f0;
+        font-family: monospace;
+        margin: 1rem 0;
+        overflow-x: auto;
+    }
+
+    .csv-preview pre {
+        color: #a5f3fc;
+        margin: 0;
+    }
+
+    .requirements-list {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .requirements-list h6 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+
+    .requirements-list ul {
+        padding-left: 1.2rem;
+        margin-bottom: 0;
+    }
+
+    .requirements-list li {
+        color: #475569;
+        margin-bottom: 0.5rem;
+    }
+
+    .requirements-list i {
+        color: #10b981;
+        margin-right: 0.5rem;
+    }
+
+    .btn-import {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .btn-import:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-import:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .sample-csv {
+        background: #f1f5f9;
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: 0.9rem;
+        font-family: monospace;
+        white-space: pre;
+        overflow-x: auto;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+        display: none;
+    }
+
+    .progress-bar.active {
+        display: block;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #f39c12, #e67e22);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="import-container">
+        <!-- Header -->
+        <div class="import-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-2">Import Tax Rates</h1>
+                <p class="mb-0 opacity-75">Bulk import tax rates from CSV file</p>
+            </div>
+            <a href="{% url 'payments:tax_rates_list' page.subdomain %}" class="btn btn-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Rates
+            </a>
+        </div>
+
+        <!-- Import Card -->
+        <div class="import-card">
+            <form method="post" enctype="multipart/form-data" id="importForm">
+                {% csrf_token %}
+                
+                <!-- File Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h4>Drag & Drop CSV File</h4>
+                    <p>or click to browse</p>
+                    <input type="file" name="csv_file" id="csvFile" 
+                           accept=".csv, text/csv" style="display: none;">
+                    <button type="button" class="btn btn-outline-warning" id="browseBtn">
+                        Browse Files
+                    </button>
+                </div>
+
+                <!-- File Info -->
+                <div class="file-info" id="fileInfo">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-file-csv fa-2x text-warning me-3"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1" id="fileName">filename.csv</h6>
+                            <small class="text-muted" id="fileSize">0 KB</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="removeFile">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <!-- CSV Preview -->
+                <div class="csv-preview" id="csvPreview" style="display: none;">
+                    <pre id="previewContent">Loading preview...</pre>
+                </div>
+
+                <!-- Requirements -->
+                <div class="requirements-list">
+                    <h6><i class="fas fa-clipboard-list me-2"></i>CSV Requirements</h6>
+                    <ul>
+                        <li><i class="fas fa-check-circle"></i> First row must contain column headers</li>
+                        <li><i class="fas fa-check-circle"></i> Required columns: Tax Class, Rate Name, Rate %</li>
+                        <li><i class="fas fa-check-circle"></i> Optional columns: Country, State, City, Postal Code, Priority</li>
+                        <li><i class="fas fa-check-circle"></i> Rate % must be a number between 0 and 100</li>
+                        <li><i class="fas fa-check-circle"></i> Max file size: 5MB</li>
+                    </ul>
+                </div>
+
+                <!-- Sample CSV -->
+                <div class="mb-4">
+                    <h6 class="mb-2"><i class="fas fa-code me-2"></i>Sample CSV Format</h6>
+                    <div class="sample-csv">
+                        Tax Class,Rate Name,Rate %,Country,State,Priority,Active
+                        Standard,CA Sales Tax,8.25,US,CA,0,Yes
+                        Standard,NY Sales Tax,8.875,US,NY,0,Yes
+                        VAT,UK VAT,20.00,GB,,0,Yes
+                        Reduced,Food Items,5.00,US,,1,Yes
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <a href="{% url 'payments:export_tax_rates' page.subdomain %}" class="text-warning">
+                            <i class="fas fa-download me-1"></i>Download current rates as template
+                        </a>
+                    </small>
+                </div>
+
+                <!-- Import Options -->
+                <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Import Options</h6>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="update_existing" 
+                               id="updateExisting" checked>
+                        <label class="form-check-label" for="updateExisting">
+                            Update existing rates (match by name and jurisdiction)
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="skip_errors" 
+                               id="skipErrors">
+                        <label class="form-check-label" for="skipErrors">
+                            Skip rows with errors (otherwise stop on first error)
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="dry_run" 
+                               id="dryRun">
+                        <label class="form-check-label" for="dryRun">
+                            Dry run - validate only, don't import
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Import Button -->
+                <button type="submit" class="btn-import" id="importBtn" disabled>
+                    <i class="fas fa-upload me-2"></i>
+                    Import Tax Rates
+                </button>
+            </form>
+        </div>
+
+        <!-- Help Card -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-question-circle text-warning me-2"></i>
+                    Need Help?
+                </h6>
+                <p class="card-text small text-muted">
+                    The CSV file should contain tax rates in the format shown above. 
+                    Make sure to use the correct country codes (US, CA, GB, etc.) and 
+                    state codes (CA, NY, TX, etc.) where applicable.
+                </p>
+                <p class="card-text small text-muted mb-0">
+                    For postal code matching, you can use regex patterns or exact matches. 
+                    Contact support if you need help with complex tax rules.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const csvFile = document.getElementById('csvFile');
+    const browseBtn = document.getElementById('browseBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFile = document.getElementById('removeFile');
+    const importBtn = document.getElementById('importBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const csvPreview = document.getElementById('csvPreview');
+    const previewContent = document.getElementById('previewContent');
+    const importForm = document.getElementById('importForm');
+
+    // Click upload area
+    uploadArea.addEventListener('click', function() {
+        csvFile.click();
+    });
+
+    // Browse button
+    browseBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        csvFile.click();
+    });
+
+    // File selection
+    csvFile.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            displayFileInfo(file);
+            previewCSV(file);
+            importBtn.disabled = false;
+        }
+    });
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#f39c12';
+        uploadArea.style.background = '#fff5e6';
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#cbd5e1';
+        uploadArea.style.background = '#f8fafc';
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#cbd5e1';
+        uploadArea.style.background = '#f8fafc';
+        
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'text/csv') {
+            csvFile.files = e.dataTransfer.files;
+            displayFileInfo(file);
+            previewCSV(file);
+            importBtn.disabled = false;
+        } else {
+            alert('Please upload a CSV file');
+        }
+    });
+
+    // Remove file
+    removeFile.addEventListener('click', function() {
+        csvFile.value = '';
+        fileInfo.classList.remove('active');
+        csvPreview.style.display = 'none';
+        importBtn.disabled = true;
+    });
+
+    // Display file info
+    function displayFileInfo(file) {
+        fileName.textContent = file.name;
+        const size = (file.size / 1024).toFixed(2);
+        fileSize.textContent = `${size} KB`;
+        fileInfo.classList.add('active');
+    }
+
+    // Preview CSV
+    function previewCSV(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split('\n').slice(0, 5);
+            previewContent.textContent = lines.join('\n');
+            csvPreview.style.display = 'block';
+        };
+        reader.readAsText(file);
+    }
+
+    // Form submission
+    importForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!csvFile.files[0]) {
+            alert('Please select a CSV file');
+            return;
+        }
+
+        // Show progress
+        progressBar.classList.add('active');
+        importBtn.disabled = true;
+        importBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importing...';
+
+        // Simulate progress (replace with actual upload)
+        let width = 0;
+        const interval = setInterval(function() {
+            if (width >= 100) {
+                clearInterval(interval);
+                setTimeout(function() {
+                    window.location.href = "{% url 'payments:tax_rates_list' page.subdomain %}?import=success";
+                }, 500);
+            } else {
+                width += 10;
+                progressFill.style.width = width + '%';
+            }
+        }, 200);
+
+        // Actually submit the form
+        importForm.submit();
+    });
+
+    // Validate file size
+    csvFile.addEventListener('change', function() {
+        if (this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
+            alert('File size exceeds 5MB limit');
+            this.value = '';
+            fileInfo.classList.remove('active');
+            importBtn.disabled = true;
+        }
+    });
+});
+</script>
+{% endblock %}

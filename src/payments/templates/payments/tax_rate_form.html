@@ -1,0 +1,537 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title }} - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tax-form-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .tax-form-header {
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(67, 97, 238, 0.2);
+    }
+
+    .tax-form-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid #eef2f6;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #f0f4f8;
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-title i {
+        width: 32px;
+        height: 32px;
+        background: #e8ecff;
+        color: #4361ee;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #edf2f7;
+        padding: 0.6rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .input-group-text {
+        background: #f8fafc;
+        border: 2px solid #edf2f7;
+        border-radius: 12px;
+        color: #64748b;
+    }
+
+    .form-check-input {
+        width: 1.2rem;
+        height: 1.2rem;
+        margin-right: 0.5rem;
+        border: 2px solid #cbd5e1;
+    }
+
+    .form-check-input:checked {
+        background-color: #4361ee;
+        border-color: #4361ee;
+    }
+
+    .form-text {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-top: 0.4rem;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 0.8rem 2rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-cancel {
+        background: white;
+        color: #64748b;
+        padding: 0.8rem 2rem;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .help-card {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        border: 1px dashed #cbd5e1;
+    }
+
+    .help-card h6 {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .help-card ul {
+        padding-left: 1.2rem;
+        color: #64748b;
+    }
+
+    .help-card li {
+        margin-bottom: 0.5rem;
+    }
+
+    .jurisdiction-fields {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin: 1rem 0;
+    }
+
+    .rate-preview {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .rate-preview-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .rate-preview-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .validation-error {
+        color: #e53e3e;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="tax-form-container">
+        <!-- Header -->
+        <div class="tax-form-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-2">{{ form_title }}</h1>
+                    <p class="mb-0 opacity-75">{{ page.brand_name }}</p>
+                </div>
+                <a href="{% url 'payments:tax_rates_list' page.subdomain %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Rates
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Form -->
+        <div class="tax-form-card">
+            <form method="post" id="taxRateForm">
+                {% csrf_token %}
+
+                <!-- Rate Preview -->
+                <div class="rate-preview" id="ratePreview">
+                    <div class="rate-preview-value" id="previewValue">
+                        {% if tax_rate %}{{ tax_rate.rate }}%{% else %}0%{% endif %}
+                    </div>
+                    <div class="rate-preview-label" id="previewName">
+                        {% if tax_rate %}{{ tax_rate.name }}{% else %}New Tax Rate{% endif %}
+                    </div>
+                </div>
+
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Basic Information
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rate Name *</label>
+                            <input type="text" class="form-control" name="name" 
+                                   value="{{ tax_rate.name|default:'' }}" required
+                                   placeholder="e.g., CA Sales Tax" id="rateName">
+                            <div class="form-text">A descriptive name for this tax rate</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tax Class *</label>
+                            <select class="form-select" name="tax_class_id" required>
+                                <option value="">Select Tax Class</option>
+                                {% for class in tax_classes %}
+                                <option value="{{ class.id }}" 
+                                        {% if tax_rate.tax_class_id == class.id %}selected{% endif %}>
+                                    {{ class.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rate (%) *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="rate" 
+                                       value="{{ tax_rate.rate|default:'' }}" step="0.0001" 
+                                       min="0" max="100" required id="rateValue"
+                                       placeholder="10.0000">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Enter tax rate percentage (e.g., 10.0000 for 10%)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Priority</label>
+                            <input type="number" class="form-control" name="priority" 
+                                   value="{{ tax_rate.priority|default:'0' }}" min="0">
+                            <div class="form-text">Lower numbers apply first (0 = highest priority)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jurisdiction -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-globe"></i>
+                        Jurisdiction
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Jurisdiction Type *</label>
+                            <select class="form-select" name="jurisdiction_type" id="jurisdictionType">
+                                <option value="country" {% if tax_rate.jurisdiction_type == 'country' %}selected{% endif %}>Country</option>
+                                <option value="state" {% if tax_rate.jurisdiction_type == 'state' %}selected{% endif %}>State/Province</option>
+                                <option value="city" {% if tax_rate.jurisdiction_type == 'city' %}selected{% endif %}>City</option>
+                                <option value="postal_code" {% if tax_rate.jurisdiction_type == 'postal_code' %}selected{% endif %}>Postal Code</option>
+                                <option value="special" {% if tax_rate.jurisdiction_type == 'special' %}selected{% endif %}>Special Zone</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="jurisdiction-fields">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Country</label>
+                                <select class="form-select" name="country_code" id="countryCode">
+                                    <option value="">Global/All Countries</option>
+                                    <option value="US" {% if tax_rate.country_code == 'US' %}selected{% endif %}>United States</option>
+                                    <option value="CA" {% if tax_rate.country_code == 'CA' %}selected{% endif %}>Canada</option>
+                                    <option value="GB" {% if tax_rate.country_code == 'GB' %}selected{% endif %}>United Kingdom</option>
+                                    <option value="AU" {% if tax_rate.country_code == 'AU' %}selected{% endif %}>Australia</option>
+                                    <option value="DE" {% if tax_rate.country_code == 'DE' %}selected{% endif %}>Germany</option>
+                                    <option value="FR" {% if tax_rate.country_code == 'FR' %}selected{% endif %}>France</option>
+                                    <option value="JP" {% if tax_rate.country_code == 'JP' %}selected{% endif %}>Japan</option>
+                                    <option value="IN" {% if tax_rate.country_code == 'IN' %}selected{% endif %}>India</option>
+                                    <option value="BR" {% if tax_rate.country_code == 'BR' %}selected{% endif %}>Brazil</option>
+                                    <option value="MX" {% if tax_rate.country_code == 'MX' %}selected{% endif %}>Mexico</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="stateField" style="display: none;">
+                                <label class="form-label">State/Province</label>
+                                <input type="text" class="form-control" name="state_code" 
+                                       value="{{ tax_rate.state_code|default:'' }}"
+                                       placeholder="e.g., CA, NY" id="stateCode">
+                            </div>
+                        </div>
+
+                        <div class="row" id="cityField" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">City</label>
+                                <input type="text" class="form-control" name="city" 
+                                       value="{{ tax_rate.city|default:'' }}"
+                                       placeholder="e.g., Los Angeles">
+                            </div>
+                        </div>
+
+                        <div class="row" id="postalField" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Postal Code</label>
+                                <input type="text" class="form-control" name="postal_code" 
+                                       value="{{ tax_rate.postal_code|default:'' }}"
+                                       placeholder="e.g., 90210">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Match Pattern (Optional)</label>
+                                <input type="text" class="form-control" name="postal_code_match_pattern" 
+                                       value="{{ tax_rate.postal_code_match_pattern|default:'' }}"
+                                       placeholder="Regex pattern">
+                                <div class="form-text">Regex pattern for postal code matching</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tax Calculation Rules -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-calculator"></i>
+                        Calculation Rules
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_compound" 
+                                       id="isCompound" {% if tax_rate.is_compound %}checked{% endif %}>
+                                <label class="form-check-label fw-medium" for="isCompound">
+                                    Compound Tax
+                                </label>
+                                <div class="form-text">Apply on top of other taxes (tax-on-tax)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_price_inclusive" 
+                                       id="isPriceInclusive" {% if tax_rate.is_price_inclusive %}checked{% endif %}>
+                                <label class="form-check-label fw-medium" for="isPriceInclusive">
+                                    Price Includes Tax
+                                </label>
+                                <div class="form-text">Product prices already include this tax</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_shipping_taxable" 
+                                       id="isShippingTaxable" {% if tax_rate.is_shipping_taxable %}checked{% endif %}>
+                                <label class="form-check-label fw-medium" for="isShippingTaxable">
+                                    Apply to Shipping
+                                </label>
+                                <div class="form-text">Apply this tax rate to shipping costs</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_active" 
+                                       id="isActive" {% if tax_rate.is_active or not tax_rate %}checked{% endif %}>
+                                <label class="form-check-label fw-medium" for="isActive">
+                                    Active
+                                </label>
+                                <div class="form-text">Enable this tax rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validity Period -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-calendar-alt"></i>
+                        Validity Period
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Valid From</label>
+                            <input type="date" class="form-control" name="valid_from" 
+                                   value="{{ tax_rate.valid_from|date:'Y-m-d'|default:'' }}">
+                            <div class="form-text">Leave empty to start immediately</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Valid Until (Optional)</label>
+                            <input type="date" class="form-control" name="valid_until" 
+                                   value="{{ tax_rate.valid_until|date:'Y-m-d'|default:'' }}">
+                            <div class="form-text">Leave empty for no end date</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex gap-3 justify-content-end mt-4">
+                    <a href="{% url 'payments:tax_rates_list' page.subdomain %}" class="btn-cancel">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save me-2"></i>
+                        {% if tax_rate %}Update{% else %}Create{% endif %} Tax Rate
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Card -->
+        <div class="help-card">
+            <h6><i class="fas fa-question-circle me-2" style="color: #4361ee;"></i>Understanding Tax Rates</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul>
+                        <li><strong>Priority:</strong> Lower numbers are calculated first. Use priority when multiple rates apply to the same jurisdiction.</li>
+                        <li><strong>Compound Tax:</strong> When enabled, this tax is calculated on the total including other taxes.</li>
+                        <li><strong>Jurisdiction:</strong> Define where this tax rate applies (country, state, city, or postal code).</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul>
+                        <li><strong>Postal Code Matching:</strong> Use regex patterns for complex postal code rules (e.g., ^[0-9]{5}$ for US ZIP codes).</li>
+                        <li><strong>Validity Period:</strong> Set start/end dates for temporary tax rates or future tax changes.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Live preview update
+    const rateName = document.getElementById('rateName');
+    const rateValue = document.getElementById('rateValue');
+    const previewValue = document.getElementById('previewValue');
+    const previewName = document.getElementById('previewName');
+
+    function updatePreview() {
+        if (rateValue.value) {
+            previewValue.textContent = parseFloat(rateValue.value).toFixed(4) + '%';
+        } else {
+            previewValue.textContent = '0%';
+        }
+        
+        if (rateName.value) {
+            previewName.textContent = rateName.value;
+        } else {
+            previewName.textContent = 'New Tax Rate';
+        }
+    }
+
+    rateName.addEventListener('input', updatePreview);
+    rateValue.addEventListener('input', updatePreview);
+
+    // Jurisdiction type toggle
+    const jurisdictionType = document.getElementById('jurisdictionType');
+    const stateField = document.getElementById('stateField');
+    const cityField = document.getElementById('cityField');
+    const postalField = document.getElementById('postalField');
+    const countryCode = document.getElementById('countryCode');
+
+    function toggleJurisdictionFields() {
+        stateField.style.display = 'none';
+        cityField.style.display = 'none';
+        postalField.style.display = 'none';
+
+        switch(jurisdictionType.value) {
+            case 'state':
+                stateField.style.display = 'block';
+                break;
+            case 'city':
+                stateField.style.display = 'block';
+                cityField.style.display = 'block';
+                break;
+            case 'postal_code':
+                stateField.style.display = 'block';
+                cityField.style.display = 'block';
+                postalField.style.display = 'block';
+                break;
+        }
+    }
+
+    jurisdictionType.addEventListener('change', toggleJurisdictionFields);
+    
+    // Set initial state
+    toggleJurisdictionFields();
+
+    // Form validation
+    document.getElementById('taxRateForm').addEventListener('submit', function(e) {
+        const rate = parseFloat(rateValue.value);
+        
+        if (rate < 0 || rate > 100) {
+            e.preventDefault();
+            alert('Rate must be between 0 and 100');
+            return;
+        }
+
+        // Validate dates
+        const validFrom = document.querySelector('input[name="valid_from"]').value;
+        const validUntil = document.querySelector('input[name="valid_until"]').value;
+        
+        if (validFrom && validUntil && new Date(validUntil) <= new Date(validFrom)) {
+            e.preventDefault();
+            alert('Valid Until date must be after Valid From date');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

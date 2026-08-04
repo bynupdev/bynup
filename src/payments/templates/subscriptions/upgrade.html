@@ -1,0 +1,408 @@
+<!-- payments/templates/payments/upgrade.html -->
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Upgrade to {{ plan_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upgrade-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    .plan-summary {
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    .payment-option {
+        background: white;
+        border: 2px solid #e1e5eb;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .payment-option:hover {
+        border-color: #4361ee;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(67, 97, 238, 0.15);
+    }
+    .payment-option.selected {
+        border-color: #4361ee;
+        background: #f8faff;
+    }
+    .payment-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    .whatsapp { background: #25D366; color: white; }
+    .telegram { background: #26A5E4; color: white; }
+    .email { background: #EA4335; color: white; }
+    .message-box {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+        border-left: 4px solid #4361ee;
+    }
+    .price-large {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    .copy-btn.copied {
+        background: #10b981 !important;
+        color: white !important;
+    }
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .loading-spinner {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="upgrade-container">
+        
+        <!-- Plan Summary -->
+        <div class="plan-summary text-center">
+            <h2 class="mb-2">{{ plan_name }} Plan</h2>
+            <p class="mb-3 opacity-75">{{ plan_description }}</p>
+            <div class="price-large">${{ amount }}</div>
+            <small>{{ billing_period|title }}</small>
+            {% if billing_period == 'yearly' %}
+                <span class="badge bg-success ms-2">Save 25%</span>
+            {% endif %}
+        </div>
+        
+        <!-- Friendly Message -->
+        <div class="alert alert-success border-0 rounded-4 p-4 mb-4">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Simple process:</strong> Choose how to contact us → We'll save your request → Send the pre-filled message → We'll reply with payment details → Pay → Your account is upgraded!
+        </div>
+        
+        <!-- Payment Options -->
+        <h5 class="mb-3">How would you like to pay?</h5>
+        
+        <!-- Hidden form for CSRF -->
+        <form id="paymentForm" method="post" action="{% url 'payments:submit_payment' plan_tier %}" style="display: none;">
+            {% csrf_token %}
+            <input type="hidden" name="billing_period" id="billingPeriodInput" value="{{ billing_period }}">
+            <input type="hidden" name="payment_method" id="paymentMethodInput" value="">
+            <input type="hidden" name="payment_reference" id="paymentReferenceInput" value="">
+            <input type="hidden" name="payment_notes" id="paymentNotesInput" value="">
+        </form>
+
+        <!-- payments/templates/payments/upgrade.html -->
+        <!-- Add this payment option -->
+
+        <div class="payment-option" style="border: 2px solid #f7931a;">
+            <div class="d-flex align-items-center">
+                <div class="payment-icon" style="background: #f7931a; color: white;">
+                    <i class="fab fa-bitcoin"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Pay with Cryptocurrency</h6>
+                    <small class="text-muted">BTC, ETH, USDT + more • Instant activation</small>
+                </div>
+                <a href="{% url 'payments:cryptomus_checkout' plan_tier %}" 
+                class="btn btn-success">
+                    Pay Now
+                </a>
+            </div>
+        </div>
+        
+        <div class="payment-option" data-method="whatsapp">
+            <div class="d-flex align-items-center">
+                <div class="payment-icon whatsapp me-3">
+                    <i class="fab fa-whatsapp"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Pay via WhatsApp</h6>
+                    <small class="text-muted">Fast response • Most popular</small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+        </div>
+        
+        <div class="payment-option" data-method="telegram">
+            <div class="d-flex align-items-center">
+                <div class="payment-icon telegram me-3">
+                    <i class="fab fa-telegram-plane"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Pay via Telegram</h6>
+                    <small class="text-muted">Secure • Private</small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+        </div>
+        
+        <div class="payment-option" data-method="email">
+            <div class="d-flex align-items-center">
+                <div class="payment-icon email me-3">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Pay via Email</h6>
+                    <small class="text-muted">We'll reply within 2 hours</small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+        </div>
+        
+        <!-- Message Preview (Hidden until selection) -->
+        <div id="messagePreview" class="message-box d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="fas fa-paper-plane me-2"></i>Your Message</h6>
+                <button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyMessage()">
+                    <i class="fas fa-copy me-1"></i>Copy
+                </button>
+            </div>
+            <div id="messageContent" class="bg-white p-3 rounded-3" style="font-family: monospace; font-size: 13px; white-space: pre-wrap;">
+                <!-- Message appears here -->
+            </div>
+            <button id="sendButton" class="btn btn-primary w-100 mt-3">
+                <i class="fab fa-whatsapp me-2"></i>
+                <span id="buttonText">Send Message & Save Request</span>
+            </button>
+        </div>
+        
+        <!-- What happens next -->
+        <div class="mt-4 p-4 bg-light rounded-4">
+            <h6 class="mb-3">📋 What happens next?</h6>
+            <ol class="small mb-0">
+                <li>Click on your preferred payment method</li>
+                <li>We'll save your upgrade request</li>
+                <li>Send us the pre-filled message</li>
+                <li>We'll reply with payment details</li>
+                <li>Make the payment and send us confirmation</li>
+                <li>We'll activate your subscription within 2-4 hours</li>
+            </ol>
+        </div>
+        
+        <!-- Back link -->
+        <div class="text-center mt-4">
+            <a href="{% url 'payments:pricing' %}" class="text-muted">
+                <i class="fas fa-arrow-left me-1"></i>Back to pricing
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5>Saving your request...</h5>
+        <p class="text-muted mb-0">Please wait a moment</p>
+    </div>
+</div>
+
+<script>
+// YOUR CONTACT INFO
+const WHATSAPP_NUMBER = '+237680044151';
+const TELEGRAM_USERNAME = 'MJerase';
+const SUPPORT_EMAIL = 'bynupteam@protonmail.com';
+
+// Plan details from Django
+const planDetails = {
+    name: '{{ plan_name }}',
+    tier: '{{ plan_tier }}',
+    amount: '{{ amount }}',
+    period: '{{ billing_period }}',
+    userName: '{{ user_name }}',
+    userEmail: '{{ user_email }}'
+};
+
+let selectedMethod = null;
+
+// Generate unique reference
+function generateReference() {
+    return 'BYN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+// Create message based on method
+function getMessage(method, reference) {
+    return `Hello bynUp team! I would like to upgrade to the ${planDetails.name} Plan.
+
+📋 Plan Details:
+• Plan: ${planDetails.name}
+• Billing: ${planDetails.period} ($${planDetails.amount})
+• Name: ${planDetails.userName}
+• Email: ${planDetails.userEmail}
+• Reference: ${reference}
+
+Please send me the payment details so I can complete my subscription.
+
+Thank you!`;
+}
+
+// Get link based on method
+function getLink(method, message) {
+    const encodedMessage = encodeURIComponent(message);
+    
+    if (method === 'whatsapp') {
+        return `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, '')}?text=${encodedMessage}`;
+    } else if (method === 'telegram') {
+        return `https://t.me/${TELEGRAM_USERNAME}?text=${encodedMessage}`;
+    } else {
+        const subject = encodeURIComponent(`Upgrade to ${planDetails.name} Plan - ${planDetails.userName}`);
+        return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${encodedMessage}`;
+    }
+}
+
+// Save subscription to backend
+async function saveSubscription(method, reference) {
+    const form = document.getElementById('paymentForm');
+    const formData = new FormData(form);
+    
+    formData.set('payment_method', method);
+    formData.set('payment_reference', reference);
+    formData.set('payment_notes', `User selected ${method} payment`);
+    
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json().catch(() => ({}));
+            console.log('Subscription saved:', data);
+            return { success: true };
+        } else {
+            console.error('Failed to save subscription');
+            return { success: false, error: 'Failed to save' };
+        }
+    } catch (error) {
+        console.error('Error saving subscription:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Handle send button click
+async function handleSend() {
+    if (!selectedMethod) {
+        alert('Please select a payment method first');
+        return;
+    }
+    
+    const reference = generateReference();
+    const message = getMessage(selectedMethod, reference);
+    const link = getLink(selectedMethod, message);
+    
+    // Show loading
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    
+    // Save to backend
+    const result = await saveSubscription(selectedMethod, reference);
+    
+    // Hide loading
+    document.getElementById('loadingOverlay').style.display = 'none';
+    
+    if (result.success) {
+        // Update button to show success
+        const sendBtn = document.getElementById('sendButton');
+        sendBtn.innerHTML = '<i class="fas fa-check me-2"></i><span>Request Saved! Opening ' + selectedMethod + '...</span>';
+        sendBtn.classList.add('btn-success');
+        sendBtn.classList.remove('btn-primary');
+        
+        // Open the link after a short delay
+        setTimeout(() => {
+            window.open(link, '_blank');
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                const icons = { whatsapp: 'whatsapp', telegram: 'telegram-plane', email: 'envelope' };
+                const texts = { whatsapp: 'Open WhatsApp', telegram: 'Open Telegram', email: 'Send Email' };
+                sendBtn.innerHTML = `
+                    <i class="fab fa-${icons[selectedMethod]} me-2"></i>
+                    <span>${texts[selectedMethod]}</span>
+                `;
+                sendBtn.classList.remove('btn-success');
+                sendBtn.classList.add('btn-primary');
+            }, 3000);
+        }, 500);
+    } else {
+        alert('There was an issue saving your request. Please try again or contact support.');
+    }
+}
+
+// Handle option selection
+document.querySelectorAll('.payment-option[data-method]').forEach(option => {
+    option.addEventListener('click', function() {
+        // Remove selected from all
+        document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
+        this.classList.add('selected');
+        
+        selectedMethod = this.dataset.method;
+        const reference = generateReference();
+        const message = getMessage(selectedMethod, reference);
+        
+        // Update preview
+        document.getElementById('messagePreview').classList.remove('d-none');
+        document.getElementById('messageContent').textContent = message;
+        
+        // Update button icon and text
+        const icons = { whatsapp: 'whatsapp', telegram: 'telegram-plane', email: 'envelope' };
+        const texts = { whatsapp: 'Open WhatsApp', telegram: 'Open Telegram', email: 'Send Email' };
+        
+        document.getElementById('sendButton').innerHTML = `
+            <i class="fab fa-${icons[selectedMethod]} me-2"></i>
+            <span id="buttonText">${texts[selectedMethod]}</span>
+        `;
+        
+        // Scroll to preview
+        document.getElementById('messagePreview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+});
+
+// Attach send handler
+document.getElementById('sendButton').addEventListener('click', handleSend);
+
+// Copy message function
+function copyMessage() {
+    const content = document.getElementById('messageContent').textContent;
+    const btn = document.querySelector('.copy-btn');
+    
+    navigator.clipboard.writeText(content).then(() => {
+        btn.classList.add('copied');
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy';
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

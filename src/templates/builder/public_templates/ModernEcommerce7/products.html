@@ -1,0 +1,894 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --text: #1A3D63;
+            --background: #4A7FA7;
+            --accent: #B3CFE5;
+            --heading: #6A1931;
+            --primary: #F6FAFD;
+        }
+        {% generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--text);
+            background-color: var(--primary);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Shop Header */
+        .shop-header {
+            padding: 120px 0 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, rgba(179, 207, 229, 0.1) 100%);
+        }
+
+        .shop-title {
+            font-size: 42px;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .shop-subtitle {
+            font-size: 18px;
+            color: var(--background);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .categories-btn {
+            display: block;
+            width: 200px;
+            margin: 30px auto 0;
+            text-align: center;
+            background-color: transparent;
+            color: var(--text);
+            padding: 12px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            border: 2px solid var(--text);
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .categories-btn:hover {
+            background-color: var(--text);
+            color: var(--nav-text, white);
+            transform: translateY(-3px);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(26, 61, 99, 0.1);
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .filter-title {
+            font-size: 18px;
+            color: var(--text);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            padding: 10px 20px;
+            border: 1px solid var(--accent);
+            border-radius: 25px;
+            background-color: var(--nav-text, white);
+            color: var(--text);
+            font-family: 'Montserrat', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-select:hover {
+            border-color: var(--background);
+        }
+
+        .search-box {
+            padding: 10px 20px;
+            border: 1px solid var(--accent);
+            border-radius: 25px;
+            background-color: var(--nav-text, white);
+            color: var(--text);
+            width: 250px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* Products Grid */
+        .products-section {
+            padding: 60px 0 100px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .product-card {
+            background-color: var(--nav-text, white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(26, 61, 99, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(26, 61, 99, 0.15);
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: var(--heading);
+            color: var(--nav-text, white);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 1;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-category {
+            font-size: 14px;
+            color: var(--background);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .product-name {
+            font-size: 18px;
+            color: var(--text);
+            margin-bottom: 10px;
+            min-height: 50px;
+        }
+
+        .product-description {
+            font-size: 14px;
+            color: var(--background);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .product-price {
+            font-size: 20px;
+            color: var(--heading);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-to-cart-btn {
+            flex: 1;
+            background-color: var(--text);
+            color: var(--nav-text, white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-to-cart-btn:hover {
+            background-color: var(--heading);
+        }
+
+        .wishlist-btn {
+            background-color: transparent;
+            color: var(--text);
+            border: 2px solid var(--text);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wishlist-btn:hover {
+            background-color: var(--text);
+            color: var(--nav-text, white);
+        }
+
+        .product-rating {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .rating-stars {
+            color: #FFD700;
+            margin-right: 5px;
+        }
+
+        .rating-count {
+            font-size: 14px;
+            color: var(--background);
+        }
+
+        /* No Products Found */
+        .no-products-found {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .no-products-found i {
+            font-size: 4rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .no-products-found h3 {
+            color: var(--text);
+            margin-bottom: 15px;
+        }
+
+        .no-products-found p {
+            color: var(--background);
+            margin-bottom: 25px;
+        }
+
+        .reset-search-btn {
+            background-color: transparent;
+            color: var(--text);
+            border: 2px solid var(--text);
+            padding: 10px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .reset-search-btn:hover {
+            background-color: var(--text);
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .shop-title {
+                font-size: 36px;
+            }
+            
+            .filter-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 576px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .shop-header {
+                padding: 100px 0 30px;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 41 100 %}
+
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 41 100 %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+    {% include 'builder/public_templates/ModernEcommerce7/snippets/header1.html' %}
+    
+    <!-- Shop Header -->
+    <section class="shop-header" id="section-41">
+        <div class="container">
+            <h1 class="shop-title" id="section-42">{{ text_contents.31|default:"Shop Our Collection" }}</h1>
+            <p class="shop-subtitle" id="section-43">{{ text_contents.32|default:"Discover luxury fragrances and cosmetics crafted with precision and passion" }}</p>
+            {% if current_category %}
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="background-color: var(--accent); padding: 8px 16px; border-radius: 20px; font-size: 14px;">
+                    Filtering by: <strong>{{ current_category.name }}</strong>
+                </span>
+                <a href="?page=products" style="margin-left: 10px; color: var(--heading); text-decoration: none;">
+                    <i class="fas fa-times" data-icon="50"></i> Clear filter
+                </a>
+            </div>
+            {% endif %}
+            <a href="?page=categories" class="categories-btn" id="section-44">{{ text_contents.33|default:"BROWSE CATEGORIES" }}</a>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '41' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Filter Section -->
+    <section class="filter-section" id="section-45">
+        <div class="container">
+            <div class="filter-container">
+                <div class="filter-left">
+                    <h3 class="filter-title" id="section-46">{{ text_contents.34|default:"Filter Products" }}</h3>
+                    <span id="product-count-display" style="font-size: 14px; color: var(--background);">
+                        Showing {{ products|length }} of {{ products|length }} products
+                    </span>
+                </div>
+                <div class="filter-group">
+                    <select class="filter-select" id="category-filter" onchange="filterByCategory(this.value)">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.slug }}" {% if current_category and current_category.slug == category.slug %}selected{% endif %}>
+                            {{ category.name }} ({{ category.get_active_products_count }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <select class="filter-select" id="sort-filter" onchange="sortProducts(this.value)">
+                        <option value="featured">Sort by: Featured</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                        <option value="newest">Newest Arrivals</option>
+                        <option value="popular">Most Popular</option>
+                    </select>
+                    <input type="text" class="search-box" id="searchInput" placeholder="{{ text_contents.35|default:'Search products...' }}">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '45' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Products Section -->
+    <section class="products-section" id="section-50">
+        <div class="container">
+            {% if products %}
+            <div class="products-grid" id="products-grid">
+                {% for product in products %}
+                {% if product.is_active %}
+                <a href="/product/{{ product.slug }}/" style="text-decoration: none;" class="product-image-link">
+                <div class="product-card product-card-shop" id="section-51"
+                    data-product-id="{{ product.id }}"
+                    data-product-title="{{ product.title|lower }}"
+                    data-product-price="{{ product.price }}"
+                    data-product-category="{{ product.category.name|default:'Uncategorized'|lower }}"
+                    data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}"
+                    data-product-slug="{{ product.slug }}"
+                    data-product-rating="{{ product.get_average_rating|floatformat:1 }}"
+                    data-product-reviews="{{ product.get_review_count }}"
+                >
+                    <!-- Product Badge -->
+                    {% if product.is_on_sale %}
+                    <div class="product-badge" id="section-52">SALE {{ product.discount_percentage }}%</div>
+                    {% elif forloop.counter <= 3 %}
+                    <div class="product-badge" id="section-52">NEW</div>
+                    {% elif product.quantity < product.low_stock_threshold %}
+                    <div class="product-badge" style="background-color: #FF9800;">LOW STOCK</div>
+                    {% endif %}
+
+                    <!-- Product Image -->
+                    {% if product.main_image %}
+                    <img src="{{ product.main_image.url }}" alt="{{ product.title }}" class="product-image">
+                    {% elif product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.title }}" class="product-image">
+                    {% else %}
+                    <div class="product-image" style="background-color: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--text);">
+                        <i class="fas fa-image fa-3x" data-icon="51"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="product-info">
+                        <!-- Product Category -->
+                        <div class="product-category" id="section-53">
+                            {{ product.category.name|default:"Uncategorized" }}
+                        </div>
+                        
+                        <!-- Product Name -->
+                        <div class="product-name" id="section-54">
+                            {{ product.title|truncatechars:40 }}
+                        </div>
+                        
+                        <!-- Product Description -->
+                        <p class="product-description" id="section-55">
+                            {{ product.short_description|default:product.description|striptags|truncatechars:80 }}
+                        </p>
+                        
+                        <!-- Product Price -->
+                        <div class="product-price" id="section-56">
+                            {% if product.compare_at_price and product.compare_at_price > product.price %}
+                            <span style="text-decoration: line-through; color: var(--background); font-size: 16px; margin-right: 8px;">
+                                {{ product.compare_at_price|currency:page }}
+                            </span>
+                            {% endif %}
+                            {{ product.price|currency:page }}
+                        </div>
+                        
+                        <!-- Product Rating -->
+                        <div class="product-rating">
+                            <div class="rating-stars">
+                                {% with rating=product.get_average_rating|default:4 %}
+                                {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= rating|floatformat:0|add:"0" %}
+                                <i class="fas fa-star" data-icon="49"></i>
+                                {% elif forloop.counter == rating|floatformat:0|add:"0"|add:1 and rating|floatformat:1|slice:"-1:" == "5" %}
+                                <i class="fas fa-star-half-alt" data-icon="49"></i>
+                                {% else %}
+                                <i class="far fa-star" data-icon="49"></i>
+                                {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                            </div>
+                            <span class="rating-count">
+                                ({{ product.get_review_count }})
+                            </span>
+                        </div>
+                        
+                        <!-- Product Actions -->
+                        <div class="product-actions">
+                            <button class="add-to-cart-btn" id="section-57" 
+                                    data-add-to-cart="{{ product.id }}"
+                                    onclick="event.preventDefault(); addToCart('{{ product.id }}');">
+                                <i class="fas fa-shopping-bag" data-icon="4"></i> {{ text_contents.41|default:"Add to Bag" }}
+                            </button>
+                            <button class="wishlist-btn" 
+                                    data-add-to-wishlist="{{ product.id }}"
+                                    onclick="event.preventDefault(); addToWishlist('{{ product.id }}');">
+                                <i class="far fa-heart" data-icon="3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            <!-- No Products Found Message (Hidden by default, shown when search returns no results) -->
+            <div id="no-products-message" class="no-products-found" style="display: none;">
+                <i class="fas fa-search"></i>
+                <h3>No products found</h3>
+                <p>We couldn't find any products matching your search. Try different keywords or browse all products.</p>
+                <button class="reset-search-btn" onclick="resetSearch()">
+                    <i class="fas fa-undo"></i> Clear Search
+                </button>
+            </div>
+            
+            {% else %}
+            <!-- No Products Found -->
+            <div class="no-products-found">
+                <i class="fas fa-box-open fa-4x" style="color: var(--accent); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--text); margin-bottom: 15px;">No products found</h3>
+                <p style="color: var(--background); margin-bottom: 25px;">Try adjusting your filters or browse all categories</p>
+                <a href="?page=products" class="categories-btn" style="display: inline-block; width: auto;">
+                    <i class="fas fa-undo"></i> View All Products
+                </a>
+            </div>
+            {% endif %}
+            
+            <!-- Category Navigation -->
+            {% if categories %}
+            <div style="margin-top: 50px; padding-top: 30px; border-top: 1px solid rgba(26, 61, 99, 0.1);">
+                <h3 style="text-align: center; margin-bottom: 20px; color: var(--text);">Browse by Category</h3>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+                    {% for category in categories|slice:":8" %}
+                    {% if category.is_active %}
+                    <a href="?page=products&category={{ category.slug }}" 
+                       style="background-color: var(--accent); color: var(--text); padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 14px; transition: all 0.3s;">
+                        {{ category.name }} <span style="background-color: var(--nav-text, white); color: var(--text); padding: 2px 6px; border-radius: 10px; font-size: 12px; margin-left: 5px;">
+                            {{ category.get_active_products_count }}
+                        </span>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '50' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    {% include 'builder/public_templates/ModernEcommerce7/snippets/footer.html' %}
+
+    {% for component in components %}
+    {% if component.drop_zone == 'end' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Cart Manager Script -->
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <script>
+        // ============================================
+        // FIXED PRODUCTS PAGE - NO INFINITE LOOPS
+        // ============================================
+        
+        (function() {
+            // DOM Elements
+            const searchInput = document.getElementById('searchInput');
+            const productsGrid = document.getElementById('products-grid');
+            const noProductsMessage = document.getElementById('no-products-message');
+            const productCountDisplay = document.getElementById('product-count-display');
+            const sortFilter = document.getElementById('sort-filter');
+            
+            // Store original product cards and their original order
+            let allProductCards = [];
+            let originalOrder = [];
+            let searchTimeout = null;
+            let isFiltering = false;
+            
+            // Store original products HTML and order
+            function storeOriginalProducts() {
+                if (productsGrid) {
+                    allProductCards = Array.from(productsGrid.querySelectorAll('.product-card-shop'));
+                    originalOrder = [...allProductCards];
+                }
+            }
+            
+            // Update product count display
+            function updateProductCount(visibleCount, totalCount) {
+                if (productCountDisplay) {
+                    productCountDisplay.textContent = `Showing ${visibleCount} of ${totalCount} products`;
+                }
+            }
+            
+            // Apply search filter (NO recursion)
+            function applySearchFilter() {
+                if (!productsGrid || !allProductCards.length) return;
+                if (isFiltering) return;
+                isFiltering = true;
+                
+                const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                let visibleCount = 0;
+                
+                // If search is empty, show all products
+                if (searchTerm === '') {
+                    allProductCards.forEach(card => {
+                        card.style.display = '';
+                        visibleCount++;
+                    });
+                    
+                    if (noProductsMessage) noProductsMessage.style.display = 'none';
+                    updateProductCount(visibleCount, allProductCards.length);
+                    isFiltering = false;
+                    return;
+                }
+                
+                // Filter products based on search term
+                allProductCards.forEach(card => {
+                    const title = (card.getAttribute('data-product-title') || '').toLowerCase();
+                    const category = (card.getAttribute('data-product-category') || '').toLowerCase();
+                    const description = card.querySelector('.product-description')?.textContent.toLowerCase() || '';
+                    
+                    const matches = title.includes(searchTerm) || 
+                                   category.includes(searchTerm) || 
+                                   description.includes(searchTerm);
+                    
+                    if (matches) {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Show/hide no products message
+                if (noProductsMessage) {
+                    noProductsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+                }
+                
+                updateProductCount(visibleCount, allProductCards.length);
+                isFiltering = false;
+            }
+            
+            // Debounced search handler (prevents freezing)
+            function handleSearchInput() {
+                if (searchTimeout) clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    applySearchFilter();
+                }, 300); // 300ms delay before searching
+            }
+            
+            // Reset search
+            window.resetSearch = function() {
+                if (searchInput) {
+                    searchInput.value = '';
+                    applySearchFilter();
+                    searchInput.focus();
+                }
+            };
+            
+            // Filter by category (redirects to preserve server-side filtering)
+            window.filterByCategory = function(categorySlug) {
+                if (categorySlug) {
+                    window.location.href = `?page=products&category=${categorySlug}`;
+                } else {
+                    window.location.href = '?page=products';
+                }
+            };
+            
+            // Sort products (applies to visible products only, no recursion)
+            window.sortProducts = function(sortValue) {
+                if (!productsGrid || !allProductCards.length) return;
+                
+                // Get only visible products
+                const visibleProducts = allProductCards.filter(card => card.style.display !== 'none');
+                
+                if (visibleProducts.length === 0) return;
+                
+                // Sort visible products
+                visibleProducts.sort((a, b) => {
+                    const priceA = parseFloat(a.dataset.productPrice) || 0;
+                    const priceB = parseFloat(b.dataset.productPrice) || 0;
+                    const ratingA = parseFloat(a.dataset.productRating) || 0;
+                    const ratingB = parseFloat(b.dataset.productRating) || 0;
+                    const idA = parseInt(a.dataset.productId) || 0;
+                    const idB = parseInt(b.dataset.productId) || 0;
+                    
+                    switch(sortValue) {
+                        case 'price_asc':
+                            return priceA - priceB;
+                        case 'price_desc':
+                            return priceB - priceA;
+                        case 'newest':
+                            return idB - idA;
+                        case 'popular':
+                            return ratingB - ratingA;
+                        default:
+                            return 0;
+                    }
+                });
+                
+                // Reorder only visible products in the grid while preserving hidden ones
+                const fragment = document.createDocumentFragment();
+                visibleProducts.forEach(product => {
+                    fragment.appendChild(product);
+                });
+                
+                // Append hidden products after visible ones (maintaining their position)
+                const hiddenProducts = allProductCards.filter(card => card.style.display === 'none');
+                hiddenProducts.forEach(product => {
+                    fragment.appendChild(product);
+                });
+                
+                productsGrid.innerHTML = '';
+                productsGrid.appendChild(fragment);
+                
+                // Re-index allProductCards to maintain new order
+                allProductCards = Array.from(productsGrid.querySelectorAll('.product-card-shop'));
+            };
+            
+            // Add to Cart function
+            window.addToCart = function(productId) {
+                if (window.cartManager) {
+                    window.cartManager.addToCart(productId, 1);
+                } else {
+                    fetch(`/builder/cart/add/{{ page.subdomain }}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ product_id: productId, quantity: 1 })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const button = document.querySelector(`[data-add-to-cart="${productId}"]`);
+                            if (button) {
+                                const originalHTML = button.innerHTML;
+                                button.innerHTML = '<i class="fas fa-check"></i> Added';
+                                button.style.backgroundColor = 'var(--heading)';
+                                setTimeout(() => {
+                                    button.innerHTML = originalHTML;
+                                    button.style.backgroundColor = '';
+                                }, 2000);
+                            }
+                            document.querySelectorAll('.cart-counter').forEach(counter => {
+                                counter.textContent = data.cart_items_count || 0;
+                                counter.style.display = data.cart_items_count > 0 ? 'inline' : 'none';
+                            });
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            };
+            
+            // Add to Wishlist function
+            window.addToWishlist = function(productId) {
+                if (window.cartManager) {
+                    window.cartManager.addToWishlist(productId);
+                } else {
+                    fetch(`/builder/wishlist/add/{{ page.subdomain }}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ product_id: productId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const button = document.querySelector(`[data-add-to-wishlist="${productId}"]`);
+                            if (button) {
+                                const icon = button.querySelector('i');
+                                if (icon) {
+                                    icon.className = 'fas fa-heart';
+                                    button.style.backgroundColor = 'var(--text)';
+                                    button.style.color = 'white';
+                                }
+                            }
+                            document.querySelectorAll('.wishlist-counter').forEach(counter => {
+                                counter.textContent = data.wishlist_count || 0;
+                                counter.style.display = data.wishlist_count > 0 ? 'inline' : 'none';
+                            });
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            };
+            
+            // Get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            // Product Card Animation on Scroll
+            function initScrollAnimation() {
+                const productCards = document.querySelectorAll('.product-card-shop');
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }
+                    });
+                }, { threshold: 0.1, once: true });
+                
+                productCards.forEach(card => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    observer.observe(card);
+                });
+            }
+            
+            // Initialize everything
+            function init() {
+                storeOriginalProducts();
+                initScrollAnimation();
+                
+                // Set up search input event listener with debounce
+                if (searchInput) {
+                    searchInput.addEventListener('input', handleSearchInput);
+                    searchInput.addEventListener('keyup', function(e) {
+                        if (e.key === 'Escape') {
+                            window.resetSearch();
+                        }
+                    });
+                }
+                
+                // Initial count display
+                if (allProductCards.length > 0) {
+                    updateProductCount(allProductCards.length, allProductCards.length);
+                }
+                
+                console.log('Products page initialized successfully');
+            }
+            
+            // Start initialization when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>

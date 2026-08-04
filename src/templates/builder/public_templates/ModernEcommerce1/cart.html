@@ -1,0 +1,280 @@
+{%load static%}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - {{ page.brand_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .quantity-controls .btn {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cart-item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .cart-checkout-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: var(--nav-text, white);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    width: 100%;
+    font-size: 16px;
+}
+
+.cart-checkout-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+    </style>
+</head>
+<body data-subdomain="{{ page.subdomain }}">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">{{ page.brand_name }}</a>
+            <div class="navbar-nav ms-auto">
+                <!-- Cart icon will be auto-inserted by JavaScript -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Cart Content -->
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1>Shopping Cart</h1>
+                    {% if cart %}
+                    <button class="btn btn-outline-danger" id="clearCartBtn">
+                        <i class="fas fa-trash"></i> Clear Cart
+                    </button>
+                    {% endif %}
+                </div>
+                
+                {% if cart and cart.items.all %}
+                <div class="row">
+                    <div class=" col-lg-8">
+                        {% for item in cart.items.all %}
+                        <div class="cart-item card mb-3" data-cart-item-id="{{ item.product.id }}">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" alt="{{ item.product.title }}" 
+                                             class="cart-item-image">
+                                        {% else %}
+                                        <div class="cart-item-image bg-light d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-image text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h5 class="product-title card-title">{{ item.product.title }}</h5>
+                                        <p class="product-description text-muted small">{{ item.product.description|truncatewords:10 }}</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="product-price fw-bold">{{ item.product.price|currency:page }}</span>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="quantity-controls d-flex align-items-center">
+                                            <button class="btn btn-sm btn-outline-secondary decrement-cart" 
+                                                    data-product-id="{{ item.product.id }}">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <span class="quantity-input mx-2 cart-item-quantity">{{ item.quantity }}</span>
+                                            <button class="btn btn-sm btn-outline-secondary increment-cart" 
+                                                    data-product-id="{{ item.product.id }}">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-outline-danger remove-cart-item" 
+                                                    data-product-id="{{ item.product.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Order Summary</h5>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Items:</span>
+                                    <span id="cart-total-items">{{ cart.items.count }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Total Quantity:</span>
+                                    <span id="cart-total-quantity">{{ cart_data.cart_total }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span>{{ page.currency_symbol }}<span id="cart-total-price">{{ cart.get_total_price }}</span></span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Shipping:</span>
+                                    <span>Calculated at checkout</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <strong>Total:</strong>
+                                    <strong>{{ page.currency_symbol }}<span id="cart-grand-total">{{ cart.get_total_price }}</span></strong>
+                                </div>
+                                <button class="cart-checkout-btn" onclick="redirectCartToPaymentSelection()">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Proceed to Checkout
+                                </button>
+                                <a href="{% url 'payments:collect_customer_info' page.subdomain %}" class="btn btn-primary">
+    Checkout
+</a>
+                                <a href="/" class="btn btn-outline-secondary w-100 mt-2">
+                                    Continue Shopping
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                    <h3 class="text-muted">Your cart is empty</h3>
+                    <p class="text-muted">Add some products to get started!</p>
+                    <a href="/" class="btn btn-primary">
+                        Continue Shopping
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" value="{{page.subdomain}}" id="page-subdomain">
+    <input type="hidden" value="{{page.currency_symbol}}" id="page-currency-symbol">
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cart management buttons
+            document.querySelectorAll('.increment-cart').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    if (window.cartManager) {
+                        window.cartManager.incrementCartItem(productId, 1);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.decrement-cart').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    if (window.cartManager) {
+                        window.cartManager.decrementCartItem(productId, 1);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.remove-cart-item').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    if (window.cartManager) {
+                        window.cartManager.removeFromCart(productId);
+                    }
+                });
+            });
+
+            document.getElementById('clearCartBtn')?.addEventListener('click', function() {
+                if (window.cartManager) {
+                    window.cartManager.clearCart();
+                }
+            });
+        });
+
+        function redirectCartToPaymentSelection() {
+    // Get cart data from your existing cart system
+    const cartData = getCartData(); // Replace with your cart function
+    
+    if (!cartData.items || cartData.items.length === 0) {
+        alert('Your cart is empty');
+        return;
+    }
+    
+    // Get current page subdomain
+    const hostname = window.location.hostname;
+    const page_domain = document.getElementById('page-subdomain').value
+    const subdomain = hostname.includes('localhost') ? page_domain : hostname.split('.')[0];
+    
+    // Redirect to payment selection page with cart data
+    const params = new URLSearchParams({
+        type: 'cart',
+        cart: JSON.stringify(cartData)
+    });
+    
+    window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+}
+
+// Example cart data function - replace with your actual cart implementation
+function getCartData() {
+    // This should connect to your existing cart system
+    // Example implementation:
+    const items = [];
+    let subtotal = 0;
+    
+    document.querySelectorAll('.cart-item').forEach(item => {
+        const currencySymbol = document.getElementById('page-currency-symbol').value;
+        const title = item.querySelector('.product-title')?.textContent || 'Product';
+        const description = item.querySelector('.product-description')?.textContent || 'Description';
+        const price = parseFloat(item.querySelector('.product-price')?.textContent.replace(currencySymbol, '')) || 0;
+        const quantity = parseInt(item.querySelector('.quantity-input')?.textContent) || 1;
+        const total = price * quantity;
+
+        console.log("Product Title", title)
+        console.log("Product Description", description)
+        console.log("Product Price", price)
+        console.log("Product Quantity", quantity)
+        console.log("Product total", total)
+        
+        items.push({ title,description, price, quantity, total_price: total });
+        subtotal += total;
+    });
+    
+    const shipping = subtotal > 0 ? 5.00 : 0;
+    const tax = subtotal * 0.08;
+    const total = subtotal + shipping + tax;
+    
+    return {
+        items: items,
+        subtotal: subtotal,
+        shipping_amount: shipping,
+        tax_amount: tax,
+        total_amount: total
+    };
+}
+    </script>
+</body>
+</html>

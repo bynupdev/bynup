@@ -1,0 +1,607 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}CJ Dropshipping Dashboard - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Management Layout */
+    .management-layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .management-content {
+        flex: 1;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .stat-card {
+        border: none;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .stat-change {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .stat-change.positive {
+        color: #28a745;
+    }
+    .stat-change.negative {
+        color: #dc3545;
+    }
+    .progress-thin {
+        height: 6px;
+        border-radius: 3px;
+    }
+    .activity-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+    .activity-success { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+    .activity-warning { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+    .activity-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    .activity-info { background: rgba(23, 162, 184, 0.1); color: #17a2b8; }
+    
+    .quick-action-btn {
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .quick-action-btn:hover {
+        border-color: #4361ee;
+        background: rgba(67, 97, 238, 0.05);
+        transform: translateY(-2px);
+        text-decoration: none;
+        color: inherit;
+    }
+    .quick-action-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #4361ee;
+    }
+    
+    .sync-status-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+        position: relative;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .management-layout {
+            flex-direction: column;
+        }
+        
+        .management-content {
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .container-fluid.py-4 {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='cj_dropshipping' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='cj_dropshipping' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+                        CJ Dropshipping Dashboard
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Overview of your dropshipping operations for {{ page.brand_name }}
+                    </p>
+                </div>
+                <div>
+                    <div class="btn-group">
+                        <a href="{% url 'cj_settings' page.subdomain %}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog me-1"></i> Settings
+                        </a>
+                        <a href="{% url 'cj_products_list' page.subdomain %}" class="btn btn-outline-primary">
+                            <i class="fas fa-boxes me-1"></i> Products
+                        </a>
+                        <a href="{% url 'cj_orders' page.subdomain %}" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-cart me-1"></i> Orders
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Alert -->
+            {% if not cj_settings.is_active %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>CJ Integration is inactive.</strong> 
+                <a href="{% url 'cj_settings' page.subdomain %}" class="alert-link">Activate it in settings</a> to start dropshipping.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <!-- Stats Row -->
+            <div class="row mb-4">
+                <!-- Products Stat -->
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="stat-value">{{ stats.total_products }}</div>
+                                    <div class="stat-label">Total Products</div>
+                                </div>
+                                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Synced: {{ stats.synced_products }}</small>
+                                    <small class="fw-bold">
+                                        {% if stats.total_products > 0 %}
+                                            {{ stats.synced_products|floatformat:0 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: {% if stats.total_products > 0 %}{{ stats.synced_products|floatformat:0 }}{% else %}0{% endif %}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Orders Stat -->
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="stat-value">{{ stats.total_orders }}</div>
+                                    <div class="stat-label">Total Orders</div>
+                                </div>
+                                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Monthly Revenue</small>
+                                    <span class="stat-value positive">${{ stats.monthly_revenue|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profit Stat -->
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="stat-value">${{ stats.monthly_profit|floatformat:2 }}</div>
+                                    <div class="stat-label">Monthly Profit</div>
+                                </div>
+                                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Profit Margin</small>
+                                    <small class="fw-bold">
+                                        {% if stats.monthly_revenue > 0 %}
+                                            {{ stats.monthly_profit|floatformat:0 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: {% if stats.monthly_revenue > 0 %}{{ stats.monthly_profit|floatformat:0 }}{% else %}0{% endif %}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sync Stat -->
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="stat-value">{{ stats.sync_success_rate|floatformat:1 }}%</div>
+                                    <div class="stat-label">Sync Success Rate</div>
+                                </div>
+                                <div class="stat-icon bg-info bg-opacity-10 text-info">
+                                    <i class="fas fa-sync-alt"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">API Usage Today</small>
+                                    <small class="fw-bold">{{ stats.api_usage.today }}/{{ stats.api_usage.limit }}</small>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar 
+                                        {% if stats.api_usage.percentage < 70 %}bg-success
+                                        {% elif stats.api_usage.percentage < 90 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        role="progressbar" 
+                                        style="width: {{ stats.api_usage.percentage|floatformat:0 }}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions & Recent Activity -->
+            <div class="row mb-4">
+                <!-- Quick Actions -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-bolt me-2"></i> Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <a href="{% url 'cj_product_search' page.subdomain %}" class="quick-action-btn">
+                                        <div class="quick-action-icon">
+                                            <i class="fas fa-search"></i>
+                                        </div>
+                                        <div class="fw-bold">Search Products</div>
+                                        <small class="text-muted">Find new products</small>
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="{% url 'cj_bulk_sync' page.subdomain %}" class="quick-action-btn">
+                                        <div class="quick-action-icon">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </div>
+                                        <div class="fw-bold">Sync All</div>
+                                        <small class="text-muted">Update prices & stock</small>
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="{% url 'cj_create_order' page.subdomain %}" class="quick-action-btn">
+                                        <div class="quick-action-icon">
+                                            <i class="fas fa-plus-circle"></i>
+                                        </div>
+                                        <div class="fw-bold">Create Order</div>
+                                        <small class="text-muted">Manual fulfillment</small>
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="{% url 'cj_sync_logs' page.subdomain %}" class="quick-action-btn">
+                                        <div class="quick-action-icon">
+                                            <i class="fas fa-history"></i>
+                                        </div>
+                                        <div class="fw-bold">View Logs</div>
+                                        <small class="text-muted">Monitor activity</small>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <!-- Low Stock Alert -->
+                            {% if stats.low_stock_products > 0 %}
+                            <div class="alert alert-warning py-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <div>
+                                        <strong>{{ stats.low_stock_products }} product(s)</strong> are low in stock
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="col-md-8 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-history me-2"></i> Recent Activity</h5>
+                            <a href="{% url 'cj_sync_logs' page.subdomain %}" class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if recent_activity %}
+                                <div class="list-group list-group-flush">
+                                    {% for activity in recent_activity %}
+                                    <div class="list-group-item activity-item">
+                                        <div class="d-flex align-items-center">
+                                            <div class="activity-icon me-3 
+                                                {% if activity.status == 'success' %}activity-success
+                                                {% elif activity.status == 'failed' %}activity-danger
+                                                {% elif activity.status == 'rate_limited' %}activity-warning
+                                                {% else %}activity-info{% endif %}">
+                                                <i class="fas 
+                                                    {% if activity.sync_type == 'product_search' %}fa-search
+                                                    {% elif activity.sync_type == 'product_import' %}fa-box
+                                                    {% elif activity.sync_type == 'order_submit' %}fa-shopping-cart
+                                                    {% elif activity.sync_type == 'order_status_check' %}fa-truck
+                                                    {% else %}fa-sync-alt{% endif %}">
+                                                </i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1">
+                                                            {{ activity.get_sync_type_display }}
+                                                            {% if activity.items_processed > 0 %}
+                                                                <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">
+                                                                    {{ activity.items_processed }} items
+                                                                </span>
+                                                            {% endif %}
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            {{ activity.started_at|timesince }} ago
+                                                            {% if activity.duration_seconds %}
+                                                                • {{ activity.duration_seconds|floatformat:1 }}s
+                                                            {% endif %}
+                                                        </small>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge sync-status-badge 
+                                                            {% if activity.status == 'success' %}bg-success
+                                                            {% elif activity.status == 'failed' %}bg-danger
+                                                            {% elif activity.status == 'rate_limited' %}bg-warning
+                                                            {% else %}bg-secondary{% endif %}">
+                                                            {{ activity.get_status_display }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {% if activity.error_message %}
+                                                <div class="mt-2">
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ activity.error_message|truncatechars:100 }}
+                                                    </small>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No recent activity</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Status & Tips -->
+            <div class="row">
+                <!-- Integration Status -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-plug me-2"></i> Integration Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>API Connection</span>
+                                    <span class="badge bg-{% if cj_settings.api_status == 'active' %}success{% else %}danger{% endif %}">
+                                        {{ cj_settings.api_status|title }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Auto-sync</span>
+                                    <span class="badge bg-{% if cj_settings.auto_sync_prices or cj_settings.auto_sync_inventory %}success{% else %}secondary{% endif %}">
+                                        {% if cj_settings.auto_sync_prices and cj_settings.auto_sync_inventory %}Both
+                                        {% elif cj_settings.auto_sync_prices %}Prices Only
+                                        {% elif cj_settings.auto_sync_inventory %}Inventory Only
+                                        {% else %}Disabled{% endif %}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Auto-fulfill</span>
+                                    <span class="badge bg-{% if cj_settings.auto_fulfill %}success{% else %}secondary{% endif %}">
+                                        {{ cj_settings.auto_fulfill|yesno:"Enabled,Disabled" }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Webhook</span>
+                                    <span class="badge bg-{% if cj_settings.webhook_url %}success{% else %}secondary{% endif %}">
+                                        {{ cj_settings.webhook_url|yesno:"Configured,Not Set" }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <h6><i class="fas fa-lightbulb me-2"></i> Tips</h6>
+                                <ul class="mb-0 ps-3">
+                                    <li>Keep your profit margin competitive (30-50% recommended)</li>
+                                    <li>Monitor low stock products regularly</li>
+                                    <li>Enable auto-sync to keep prices updated</li>
+                                    <li>Check order status daily for updates</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recommended Actions -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-tasks me-2"></i> Recommended Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                {% if stats.low_stock_products > 0 %}
+                                <div class="list-group-item border-0 px-0 py-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="fas fa-exclamation-circle text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">Check Low Stock Products</h6>
+                                            <p class="mb-0 text-muted small">
+                                                {{ stats.low_stock_products }} products are running low on stock
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <a href="{% url 'cj_products' page.subdomain %}?sync_status=synced" 
+                                               class="btn btn-sm btn-outline-warning">
+                                                Review
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if stats.api_usage.percentage > 80 %}
+                                <div class="list-group-item border-0 px-0 py-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="fas fa-tachometer-alt text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">API Usage High</h6>
+                                            <p class="mb-0 text-muted small">
+                                                {{ stats.api_usage.percentage|floatformat:0 }}% of daily limit used
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <a href="{% url 'cj_settings' page.subdomain %}" 
+                                               class="btn btn-sm btn-outline-danger">
+                                                Adjust
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if not cj_settings.auto_sync_prices or not cj_settings.auto_sync_inventory %}
+                                <div class="list-group-item border-0 px-0 py-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="fas fa-robot text-info"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">Enable Auto-sync</h6>
+                                            <p class="mb-0 text-muted small">
+                                                Keep prices and stock updated automatically
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <a href="{% url 'cj_settings' page.subdomain %}" 
+                                               class="btn btn-sm btn-outline-info">
+                                                Enable
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if cj_products.count == 0 %}
+                                <div class="list-group-item border-0 px-0 py-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="fas fa-box-open text-primary"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">Import Your First Product</h6>
+                                            <p class="mb-0 text-muted small">
+                                                Start by importing products from CJ catalog
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <a href="{% url 'cj_product_search' page.subdomain %}" 
+                                               class="btn btn-sm btn-primary">
+                                                Import
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

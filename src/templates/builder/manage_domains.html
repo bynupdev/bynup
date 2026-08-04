@@ -1,0 +1,344 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Manage Domains - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Management Layout */
+.management-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.management-content {
+    flex: 1;
+    padding: 1.5rem;
+    background: white;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Domain Cards Styling */
+.domain-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.domain-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+}
+
+.code-block {
+    background-color: #f8f9fa;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    border: 1px solid #e2e8f0;
+}
+
+.dns-table code {
+    background-color: #f1f5f9;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .management-layout {
+        flex-direction: column;
+    }
+    
+    .management-content {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .container.py-5 {
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    .table-responsive {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='domains' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='domains' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="row mb-4">
+                <div class="col">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'manage_products' subdomain=page.subdomain %}">{{ page.brand_name }}</a></li>
+                            <li class="breadcrumb-item active">Manage Domains</li>                
+                        </ol>
+                    </nav>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="fw-bold text-primary">Manage Domains</h1>
+                            <p class="text-muted mb-0">{{ page.brand_name }} - {{ page.template_name|title }}</p>
+                        </div>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <!-- Current Domains Card -->
+                    <div class="card mb-4 domain-card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-globe me-2"></i>Current Domains
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <h6>Subdomain</h6>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <code class="code-block flex-grow-1">
+                                            {{ page.subdomain }}.yourdomain.com
+                                        </code>
+                                        <span class="badge bg-success">Always Active</span>
+                                    </div>
+                                    <small class="text-muted">Your default website address</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Development URL</h6>
+                                    <code class="code-block d-block">
+                                        {{ page.subdomain }}.localhost:8000
+                                    </code>
+                                    <small class="text-muted">For testing during development</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Domain Card -->
+                    <div class="card domain-card">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-star me-2"></i>Custom Domain
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label for="custom_domain" class="form-label fw-bold">Custom Domain</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">https://</span>
+                                        <input type="text" class="form-control" id="custom_domain" name="custom_domain" 
+                                               placeholder="mystore.com" value="{{ page.custom_domain|default:'' }}">
+                                    </div>
+                                    <div class="form-text">
+                                        Enter your custom domain without http:// (e.g., mystore.com, www.mystore.com)
+                                    </div>
+                                </div>
+                                
+                                {% if page.custom_domain %}
+                                <div class="mb-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="is_custom_domain_active"
+                                               name="is_custom_domain_active" {% if page.is_custom_domain_active %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold" for="is_custom_domain_active">
+                                            Activate Custom Domain
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        When activated, visitors will be redirected to your custom domain
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Domain Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- DNS Instructions -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>DNS Configuration Instructions
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">To use your custom domain, configure these DNS records with your domain provider:</p>
+                            
+                            <h6 class="mt-3">For root domain (mystore.com):</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered dns-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Name</th>
+                                            <th>Value</th>
+                                            <th>TTL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>A</code></td>
+                                            <td><code>@</code></td>
+                                            <td><code>YOUR_SERVER_IP</code></td>
+                                            <td><code>3600</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>CNAME</code></td>
+                                            <td><code>www</code></td>
+                                            <td><code>{{ page.subdomain }}.yourdomain.com</code></td>
+                                            <td><code>3600</code></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <h6 class="mt-4">For subdomain (shop.mystore.com):</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered dns-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Name</th>
+                                            <th>Value</th>
+                                            <th>TTL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>CNAME</code></td>
+                                            <td><code>shop</code></td>
+                                            <td><code>{{ page.subdomain }}.yourdomain.com</code></td>
+                                            <td><code>3600</code></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Note:</strong> Replace <code>YOUR_SERVER_IP</code> with your actual server IP address. DNS changes may take up to 24 hours to propagate.
+                            </div>
+                            
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-clock me-2"></i>
+                                <strong>Propagation Time:</strong> DNS changes typically take 24-48 hours to fully propagate worldwide. Some ISPs may cache DNS records longer.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Need Help Card -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-question-circle me-2"></i>Need Help?
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small mb-0">
+                                <i class="fas fa-envelope me-2"></i>
+                                Having trouble setting up your custom domain? Contact support at 
+                                <a href="mailto:support@bynup.com">support@bynup.com</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add loading state to form submission
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            }
+        });
+    }
+    
+    // Domain validation
+    const domainInput = document.getElementById('custom_domain');
+    if (domainInput) {
+        domainInput.addEventListener('input', function(e) {
+            let value = e.target.value.trim();
+            // Remove http:// or https:// if present
+            value = value.replace(/^https?:\/\//, '');
+            // Remove trailing slash
+            value = value.replace(/\/$/, '');
+            e.target.value = value;
+        });
+    }
+});
+
+// Show notification helper (if needed for AJAX operations)
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'error' ? 'alert-danger' : 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 99999; min-width: 300px; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px;';
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} me-2 fa-lg"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

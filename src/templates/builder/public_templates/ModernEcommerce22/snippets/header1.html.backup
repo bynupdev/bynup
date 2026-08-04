@@ -1,0 +1,402 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+{% render_icon_data icon_customizations %}
+
+<style>
+    :root {
+        --teal-primary: #02ABB0;
+        --teal-deep: #035A69;
+        --teal-darker: #024E5B;
+        --cyan-accent: #01A4BD;
+        --gray-soft: #DCDADE;
+        --bg-dark: #0A0F12;
+        --bg-card: rgba(16, 24, 28, 0.85);
+        --text-light: #F0F2F4;
+        --text-muted: #9CA3AF;
+        --border-subtle: rgba(220, 218, 222, 0.12);
+        --glow-teal: rgba(2, 171, 176, 0.3);
+    }
+    {% generate_color_variables %}
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text-light);
+        overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Space Grotesk', monospace;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
+
+    .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 0 32px;
+    }
+
+    /* Header / Navigation */
+    .site-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        background: rgba(10, 15, 18, 0.92);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-subtle);
+        transition: all 0.3s ease;
+    }
+
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 80px;
+    }
+
+    .logo {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--teal-primary), var(--cyan-accent));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-decoration: none;
+        letter-spacing: -0.02em;
+    }
+
+    .logo span {
+        background: none;
+        -webkit-background-clip: unset;
+        background-clip: unset;
+        color: var(--text-light);
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2.5rem;
+        align-items: center;
+    }
+
+    .nav-item {
+        color: var(--text-light);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: color 0.2s;
+        letter-spacing: -0.2px;
+    }
+
+    .nav-item:hover {
+        color: var(--teal-primary);
+    }
+
+    .nav-icons {
+        display: flex;
+        gap: 1.8rem;
+        align-items: center;
+    }
+
+    .icon-btn {
+        background: none;
+        border: none;
+        color: var(--text-light);
+        cursor: pointer;
+        font-size: 1.3rem;
+        transition: color 0.2s;
+        position: relative;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .icon-btn:hover {
+        color: var(--teal-primary);
+    }
+
+    .cart-counter, .wishlist-counter {
+        position: absolute;
+        top: -8px;
+        right: -12px;
+        background: var(--teal-primary);
+        color: var(--bg-dark);
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 20px;
+        min-width: 18px;
+        text-align: center;
+    }
+
+    /* Account Dropdown */
+    .account-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 40px;
+        right: 0;
+        background: rgba(16, 24, 28, 0.98);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        min-width: 200px;
+        padding: 8px 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px);
+        transition: all 0.2s ease;
+        z-index: 200;
+    }
+
+    .account-dropdown.active .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        display: block;
+        padding: 10px 20px;
+        color: var(--text-light);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .dropdown-item:hover {
+        background: rgba(2, 171, 176, 0.15);
+        color: var(--teal-primary);
+    }
+
+    /* Hamburger Menu */
+    .hamburger {
+        display: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--text-light);
+    }
+
+    .mobile-nav {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-color: #0F1519;
+        z-index: 9999;
+        padding: 2rem;
+        transform: translateX(-100%);
+        transition: transform 0.4s ease;
+    }
+
+    .mobile-nav.active {
+        transform: translateX(0);
+    }
+
+    .mobile-nav-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mobile-nav-links {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .mobile-nav-links a {
+        text-decoration: none;
+        color: var(--text-light);
+        font-size: 1.3rem;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mobile-nav-links a:hover {
+        color: var(--teal-primary);
+    }
+
+    .back-button {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        color: var(--text-light);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .nav-links {
+            display: none;
+        }
+        .hamburger {
+            display: block;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 20px;
+        }
+        .header-container {
+            height: 70px;
+        }
+        .logo {
+            font-size: 1.5rem;
+        }
+    }
+
+    {% generate_section_styles style_customizations 1 50 %}
+    {% generate_background_images background_images 1 50 %}
+    {% generate_hover_keyframes %}
+</style>
+
+<!-- Header -->
+<header class="site-header" id="section-1">
+    <div class="container header-container">
+        <div class="logo">
+            <a href="?page=home">
+                <i class="fas fa-gamepad" data-icon="1"></i>
+                <span id="section-2">{{ text_contents.1|default:"NEXUS<span>GEAR</span>"|safe }}</span>
+            </a>
+        </div>
+
+        <nav class="desktop-nav nav-links">
+            <a href="?page=home" class="nav-item" id="section-3">{{ text_contents.2|default:"Home" }}</a>
+            <a href="?page=products" class="nav-item" id="section-4">{{ text_contents.3|default:"Shop" }}</a>
+            <a href="?page=about" class="nav-item" id="section-5">{{ text_contents.4|default:"About Us" }}</a>
+            <a href="?page=contact" class="nav-item" id="section-6">{{ text_contents.5|default:"Contact" }}</a>
+        </nav>
+
+        <div class="nav-icons">
+            <a href="?page=cart" class="icon-btn">
+                <span class="cart-counter">0</span>
+                <i class="fas fa-shopping-cart" data-icon="2"></i>
+            </a>
+            <a href="?page=wishlist" class="icon-btn">
+                <span class="wishlist-counter">0</span>
+                <i class="far fa-heart" data-icon="3"></i>
+            </a>
+            <div style="position:relative;">
+                <div class="account-dropdown">
+                    <i class="far fa-user" data-icon="4" onclick="toggleDropdown()" style="cursor:pointer;"></i>
+                    <ul id="dropdown" class="dropdown-menu"
+                        style="display:none; position:absolute; right:0; top:40px; width:210px; background:rgba(16,24,28,0.98); border-radius:12px; padding:10px 0; list-style:none; margin:0; box-shadow:0 5px 15px rgba(0,0,0,0.15); transform:translateY(-5px); opacity:0; transition:all .2s ease;">
+                        <div onclick="toggleDropdown()" style="text-align:right; padding:5px 15px; cursor:pointer;">
+                            <i class="fa-solid fa-xmark" data-icon="5" style="font-size:18px; color:#fff;"></i>
+                        </div>
+                        <li><a href="{% url 'accounts:universal_login' %}?website_id={{ page.id }}&next={{ website_homepage_url|urlencode }}" class="dropdown-item" id="section-7">{{ text_contents.6|default:"Sign In" }}</a></li>
+                        <li><a href="{{ website_register_url }}" class="dropdown-item" id="section-8">{{ text_contents.7|default:"Sign Up" }}</a></li>
+                        <li><a href="{% url 'payments:customer_order_history' page.subdomain %}" class="dropdown-item" id="section-9">{{ text_contents.8|default:"Orders" }}</a></li>
+                        <li><a href="?page=wishlist" class="dropdown-item" id="section-10">{{ text_contents.9|default:"Wishlist" }}</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="hamburger" id="hamburgerBtn">
+                <i class="fas fa-bars" data-icon="6"></i>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Navigation -->
+<div class="mobile-nav" id="mobileNav">
+    <div class="mobile-nav-header">
+        <a href="?page=home" class="logo">NEXUS<span>GEAR</span></a>
+        <button class="back-button" id="closeNav">
+            <i class="fas fa-times" data-icon="5"></i>
+        </button>
+    </div>
+    <div class="mobile-nav-links">
+        <a href="?page=home">Home</a>
+        <a href="?page=products">Shop</a>
+        <a href="?page=about">About Us</a>
+        <a href="?page=contact">Contact</a>
+        <a href="?page=cart"><i class="fas fa-shopping-cart" data-icon="2"></i> Cart</a>
+        <a href="?page=wishlist"><i class="far fa-heart" data-icon="3"></i> Wishlist</a>
+        <a href="?page=account"><i class="far fa-user" data-icon="4"></i> Account</a>
+    </div>
+</div>
+
+<script>
+    // Mobile Navigation
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileNav = document.getElementById('mobileNav');
+    const closeNav = document.getElementById('closeNav');
+
+    if (hamburgerBtn) {
+        hamburgerBtn.addEventListener('click', function() {
+            mobileNav.classList.add('active');
+        });
+    }
+
+    if (closeNav) {
+        closeNav.addEventListener('click', function() {
+            mobileNav.classList.remove('active');
+        });
+    }
+
+    // Close mobile nav when clicking a link
+    const mobileNavLinks = document.querySelectorAll('.mobile-nav-links a');
+    mobileNavLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            mobileNav.classList.remove('active');
+        });
+    });
+
+    // Header scroll effect
+    window.addEventListener('scroll', function() {
+        const header = document.querySelector('.site-header');
+        if (header && window.scrollY > 100) {
+            header.style.padding = '0';
+            header.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+        } else if (header) {
+            header.style.padding = '';
+            header.style.boxShadow = '';
+        }
+    });
+
+    // User Dropdown
+    function toggleDropdown() {
+        const menu = document.getElementById("dropdown");
+        const isVisible = menu.style.display === "block";
+        menu.style.display = isVisible ? "none" : "block";
+        menu.style.opacity = isVisible ? "0" : "1";
+        menu.style.transform = isVisible ? "translateY(-5px)" : "translateY(0px)";
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('dropdown');
+        const userIcon = document.querySelector('.fa-user');
+        if (dropdown && userIcon && !userIcon.contains(event.target) && !dropdown.contains(event.target)) {
+            dropdown.style.display = 'none';
+            dropdown.style.opacity = '0';
+            dropdown.style.transform = 'translateY(-5px)';
+        }
+    });
+</script>

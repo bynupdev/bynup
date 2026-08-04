@@ -1,0 +1,809 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+
+    <style>
+        :root {
+            --primary-warm: #b87a3f;
+            --secondary-warm: #c8a477;
+            --terracotta: #b56422;
+            --sand: #d8bca4;
+            --neutral-rich: #5c544c;
+            --spacing-xl: 6rem;
+            --spacing-lg: 4rem;
+            --spacing-md: 2rem;
+            --spacing-sm: 1rem;
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        {% generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #fefaf5;
+            color: var(--neutral-rich);
+            overflow-x: hidden;
+            line-height: 1.6;
+            padding-top: 100px;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            padding: var(--spacing-lg) 0 var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        h1.categories-title {
+            font-size: 3.5rem;
+            color: var(--neutral-rich);
+            margin-bottom: 1rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1.categories-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-warm), var(--terracotta));
+        }
+
+        .categories-subtitle {
+            color: var(--neutral-rich);
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            opacity: 0.8;
+        }
+
+        /* Categories Filter */
+        .categories-filter {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.8rem 1.8rem;
+            background: white;
+            border: 1px solid rgba(92, 84, 76, 0.1);
+            border-radius: var(--border-radius);
+            color: var(--neutral-rich);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-warm);
+            color: var(--primary-warm);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--primary-warm), var(--terracotta));
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2.5rem;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .category-card {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+            position: relative;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(92, 84, 76, 0.1);
+        }
+
+        .category-image-container {
+            height: 300px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-image {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.5s ease;
+        }
+
+        .category-card:hover .category-image {
+            transform: scale(1.1);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(92, 84, 76, 0.7), transparent 50%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: var(--spacing-md);
+            color: white;
+        }
+
+        .category-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .category-count {
+            color: var(--sand);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .category-info {
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .category-description {
+            color: var(--neutral-rich);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .btn-explore-category {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-warm), var(--terracotta));
+            color: white;
+            padding: 0.8rem 1.8rem;
+            font-size: 0.95rem;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-explore-category:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(181, 100, 34, 0.3);
+        }
+
+        /* Featured Collections */
+        .featured-collections {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid rgba(92, 84, 76, 0.1);
+        }
+
+        .featured-collections h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            color: var(--neutral-rich);
+        }
+
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .collection-card {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+            position: relative;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+
+        .collection-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(92, 84, 76, 0.1);
+        }
+
+        .collection-image {
+            height: 250px;
+            width: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.5s ease;
+        }
+
+        .collection-card:hover .collection-image {
+            transform: scale(1.05);
+        }
+
+        .collection-info {
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .collection-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--neutral-rich);
+            margin-bottom: 0.5rem;
+        }
+
+        .collection-description {
+            color: var(--neutral-rich);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .btn-view-collection {
+            display: inline-block;
+            background: transparent;
+            color: var(--primary-warm);
+            padding: 0.7rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 300;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--primary-warm);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .btn-view-collection:hover {
+            background: var(--primary-warm);
+            color: white;
+        }
+
+        /* Pet Care Guide */
+        .pet-care-guide {
+            margin-top: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 20px rgba(92, 84, 76, 0.05);
+        }
+
+        .pet-care-guide h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            color: var(--neutral-rich);
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .guide-item {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .guide-icon {
+            font-size: 2.5rem;
+            color: var(--primary-warm);
+            margin-bottom: 1rem;
+        }
+
+        .guide-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: var(--neutral-rich);
+            margin-bottom: 0.8rem;
+        }
+
+        .guide-description {
+            color: var(--neutral-rich);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            opacity: 0.8;
+        }
+
+        /* Empty State */
+        .empty-categories {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            grid-column: 1 / -1;
+        }
+
+        .empty-categories-icon {
+            font-size: 4rem;
+            color: var(--sand);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-categories h2 {
+            font-size: 2.2rem;
+            color: var(--neutral-rich);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-categories p {
+            color: var(--neutral-rich);
+            opacity: 0.8;
+            margin-bottom: var(--spacing-md);
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-add-category {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-warm), var(--terracotta));
+            color: white;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .btn-add-category:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(181, 100, 34, 0.3);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .categories-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .collections-grid, .guide-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            h1.categories-title {
+                font-size: 3.2rem;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            h1.categories-title {
+                font-size: 2.8rem;
+            }
+            .categories-filter {
+                gap: 0.8rem;
+            }
+            .filter-btn {
+                padding: 0.7rem 1.5rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 80px;
+            }
+            .categories-grid,
+            .collections-grid,
+            .guide-grid {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            h1.categories-title {
+                font-size: 2.5rem;
+            }
+            .categories-subtitle {
+                font-size: 1.1rem;
+            }
+            .container {
+                padding: 0 1.5rem;
+            }
+            .category-image-container {
+                height: 250px;
+            }
+            .featured-collections h2,
+            .pet-care-guide h2 {
+                font-size: 2rem;
+            }
+            .pet-care-guide {
+                padding: var(--spacing-md);
+            }
+        }
+
+        @media (max-width: 576px) {
+            h1.categories-title {
+                font-size: 2.2rem;
+            }
+            .categories-subtitle {
+                font-size: 1rem;
+            }
+            .categories-filter {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-btn {
+                width: 100%;
+                text-align: center;
+            }
+            .btn-explore-category,
+            .btn-view-collection,
+            .btn-add-category {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+            .empty-categories h2 {
+                font-size: 1.8rem;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 99 150 %}
+        {% generate_background_images background_images 99 150 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce20/snippets/header.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '1' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Page Header -->
+    <div class="page-header" id="section-99">
+        <div class="container">
+            <h1 class="categories-title" id="section-100">{{ text_contents.107|default:"Pet Collections" }}</h1>
+            <p class="categories-subtitle" id="section-101">{{ text_contents.108|default:"Explore our curated collections of premium pet essentials, each crafted with exceptional attention to detail and timeless elegance." }}</p>
+
+            <!-- Categories Filter -->
+            <div class="categories-filter">
+                <button class="filter-btn active" data-filter="all">All Categories</button>
+                {% for category in categories %}
+                    <button class="filter-btn" data-filter="{{ category.slug|default:category.name|slugify }}">{{ category.name }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '99' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Categories Grid -->
+    <div class="container">
+        {% if categories %}
+            <div class="categories-grid" id="section-102">
+                {% for category in categories %}
+                    <div class="category-card" id="section-103" data-category="{{ category.slug|default:category.name|slugify }}">
+                        <div class="category-image-container">
+                            <div class="category-image" style="background-image: url('{% if category.image %}{{ category.image.url }}{% else %}https://images.pexels.com/photos/3777631/pexels-photo-3777631.jpeg?auto=compress&cs=tinysrgb&w=600{% endif %}')"></div>
+                            <div class="category-overlay">
+                                <h3 class="category-name" id="section-104">{{ category.name }}</h3>
+                                <div class="category-count" id="section-105">
+                                    {% if category.get_active_products_count %}
+                                        {{ category.get_active_products_count }} Products
+                                    {% else %}
+                                        {{ category.get_total_products_count|default:"0" }} Products
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-info">
+                            <p class="category-description" id="section-106">{{ category.description|default:"Discover our premium collection of pet essentials designed for comfort, style, and durability." }}</p>
+                            <a href="?page=products&category={{ category.slug }}" class="btn-explore-category" id="section-107">
+                                {{ text_contents.112|default:"Explore Collection" }}
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Featured Collections -->
+            <div class="featured-collections" id="section-108">
+                <h2 id="section-109">{{ text_contents.113|default:"Featured Collections" }}</h2>
+                <div class="collections-grid">
+                    {% for category in categories|slice:":3" %}
+                        <div class="collection-card">
+                            <div class="collection-image" style="background-image: url('{% if category.image %}{{ category.image.url }}{% else %}https://images.pexels.com/photos/3777631/pexels-photo-3777631.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}')"></div>
+                            <div class="collection-info">
+                                <div class="collection-name">{{ category.name }}</div>
+                                <p class="collection-description">{{ category.description|default:"Explore our exclusive collection of premium pet essentials."|truncatechars:100 }}</p>
+                                <a href="?page=products&category={{ category.slug }}" class="btn-view-collection">
+                                    {{ text_contents.104|default:"View Collection" }}
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Pet Care Guide -->
+            <div class="pet-care-guide" id="section-110">
+                <h2 id="section-111">{{ text_contents.114|default:"Pet Care Guide" }}</h2>
+                <div class="guide-grid">
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-ruler-combined" data-icon="23"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.106|default:"Sizing Guide" }}</h3>
+                        <p class="guide-description">{{ text_contents.107|default:"Learn how to measure your pet for the perfect fit. Find the right bed size, collar length, and more with our detailed guide." }}</p>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-heartbeat" data-icon="24"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.108|default:"Wellness Tips" }}</h3>
+                        <p class="guide-description">{{ text_contents.109|default:"Expert advice on nutrition, exercise, and overall wellness to keep your furry friend healthy and happy." }}</p>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-brush" data-icon="25"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.110|default:"Grooming Care" }}</h3>
+                        <p class="guide-description">{{ text_contents.111|default:"Professional tips for maintaining your pet's coat, nails, and overall hygiene between professional grooming sessions." }}</p>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Empty Categories State -->
+            <div class="empty-categories">
+                <div class="empty-categories-icon">
+                    <i class="fas fa-paw" data-icon="1"></i>
+                </div>
+                <h2>{{ text_contents.112|default:"No Categories Available" }}</h2>
+                <p>{{ text_contents.113|default:"There are no pet product categories to display at the moment. Categories will appear here once they are added to your store." }}</p>
+                <a href="?page=admin" class="btn-add-category">{{ text_contents.114|default:"Add Your First Category" }}</a>
+            </div>
+
+            <!-- Featured Collections (shown even when no categories) -->
+            <div class="featured-collections" id="section-108">
+                <h2 id="section-109">{{ text_contents.113|default:"Featured Collections" }}</h2>
+                <div class="collections-grid">
+                    <div class="collection-card">
+                        <div class="collection-image" style="background-image: url('https://images.pexels.com/photos/3777631/pexels-photo-3777631.jpeg?auto=compress&cs=tinysrgb&w=500')"></div>
+                        <div class="collection-info">
+                            <div class="collection-name">{{ text_contents.115|default:"Luxury Beds" }}</div>
+                            <p class="collection-description">{{ text_contents.116|default:"Premium orthopedic beds designed for ultimate comfort and support." }}</p>
+                            <a href="?page=products" class="btn-view-collection">{{ text_contents.104|default:"View Collection" }}</a>
+                        </div>
+                    </div>
+                    <div class="collection-card">
+                        <div class="collection-image" style="background-image: url('https://images.pexels.com/photos/6963939/pexels-photo-6963939.jpeg?auto=compress&cs=tinysrgb&w=500')"></div>
+                        <div class="collection-info">
+                            <div class="collection-name">{{ text_contents.117|default:"Interactive Toys" }}</div>
+                            <p class="collection-description">{{ text_contents.118|default:"Engaging toys designed to stimulate your pet's mind and encourage active play." }}</p>
+                            <a href="?page=products" class="btn-view-collection">{{ text_contents.104|default:"View Collection" }}</a>
+                        </div>
+                    </div>
+                    <div class="collection-card">
+                        <div class="collection-image" style="background-image: url('https://images.pexels.com/photos/4060140/pexels-photo-4060140.jpeg?auto=compress&cs=tinysrgb&w=500')"></div>
+                        <div class="collection-info">
+                            <div class="collection-name">{{ text_contents.119|default:"Grooming Essentials" }}</div>
+                            <p class="collection-description">{{ text_contents.120|default:"Professional-grade grooming tools for a spa-like experience at home." }}</p>
+                            <a href="?page=products" class="btn-view-collection">{{ text_contents.104|default:"View Collection" }}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pet Care Guide (shown even when no categories) -->
+            <div class="pet-care-guide" id="section-110">
+                <h2 id="section-111">{{ text_contents.114|default:"Pet Care Guide" }}</h2>
+                <div class="guide-grid">
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-ruler-combined" data-icon="23"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.106|default:"Sizing Guide" }}</h3>
+                        <p class="guide-description">{{ text_contents.107|default:"Learn how to measure your pet for the perfect fit. Find the right bed size, collar length, and more with our detailed guide." }}</p>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-heartbeat" data-icon="24"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.108|default:"Wellness Tips" }}</h3>
+                        <p class="guide-description">{{ text_contents.109|default:"Expert advice on nutrition, exercise, and overall wellness to keep your furry friend healthy and happy." }}</p>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon">
+                            <i class="fas fa-brush" data-icon="25"></i>
+                        </div>
+                        <h3 class="guide-title">{{ text_contents.110|default:"Grooming Care" }}</h3>
+                        <p class="guide-description">{{ text_contents.111|default:"Professional tips for maintaining your pet's coat, nails, and overall hygiene between professional grooming sessions." }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '110' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce20/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <script>
+        // Categories Filtering
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const categoryCards = document.querySelectorAll('.category-card');
+
+        if (filterButtons.length > 0 && categoryCards.length > 0) {
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    const filterValue = this.getAttribute('data-filter');
+                    filterCategories(filterValue);
+                });
+            });
+        }
+
+        function filterCategories(filterValue) {
+            categoryCards.forEach(card => {
+                const category = card.getAttribute('data-category');
+                if (filterValue === 'all' || category === filterValue) {
+                    card.style.display = 'block';
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 50);
+                } else {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        card.style.display = 'none';
+                    }, 300);
+                }
+            });
+        }
+
+        // Category card click handlers
+        categoryCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' ||
+                    e.target.closest('a') || e.target.closest('button')) {
+                    return;
+                }
+                const categoryName = this.querySelector('.category-name').textContent;
+                showNotification(`Browsing ${categoryName} collection`);
+            });
+        });
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 120px;
+                right: 20px;
+                background: var(--primary-warm);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: var(--border-radius);
+                box-shadow: 0 5px 15px rgba(92, 84, 76, 0.2);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.innerHTML = `<i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>${message}`;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add animation styles if not present
+        if (!document.querySelector('#category-styles')) {
+            const style = document.createElement('style');
+            style.id = 'category-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Initialize filter
+        filterCategories('all');
+    </script>
+</body>
+</html>

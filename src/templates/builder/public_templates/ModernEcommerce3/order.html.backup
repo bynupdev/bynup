@@ -1,0 +1,871 @@
+{% load style_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Checkout - Gemma Bag Shop</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Order Page Styles */
+.checkout-header {
+    padding: 40px 0;
+    background: linear-gradient(135deg, var(--primary) 0%, #d62a78 100%);
+    color: var(--white);
+    text-align: center;
+}
+
+.checkout-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.checkout-steps {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    opacity: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+    background: var(--white);
+    color: var(--primary);
+}
+
+.step-label {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Checkout Content */
+.checkout-content {
+    padding: 60px 0;
+    background-color: #f8f9fa;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 40px;
+    align-items: start;
+}
+
+/* Checkout Form */
+.checkout-form-section {
+    background: var(--white);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-section {
+    padding: 30px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: var(--white);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(232, 62, 140, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Shipping Options */
+.shipping-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.shipping-option.active {
+    border-color: var(--primary);
+    background: rgba(232, 62, 140, 0.05);
+}
+
+.shipping-option:hover {
+    border-color: var(--primary);
+}
+
+.shipping-option input[type="radio"] {
+    margin: 0;
+}
+
+.option-content {
+    flex: 1;
+}
+
+.option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.option-title {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.option-price {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.option-desc {
+    font-size: 14px;
+    color: var(--secondary);
+}
+
+/* Payment Methods */
+.payment-methods {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.payment-method {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.payment-method.active {
+    border-color: var(--primary);
+    background: rgba(232, 62, 140, 0.05);
+}
+
+.payment-method:hover {
+    border-color: var(--primary);
+}
+
+.payment-method input[type="radio"] {
+    margin: 0;
+}
+
+.method-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.payment-method i {
+    font-size: 24px;
+    color: var(--primary);
+}
+
+.method-name {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* Card Form */
+.card-form {
+    background: var(--card-bg, #f8f9fa);
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+.card-form .form-group {
+    position: relative;
+}
+
+.card-form .form-group i {
+    position: absolute;
+    right: 15px;
+    top: 40px;
+    color: var(--secondary);
+    font-size: 16px;
+}
+
+.card-form .form-group i.fa-question-circle {
+    cursor: help;
+}
+
+/* Order Summary */
+.order-summary-section {
+    position: sticky;
+    top: 20px;
+}
+
+.summary-card {
+    background: var(--white);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.summary-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--dark);
+    text-align: center;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #eee;
+}
+
+/* Order Items */
+.order-items {
+    margin-bottom: 25px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--dark);
+}
+
+.item-variant,
+.item-quantity {
+    font-size: 12px;
+    color: var(--secondary);
+    margin-bottom: 2px;
+}
+
+.item-price {
+    font-weight: 700;
+    color: var(--dark);
+    font-size: 14px;
+}
+
+/* Order Totals */
+.order-totals {
+    margin: 25px 0;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.total-row.grand-total {
+    border-bottom: none;
+    border-top: 2px solid var(--primary);
+    margin-top: 10px;
+    padding-top: 15px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.total-row .label {
+    color: var(--secondary);
+    font-size: 14px;
+}
+
+.total-row .value {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.total-row.grand-total .value {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.total-divider {
+    height: 1px;
+    background: #eee;
+    margin: 15px 0;
+}
+
+/* Security Badge */
+.security-badge {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: var(--card-bg, #f8f9fa);
+    border-radius: 10px;
+    margin: 25px 0;
+    border: 1px solid #eee;
+}
+
+.security-badge i {
+    font-size: 24px;
+    color: var(--success);
+    flex-shrink: 0;
+}
+
+.security-title {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 5px;
+}
+
+.security-desc {
+    font-size: 12px;
+    color: var(--secondary);
+}
+
+/* Buttons */
+.btn-place-order {
+    width: 100%;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 18px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.btn-place-order:hover {
+    background: #d62a78;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(232, 62, 140, 0.3);
+}
+
+.return-cart {
+    text-align: center;
+}
+
+.btn-return {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 12px 25px;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.btn-return:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-2px);
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .order-summary-section {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .checkout-steps {
+        gap: 20px;
+    }
+    
+    .step-label {
+        font-size: 12px;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .payment-methods {
+        flex-direction: column;
+    }
+    
+    .shipping-option {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .option-header {
+        width: 100%;
+    }
+    
+    .form-section {
+        padding: 20px;
+    }
+    
+    .summary-card {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .checkout-header h1 {
+        font-size: 28px;
+    }
+    
+    .checkout-steps {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .step {
+        flex-direction: row;
+        gap: 15px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .item-details {
+        text-align: center;
+    }
+}
+
+/* Form Validation Styles */
+.form-group.error input,
+.form-group.error select,
+.form-group.error textarea {
+    border-color: #dc3545;
+}
+
+.form-group .error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+}
+
+.form-group.error .error-message {
+    display: block;
+}
+
+/* Loading State */
+.btn-place-order.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-place-order.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 442 580 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 442 580 %}
+    </style>
+</head>
+<body>
+    <!-- Checkout Header -->
+    <section class="checkout-header" id="section-442">
+        <div class="container">
+            <h1 id="section-443">{{ text_contents.225|default:"Checkout" }}</h1>
+            <div class="checkout-steps" id="section-444">
+                <div class="step active" id="section-445">
+                    <div class="step-number" id="section-446">{{ text_contents.226|default:"1" }}</div>
+                    <div class="step-label" id="section-447">{{ text_contents.227|default:"Shipping" }}</div>
+                </div>
+                <div class="step" id="section-448">
+                    <div class="step-number" id="section-449">{{ text_contents.228|default:"2" }}</div>
+                    <div class="step-label" id="section-450">{{ text_contents.229|default:"Payment" }}</div>
+                </div>
+                <div class="step" id="section-451">
+                    <div class="step-number" id="section-452">{{ text_contents.230|default:"3" }}</div>
+                    <div class="step-label" id="section-453">{{ text_contents.231|default:"Confirmation" }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% for component in components %}
+        {% if component.drop_zone == '442' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Checkout Content -->
+    <section class="checkout-content" id="section-454">
+        <div class="container">
+            <div class="checkout-layout" id="section-455">
+                <!-- Checkout Form -->
+                <div class="checkout-form-section" id="section-456">
+                    <!-- Shipping Information -->
+                    <div class="form-section" id="section-457">
+                        <h2 class="section-title" id="section-458">{{ text_contents.232|default:"Shipping Information" }}</h2>
+                        
+                        <div class="form-grid" id="section-459">
+                            <div class="form-group" id="section-460">
+                                <label id="section-461">{{ text_contents.233|default:"First Name" }}</label>
+                                <input type="text" id="section-462" placeholder="Enter your first name">
+                            </div>
+                            <div class="form-group" id="section-463">
+                                <label id="section-464">{{ text_contents.234|default:"Last Name" }}</label>
+                                <input type="text" id="section-465" placeholder="Enter your last name">
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="section-466">
+                            <label id="section-467">{{ text_contents.235|default:"Email Address" }}</label>
+                            <input type="email" id="section-468" placeholder="Enter your email">
+                        </div>
+
+                        <div class="form-group" id="section-469">
+                            <label id="section-470">{{ text_contents.236|default:"Phone Number" }}</label>
+                            <input type="tel" id="section-471" placeholder="Enter your phone number">
+                        </div>
+
+                        <div class="form-group" id="section-472">
+                            <label id="section-473">{{ text_contents.237|default:"Street Address" }}</label>
+                            <input type="text" id="section-474" placeholder="Enter your street address">
+                        </div>
+
+                        <div class="form-grid" id="section-475">
+                            <div class="form-group" id="section-476">
+                                <label id="section-477">{{ text_contents.238|default:"City" }}</label>
+                                <input type="text" id="section-478" placeholder="Enter your city">
+                            </div>
+                            <div class="form-group" id="section-479">
+                                <label id="section-480">{{ text_contents.239|default:"State/Province" }}</label>
+                                <input type="text" id="section-481" placeholder="Enter state/province">
+                            </div>
+                        </div>
+
+                        <div class="form-grid" id="section-482">
+                            <div class="form-group" id="section-483">
+                                <label id="section-484">{{ text_contents.240|default:"ZIP/Postal Code" }}</label>
+                                <input type="text" id="section-485" placeholder="Enter ZIP code">
+                            </div>
+                            <div class="form-group" id="section-486">
+                                <label id="section-487">{{ text_contents.241|default:"Country" }}</label>
+                                <select id="section-488">
+                                    <option id="section-489">{{ text_contents.242|default:"United States" }}</option>
+                                    <option id="section-490">{{ text_contents.243|default:"Canada" }}</option>
+                                    <option id="section-491">{{ text_contents.244|default:"United Kingdom" }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipping Method -->
+                    <div class="form-section" id="section-492">
+                        <h2 class="section-title" id="section-493">{{ text_contents.245|default:"Shipping Method" }}</h2>
+                        
+                        <div class="shipping-options" id="section-494">
+                            <div class="shipping-option active" id="section-495">
+                                <input type="radio" name="shipping" checked id="section-496">
+                                <div class="option-content" id="section-497">
+                                    <div class="option-header" id="section-498">
+                                        <span class="option-title" id="section-499">{{ text_contents.246|default:"Standard Shipping" }}</span>
+                                        <span class="option-price" id="section-500">{{ text_contents.247|default:"Free" }}</span>
+                                    </div>
+                                    <span class="option-desc" id="section-501">{{ text_contents.248|default:"5-7 business days" }}</span>
+                                </div>
+                            </div>
+                            <div class="shipping-option" id="section-502">
+                                <input type="radio" name="shipping" id="section-503">
+                                <div class="option-content" id="section-504">
+                                    <div class="option-header" id="section-505">
+                                        <span class="option-title" id="section-506">{{ text_contents.249|default:"Express Shipping" }}</span>
+                                        <span class="option-price" id="section-507">{{ text_contents.250|default:"$9.99" }}</span>
+                                    </div>
+                                    <span class="option-desc" id="section-508">{{ text_contents.251|default:"2-3 business days" }}</span>
+                                </div>
+                            </div>
+                            <div class="shipping-option" id="section-509">
+                                <input type="radio" name="shipping" id="section-510">
+                                <div class="option-content" id="section-511">
+                                    <div class="option-header" id="section-512">
+                                        <span class="option-title" id="section-513">{{ text_contents.252|default:"Next Day Delivery" }}</span>
+                                        <span class="option-price" id="section-514">{{ text_contents.253|default:"$19.99" }}</span>
+                                    </div>
+                                    <span class="option-desc" id="section-515">{{ text_contents.254|default:"Next business day" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="form-section" id="section-516">
+                        <h2 class="section-title" id="section-517">{{ text_contents.255|default:"Payment Information" }}</h2>
+                        
+                        <div class="payment-methods" id="section-518">
+                            <div class="payment-method active" id="section-519">
+                                <input type="radio" name="payment" checked id="section-520">
+                                <div class="method-content" id="section-521">
+                                    <i class="fab fa-cc-visa"></i>
+                                    <span class="method-name" id="section-522">{{ text_contents.256|default:"Credit/Debit Card" }}</span>
+                                </div>
+                            </div>
+                            <div class="payment-method" id="section-523">
+                                <input type="radio" name="payment" id="section-524">
+                                <div class="method-content" id="section-525">
+                                    <i class="fab fa-paypal"></i>
+                                    <span class="method-name" id="section-526">{{ text_contents.257|default:"PayPal" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-form" id="section-527">
+                            <div class="form-group" id="section-528">
+                                <label id="section-529">{{ text_contents.258|default:"Card Number" }}</label>
+                                <input type="text" id="section-530" placeholder="1234 5678 9012 3456">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+
+                            <div class="form-grid" id="section-531">
+                                <div class="form-group" id="section-532">
+                                    <label id="section-533">{{ text_contents.259|default:"Expiry Date" }}</label>
+                                    <input type="text" id="section-534" placeholder="MM/YY">
+                                </div>
+                                <div class="form-group" id="section-535">
+                                    <label id="section-536">{{ text_contents.260|default:"CVV" }}</label>
+                                    <input type="text" id="section-537" placeholder="123">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group" id="section-538">
+                                <label id="section-539">{{ text_contents.261|default:"Cardholder Name" }}</label>
+                                <input type="text" id="section-540" placeholder="Enter name as on card">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Notes -->
+                    <div class="form-section" id="section-541">
+                        <h2 class="section-title" id="section-542">{{ text_contents.262|default:"Additional Information" }}</h2>
+                        
+                        <div class="form-group" id="section-543">
+                            <label id="section-544">{{ text_contents.263|default:"Order Notes (Optional)" }}</label>
+                            <textarea id="section-545" placeholder="Any special instructions for your order..." rows="4"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary-section" id="section-546">
+                    <div class="summary-card" id="section-547">
+                        <h3 class="summary-title" id="section-548">{{ text_contents.264|default:"Order Summary" }}</h3>
+                        
+                        <!-- Order Items -->
+                        <div class="order-items" id="section-549">
+                            <!-- Order items will be dynamically generated here -->
+                            <!-- Django will loop through order items and apply styles from section 550-556 -->
+                        </div>
+
+                        <!-- Order Totals -->
+                        <div class="order-totals" id="section-557">
+                            <div class="total-row" id="section-558">
+                                <span class="label" id="section-559">{{ text_contents.269|default:"Subtotal" }}</span>
+                                <span class="value" id="section-560">{{ text_contents.270|default:"$221.97" }}</span>
+                            </div>
+                            <div class="total-row" id="section-561">
+                                <span class="label" id="section-562">{{ text_contents.271|default:"Shipping" }}</span>
+                                <span class="value" id="section-563">{{ text_contents.272|default:"Free" }}</span>
+                            </div>
+                            <div class="total-row" id="section-564">
+                                <span class="label" id="section-565">{{ text_contents.273|default:"Tax" }}</span>
+                                <span class="value" id="section-566">{{ text_contents.274|default:"$17.76" }}</span>
+                            </div>
+                            <div class="total-divider" id="section-567"></div>
+                            <div class="total-row grand-total" id="section-568">
+                                <span class="label" id="section-569">{{ text_contents.275|default:"Total" }}</span>
+                                <span class="value" id="section-570">{{ text_contents.276|default:"$239.73" }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Security Badge -->
+                        <div class="security-badge" id="section-571">
+                            <i class="fas fa-shield-alt"></i>
+                            <div class="security-text" id="section-572">
+                                <div class="security-title" id="section-573">{{ text_contents.277|default:"Secure Checkout" }}</div>
+                                <div class="security-desc" id="section-574">{{ text_contents.278|default:"Your payment information is encrypted and secure" }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Place Order Button -->
+                        <button class="btn-place-order" id="section-575"><i class="fas fa-lock"></i> {{ text_contents.279|default:"Place Order" }}</button>
+
+                        <!-- Return to Cart -->
+                        <div class="return-cart" id="section-576">
+                            <a href="?page=cart" class="btn-return" id="section-577"><i class="fas fa-arrow-left"></i> {{ text_contents.280|default:"Return to Cart" }}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% for component in components %}
+        {% if component.drop_zone == '454' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+    {% endfor %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+        <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+            {{ component.html_content|safe }}
+        </section>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

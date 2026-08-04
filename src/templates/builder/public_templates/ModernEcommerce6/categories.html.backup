@@ -1,0 +1,719 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories | {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+    <style>
+        :root {
+            --primary-brown: #B0988B;
+            --primary-teal: #4D8581;
+            --primary-aqua: #ABDED7;
+            --dark-gray: #333333;
+            --light-gray: #f8f9fa;
+            --medium-gray: #e9ecef;
+            --white: #ffffff;
+            --black: #222222;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        {% generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-gray);
+            background-color: var(--white);
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .action-primary {
+            display: inline-block;
+            padding: 14px 32px;
+            background-color: var(--primary-teal);
+            color: var(--white);
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .action-primary:hover {
+            background-color: var(--primary-brown);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .action-secondary {
+            background-color: transparent;
+            border: 2px solid var(--primary-teal);
+            color: var(--primary-teal);
+            padding: 12px 28px;
+            font-weight: 600;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .action-secondary:hover {
+            background-color: var(--primary-teal);
+            color: var(--white);
+        }
+
+        /* Categories Header */
+        .categories-header {
+            padding: 100px 0 40px;
+            background-color: var(--light-gray);
+            margin-top: 70px;
+        }
+
+        .page-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        /* Categories Navigation */
+        .categories-nav {
+            background-color: var(--white);
+            box-shadow: var(--shadow);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+        }
+
+        .categories-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background-color: var(--light-gray);
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-teal);
+            color: var(--primary-teal);
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-teal);
+            color: var(--white);
+            border-color: var(--primary-teal);
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .category-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-image {
+            height: 200px;
+            overflow: hidden;
+            background-color: var(--medium-gray);
+            position: relative;
+        }
+
+        .category-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .category-card:hover .category-image img {
+            transform: scale(1.05);
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.3));
+            display: flex;
+            align-items: flex-end;
+            padding: 20px;
+        }
+
+        .category-content {
+            padding: 25px;
+        }
+
+        .category-title {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--dark-gray);
+        }
+
+        .category-count {
+            color: var(--primary-teal);
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .category-description {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .category-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .category-features li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+        }
+
+        .category-features li i {
+            color: var(--primary-teal);
+            font-size: 0.8rem;
+        }
+
+        /* Popular Products Section */
+        .popular-products {
+            padding: 60px 0;
+            background-color: var(--light-gray);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .product-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-img {
+            height: 180px;
+            overflow: hidden;
+            background-color: var(--medium-gray);
+        }
+
+        .product-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .product-card:hover .product-img img {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .product-price {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-teal);
+            margin-bottom: 15px;
+        }
+
+        /* Category Spotlight */
+        .category-spotlight {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-aqua) 100%);
+            color: var(--white);
+            margin: 60px 0;
+        }
+
+        .spotlight-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .spotlight-info h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: var(--white);
+        }
+
+        .spotlight-info p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .spotlight-image {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .spotlight-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .spotlight-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .categories-header {
+                padding: 80px 0 30px;
+            }
+            
+            .page-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+            
+            .categories-grid {
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .category-image {
+                height: 180px;
+            }
+            
+            .spotlight-info h2 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .categories-filter {
+                justify-content: flex-start;
+            }
+            
+            .filter-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Animation for categories */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .category-card {
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        .category-card:nth-child(1) { animation-delay: 0.1s; }
+        .category-card:nth-child(2) { animation-delay: 0.2s; }
+        .category-card:nth-child(3) { animation-delay: 0.3s; }
+        .category-card:nth-child(4) { animation-delay: 0.4s; }
+        .category-card:nth-child(5) { animation-delay: 0.5s; }
+        .category-card:nth-child(6) { animation-delay: 0.6s; }
+
+        {% generate_section_styles style_customizations 239 300 %}
+        {% generate_background_images background_images 239 300 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+    <!-- Header -->
+    {%include 'builder/public_templates/ModernEcommerce6/snippets/header.html'%}
+
+    <!-- Categories Header -->
+    <div class="categories-header" id="section-239">
+        <div class="container">
+            <div class="page-title">
+                <h1 id="section-240">{{ text_contents.206|default:"Browse Categories" }}</h1>
+                <a href="?page=products" class="action-secondary" id="section-241">{{ text_contents.207|default:"View All Products" }}</a>
+            </div>
+            <p id="section-242">{{ text_contents.208|default:"Discover our wide range of electronics categories. From smart home devices to audio equipment, find exactly what you need for your tech lifestyle." }}</p>
+        </div>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '239' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Categories Navigation -->
+    <section class="categories-nav" id="section-243">
+        <div class="container">
+            <div class="categories-filter" id="categories-filter">
+                <button class="filter-btn active" id="section-244" onclick="filterCategories('all')">{{ text_contents.209|default:"All Categories" }}</button>
+                {% for category in categories %}
+                <button class="filter-btn" id="section-245" onclick="filterCategories('{{category.slug}}')">{{ category.name }}</button>
+                {% endfor %}
+                <!-- <button class="filter-btn" id="section-246" onclick="filterCategories('audio')">{{ text_contents.211|default:"Audio" }}</button>
+                <button class="filter-btn" id="section-247" onclick="filterCategories('wearables')">{{ text_contents.212|default:"Wearables" }}</button>
+                <button class="filter-btn" id="section-248" onclick="filterCategories('smart-home')">{{ text_contents.213|default:"Smart Home" }}</button>
+                <button class="filter-btn" id="section-249" onclick="filterCategories('accessories')">{{ text_contents.214|default:"Accessories" }}</button> -->
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '243' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Categories Grid -->
+    <section class="categories-grid-section" id="section-250">
+        <div class="container">
+            {% if categories %}
+                <div class="categories-grid" id="categories-grid">
+                    {% for category in categories %}
+                        
+                            <!-- First category - Editable from builder -->
+                            <div class="category-card" id="section-251" data-category="{{ category.slug|default:category.name|slugify }}">
+                                <div class="category-image">
+                                    {% if image_customizations.35 %}
+                                        <img src="{{ image_customizations.35.image_url }}" alt="{{ image_customizations.35.alt_text|default:category.name }}">
+                                    {% else %}
+                                        <img src="{% if category.image %}{{ category.image.url }}{% else %}https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1170&q=80{% endif %}" alt="{{ category.name }}">
+                                    {% endif %}
+                                    <div class="category-overlay">
+                                        <h3 class="category-title" id="section-252">{{ text_contents.215|default:category.name }}</h3>
+                                    </div>
+                                </div>
+                                <div class="category-content">
+                                    <div class="category-count" id="section-253">{{ text_contents.216|default:category.get_active_products_count }} Products</div>
+                                    <p class="category-description" id="section-254">{{ text_contents.217|default:category.description|default:"Premium electronics for your lifestyle." }}</p>
+                                    <!-- <ul class="category-features">
+                                        <li>
+                                            <i class="fas fa-check" data-icon="34"></i> 
+                                            <span id="section-255">{{ text_contents.218|default:"Premium quality products" }}</span>
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-check" data-icon="34"></i> 
+                                            <span id="section-256">{{ text_contents.219|default:"Latest technology" }}</span>
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-check" data-icon="34"></i> 
+                                            <span id="section-257">{{ text_contents.220|default:"Best price guarantee" }}</span>
+                                        </li>
+                                    </ul> -->
+                                    <a href="?page=products&category={{ category.slug }}" class="action-primary" id="section-258" style="width: 100%; text-align: center;">{{ text_contents.221|default:"Browse" }} {{ category.name }}</a>
+                                </div>
+                            </div>
+                        
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Empty Categories State -->
+                <div class="empty-categories">
+                    <div class="empty-categories-icon">
+                        <i class="fas fa-folder-open" data-icon="37"></i>
+                    </div>
+                    <h2>{{ text_contents.233|default:"No Categories Available" }}</h2>
+                    <p>{{ text_contents.234|default:"Categories will appear here once they are added." }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '250' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Category Spotlight -->
+    <section class="category-spotlight" id="section-259">
+        <div class="container">
+            <div class="spotlight-content">
+                <div class="spotlight-info">
+                    <h2 id="section-260">{{ text_contents.222|default:"Audio Excellence" }}</h2>
+                    <p id="section-261">{{ text_contents.223|default:"Experience sound like never before with our premium audio collection. From noise-cancelling headphones to immersive home theater systems." }}</p>
+                    <div class="spotlight-features" style="margin-bottom: 30px;">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <i class="fas fa-volume-up" data-icon="35"></i>
+                            <span id="section-262">{{ text_contents.224|default:"Studio-quality sound" }}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <i class="fas fa-wifi" data-icon="36"></i>
+                            <span id="section-263">{{ text_contents.225|default:"Wireless connectivity" }}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="fas fa-battery-full" data-icon="16"></i>
+                            <span id="section-264">{{ text_contents.226|default:"Long battery life" }}</span>
+                        </div>
+                    </div>
+                    <a href="?page=products&category=audio" class="action-primary" id="section-265" style="background-color: var(--white); color: var(--primary-teal);">{{ text_contents.227|default:"Shop Audio Devices" }}</a>
+                </div>
+                <div class="spotlight-image">
+                    {% if image_customizations.36 %}
+                        <img src="{{ image_customizations.36.image_url }}" alt="{{ image_customizations.36.alt_text|default:'Audio Collection' }}">
+                    {% else %}
+                        <img src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=2069&q=80" alt="Audio Collection">
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '259' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Popular Products -->
+    <section class="popular-products" id="section-266">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-267">{{ text_contents.228|default:"Popular in Categories" }}</h2>
+                <p id="section-268">{{ text_contents.229|default:"Best-selling products across all our categories" }}</p>
+            </div>
+            
+            {% if popular_products %}
+                <div class="products-grid" id="popular-products-grid">
+                    {% for product in popular_products|slice:":4" %}
+                        {% if forloop.first %}
+                            <!-- First product - Editable from builder -->
+                            <div class="product-card" id="section-269">
+                                <div class="product-img">
+                                    {% if image_customizations.37 %}
+                                        <img src="{{ image_customizations.37.image_url }}" alt="{{ image_customizations.37.alt_text|default:product.title }}">
+                                    {% else %}
+                                        <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1064&q=80{% endif %}" alt="{{ product.title }}">
+                                    {% endif %}
+                                </div>
+                                <div class="product-info">
+                                    <h3 id="section-270">{{ text_contents.230|default:product.title|truncatechars:30 }}</h3>
+                                    <div class="product-price" id="section-271">{{ text_contents.231|default:product.price|currency:page }}</div>
+                                    <a href="/product/{{ product.slug }}/" class="action-primary" id="section-272" style="width: 100%; text-align: center;">{{ text_contents.232|default:"View Details" }}</a>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Subsequent products - Backend populated -->
+                            <div class="product-card">
+                                <div class="product-img">
+                                    <img src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1064&q=80{% endif %}" alt="{{ product.title }}">
+                                </div>
+                                <div class="product-info">
+                                    <h3>{{ product.title|truncatechars:30 }}</h3>
+                                    <div class="product-price">{{ product.price|currency:page }}</div>
+                                    <a href="/product/{{ product.slug }}/" class="action-primary" style="width: 100%; text-align: center;">View Details</a>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>{{ text_contents.235|default:"No popular products available." }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% for component in components %}
+        {% if component.drop_zone == '266' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {%include 'builder/public_templates/ModernEcommerce6/snippets/footer.html'%}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+
+    <script>
+        // Category filtering
+        function filterCategories(category) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+            
+            const categoryCards = document.querySelectorAll('.category-card');
+            
+            if (category === 'all') {
+                categoryCards.forEach(card => {
+                    card.style.display = 'block';
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 10);
+                });
+            } else {
+                categoryCards.forEach(card => {
+                    const cardCategory = card.getAttribute('data-category');
+                    if (cardCategory === category) {
+                        card.style.display = 'block';
+                        setTimeout(() => {
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        }, 10);
+                    } else {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        setTimeout(() => {
+                            card.style.display = 'none';
+                        }, 300);
+                    }
+                });
+            }
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const categoryParam = urlParams.get('category');
+            
+            if (categoryParam) {
+                const filterButtons = document.querySelectorAll('.filter-btn');
+                filterButtons.forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(categoryParam)) {
+                        btn.click();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

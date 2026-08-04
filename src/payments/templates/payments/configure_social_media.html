@@ -1,0 +1,508 @@
+<!-- payments/templates/payments/configure_social_media.html -->
+{% extends 'payments/base_payments.html' %}
+
+{% block title %}Configure Social Media Payments - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .platform-card {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .platform-card:hover {
+        border-color: #4361ee;
+        background: #f8f9ff;
+    }
+    
+    .platform-card.selected {
+        border-color: #25D366;
+        background: #f0fff4;
+    }
+    
+    .platform-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .platform-whatsapp { color: #25D366; }
+    .platform-facebook { color: #1877f2; }
+    .platform-instagram { color: #e4405f; }
+    .platform-telegram { color: #0088cc; }
+    .platform-x { color: #000000; }
+    
+    .platform-toggle {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+    
+    .platform-details {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .message-preview {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+    }
+    
+    .social-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .badge-whatsapp { background: #25D366; color: white; }
+    .badge-facebook { background: #1877f2; color: white; }
+    .badge-instagram { background: #e4405f; color: white; }
+    .badge-telegram { background: #0088cc; color: white; }
+    .badge-x { background: #000000; color: white; }
+</style>
+{% endblock %}
+
+{% block payment_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-share-alt me-2"></i>Configure Social Media Payments
+                </h5>
+                <div>
+                    {% if social_gateway.is_active %}
+                        <span class="badge bg-success me-2">Active</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post" id="socialMediaConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Platform Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Enable Payment Platforms</label>
+                        <div class="text-muted small mb-3">
+                            Select the social media platforms where you want to receive orders
+                        </div>
+                        
+                        <div class="row">
+                            <!-- WhatsApp -->
+                            <div class="col-md-4">
+                                <div class="platform-card {% if 'whatsapp' in social_gateway.social_media_platforms %}selected{% endif %}" 
+                                     onclick="togglePlatform('whatsapp', this)">
+                                    <div class="platform-toggle">
+                                        <input type="checkbox" name="social_media_platforms" value="whatsapp" 
+                                               id="platform_whatsapp" class="form-check-input platform-checkbox"
+                                               {% if 'whatsapp' in social_gateway.social_media_platforms %}checked{% endif %}>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="fab fa-whatsapp platform-icon platform-whatsapp"></i>
+                                        <h6>WhatsApp</h6>
+                                        <small class="text-muted">Send orders via WhatsApp</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Facebook Messenger -->
+                            <div class="col-md-4">
+                                <div class="platform-card {% if 'facebook' in social_gateway.social_media_platforms %}selected{% endif %}"
+                                     onclick="togglePlatform('facebook', this)">
+                                    <div class="platform-toggle">
+                                        <input type="checkbox" name="social_media_platforms" value="facebook" 
+                                               id="platform_facebook" class="form-check-input platform-checkbox"
+                                               {% if 'facebook' in social_gateway.social_media_platforms %}checked{% endif %}>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="fab fa-facebook-messenger platform-icon platform-facebook"></i>
+                                        <h6>Facebook Messenger</h6>
+                                        <small class="text-muted">Receive orders via Messenger</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Instagram -->
+                            <div class="col-md-4">
+                                <div class="platform-card {% if 'instagram' in social_gateway.social_media_platforms %}selected{% endif %}"
+                                     onclick="togglePlatform('instagram', this)">
+                                    <div class="platform-toggle">
+                                        <input type="checkbox" name="social_media_platforms" value="instagram" 
+                                               id="platform_instagram" class="form-check-input platform-checkbox"
+                                               {% if 'instagram' in social_gateway.social_media_platforms %}checked{% endif %}>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="fab fa-instagram platform-icon platform-instagram"></i>
+                                        <h6>Instagram</h6>
+                                        <small class="text-muted">DM orders on Instagram</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Telegram -->
+                            <div class="col-md-4">
+                                <div class="platform-card {% if 'telegram' in social_gateway.social_media_platforms %}selected{% endif %}"
+                                     onclick="togglePlatform('telegram', this)">
+                                    <div class="platform-toggle">
+                                        <input type="checkbox" name="social_media_platforms" value="telegram" 
+                                               id="platform_telegram" class="form-check-input platform-checkbox"
+                                               {% if 'telegram' in social_gateway.social_media_platforms %}checked{% endif %}>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="fab fa-telegram platform-icon platform-telegram"></i>
+                                        <h6>Telegram</h6>
+                                        <small class="text-muted">Receive orders via Telegram</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- X.com (Twitter) -->
+                            <div class="col-md-4">
+                                <div class="platform-card {% if 'x' in social_gateway.social_media_platforms %}selected{% endif %}"
+                                     onclick="togglePlatform('x', this)">
+                                    <div class="platform-toggle">
+                                        <input type="checkbox" name="social_media_platforms" value="x" 
+                                               id="platform_x" class="form-check-input platform-checkbox"
+                                               {% if 'x' in social_gateway.social_media_platforms %}checked{% endif %}>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="fab fa-x-twitter platform-icon platform-x"></i>
+                                        <h6>X.com (Twitter)</h6>
+                                        <small class="text-muted">DM orders on X</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Platform Details Section -->
+                    <div id="platformDetails">
+                        <!-- WhatsApp Details -->
+                        <div class="platform-details" id="whatsappDetails" style="display: none;">
+                            <h6 class="text-success">
+                                <i class="fab fa-whatsapp me-2"></i>WhatsApp Configuration
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">WhatsApp Number</label>
+                                    <input type="text" class="form-control" name="whatsapp_number" 
+                                           value="{{ social_gateway.whatsapp_number|default:'' }}"
+                                           placeholder="e.g., 1234567890">
+                                    <div class="form-text">Include country code, no spaces or symbols</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Business Name (Optional)</label>
+                                    <input type="text" class="form-control" name="whatsapp_business_name" 
+                                           value="{{ social_gateway.whatsapp_business_name|default:'' }}"
+                                           placeholder="e.g., My Store Name">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Facebook Details -->
+                        <div class="platform-details" id="facebookDetails" style="display: none;">
+                            <h6 class="text-primary">
+                                <i class="fab fa-facebook me-2"></i>Facebook Messenger Configuration
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Facebook Page ID</label>
+                                    <input type="text" class="form-control" name="facebook_page_id" 
+                                           value="{{ social_gateway.facebook_page_id|default:'' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Facebook Username</label>
+                                    <input type="text" class="form-control" name="facebook_username" 
+                                           value="{{ social_gateway.facebook_username|default:'' }}"
+                                           placeholder="username">
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Messenger Link (Optional)</label>
+                                    <input type="url" class="form-control" name="facebook_messenger_link" 
+                                           value="{{ social_gateway.facebook_messenger_link|default:'' }}"
+                                           placeholder="https://m.me/yourpage">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Instagram Details -->
+                        <div class="platform-details" id="instagramDetails" style="display: none;">
+                            <h6 class="text-danger">
+                                <i class="fab fa-instagram me-2"></i>Instagram Configuration
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Instagram Username</label>
+                                    <input type="text" class="form-control" name="instagram_username" 
+                                           value="{{ social_gateway.instagram_username|default:'' }}"
+                                           placeholder="username">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Business Account ID (Optional)</label>
+                                    <input type="text" class="form-control" name="instagram_business_account" 
+                                           value="{{ social_gateway.instagram_business_account|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Telegram Details -->
+                        <div class="platform-details" id="telegramDetails" style="display: none;">
+                            <h6 class="text-info">
+                                <i class="fab fa-telegram me-2"></i>Telegram Configuration
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Telegram Username</label>
+                                    <input type="text" class="form-control" name="telegram_username" 
+                                           value="{{ social_gateway.telegram_username|default:'' }}"
+                                           placeholder="username">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Bot Token (Optional)</label>
+                                    <input type="password" class="form-control" name="telegram_bot_token" 
+                                           value="{{ social_gateway.telegram_bot_token|default:'' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Chat ID (Optional)</label>
+                                    <input type="text" class="form-control" name="telegram_chat_id" 
+                                           value="{{ social_gateway.telegram_chat_id|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- X.com Details -->
+                        <div class="platform-details" id="xDetails" style="display: none;">
+                            <h6 class="text-dark">
+                                <i class="fab fa-x-twitter me-2"></i>X.com (Twitter) Configuration
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">X Username</label>
+                                    <input type="text" class="form-control" name="x_username" 
+                                           value="{{ social_gateway.x_username|default:'' }}"
+                                           placeholder="username">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">DM Link (Optional)</label>
+                                    <input type="url" class="form-control" name="x_dm_link" 
+                                           value="{{ social_gateway.x_dm_link|default:'' }}"
+                                           placeholder="https://twitter.com/messages/compose?recipient_id=...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- General Settings -->
+                    <div class="mt-4 pt-4 border-top">
+                        <h6 class="fw-bold mb-3">General Settings</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Order Number Prefix</label>
+                                <input type="text" class="form-control" name="social_media_order_prefix" 
+                                       value="{{ social_gateway.social_media_order_prefix|default:'SOC-' }}">
+                                <div class="form-text">Prefix for social media orders (e.g., SOC-, SM-)</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="social_media_auto_send" 
+                                           name="social_media_auto_send" {% if social_gateway.social_media_auto_send %}checked{% endif %}>
+                                    <label class="form-check-label" for="social_media_auto_send">
+                                        <strong>Auto-send orders</strong>
+                                        <small class="text-muted d-block">Automatically generate and display links after checkout</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Message Template -->
+                        <div class="mb-3">
+                            <label class="form-label">Custom Message Template (Optional)</label>
+                            <textarea class="form-control" name="social_media_message_template" rows="5"
+                                      placeholder="Leave empty to use default template">{{ social_gateway.social_media_message_template|default:'' }}</textarea>
+                            <div class="form-text">
+                                Available placeholders: 
+                                <code>&#123;&#123;order_number&#125;&#125;</code>, 
+                                <code>&#123;&#123;customer_name&#125;&#125;</code>, 
+                                <code>&#123;&#123;customer_email&#125;&#125;</code>,
+                                <code>&#123;&#123;customer_phone&#125;&#125;</code>,
+                                <code>&#123;&#123;total_amount&#125;&#125;</code>,
+                                <code>&#123;&#123;order_date&#125;&#125;</code>
+                            </div>
+                        </div>
+                        
+                        <!-- Message Preview -->
+                        <div class="mt-3">
+                            <label class="form-label">Message Preview</label>
+                            <div class="message-preview" id="messagePreview">
+                                🛍️ *NEW ORDER #SOC-ABC123*
+                                
+━━━━━━━━━━━━━━━━━━━━━
+👤 *CUSTOMER DETAILS*
+━━━━━━━━━━━━━━━━━━━━━
+Name: John Doe
+Email: john@example.com
+Phone: +1234567890
+
+━━━━━━━━━━━━━━━━━━━━━
+📍 *DELIVERY ADDRESS*
+━━━━━━━━━━━━━━━━━━━━━
+123 Main St
+New York, NY 10001
+USA
+
+━━━━━━━━━━━━━━━━━━━━━
+📦 *ORDER ITEMS*
+━━━━━━━━━━━━━━━━━━━━━
+• 2x Product Name (Red Large)
+  $25.00 each → $50.00
+
+━━━━━━━━━━━━━━━━━━━━━
+💰 *ORDER SUMMARY*
+━━━━━━━━━━━━━━━━━━━━━
+Subtotal: $50.00
+Shipping: $5.00
+Tax: $4.00
+━━━━━━━━━━━━━━━━━━━━━
+*TOTAL: $59.00*
+━━━━━━━━━━━━━━━━━━━━━
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activation Toggle -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                       {% if social_gateway.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <strong>Activate Social Media Payments</strong>
+                                    <small class="text-muted d-block">
+                                        Enable to accept orders through social media platforms
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end mt-4">
+                        <a href="{% url 'payments:manage_gateways' page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Information -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Social Media Payment Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>How It Works:</h6>
+                        <ol class="small">
+                            <li class="mb-2">Customer selects "Social Media Payment" at checkout</li>
+                            <li class="mb-2">They enter their contact and delivery details</li>
+                            <li class="mb-2">System creates a professional order summary</li>
+                            <li class="mb-2">Customer gets links to your social media accounts with pre-filled order</li>
+                            <li class="mb-2">Customer sends the order via their preferred platform</li>
+                            <li class="mb-2">You receive the order directly in your DM/inbox</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Tips for Success:</h6>
+                        <ul class="small">
+                            <li class="mb-2">Enable multiple platforms to give customers choice</li>
+                            <li class="mb-2">Respond promptly to incoming orders</li>
+                            <li class="mb-2">Share payment instructions in your response</li>
+                            <li class="mb-2">Use the custom template to match your brand voice</li>
+                            <li class="mb-2">Test each platform before going live</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide platform details based on selected platforms
+    const checkboxes = document.querySelectorAll('.platform-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const platform = this.value;
+            const detailsDiv = document.getElementById(platform + 'Details');
+            const card = this.closest('.platform-card');
+            
+            if (this.checked) {
+                card.classList.add('selected');
+                if (detailsDiv) detailsDiv.style.display = 'block';
+            } else {
+                card.classList.remove('selected');
+                if (detailsDiv) detailsDiv.style.display = 'none';
+            }
+            
+            updatePreview();
+        });
+        
+        // Trigger on load
+        if (checkbox.checked) {
+            const detailsDiv = document.getElementById(checkbox.value + 'Details');
+            if (detailsDiv) detailsDiv.style.display = 'block';
+        }
+    });
+    
+    // Update message preview based on template
+    const templateInput = document.querySelector('[name="social_media_message_template"]');
+    if (templateInput) {
+        templateInput.addEventListener('input', updatePreview);
+    }
+});
+
+function togglePlatform(platform, card) {
+    const checkbox = document.getElementById('platform_' + platform);
+    checkbox.checked = !checkbox.checked;
+    
+    // Trigger change event
+    const event = new Event('change', { bubbles: true });
+    checkbox.dispatchEvent(event);
+}
+
+function updatePreview() {
+    // This would update the preview based on template
+    // For now, it's static
+}
+</script>
+{% endblock %}

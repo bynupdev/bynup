@@ -1,0 +1,1014 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - {{ page.brand_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+    {% render_icon_data icon_customizations %}
+
+    <style>
+        :root {
+            --text: #b87a3f;
+            --secondary: #c8a477;
+            --background: #b56422;
+            --primary: #d8bca4;
+            --heading: #5c544c;
+            --spacing-xl: 6rem;
+            --spacing-lg: 4rem;
+            --spacing-md: 2rem;
+            --spacing-sm: 1rem;
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        {% generate_color_variables %}
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #fefaf5;
+            color: var(--heading);
+            overflow-x: hidden;
+            line-height: 1.6;
+            padding-top: 100px;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Shop Header */
+        .shop-header {
+            text-align: center;
+            padding: var(--spacing-lg) 0 var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .shop-header h1 {
+            font-size: 3.5rem;
+            color: var(--heading);
+            margin-bottom: 1rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .shop-header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--text), var(--background));
+        }
+
+        .shop-header p {
+            color: var(--heading);
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            opacity: 0.8;
+        }
+
+        /* Shop Controls */
+        .shop-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .filter-btn, .sort-select {
+            background: white;
+            border: 1px solid rgba(92, 84, 76, 0.1);
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--border-radius);
+            color: var(--heading);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn:hover, .sort-select:hover {
+            border-color: var(--text);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+        }
+
+        .sort-select {
+            min-width: 200px;
+        }
+
+        .view-categories-btn {
+            background: linear-gradient(135deg, var(--text), var(--background));
+            color: var(--nav-text, white);
+            padding: 0.9rem 2rem;
+            font-size: 1rem;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .view-categories-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(181, 100, 34, 0.3);
+        }
+
+        /* Filter Modal */
+        .filter-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .filter-modal.active {
+            display: flex;
+        }
+
+        .filter-modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .filter-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-modal-header h3 {
+            font-size: 1.5rem;
+            color: var(--heading);
+        }
+
+        .close-filter-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--heading);
+        }
+
+        .filter-categories {
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-categories h4 {
+            margin-bottom: 1rem;
+            color: var(--heading);
+        }
+
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .category-item:hover {
+            background: rgba(184, 122, 63, 0.1);
+        }
+
+        .category-item.active {
+            background: rgba(184, 122, 63, 0.2);
+            color: var(--background);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-apply-filters,
+        .btn-clear-filters {
+            flex: 1;
+            padding: 0.8rem;
+            border-radius: var(--border-radius);
+            border: none;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .btn-apply-filters {
+            background: linear-gradient(135deg, var(--text), var(--background));
+            color: var(--nav-text, white);
+        }
+
+        .btn-clear-filters {
+            background: transparent;
+            border: 1px solid rgba(92, 84, 76, 0.2);
+            color: var(--heading);
+        }
+
+        .btn-apply-filters:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(181, 100, 34, 0.2);
+        }
+
+        .btn-clear-filters:hover {
+            border-color: var(--text);
+            background: rgba(184, 122, 63, 0.1);
+        }
+
+        /* Active Filters */
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            align-items: center;
+        }
+
+        .active-filter-tag {
+            background: rgba(184, 122, 63, 0.2);
+            color: var(--background);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .remove-filter {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--background);
+            font-size: 1rem;
+        }
+
+        .clear-all-filters {
+            background: none;
+            border: none;
+            color: var(--heading);
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: underline;
+        }
+
+        /* Products Grid */
+        .products-grid-shop {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2.5rem;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .product-card-shop {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .product-card-shop:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(92, 84, 76, 0.1);
+        }
+
+        .product-img-shop {
+            height: 320px;
+            width: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.5s ease;
+        }
+
+        .product-card-shop:hover .product-img-shop {
+            transform: scale(1.05);
+        }
+
+        .product-info-shop {
+            padding: 1.5rem;
+            text-align: left;
+        }
+
+        .product-name-shop {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: var(--heading);
+            margin-bottom: 0.5rem;
+            min-height: 3.5rem;
+        }
+
+        .product-price-shop {
+            color: var(--text);
+            font-weight: 500;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-category-shop {
+            color: var(--background);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(184, 122, 63, 0.1);
+            border-radius: 4px;
+        }
+
+        .product-actions-shop {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .btn-add-to-cart {
+            flex: 1;
+            background: linear-gradient(135deg, var(--text), var(--background));
+            color: var(--nav-text, white);
+            padding: 0.8rem;
+            font-size: 0.95rem;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-add-to-cart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(181, 100, 34, 0.2);
+        }
+
+        .btn-wishlist-shop {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border: 1px solid rgba(92, 84, 76, 0.1);
+            border-radius: var(--border-radius);
+            color: var(--heading);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-wishlist-shop:hover {
+            background: rgba(184, 122, 63, 0.1);
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        /* Empty State */
+        .empty-state-shop {
+            text-align: center;
+            padding: 4rem;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px rgba(92, 84, 76, 0.05);
+            margin: 2rem 0;
+            grid-column: 1 / -1;
+            display: none;
+        }
+
+        .empty-state-shop.active {
+            display: block;
+        }
+
+        .empty-state-shop h3 {
+            color: var(--heading);
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .empty-state-shop p {
+            color: var(--heading);
+            opacity: 0.8;
+            margin-bottom: 1.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .empty-state-shop a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: var(--transition);
+        }
+
+        .empty-state-shop a:hover {
+            border-bottom-color: var(--text);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1200px) {
+            .products-grid-shop {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 2rem;
+            }
+            .shop-header h1 {
+                font-size: 3.2rem;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .products-grid-shop {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .shop-header h1 {
+                font-size: 2.8rem;
+            }
+            .shop-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .controls-left {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 80px;
+            }
+            .products-grid-shop {
+                grid-template-columns: 1fr;
+                max-width: 500px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .shop-header h1 {
+                font-size: 2.5rem;
+            }
+            .shop-header p {
+                font-size: 1.1rem;
+            }
+            .container {
+                padding: 0 1.5rem;
+            }
+            .controls-left {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-btn, .sort-select {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .shop-header h1 {
+                font-size: 2.2rem;
+            }
+            .shop-header p {
+                font-size: 1rem;
+            }
+            .view-categories-btn,
+            .btn-add-to-cart {
+                padding: 0.8rem 1.5rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 45 100 %}
+        {% generate_background_images background_images 45 100 %}
+        {% generate_hover_keyframes %}
+    </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+    <!-- Header -->
+    {% include 'builder/public_templates/ModernEcommerce20/snippets/header.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == '1' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Shop Header -->
+    <div class="shop-header" id="section-45">
+        <div class="container">
+            <h1 id="section-46">{{ text_contents.35|default:"Our Collection" }}</h1>
+            <p id="section-47">{{ text_contents.36|default:"Discover our curated selection of premium pet essentials, each piece crafted with exceptional attention to detail and timeless elegance." }}</p>
+            
+            <div class="shop-controls">
+                <div class="controls-left">
+                    <button class="filter-btn" id="open-filter-modal">
+                        <i class="fas fa-sliders-h" data-icon="10"></i> Filter
+                    </button>
+                    <select class="sort-select" id="sort-products">
+                        <option value="newest">Newest First</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="popular">Most Popular</option>
+                    </select>
+                </div>
+                <a href="?page=categories" class="view-categories-btn" id="section-48">
+                    <i class="fas fa-th-large" data-icon="11"></i> {{ text_contents.37|default:"Browse Categories" }}
+                </a>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div class="active-filters" id="active-filters" style="display: none;">
+                <span>Active filters:</span>
+                <div id="active-filters-list"></div>
+                <button class="clear-all-filters" id="clear-all-filters">Clear all</button>
+            </div>
+        </div>
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '45' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Filter Modal -->
+    <div class="filter-modal" id="filter-modal">
+        <div class="filter-modal-content">
+            <div class="filter-modal-header">
+                <h3>Filter Products</h3>
+                <button class="close-filter-modal" id="close-filter-modal">
+                    <i class="fas fa-times" data-icon="5"></i>
+                </button>
+            </div>
+            <div class="filter-categories">
+                <h4>Categories</h4>
+                <div class="category-list" id="category-list">
+                    {% for category in categories %}
+                        {% if category.is_active %}
+                            <div class="category-item" data-category-id="{{ category.id }}" data-category-name="{{ category.name }}">
+                                <input type="checkbox" id="category-{{ category.id }}" class="category-checkbox">
+                                <label for="category-{{ category.id }}">{{ category.name }}</label>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn-apply-filters" id="apply-filters">Apply Filters</button>
+                <button class="btn-clear-filters" id="clear-filters-modal">Clear All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Section -->
+    <div class="container">
+        {% if products %}
+            <div class="products-grid-shop" id="products-grid">
+                {% for product in products %}
+                    <a href="/product/{{ product.slug }}/" class="product-card-shop"
+                        id="section-49"
+                        data-product-id="{{ product.id }}"
+                        data-product-title="{{ product.title }}"
+                        data-product-price="{{ product.price }}"
+                        data-product-category="{{ product.category.id|default:'' }}"
+                        data-product-category-name="{{ product.category.name|default:'Uncategorized' }}"
+                        data-product-created="{{ product.created_at|date:'U' }}"
+                        data-product-views="{{ product.view_count|default:0 }}"
+                        data-product-sales="{{ product.sale_count|default:0 }}"
+                        data-product-image="{% if product.main_image %}{{ product.main_image.url }}{% endif %}">
+                        
+                        {% if product.main_image %}
+                            <div class="product-img-shop" style="background-image: url('{{ product.main_image.url }}')"></div>
+                        {% else %}
+                            <div class="product-img-shop" style="background-color: #f5f5f5; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-paw" data-icon="1" style="font-size: 3rem; color: var(--text); opacity: 0.5;"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="product-info-shop">
+                            <div class="product-category-shop" id="section-50">
+                                {{ product.category.name|default:"PET ESSENTIALS" }}
+                            </div>
+                            <div class="product-name-shop" id="section-51">{{ product.title|truncatechars:50 }}</div>
+                            <div class="product-price-shop" id="section-52">
+                                {{ product.price|currency:page }}
+                                {% if product.compare_at_price and product.compare_at_price > product.price %}
+                                    <span style="text-decoration: line-through; color: #999; font-size: 0.9rem; margin-left: 0.5rem;">
+                                        {{ product.compare_at_price|currency:page }}
+                                    </span>
+                                    <span style="color: #d32f2f; font-size: 0.9rem; margin-left: 0.5rem;">
+                                        (Save {{ product.discount_percentage|default:0 }}%)
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div class="product-actions-shop">
+                                <button class="btn-add-to-cart"
+                                    id="section-53"
+                                    data-add-to-cart="{{ product.id }}">
+                                    <i class="fas fa-shopping-bag" data-icon="12"></i> {{ text_contents.38|default:"Add to Cart" }}
+                                </button>
+                                <button class="btn-wishlist-shop"
+                                    data-add-to-wishlist="{{ product.id }}">
+                                    <i class="far fa-heart" data-icon="13"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="empty-state-shop" id="no-products-message">
+                <h3>No Products Match Your Filters</h3>
+                <p>Try adjusting your filters or clear them to see all available products.</p>
+                <button class="clear-all-filters" onclick="clearAllFilters()">Clear All Filters</button>
+            </div>
+        {% else %}
+            <div class="empty-state-shop active">
+                <h3>No Products Available</h3>
+                <p>Your shop doesn't have any products yet. Start by adding your first pet essential to showcase your collection.</p>
+                <p><a href="/admin/add-product">Add your first product</a> to get started.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% for component in components %}
+        {% if component.drop_zone == '49' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Footer -->
+    {% include 'builder/public_templates/ModernEcommerce20/snippets/footer.html' %}
+
+    {% for component in components %}
+        {% if component.drop_zone == 'end' %}
+            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+                {{ component.html_content|safe }}
+            </section>
+        {% endif %}
+    {% endfor %}
+
+    {% render_icon_script %}
+    <script src="{% static 'builder/js/cart-manager.js' %}"></script>
+
+    <script>
+        // Store current filters
+        let activeFilters = {
+            categories: [],
+            sortBy: 'newest'
+        };
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Filter modal functionality
+            const filterModal = document.getElementById('filter-modal');
+            const openFilterBtn = document.getElementById('open-filter-modal');
+            const closeFilterBtn = document.getElementById('close-filter-modal');
+            const applyFiltersBtn = document.getElementById('apply-filters');
+            const clearFiltersModalBtn = document.getElementById('clear-filters-modal');
+            const clearAllFiltersBtn = document.getElementById('clear-all-filters');
+            const sortSelect = document.getElementById('sort-products');
+
+            if (openFilterBtn) {
+                openFilterBtn.addEventListener('click', function() {
+                    filterModal.classList.add('active');
+                });
+            }
+
+            if (closeFilterBtn) {
+                closeFilterBtn.addEventListener('click', function() {
+                    filterModal.classList.remove('active');
+                });
+            }
+
+            if (filterModal) {
+                filterModal.addEventListener('click', function(e) {
+                    if (e.target === filterModal) {
+                        filterModal.classList.remove('active');
+                    }
+                });
+            }
+
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', function() {
+                    const selectedCategories = [];
+                    const categoryCheckboxes = document.querySelectorAll('.category-checkbox:checked');
+                    categoryCheckboxes.forEach(checkbox => {
+                        const categoryItem = checkbox.closest('.category-item');
+                        const categoryId = categoryItem.getAttribute('data-category-id');
+                        const categoryName = categoryItem.getAttribute('data-category-name');
+                        selectedCategories.push({
+                            id: categoryId,
+                            name: categoryName
+                        });
+                    });
+                    activeFilters.categories = selectedCategories;
+                    applyFilters();
+                    filterModal.classList.remove('active');
+                });
+            }
+
+            if (clearFiltersModalBtn) {
+                clearFiltersModalBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                });
+            }
+
+            if (clearAllFiltersBtn) {
+                clearAllFiltersBtn.addEventListener('click', clearAllFilters);
+            }
+
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    activeFilters.sortBy = this.value;
+                    applyFilters();
+                });
+            }
+
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('.category-checkbox');
+                        checkbox.checked = !checkbox.checked;
+                        this.classList.toggle('active', checkbox.checked);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const categoryItem = this.closest('.category-item');
+                    categoryItem.classList.toggle('active', this.checked);
+                });
+            });
+
+            initializeCartButtons();
+            initializeProductAnimations();
+        });
+
+        function applyFilters() {
+            const products = document.querySelectorAll('.product-card-shop');
+            let visibleProducts = 0;
+
+            products.forEach(product => {
+                let shouldShow = true;
+
+                if (activeFilters.categories.length > 0) {
+                    const productCategoryId = product.getAttribute('data-product-category');
+                    const hasCategoryMatch = activeFilters.categories.some(cat => cat.id === productCategoryId);
+                    shouldShow = shouldShow && hasCategoryMatch;
+                }
+
+                if (shouldShow) {
+                    product.style.display = 'block';
+                    visibleProducts++;
+                } else {
+                    product.style.display = 'none';
+                }
+            });
+
+            if (activeFilters.sortBy !== 'newest') {
+                sortProducts();
+            }
+
+            updateActiveFiltersDisplay();
+
+            const noProductsMessage = document.getElementById('no-products-message');
+            const productsGrid = document.getElementById('products-grid');
+
+            if (visibleProducts === 0 && products.length > 0) {
+                if (noProductsMessage) noProductsMessage.classList.add('active');
+                if (productsGrid) productsGrid.style.display = 'none';
+            } else {
+                if (noProductsMessage) noProductsMessage.classList.remove('active');
+                if (productsGrid) productsGrid.style.display = 'grid';
+            }
+
+            initializeProductAnimations();
+        }
+
+        function sortProducts() {
+            const productsGrid = document.getElementById('products-grid');
+            const products = Array.from(document.querySelectorAll('.product-card-shop'));
+
+            products.sort((a, b) => {
+                switch(activeFilters.sortBy) {
+                    case 'price-low':
+                        const priceA = parseFloat(a.getAttribute('data-product-price')) || 0;
+                        const priceB = parseFloat(b.getAttribute('data-product-price')) || 0;
+                        return priceA - priceB;
+                    case 'price-high':
+                        const priceAHigh = parseFloat(a.getAttribute('data-product-price')) || 0;
+                        const priceBHigh = parseFloat(b.getAttribute('data-product-price')) || 0;
+                        return priceBHigh - priceAHigh;
+                    case 'popular':
+                        const viewsA = parseInt(a.getAttribute('data-product-views')) || 0;
+                        const viewsB = parseInt(b.getAttribute('data-product-views')) || 0;
+                        const salesA = parseInt(a.getAttribute('data-product-sales')) || 0;
+                        const salesB = parseInt(b.getAttribute('data-product-sales')) || 0;
+                        const popularityA = viewsA + (salesA * 10);
+                        const popularityB = viewsB + (salesB * 10);
+                        return popularityB - popularityA;
+                    case 'newest':
+                    default:
+                        const dateA = parseInt(a.getAttribute('data-product-created')) || 0;
+                        const dateB = parseInt(b.getAttribute('data-product-created')) || 0;
+                        return dateB - dateA;
+                }
+            });
+
+            if (productsGrid) {
+                products.forEach(product => {
+                    productsGrid.appendChild(product);
+                });
+            }
+        }
+
+        function updateActiveFiltersDisplay() {
+            const activeFiltersContainer = document.getElementById('active-filters');
+            const activeFiltersList = document.getElementById('active-filters-list');
+
+            if (!activeFiltersContainer || !activeFiltersList) return;
+
+            if (activeFilters.categories.length === 0) {
+                activeFiltersContainer.style.display = 'none';
+                return;
+            }
+
+            let filtersHtml = '';
+            activeFilters.categories.forEach(category => {
+                filtersHtml += `
+                    <div class="active-filter-tag">
+                        ${category.name}
+                        <button class="remove-filter" onclick="removeCategoryFilter('${category.id}')">
+                            <i class="fas fa-times" data-icon="5"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            activeFiltersList.innerHTML = filtersHtml;
+            activeFiltersContainer.style.display = 'flex';
+        }
+
+        function removeCategoryFilter(categoryId) {
+            activeFilters.categories = activeFilters.categories.filter(cat => cat.id !== categoryId);
+            const checkbox = document.querySelector(`.category-checkbox[data-category-id="${categoryId}"]`);
+            if (checkbox) {
+                checkbox.checked = false;
+                const categoryItem = checkbox.closest('.category-item');
+                if (categoryItem) {
+                    categoryItem.classList.remove('active');
+                }
+            }
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            activeFilters.categories = [];
+            activeFilters.sortBy = 'newest';
+
+            document.querySelectorAll('.category-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                const categoryItem = checkbox.closest('.category-item');
+                if (categoryItem) {
+                    categoryItem.classList.remove('active');
+                }
+            });
+
+            const sortSelect = document.getElementById('sort-products');
+            if (sortSelect) {
+                sortSelect.value = 'newest';
+            }
+            applyFilters();
+        }
+
+        function initializeCartButtons() {
+            document.querySelectorAll('[data-add-to-cart]').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const productId = this.dataset.addToCart;
+                    if (window.cartManager) {
+                        window.cartManager.addToCart(productId, 1);
+                    } else {
+                        alert('Item added to cart!');
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-add-to-wishlist]').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const productId = this.dataset.addToWishlist;
+                    if (window.cartManager) {
+                        window.cartManager.addToWishlist(productId);
+                    } else {
+                        alert('Item added to wishlist!');
+                    }
+                });
+            });
+        }
+
+        function initializeProductAnimations() {
+            const productCards = document.querySelectorAll('.product-card-shop');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.target.style.display !== 'none') {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            productCards.forEach(card => {
+                if (card.style.display !== 'none') {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    observer.observe(card);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

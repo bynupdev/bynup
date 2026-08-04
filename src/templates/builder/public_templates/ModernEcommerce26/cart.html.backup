@@ -1,0 +1,714 @@
+{% load static %}
+{% load style_filters %}
+{% load color_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Shopping Cart | {{ page.brand_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  {% render_icon_data icon_customizations %}
+  <style>
+    :root {
+      --bg-soft: #F2F7F6;
+      --bg-warm: #F2E7E6;
+      --accent-rose: #F388A2;
+      --acleaf-moss: #7F805C;
+      --accent-sand: #F2DDB3;
+      --border-radius: 24px;
+      --transition: all 0.3s ease;
+    }
+
+    {% generate_color_variables %}
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-soft);
+      font-family: 'Inter', sans-serif;
+      color: #1e2a2a;
+      line-height: 1.5;
+    }
+
+    h1, h2, h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .cart-header {
+      padding: 7rem 0 2rem;
+      text-align: center;
+    }
+
+    .cart-header h1 {
+      font-size: 3rem;
+      color: #2c3a2f;
+      margin-bottom: 0.5rem;
+    }
+
+    .cart-header p {
+      color: var(--acleaf-moss);
+      font-size: 0.9rem;
+    }
+
+    .cart-layout {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 3rem;
+      margin-bottom: 4rem;
+    }
+
+    .cart-items {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.02);
+    }
+
+    .cart-item-header {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 0.5fr;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(127, 128, 92, 0.2);
+      font-weight: 600;
+      color: var(--acleaf-moss);
+      font-size: 0.85rem;
+    }
+
+    .cart-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 0.5fr;
+      align-items: center;
+      padding: 1.2rem 0;
+      border-bottom: 1px solid rgba(127, 128, 92, 0.1);
+    }
+
+    .cart-item:last-child {
+      border-bottom: none;
+    }
+
+    .cart-product {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .cart-product-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    .cart-product-info h4 {
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .cart-product-variant {
+      font-size: 0.75rem;
+      color: var(--acleaf-moss);
+    }
+
+    .cart-price {
+      font-weight: 500;
+      color: var(--accent-rose);
+    }
+
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quantity-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid rgba(127, 128, 92, 0.3);
+      background: white;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .quantity-btn:hover {
+      border-color: var(--accent-rose);
+      color: var(--accent-rose);
+    }
+
+    .quantity-input {
+      width: 50px;
+      text-align: center;
+      border: 1px solid rgba(127, 128, 92, 0.3);
+      border-radius: 8px;
+      padding: 0.4rem;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .remove-item {
+      background: none;
+      border: none;
+      color: var(--acleaf-moss);
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: var(--transition);
+    }
+
+    .remove-item:hover {
+      color: var(--accent-rose);
+    }
+
+    .cart-summary {
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 1.8rem;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.02);
+      height: fit-content;
+      position: sticky;
+      top: 100px;
+    }
+
+    .cart-summary h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid rgba(127, 128, 92, 0.2);
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      color: #5b6e55;
+    }
+
+    .summary-row.total {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent-rose);
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(127, 128, 92, 0.2);
+    }
+
+    .promo-code {
+      margin: 1.5rem 0;
+    }
+
+    .promo-input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .promo-input {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border: 1px solid rgba(127, 128, 92, 0.3);
+      border-radius: 40px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .apply-promo {
+      background: transparent;
+      border: 1px solid var(--accent-rose);
+      padding: 0.8rem 1.2rem;
+      border-radius: 40px;
+      color: var(--accent-rose);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .apply-promo:hover {
+      background: var(--accent-rose);
+      color: white;
+    }
+
+    .checkout-btn {
+      width: 100%;
+      background: var(--accent-rose);
+      border: none;
+      padding: 1rem;
+      border-radius: 40px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-top: 1rem;
+    }
+
+    .checkout-btn:hover {
+      background: #e27a97;
+      transform: translateY(-2px);
+    }
+
+    .continue-shopping {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .continue-shopping a {
+      color: var(--acleaf-moss);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+
+    .continue-shopping a:hover {
+      color: var(--accent-rose);
+    }
+
+    .empty-cart {
+      text-align: center;
+      padding: 4rem;
+      background: white;
+      border-radius: var(--border-radius);
+    }
+
+    .empty-cart i {
+      font-size: 4rem;
+      color: var(--acleaf-moss);
+      margin-bottom: 1rem;
+    }
+
+    .empty-cart h3 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-cart p {
+      color: #5b6e55;
+      margin-bottom: 1.5rem;
+    }
+
+    .shop-now-btn {
+      display: inline-block;
+      background: var(--accent-rose);
+      color: white;
+      padding: 0.8rem 2rem;
+      border-radius: 40px;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .shop-now-btn:hover {
+      background: #e27a97;
+      transform: translateY(-2px);
+    }
+
+    .you-may-also-like {
+      margin-top: 3rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(127, 128, 92, 0.2);
+    }
+
+    .you-may-also-like h2 {
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
+    }
+
+    .related-card {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      transition: var(--transition);
+      text-decoration: none;
+      display: block;
+    }
+
+    .related-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .related-img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+    }
+
+    .related-info {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .related-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      color: #2c3a2f;
+      margin-bottom: 0.3rem;
+    }
+
+    .related-price {
+      font-size: 0.85rem;
+      color: var(--accent-rose);
+      font-weight: 500;
+    }
+
+    @media (max-width: 992px) {
+      .cart-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+      .cart-summary {
+        position: static;
+      }
+      .related-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 1.5rem;
+      }
+      .cart-header {
+        padding: 6rem 0 1.5rem;
+      }
+      .cart-header h1 {
+        font-size: 2.2rem;
+      }
+      .cart-item-header {
+        display: none;
+      }
+      .cart-item {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        text-align: center;
+      }
+      .cart-product {
+        flex-direction: column;
+        text-align: center;
+      }
+      .quantity-control {
+        justify-content: center;
+      }
+      .related-grid {
+        grid-template-columns: 1fr;
+        max-width: 300px;
+        margin: 0 auto;
+      }
+    }
+
+    {% generate_section_styles style_customizations 80 100 %}
+    {% generate_background_images background_images 80 100 %}
+    {% generate_hover_keyframes %}
+  </style>
+</head>
+<body data-page-subdomain="{{ page.subdomain }}">
+
+<div class="container">
+  <!-- Cart Header -->
+  <div class="cart-header" id="section-80">
+    <h1 id="section-81">{{ text_contents.70|default:"Your Shopping Cart" }}</h1>
+    <p id="section-82">{{ text_contents.71|default:"Review your items and proceed to checkout" }}</p>
+  </div>
+
+  <!-- Cart Content -->
+  <div class="cart-layout">
+    <!-- Cart Items Section -->
+    <div class="cart-items" id="section-84">
+      <div class="cart-item-header">
+        <span>Product</span>
+        <span>Price</span>
+        <span>Quantity</span>
+        <span>Total</span>
+      </div>
+      
+      {% if cart and cart.items.all %}
+        {% for item in cart.items.all %}
+        <div class="cart-item" data-cart-item-id="{{ item.id }}" data-product-id="{{ item.product.id }}">
+          <div class="cart-product">
+            <img class="cart-product-img" src="{% if item.product.main_image %}{{ item.product.main_image.url }}{% else %}https://images.pexels.com/photos/2079656/pexels-photo-2079656.jpeg?auto=compress&cs=tinysrgb&w=150{% endif %}" alt="{{ item.product.title }}">
+            <div class="cart-product-info">
+              <h4>{{ item.product.title }}</h4>
+              {% if item.selected_color or item.selected_size %}
+              <div class="cart-product-variant">
+                {% if item.selected_color %}Color: {{ item.selected_color }}{% endif %}
+                {% if item.selected_size %}{% if item.selected_color %} | {% endif %}Size: {{ item.selected_size }}{% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="cart-price" data-price="{{ item.product.price }}">{{ item.product.price|currency:page }}</div>
+          <div class="quantity-control">
+            <button class="quantity-btn decrement" data-action="decrement">-</button>
+            <input type="number" class="quantity-input" value="{{ item.quantity }}" min="1" max="10" data-product-id="{{ item.product.id }}">
+            <button class="quantity-btn increment" data-action="increment">+</button>
+          </div>
+          <div class="item-total">{{ item.total_price|currency:page }}</div>
+          <button class="remove-item" data-product-id="{{ item.product.id }}"><i class="fas fa-trash-alt"></i></button>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-cart" style="grid-column: 1 / -1;">
+          <i class="fas fa-shopping-bag"></i>
+          <h3>Your Cart is Empty</h3>
+          <p>Looks like you haven't added any jewelry to your cart yet.</p>
+          <a href="?page=shop" class="shop-now-btn">Start Shopping</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Cart Summary -->
+    <div class="cart-summary" id="section-88">
+      <h3 id="section-89">{{ text_contents.74|default:"Order Summary" }}</h3>
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <span id="cart-subtotal">{% if cart %}{{ cart.total_price|currency:page }}{% else %}$0.00{% endif %}</span>
+      </div>
+      <div class="summary-row">
+        <span>Shipping</span>
+        <span id="cart-shipping">{% if cart and cart.total_price > 100 %}FREE{% else %}$5.00{% endif %}</span>
+      </div>
+      <div class="summary-row">
+        <span>Tax (8%)</span>
+        <span id="cart-tax">{% if cart %}{{ cart.tax_amount|currency:page }}{% else %}$0.00{% endif %}</span>
+      </div>
+      <div class="summary-row total">
+        <span>Total</span>
+        <span id="cart-total">{% if cart %}{{ cart.final_total|currency:page }}{% else %}$0.00{% endif %}</span>
+      </div>
+      
+      <div class="promo-code">
+        <div class="promo-input-group">
+          <input type="text" class="promo-input" placeholder="Promo code" id="promoInput">
+          <button class="apply-promo" id="applyPromo">Apply</button>
+        </div>
+      </div>
+      
+      <button class="checkout-btn" id="section-83" onclick="proceedToCheckout()">{{ text_contents.75|default:"Proceed to Checkout" }}</button>
+      <div class="continue-shopping">
+        <a href="?page=shop">← Continue Shopping</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- You May Also Like Section -->
+  <div class="you-may-also-like" id="section-90">
+    <h2 id="section-91">{{ text_contents.76|default:"You May Also Like" }}</h2>
+    <div class="related-grid" id="relatedGrid">
+      {% if recommended_products %}
+        {% for product in recommended_products|slice:":4" %}
+        <a href="/product/{{ product.slug }}/" class="related-card">
+          <img class="related-img" src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.pexels.com/photos/2079656/pexels-photo-2079656.jpeg?auto=compress&cs=tinysrgb&w=400{% endif %}" alt="{{ product.title }}">
+          <div class="related-info">
+            <div class="related-name">{{ product.title|truncatechars:30 }}</div>
+            <div class="related-price">{{ product.price|currency:page }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        {% for product in products|slice:":4" %}
+        <a href="/product/{{ product.slug }}/" class="related-card">
+          <img class="related-img" src="{% if product.main_image %}{{ product.main_image.url }}{% else %}https://images.pexels.com/photos/2079656/pexels-photo-2079656.jpeg?auto=compress&cs=tinysrgb&w=400{% endif %}" alt="{{ product.title }}">
+          <div class="related-info">
+            <div class="related-name">{{ product.title|truncatechars:30 }}</div>
+            <div class="related-price">{{ product.price|currency:page }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'builder/js/cart-manager.js' %}"></script>
+{% render_icon_script %}
+
+<script>
+  // Update cart totals
+  function updateCartTotals() {
+    const cartItems = document.querySelectorAll('.cart-item');
+    let subtotal = 0;
+    
+    cartItems.forEach(item => {
+      const price = parseFloat(item.querySelector('.cart-price').getAttribute('data-price') || item.querySelector('.cart-price').textContent.replace('$', '').replace(',', ''));
+      const quantity = parseInt(item.querySelector('.quantity-input').value);
+      subtotal += price * quantity;
+    });
+    
+    const shipping = subtotal > 100 ? 0 : 5.00;
+    const tax = subtotal * 0.08;
+    const total = subtotal + shipping + tax;
+    
+    const currencySymbol = '{{ page.currency_symbol|default:"$" }}';
+    document.getElementById('cart-subtotal').textContent = currencySymbol + subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('cart-shipping').textContent = shipping === 0 ? 'FREE' : currencySymbol + shipping.toFixed(2);
+    document.getElementById('cart-tax').textContent = currencySymbol + tax.toFixed(2);
+    document.getElementById('cart-total').textContent = currencySymbol + total.toFixed(2);
+  }
+  
+  // Quantity controls
+  document.querySelectorAll('.quantity-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const cartItem = this.closest('.cart-item');
+      const input = cartItem.querySelector('.quantity-input');
+      const productId = input.getAttribute('data-product-id');
+      let value = parseInt(input.value);
+      
+      if (this.classList.contains('increment') && value < 10) {
+        value++;
+        if (window.cartManager) window.cartManager.incrementCartItem(productId, 1);
+      } else if (this.classList.contains('decrement') && value > 1) {
+        value--;
+        if (window.cartManager) window.cartManager.decrementCartItem(productId, 1);
+      }
+      
+      input.value = value;
+      
+      const price = parseFloat(cartItem.querySelector('.cart-price').getAttribute('data-price'));
+      const itemTotal = cartItem.querySelector('.item-total');
+      const newTotal = price * value;
+      itemTotal.textContent = '{{ page.currency_symbol|default:"$" }}' + newTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      updateCartTotals();
+    });
+  });
+  
+  // Manual quantity input change
+  document.querySelectorAll('.quantity-input').forEach(input => {
+    input.addEventListener('change', function() {
+      let value = parseInt(this.value);
+      if (isNaN(value) || value < 1) value = 1;
+      if (value > 10) value = 10;
+      this.value = value;
+      
+      const productId = this.getAttribute('data-product-id');
+      if (window.cartManager) window.cartManager.updateCartItemQuantity(productId, value);
+      
+      const cartItem = this.closest('.cart-item');
+      const price = parseFloat(cartItem.querySelector('.cart-price').getAttribute('data-price'));
+      const itemTotal = cartItem.querySelector('.item-total');
+      const newTotal = price * value;
+      itemTotal.textContent = '{{ page.currency_symbol|default:"$" }}' + newTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      updateCartTotals();
+    });
+  });
+  
+  // Remove items
+  document.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const productId = this.getAttribute('data-product-id');
+      if (window.cartManager) {
+        window.cartManager.removeFromCart(productId);
+      }
+      const cartItem = this.closest('.cart-item');
+      cartItem.remove();
+      updateCartTotals();
+      
+      const cartItems = document.querySelectorAll('.cart-item');
+      if (cartItems.length === 0) {
+        location.reload();
+      }
+    });
+  });
+  
+  // Apply promo code
+  const applyPromoBtn = document.getElementById('applyPromo');
+  if (applyPromoBtn) {
+    applyPromoBtn.addEventListener('click', () => {
+      const promoInput = document.getElementById('promoInput');
+      const promoCode = promoInput.value.trim().toUpperCase();
+      
+      if (promoCode === 'LUMIERE10') {
+        const subtotal = parseFloat(document.getElementById('cart-subtotal').textContent.replace('$', '').replace(',', ''));
+        const discount = subtotal * 0.10;
+        const newTotal = subtotal - discount;
+        document.getElementById('cart-total').textContent = '$' + newTotal.toFixed(2);
+        alert('Promo code applied! 10% discount added.');
+        promoInput.disabled = true;
+        applyPromoBtn.disabled = true;
+      } else if (promoCode === 'FREESHIP') {
+        document.getElementById('cart-shipping').textContent = 'FREE';
+        const subtotal = parseFloat(document.getElementById('cart-subtotal').textContent.replace('$', '').replace(',', ''));
+        const tax = parseFloat(document.getElementById('cart-tax').textContent.replace('$', '').replace(',', ''));
+        document.getElementById('cart-total').textContent = '$' + (subtotal + tax).toFixed(2);
+        alert('Free shipping applied!');
+        promoInput.disabled = true;
+        applyPromoBtn.disabled = true;
+      } else if (promoCode) {
+        alert('Invalid promo code. Try LUMIERE10 or FREESHIP');
+      }
+    });
+  }
+  
+  // Proceed to checkout
+  function proceedToCheckout() {
+    const cartItems = document.querySelectorAll('.cart-item');
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Please add items before checkout.');
+      return;
+    }
+    
+    const subdomain = document.body.getAttribute('data-page-subdomain');
+    const currencySymbol = '{{ page.currency_symbol|default:"$" }}';
+    
+    const items = [];
+    cartItems.forEach(item => {
+      const name = item.querySelector('.cart-product-info h4').textContent;
+      const price = parseFloat(item.querySelector('.cart-price').getAttribute('data-price'));
+      const quantity = parseInt(item.querySelector('.quantity-input').value);
+      const variantElem = item.querySelector('.cart-product-variant');
+      const variant = variantElem ? variantElem.textContent : '';
+      const productId = item.querySelector('.remove-item').getAttribute('data-product-id');
+      
+      items.push({
+        id: productId,
+        title: name,
+        price: price,
+        quantity: quantity,
+        selected_variant: variant,
+        total_price: price * quantity
+      });
+    });
+    
+    const subtotal = parseFloat(document.getElementById('cart-subtotal').textContent.replace(currencySymbol, '').replace(',', ''));
+    const shipping = document.getElementById('cart-shipping').textContent === 'FREE' ? 0 : parseFloat(document.getElementById('cart-shipping').textContent.replace(currencySymbol, '').replace(',', ''));
+    const tax = parseFloat(document.getElementById('cart-tax').textContent.replace(currencySymbol, '').replace(',', ''));
+    const total = parseFloat(document.getElementById('cart-total').textContent.replace(currencySymbol, '').replace(',', ''));
+    
+    const cartData = {
+      items: items,
+      subtotal: subtotal,
+      shipping_amount: shipping,
+      tax_amount: tax,
+      total_amount: total
+    };
+    
+    const params = new URLSearchParams({
+      type: 'cart',
+      cart: JSON.stringify(cartData)
+    });
+    
+    window.location.href = `/payments/select-payment/${subdomain}/?${params.toString()}`;
+  }
+</script>
+
+</body>
+</html>

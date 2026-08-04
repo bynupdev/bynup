@@ -1,0 +1,1289 @@
+ {% load style_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name|default:"Product Details" }} | Artisanal Living</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #F7F5F2;
+            --beige: #C9B9A6;
+            --brown: #8A6E53;
+            --black: #1E1E1E;
+            --gold: #D4AF37;
+            
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 2rem;
+            --spacing-lg: 3rem;
+            --spacing-xl: 5rem;
+            
+            --border-radius: 2px;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--black);
+            background-color: var(--cream);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            line-height: 1.2;
+            letter-spacing: 0.5px;
+        }
+        
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+        }
+        
+        ul {
+            list-style: none;
+        }
+        
+        img {
+            max-width: 100%;
+            display: block;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-md);
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background-color: var(--black);
+            color: var(--cream);
+            border: 1px solid var(--black);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+        
+        .btn:hover {
+            background-color: transparent;
+            color: var(--black);
+        }
+        
+        .btn-primary {
+            background-color: var(--black);
+            color: var(--cream);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--gold);
+            border-color: var(--gold);
+            color: var(--cream);
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--black);
+            border: 1px solid var(--black);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--black);
+            color: var(--cream);
+        }
+        
+        .btn-small {
+            padding: 0.6rem 1.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .btn-wishlist {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: var(--cream);
+            border: 1px solid rgba(201, 185, 166, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .btn-wishlist:hover {
+            background-color: var(--black);
+            color: var(--cream);
+        }
+        
+        /* Product Details Header */
+        .product-header {
+            padding: 120px 0 var(--spacing-lg);
+            background-color: var(--cream);
+        }
+        
+        .breadcrumb {
+            margin-bottom: var(--spacing-md);
+            color: var(--brown);
+            font-size: 0.9rem;
+        }
+        
+        .breadcrumb a:hover {
+            color: var(--black);
+        }
+        
+        /* Product Details */
+        .product-details {
+            padding: var(--spacing-xl) 0;
+        }
+        
+        .product-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-xl);
+        }
+        
+        /* Product Images */
+        .product-images {
+            position: relative;
+        }
+        
+        .main-image {
+            width: 100%;
+            height: 500px;
+            background-color: var(--beige);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .main-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .thumbnail-container {
+            display: flex;
+            gap: var(--spacing-sm);
+            overflow-x: auto;
+            padding: var(--spacing-sm) 0;
+        }
+        
+        .thumbnail {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+        
+        .thumbnail.active {
+            border-color: var(--black);
+        }
+        
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .thumbnail:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Product Info */
+        .product-info h1 {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .product-rating {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .stars {
+            color: var(--gold);
+            display: flex;
+            gap: 2px;
+        }
+        
+        .rating-count {
+            color: var(--brown);
+            font-size: 0.9rem;
+            margin-left: var(--spacing-xs);
+        }
+        
+        .product-price {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--black);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .product-description {
+            color: var(--brown);
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.8;
+        }
+        
+        /* Product Variants */
+        .product-variants {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .variant-option {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .variant-option h4 {
+            margin-bottom: var(--spacing-sm);
+            font-size: 1.1rem;
+        }
+        
+        .color-options {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+        
+        .color-option.active {
+            border-color: var(--black);
+            transform: scale(1.1);
+        }
+        
+        .size-options {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+        
+        .size-option {
+            padding: 0.5rem 1.2rem;
+            border: 1px solid rgba(201, 185, 166, 0.3);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .size-option.active {
+            background-color: var(--black);
+            color: var(--cream);
+            border-color: var(--black);
+        }
+        
+        /* Product Actions */
+        .product-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex: 1;
+        }
+        
+        /* Product Features */
+        .product-features {
+            border-top: 1px solid rgba(201, 185, 166, 0.2);
+            border-bottom: 1px solid rgba(201, 185, 166, 0.2);
+            padding: var(--spacing-lg) 0;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-lg);
+        }
+        
+        .feature-item {
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+            color: var(--gold);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        /* Reviews Section */
+        .reviews-section {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .reviews-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .rating-summary {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .average-rating {
+            text-align: center;
+        }
+        
+        .average-rating .score {
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--black);
+        }
+        
+        .rating-bars {
+            flex: 1;
+        }
+        
+        .rating-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .bar {
+            flex: 1;
+            height: 4px;
+            background-color: rgba(201, 185, 166, 0.3);
+            overflow: hidden;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            background-color: var(--gold);
+        }
+        
+        .reviews-list {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .review-item {
+            border-bottom: 1px solid rgba(201, 185, 166, 0.2);
+            padding: var(--spacing-md) 0;
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .reviewer-name {
+            font-weight: 500;
+        }
+        
+        .review-date {
+            color: var(--brown);
+            font-size: 0.9rem;
+        }
+        
+        .review-rating {
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        /* Review Form */
+        .review-form {
+            background-color: rgba(201, 185, 166, 0.05);
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+        }
+        
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid rgba(201, 185, 166, 0.3);
+            background-color: var(--cream);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .star-rating-input {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .star-rating-input i {
+            cursor: pointer;
+            color: rgba(201, 185, 166, 0.3);
+            transition: var(--transition);
+        }
+        
+        .star-rating-input i:hover,
+        .star-rating-input i.active {
+            color: var(--gold);
+        }
+        
+        /* Related Products */
+        .related-products {
+            padding: var(--spacing-xl) 0;
+            background-color: rgba(201, 185, 166, 0.05);
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .product-card {
+            background-color: var(--cream);
+            overflow: hidden;
+            transition: var(--transition);
+            position: relative;
+            border: 1px solid rgba(201, 185, 166, 0.2);
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(30, 30, 30, 0.05);
+        }
+        
+        .product-img {
+            height: 250px;
+            background-color: var(--beige);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .product-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .product-card:hover .product-img img {
+            transform: scale(1.03);
+        }
+        
+        .product-info-sm {
+            padding: var(--spacing-md);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-info-sm h3 {
+            font-size: 1.1rem;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .product-info-sm .price {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--black);
+            margin-top: auto;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .product-container {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-lg);
+            }
+            
+            .main-image {
+                height: 400px;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .rating-summary {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .product-header {
+                padding: 100px 0 var(--spacing-lg);
+            }
+            
+            .product-actions {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .color-options, .size-options {
+                flex-wrap: wrap;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .btn {
+                padding: 0.9rem 2rem;
+            }
+            
+            .main-image {
+                height: 300px;
+            }
+            
+            .thumbnail {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .product-info h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Dynamic Section Styles */
+        {% generate_section_styles style_customizations 103 150 %}
+        
+        /* Dynamic Background Images */
+        {% generate_background_images background_images 103 150 %}
+    </style>
+</head>
+<body>
+    <!-- Product Header -->
+    <section class="product-header" id="section-103">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="?page=home">Home</a> / <a href="?page=shop">Shop</a> / <a href="?page=seating">Seating</a> / <span id="section-104">{{ text_contents.70|default:"Aurora Velvet Sofa" }}</span>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '103' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Product Details -->
+    <section class="product-details" id="section-105">
+        <div class="container">
+            <div class="product-container">
+                <!-- Product Images -->
+                <div class="product-images" id="section-106">
+                    <div class="main-image">
+                        <img id="main-product-image" src="{{ product.main_image|default:'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80' }}" alt="{{ product.name|default:'Aurora Velvet Sofa' }}">
+                    </div>
+                    <div class="thumbnail-container">
+                        {% for image in product.images %}
+                        <div class="thumbnail {% if forloop.first %}active{% endif %}" onclick="changeImage('{{ image.url }}')">
+                            <img src="{{ image.url }}" alt="{{ image.alt }}">
+                        </div>
+                        {% empty %}
+                        <!-- Default thumbnails if no product images -->
+                        <div class="thumbnail active" onclick="changeImage('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80')">
+                            <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Charcoal">
+                        </div>
+                        <div class="thumbnail" onclick="changeImage('https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80')">
+                            <img src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Emerald Green">
+                        </div>
+                        <div class="thumbnail" onclick="changeImage('https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80')">
+                            <img src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Navy Blue">
+                        </div>
+                        <div class="thumbnail" onclick="changeImage('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80')">
+                            <img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Terracotta">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Product Info -->
+                <div class="product-info">
+                    <h1 id="section-107">{{ text_contents.71|default:"Aurora Velvet Sofa" }}</h1>
+                    
+                    <div class="product-rating" id="section-108">
+                        <div class="stars">
+                            {% with rating=product.average_rating|default:4.5 %}
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= rating %}
+                                    <i class="fas fa-star"></i>
+                                {% elif forloop.counter|add:"-0.5" <= rating %}
+                                    <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            {% endwith %}
+                        </div>
+                        <span class="rating-count" id="section-109">{{ text_contents.72|default:"4.5 (128 Reviews)" }}</span>
+                    </div>
+                    
+                    <div class="product-price" id="section-110">{{ product.price|default:"$3,450" }}</div>
+                    
+                    <p class="product-description" id="section-111">{{ text_contents.74|default:"Experience unparalleled comfort with our Aurora Velvet Sofa. This deep-seated masterpiece features hand-carved walnut legs, premium cushioning, and luxurious velvet upholstery that adds a touch of sophistication to any living space. Each piece is meticulously crafted by our master artisans to ensure lasting quality and timeless elegance." }}</p>
+                    
+                    <!-- Product Variants -->
+                    <div class="product-variants" id="section-112">
+                        <div class="variant-option">
+                            <h4 id="section-113">{{ text_contents.75|default:"Color" }}</h4>
+                            <div class="color-options">
+                                {% for variant in product.color_variants %}
+                                <div class="color-option {% if forloop.first %}active{% endif %}" 
+                                     style="background-color: {{ variant.hex_code }};" 
+                                     onclick="selectColor('{{ variant.name }}', '{{ variant.hex_code }}')" 
+                                     title="{{ variant.name }}">
+                                </div>
+                                {% empty %}
+                                <!-- Default color options -->
+                                <div class="color-option active" style="background-color: #2C2C2C;" onclick="selectColor('charcoal', '#2C2C2C')" title="Charcoal"></div>
+                                <div class="color-option" style="background-color: #0A5C36;" onclick="selectColor('emerald', '#0A5C36')" title="Emerald Green"></div>
+                                <div class="color-option" style="background-color: #0F2A5E;" onclick="selectColor('navy', '#0F2A5E')" title="Navy Blue"></div>
+                                <div class="color-option" style="background-color: #B35427;" onclick="selectColor('terracotta', '#B35427')" title="Terracotta"></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="variant-option">
+                            <h4 id="section-114">{{ text_contents.76|default:"Size" }}</h4>
+                            <div class="size-options">
+                                {% for size in product.size_variants %}
+                                <div class="size-option {% if forloop.first %}active{% endif %}" onclick="selectSize('{{ size }}')">
+                                    {{ size }}
+                                </div>
+                                {% empty %}
+                                <!-- Default size options -->
+                                <div class="size-option active" onclick="selectSize('3-seater')">3-Seater</div>
+                                <div class="size-option" onclick="selectSize('2-seater')">2-Seater</div>
+                                <div class="size-option" onclick="selectSize('loveseat')">Loveseat</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Product Actions -->
+                    <div class="product-actions" id="section-115">
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="section-116" onclick="buyNow()">{{ text_contents.77|default:"Buy Now" }}</button>
+                            <button class="btn btn-secondary" id="section-117" onclick="addToCart({{ product.id|default:1 }})">{{ text_contents.78|default:"Add to Cart" }}</button>
+                            <button class="btn-wishlist" id="wishlist-btn" onclick="toggleWishlist({{ product.id|default:1 }})">
+                                <i class="{% if product.in_wishlist %}fas{% else %}far{% endif %} fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Product Features -->
+                    <div class="product-features" id="section-118">
+                        <div class="features-grid">
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-shipping-fast"></i>
+                                </div>
+                                <h4 id="section-119">{{ text_contents.79|default:"Free Shipping" }}</h4>
+                                <p id="section-120">{{ text_contents.80|default:"On orders over $1,000" }}</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <h4 id="section-121">{{ text_contents.81|default:"5-Year Warranty" }}</h4>
+                                <p id="section-122">{{ text_contents.82|default:"Frame and springs" }}</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-undo-alt"></i>
+                                </div>
+                                <h4 id="section-123">{{ text_contents.83|default:"30-Day Returns" }}</h4>
+                                <p id="section-124">{{ text_contents.84|default:"Hassle-free policy" }}</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-hand-sparkles"></i>
+                                </div>
+                                <h4 id="section-125">{{ text_contents.85|default:"Handcrafted" }}</h4>
+                                <p id="section-126">{{ text_contents.86|default:"By master artisans" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '105' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Reviews Section -->
+    <section class="reviews-section" id="section-127">
+        <div class="container">
+            <div class="reviews-header">
+                <h2 id="section-128">{{ text_contents.87|default:"Customer Reviews" }}</h2>
+                <button class="btn btn-secondary btn-small" id="section-129" onclick="scrollToReviewForm()">{{ text_contents.88|default:"Write a Review" }}</button>
+            </div>
+            
+            <!-- Rating Summary -->
+            <div class="rating-summary" id="section-130">
+                <div class="average-rating">
+                    <div class="score" id="section-131">{{ product.average_rating|default:"4.5" }}</div>
+                    <div class="stars">
+                        {% with rating=product.average_rating|default:4.5 %}
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= rating %}
+                                <i class="fas fa-star"></i>
+                            {% elif forloop.counter|add:"-0.5" <= rating %}
+                                <i class="fas fa-star-half-alt"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                        {% endwith %}
+                    </div>
+                    <div id="section-132">{{ text_contents.90|default:"128 Reviews" }}</div>
+                </div>
+                
+                <div class="rating-bars">
+                    {% for star in product.rating_distribution %}
+                    <div class="rating-bar">
+                        <span>{{ star.star }} stars</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: {{ star.percentage }}%;"></div>
+                        </div>
+                        <span>{{ star.percentage }}%</span>
+                    </div>
+                    {% empty %}
+                    <!-- Default rating distribution -->
+                    <div class="rating-bar">
+                        <span>5 stars</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: 65%;"></div>
+                        </div>
+                        <span>65%</span>
+                    </div>
+                    <div class="rating-bar">
+                        <span>4 stars</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: 25%;"></div>
+                        </div>
+                        <span>25%</span>
+                    </div>
+                    <div class="rating-bar">
+                        <span>3 stars</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: 7%;"></div>
+                        </div>
+                        <span>7%</span>
+                    </div>
+                    <div class="rating-bar">
+                        <span>2 stars</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: 2%;"></div>
+                        </div>
+                        <span>2%</span>
+                    </div>
+                    <div class="rating-bar">
+                        <span>1 star</span>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: 1%;"></div>
+                        </div>
+                        <span>1%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Reviews List -->
+            <div class="reviews-list">
+                {% for review in product.reviews %}
+                <div class="review-item">
+                    <div class="review-header">
+                        <div class="reviewer-name">{{ review.customer_name }}</div>
+                        <div class="review-date">{{ review.date|date:"F d, Y" }}</div>
+                    </div>
+                    <div class="review-rating">
+                        <div class="stars">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p>{{ review.comment }}</p>
+                </div>
+                {% empty %}
+                <!-- First review (editable template) -->
+                <div class="review-item" id="section-133">
+                    <div class="review-header">
+                        <div class="reviewer-name" id="section-134">{{ text_contents.91|default:"James Wilson" }}</div>
+                        <div class="review-date" id="section-135">{{ text_contents.92|default:"March 15, 2023" }}</div>
+                    </div>
+                    <div class="review-rating">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p id="section-136">{{ text_contents.93|default:"Absolutely stunning sofa! The velvet is incredibly soft and the craftsmanship is exceptional. It's the centerpiece of our living room and gets compliments from everyone who visits." }}</p>
+                </div>
+                
+                <!-- Additional sample reviews -->
+                <div class="review-item">
+                    <div class="review-header">
+                        <div class="reviewer-name">Sarah Chen</div>
+                        <div class="review-date">February 28, 2023</div>
+                    </div>
+                    <div class="review-rating">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="far fa-star"></i>
+                        </div>
+                    </div>
+                    <p>Beautiful design and very comfortable. The assembly was straightforward and the quality is excellent. Only giving 4 stars because delivery took a bit longer than expected.</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Review Form -->
+            <div class="review-form" id="section-137" id="review-form">
+                <h3 id="section-138">{{ text_contents.94|default:"Leave a Review" }}</h3>
+                <form id="reviewForm" action="{% url 'submit_review' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_id" value="{{ product.id|default:1 }}">
+                    
+                    <div class="form-group">
+                        <label id="section-139">{{ text_contents.95|default:"Your Rating" }}</label>
+                        <div class="star-rating-input" id="starRating">
+                            <i class="far fa-star" data-rating="1"></i>
+                            <i class="far fa-star" data-rating="2"></i>
+                            <i class="far fa-star" data-rating="3"></i>
+                            <i class="far fa-star" data-rating="4"></i>
+                            <i class="far fa-star" data-rating="5"></i>
+                        </div>
+                        <input type="hidden" id="ratingValue" name="rating" value="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reviewName" id="section-140">{{ text_contents.96|default:"Your Name" }}</label>
+                        <input type="text" id="reviewName" name="name" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reviewEmail" id="section-141">{{ text_contents.97|default:"Your Email" }}</label>
+                        <input type="email" id="reviewEmail" name="email" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reviewTitle" id="section-142">{{ text_contents.98|default:"Review Title" }}</label>
+                        <input type="text" id="reviewTitle" name="title" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reviewContent" id="section-143">{{ text_contents.99|default:"Your Review" }}</label>
+                        <textarea id="reviewContent" name="content" class="form-control" required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="section-144">{{ text_contents.100|default:"Submit Review" }}</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '127' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Related Products -->
+    <section class="related-products" id="section-145">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="section-146">{{ text_contents.101|default:"You May Also Like" }}</h2>
+                <p id="section-147">{{ text_contents.102|default:"Discover more pieces from our collection" }}</p>
+            </div>
+            
+            <div class="products-grid">
+                {% for related_product in related_products %}
+                <a href="?page=product&id={{ related_product.id }}" class="product-card">
+                    <div class="product-img">
+                        <img src="{{ related_product.image_url }}" alt="{{ related_product.name }}">
+                    </div>
+                    <div class="product-info-sm">
+                        <h3>{{ related_product.name }}</h3>
+                        <div class="price">${{ related_product.price }}</div>
+                    </div>
+                </a>
+                {% empty %}
+                <!-- First related product (editable template) -->
+                <a href="?page=product&id=2" class="product-card" id="section-148">
+                    <div class="product-img">
+                        <img src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Emerson Armchair">
+                    </div>
+                    <div class="product-info-sm">
+                        <h3 id="section-149">{{ text_contents.103|default:"Emerson Armchair" }}</h3>
+                        <div class="price" id="section-150">{{ text_contents.104|default:"$1,850" }}</div>
+                    </div>
+                </a>
+                
+                <!-- Additional sample related products -->
+                <a href="?page=product&id=6" class="product-card">
+                    <div class="product-img">
+                        <img src="https://images.unsplash.com/photo-1519710164239-da123dc03ef4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Marble Coffee Table">
+                    </div>
+                    <div class="product-info-sm">
+                        <h3>Marble Coffee Table</h3>
+                        <div class="price">$1,850</div>
+                    </div>
+                </a>
+                
+                <a href="?page=product&id=8" class="product-card">
+                    <div class="product-img">
+                        <img src="https://images.unsplash.com/photo-1554295405-abb8fd54f153?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Windsor Dining Chairs">
+                    </div>
+                    <div class="product-info-sm">
+                        <h3>Windsor Dining Chairs</h3>
+                        <div class="price">$2,800</div>
+                    </div>
+                </a>
+                
+                <a href="?page=product&id=7" class="product-card">
+                    <div class="product-img">
+                        <img src="https://images.unsplash.com/photo-1503602642458-232111445657?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Modern Bookshelf">
+                    </div>
+                    <div class="product-info-sm">
+                        <h3>Modern Bookshelf</h3>
+                        <div class="price">$2,950</div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% for component in components %}
+    {% if component.drop_zone == '145' %}
+    <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
+        {{ component.html_content|safe }}
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <script>
+        // Product Image Gallery
+        function changeImage(src) {
+            document.getElementById('main-product-image').src = src;
+            
+            // Update active thumbnail
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            thumbnails.forEach(thumb => {
+                thumb.classList.remove('active');
+                if (thumb.querySelector('img').src === src) {
+                    thumb.classList.add('active');
+                }
+            });
+        }
+        
+        // Product Variant Selection
+        let selectedColor = 'charcoal';
+        let selectedSize = '3-seater';
+        
+        function selectColor(color, hex) {
+            selectedColor = color;
+            const colorOptions = document.querySelectorAll('.color-option');
+            colorOptions.forEach(option => option.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update main image based on color selection
+            const colorImages = {
+                'charcoal': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+                'emerald': 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+                'navy': 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+                'terracotta': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80'
+            };
+            
+            if (colorImages[color]) {
+                changeImage(colorImages[color]);
+            }
+        }
+        
+        function selectSize(size) {
+            selectedSize = size;
+            const sizeOptions = document.querySelectorAll('.size-option');
+            sizeOptions.forEach(option => option.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        // Wishlist Toggle
+        function toggleWishlist(productId) {
+            const button = document.getElementById('wishlist-btn');
+            const icon = button.querySelector('i');
+            
+            // Toggle icon
+            if (icon.classList.contains('fas')) {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+            } else {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+            }
+            
+            // Send AJAX request to update wishlist
+            fetch('/api/wishlist/toggle/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ product_id: productId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Wishlist updated:', data);
+            })
+            .catch(error => {
+                console.error('Error updating wishlist:', error);
+            });
+        }
+        
+        // Buy Now Button
+        function buyNow() {
+            const productName = document.querySelector('h1').textContent;
+            const productPrice = document.querySelector('.product-price').textContent;
+            
+            // In a real implementation, this would redirect to checkout
+            alert(`Proceeding to checkout for: ${productName} - ${productPrice}\nColor: ${selectedColor}\nSize: ${selectedSize}`);
+            
+            // Redirect to checkout page
+            // window.location.href = `/checkout/?product_id={{ product.id }}&color=${selectedColor}&size=${selectedSize}`;
+        }
+        
+        // Add to Cart Button
+        function addToCart(productId) {
+            const button = event.target;
+            const productName = document.querySelector('h1').textContent;
+            const productPrice = document.querySelector('.product-price').textContent;
+            
+            // Button animation
+            const originalText = button.textContent;
+            button.textContent = 'Added to Cart!';
+            button.style.backgroundColor = 'var(--gold)';
+            button.style.borderColor = 'var(--gold)';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+                button.style.borderColor = '';
+            }, 1500);
+            
+            // Send AJAX request to add to cart
+            fetch('/api/cart/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    color: selectedColor,
+                    size: selectedSize,
+                    quantity: 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Added to cart:', data);
+                // Update cart badge if exists
+                const cartBadge = document.querySelector('.header-actions .badge');
+                if (cartBadge) {
+                    cartBadge.textContent = data.cart_count;
+                }
+            })
+            .catch(error => {
+                console.error('Error adding to cart:', error);
+            });
+            
+            console.log(`Added to cart: ${productName} - ${productPrice}\nColor: ${selectedColor}\nSize: ${selectedSize}`);
+        }
+        
+        // Star Rating for Review Form
+        const starRating = document.getElementById('starRating');
+        const stars = starRating.querySelectorAll('i');
+        const ratingValue = document.getElementById('ratingValue');
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.getAttribute('data-rating'));
+                ratingValue.value = rating;
+                
+                stars.forEach(s => {
+                    s.classList.remove('fas', 'active');
+                    s.classList.add('far');
+                });
+                
+                for (let i = 0; i < rating; i++) {
+                    stars[i].classList.remove('far');
+                    stars[i].classList.add('fas', 'active');
+                }
+            });
+            
+            star.addEventListener('mouseover', function() {
+                const rating = parseInt(this.getAttribute('data-rating'));
+                
+                stars.forEach(s => {
+                    s.classList.remove('fas', 'active');
+                    s.classList.add('far');
+                });
+                
+                for (let i = 0; i < rating; i++) {
+                    stars[i].classList.remove('far');
+                    stars[i].classList.add('fas', 'active');
+                }
+            });
+        });
+        
+        // Reset stars on mouse leave
+        starRating.addEventListener('mouseleave', function() {
+            const currentRating = parseInt(ratingValue.value);
+            
+            stars.forEach(s => {
+                s.classList.remove('fas', 'active');
+                s.classList.add('far');
+            });
+            
+            if (currentRating > 0) {
+                for (let i = 0; i < currentRating; i++) {
+                    stars[i].classList.remove('far');
+                    stars[i].classList.add('fas', 'active');
+                }
+            }
+        });
+        
+        // Review Form Submission
+        document.getElementById('reviewForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('reviewName').value;
+            const rating = ratingValue.value;
+            
+            if (rating === '0') {
+                alert('Please select a rating');
+                return;
+            }
+            
+            // In a real implementation, this would submit via AJAX
+            alert(`Thank you for your review, ${name}!`);
+            this.reset();
+            ratingValue.value = '0';
+            
+            // Reset stars
+            stars.forEach(star => {
+                star.classList.remove('fas', 'active');
+                star.classList.add('far');
+            });
+        });
+        
+        // Scroll to review form
+        function scrollToReviewForm() {
+            document.getElementById('review-form').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    </script>
+</body>
+</html>
+
+

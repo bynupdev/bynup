@@ -1,0 +1,390 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Currency Settings - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Management Layout */
+.management-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.management-content {
+    flex: 1;
+    padding: 1.5rem;
+    background: white;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+.preview-section {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.preview-section .border {
+    transition: all 0.3s ease;
+}
+
+.preview-section .border:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #4361ee !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .management-layout {
+        flex-direction: column;
+    }
+    
+    .management-content {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .container-fluid.py-4 {
+        padding-top: 1rem !important;
+        padding-bottom: 2rem !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Management Layout with Sidebar -->
+    <div class="management-layout">
+        <!-- Include Sidebar Snippet with active_menu='currency' -->
+        {% include 'builder/includes/sidebar.html' with active_menu='currency' %}
+        
+        <!-- Main Content -->
+        <div class="management-content">
+            <!-- Header -->
+            <div class="row mb-4">
+                <div class="col">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'manage_products' subdomain=page.subdomain %}">{{ page.brand_name }}</a></li>
+                            <li class="breadcrumb-item active">Currency Settings</li>
+                        </ol>
+                    </nav>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="fw-bold text-primary">
+                                <i class="fas fa-coins me-2"></i>Currency Settings
+                            </h1>
+                            <p class="text-muted">Configure how prices are displayed and processed</p>
+                        </div>
+                        <a href="{% url 'manage_products' subdomain=page.subdomain %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Products
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Main Settings Card -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-sliders-h me-2"></i>Currency Display Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="currencyForm">
+                                {% csrf_token %}
+                                
+                                <!-- Currency Selection -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Store Currency</label>
+                                    <select class="form-select form-select-lg" name="currency_code" id="currencyCode">
+                                        {% for currency in currencies %}
+                                        <option value="{{ currency.code }}" 
+                                                data-symbol="{{ currency.symbol }}"
+                                                {% if page.currency_code == currency.code %}selected{% endif %}>
+                                            {{ currency.name }} ({{ currency.code }}) - {{ currency.symbol }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="text-muted">
+                                        This is the primary currency for your store. All prices will be displayed in this currency.
+                                    </small>
+                                </div>
+                                
+                                <div class="row">
+                                    <!-- Currency Symbol Position -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Symbol Position</label>
+                                        <select class="form-select" name="currency_position">
+                                            <option value="before" {% if page.currency_position == 'before' %}selected{% endif %}>
+                                                Before amount ($10)
+                                            </option>
+                                            <option value="after" {% if page.currency_position == 'after' %}selected{% endif %}>
+                                                After amount (10$)
+                                            </option>
+                                            <option value="before_space" {% if page.currency_position == 'before_space' %}selected{% endif %}>
+                                                Before with space ($ 10)
+                                            </option>
+                                            <option value="after_space" {% if page.currency_position == 'after_space' %}selected{% endif %}>
+                                                After with space (10 $)
+                                            </option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Decimal Places -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Decimal Places</label>
+                                        <select class="form-select" name="decimal_places">
+                                            <option value="0" {% if page.decimal_places == 0 %}selected{% endif %}>
+                                                0 (10)
+                                            </option>
+                                            <option value="1" {% if page.decimal_places == 1 %}selected{% endif %}>
+                                                1 (10.5)
+                                            </option>
+                                            <option value="2" {% if page.decimal_places == 2 %}selected{% endif %}>
+                                                2 (10.50)
+                                            </option>
+                                            <option value="3" {% if page.decimal_places == 3 %}selected{% endif %}>
+                                                3 (10.500)
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <!-- Thousand Separator -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Thousand Separator</label>
+                                        <select class="form-select" name="thousand_separator">
+                                            <option value="," {% if page.thousand_separator == ',' %}selected{% endif %}>
+                                                Comma (1,000)
+                                            </option>
+                                            <option value="." {% if page.thousand_separator == '.' %}selected{% endif %}>
+                                                Period (1.000)
+                                            </option>
+                                            <option value=" " {% if page.thousand_separator == ' ' %}selected{% endif %}>
+                                                Space (1 000)
+                                            </option>
+                                            <option value="" {% if page.thousand_separator == '' %}selected{% endif %}>
+                                                None (1000)
+                                            </option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Decimal Separator -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Decimal Separator</label>
+                                        <select class="form-select" name="decimal_separator">
+                                            <option value="." {% if page.decimal_separator == '.' %}selected{% endif %}>
+                                                Period (10.50)
+                                            </option>
+                                            <option value="," {% if page.decimal_separator == ',' %}selected{% endif %}>
+                                                Comma (10,50)
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Live Preview -->
+                                <div class="preview-section mt-4 p-4 bg-light rounded">
+                                    <h6 class="mb-3">Live Preview:</h6>
+                                    <div class="row text-center">
+                                        <div class="col-md-4">
+                                            <div class="p-3 border rounded bg-white">
+                                                <small class="text-muted d-block">Small amount</small>
+                                                <span class="h4" id="previewSmall">$10.50</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="p-3 border rounded bg-white">
+                                                <small class="text-muted d-block">Medium amount</small>
+                                                <span class="h4" id="previewMedium">$1,234.56</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="p-3 border rounded bg-white">
+                                                <small class="text-muted d-block">Large amount</small>
+                                                <span class="h4" id="previewLarge">$12,345.67</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary mt-4">
+                                    <i class="fas fa-save me-2"></i>Save Currency Settings
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <!-- Payment Gateway Info -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-credit-card me-2"></i>Payment Gateways
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Most payment gateways accept multiple currencies. Your store currency 
+                                <strong>{{ page.currency_code }}</strong> will be used for transactions.
+                            </p>
+                            
+                            <div class="alert alert-success small">
+                                <i class="fas fa-check-circle me-1"></i>
+                                <strong>Default:</strong> All payments will be processed in {{ page.currency_code }}
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6 class="mb-2">Gateway Support:</h6>
+                            <ul class="list-unstyled small">
+                                <li class="mb-2">
+                                    <i class="fab fa-cc-stripe me-2 text-primary"></i>
+                                    Stripe: <span class="text-success">Supports {{ page.currency_code }}</span>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fab fa-paypal me-2 text-primary"></i>
+                                    PayPal: <span class="text-success">Supports {{ page.currency_code }}</span>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-credit-card me-2 text-primary"></i>
+                                    Razorpay: 
+                                    {% if page.currency_code == 'INR' %}
+                                        <span class="text-success">Supported</span>
+                                    {% else %}
+                                        <span class="text-warning">May require conversion</span>
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Tips -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-lightbulb me-2"></i>Quick Tips
+                            </h6>
+                        </div>
+                        <div class="card-body small">
+                            <ul class="mb-0 ps-3">
+                                <li class="mb-2">USD is the default and most widely accepted currency</li>
+                                <li class="mb-2">Choose a currency that matches your target market</li>
+                                <li class="mb-2">Some payment gateways have currency restrictions</li>
+                                <li class="mb-2">Customers will see prices in your selected format</li>
+                                <li>You can change this anytime without affecting existing orders</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('currencyForm');
+    const currencySelect = document.getElementById('currencyCode');
+    const previewSmall = document.getElementById('previewSmall');
+    const previewMedium = document.getElementById('previewMedium');
+    const previewLarge = document.getElementById('previewLarge');
+    
+    function updatePreview() {
+        const currency = currencySelect.options[currencySelect.selectedIndex];
+        const symbol = currency.dataset.symbol || '$';
+        const position = document.querySelector('[name="currency_position"]').value;
+        const thousandSep = document.querySelector('[name="thousand_separator"]').value;
+        const decimalSep = document.querySelector('[name="decimal_separator"]').value;
+        const decimalPlaces = parseInt(document.querySelector('[name="decimal_places"]').value);
+        
+        // Format numbers
+        const formatNumber = (num) => {
+            let formatted = num.toFixed(decimalPlaces);
+            
+            // Add thousand separators
+            if (thousandSep !== '') {
+                const parts = formatted.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+                formatted = parts.join(decimalSep);
+            } else {
+                formatted = formatted.replace('.', decimalSep);
+            }
+            
+            // Add currency symbol
+            if (position === 'before') {
+                return symbol + formatted;
+            } else if (position === 'after') {
+                return formatted + symbol;
+            } else if (position === 'before_space') {
+                return symbol + ' ' + formatted;
+            } else if (position === 'after_space') {
+                return formatted + ' ' + symbol;
+            }
+            return symbol + formatted;
+        };
+        
+        previewSmall.textContent = formatNumber(10.5);
+        previewMedium.textContent = formatNumber(1234.56);
+        previewLarge.textContent = formatNumber(12345.67);
+    }
+    
+    // Add event listeners
+    currencySelect.addEventListener('change', updatePreview);
+    document.querySelectorAll('select[name="currency_position"], select[name="thousand_separator"], select[name="decimal_separator"], select[name="decimal_places"]').forEach(select => {
+        select.addEventListener('change', updatePreview);
+    });
+    
+    // Initial preview
+    updatePreview();
+    
+    // Form submission with loading state
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            }
+        });
+    }
+});
+
+// Show notification helper (if needed)
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'success' ? 'alert-success' : 
+                      type === 'error' ? 'alert-danger' : 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 99999; min-width: 300px; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px;';
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} me-2 fa-lg"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

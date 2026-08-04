@@ -1,0 +1,225 @@
+{% extends 'builder/base.html' %}
+
+{% block title %}Manage Blog Posts - {{ page.brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">My Pages</a></li>
+                    <li class="breadcrumb-item active">{{ page.brand_name }} ({{ page.subdomain }})</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="fw-bold text-primary">Manage Content</h1>
+                    <p class="text-muted mb-0">{{ page.brand_name }} - {{ page.template_name|title }}</p>
+                </div>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Toggle Buttons -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'manage_products' subdomain=page.subdomain %}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-box me-2"></i>Products
+                        </a>
+                        <a href="{% url 'manage_blog_posts' subdomain=page.subdomain %}" 
+                           class="btn btn-primary active">
+                            <i class="fas fa-blog me-2"></i>Blog Posts
+                        </a>
+                        <a href="{% url 'manage_forms' subdomain=page.subdomain %}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-envelope me-2"></i>Form Submissions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Add Blog Post Form -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-plus me-2"></i>Add New Blog Post
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Post Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="home">Home</option>
+                                <option value="fashion">Fashion</option>
+                                <option value="beauty">Beauty</option>
+                                <option value="lifestyle">Lifestyle</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="excerpt" class="form-label">Excerpt</label>
+                            <textarea class="form-control" id="excerpt" name="excerpt" rows="2" 
+                                      placeholder="Brief description of the post"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content *</label>
+                            <textarea class="form-control" id="content" name="content" rows="6" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="featured_image" class="form-label">Featured Image</label>
+                            <input type="file" class="form-control" id="featured_image" name="featured_image" accept="image/*">
+                        </div>
+                        <button type="submit" class="btn btn-accent w-100">
+                            <i class="fas fa-save me-2"></i>Publish Post
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blog Posts List -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-newspaper me-2"></i>Blog Posts ({{ blog_posts.count }})
+                        </h5>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                Filter by Category
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="?category=all">All Categories</a></li>
+                                <li><a class="dropdown-item" href="?category=home">Home</a></li>
+                                <li><a class="dropdown-item" href="?category=fashion">Fashion</a></li>
+                                <li><a class="dropdown-item" href="?category=beauty">Beauty</a></li>
+                                <li><a class="dropdown-item" href="?category=lifestyle">Lifestyle</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if blog_posts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Excerpt</th>
+                                    <th>Published</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for post in blog_posts %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ post.title }}</strong>
+                                        {% if post.featured_image %}
+                                        <br><small class="text-muted">Has featured image</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if post.category == 'home' %}bg-primary
+                                            {% elif post.category == 'fashion' %}bg-info
+                                            {% elif post.category == 'beauty' %}bg-warning
+                                            {% elif post.category == 'lifestyle' %}bg-success
+                                            {% endif %}">
+                                            {{ post.get_category_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ post.excerpt|truncatewords:10|default:post.content|truncatewords:10 }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>{{ post.published_date|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if post.is_published %}
+                                        <span class="badge bg-success">Published</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">Draft</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="editPost({{ post.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deletePost({{ post.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-newspaper fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Blog Posts Yet</h5>
+                        <p class="text-muted">Create your first blog post using the form on the left.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editPost(postId) {
+    alert('Edit post functionality would be implemented for post ID: ' + postId);
+}
+
+function deletePost(postId) {
+    if (confirm('Are you sure you want to delete this blog post?')) {
+        alert('Delete functionality would be implemented for post ID: ' + postId);
+    }
+}
+
+// Auto-populate excerpt from content if empty
+document.addEventListener('DOMContentLoaded', function() {
+    const contentField = document.getElementById('content');
+    const excerptField = document.getElementById('excerpt');
+    
+    if (contentField && excerptField) {
+        contentField.addEventListener('blur', function() {
+            if (!excerptField.value && contentField.value) {
+                // Take first 150 characters for excerpt
+                excerptField.value = contentField.value.substring(0, 150) + '...';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

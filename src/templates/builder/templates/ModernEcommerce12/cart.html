@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | Élan Noir</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --text: #e2a970;
+            --background: #f1bb71;
+            --background: #fbca8a;
+            --heading: #626616;
+            --primary: #ffffff;
+            --secondary: #f9f6f2;
+            --border: #1a1a1a;
+            --success: #f8f8f8;
+            --accent: #333333;
+            --accent: #e5e5e5;
+            --error: #999999;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            color: var(--accent);
+            line-height: 1.6;
+            background-color: var(--secondary);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+            color: var(--heading);
+            letter-spacing: 0.5px;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-padding {
+            padding: 5rem 0;
+        }
+
+        .NObtn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .NObtn-primary {
+            background-color: var(--text);
+            color: var(--primary);
+        }
+
+        .NObtn-primary:hover {
+            background-color: var(--background);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .NObtn-secondary {
+            background-color: transparent;
+            color: var(--heading);
+            border: 1px solid var(--heading);
+        }
+
+        .NObtn-secondary:hover {
+            background-color: var(--heading);
+            color: var(--primary);
+        }
+
+        .NObtn-dark {
+            background-color: var(--heading);
+            color: var(--primary);
+            border: 1px solid var(--heading);
+        }
+
+        .NObtn-dark:hover {
+            background-color: var(--text);
+            border-color: var(--text);
+        }
+
+        /* Cart Layout */
+        .cart-page {
+            padding: 8rem 0 4rem;
+        }
+
+        .page-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-title h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .page-title p {
+            color: var(--error);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Cart Content */
+        .cart-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 4rem;
+            margin-bottom: 5rem;
+        }
+
+        /* Cart Items */
+        .cart-items {
+            background-color: var(--primary);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 2rem;
+            padding: 2rem;
+            border-bottom: 1px solid var(--accent);
+            align-items: center;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-image {
+            width: 120px;
+            height: 150px;
+            background-color: var(--secondary);
+            overflow: hidden;
+        }
+
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .item-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: var(--heading);
+        }
+
+        .item-variant {
+            font-size: 0.9rem;
+            color: var(--error);
+        }
+
+        .item-price {
+            font-weight: 500;
+            color: var(--text);
+            font-size: 1.1rem;
+        }
+
+        .item-quantity {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .quantity-NObtn {
+            width: 30px;
+            height: 30px;
+            background: none;
+            border: 1px solid var(--accent);
+            cursor: pointer;
+            color: var(--heading);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .quantity-NObtn:hover {
+            border-color: var(--text);
+            color: var(--text);
+        }
+
+        .quantity-input {
+            width: 50px;
+            text-align: center;
+            border: none;
+            font-size: 1rem;
+            color: var(--heading);
+        }
+
+        .item-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .item-total {
+            font-weight: 500;
+            color: var(--heading);
+            font-size: 1.2rem;
+        }
+
+        .remove-NObtn {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .remove-NObtn:hover {
+            color: var(--text);
+        }
+
+        /* Empty Cart */
+        .empty-cart {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-cart i {
+            font-size: 4rem;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-cart h3 {
+            margin-bottom: 1rem;
+            color: var(--heading);
+        }
+
+        .empty-cart p {
+            color: var(--error);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Order Summary */
+        .order-summary {
+            background-color: var(--primary);
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            height: fit-content;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .summary-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .summary-row.total {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--heading);
+            border-top: 1px solid var(--accent);
+            padding-top: 1rem;
+            margin-top: 1rem;
+        }
+
+        .summary-row.highlight {
+            color: var(--text);
+        }
+
+        .promo-code {
+            margin: 2rem 0;
+        }
+
+        .promo-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .promo-input input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .promo-input input:focus {
+            outline: none;
+            border-color: var(--text);
+        }
+
+        .apply-NObtn {
+            padding: 0.8rem 1.5rem;
+            background-color: var(--heading);
+            color: var(--primary);
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .apply-NObtn:hover {
+            background-color: var(--text);
+        }
+
+        .checkout-NObtn {
+            width: 100%;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            font-size: 1rem;
+        }
+
+        .continue-shopping {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--accent);
+        }
+
+        .continue-shopping a {
+            color: var(--heading);
+            text-decoration: underline;
+            transition: color 0.3s ease;
+        }
+
+        .continue-shopping a:hover {
+            color: var(--text);
+        }
+
+        /* You May Also Like Section */
+        .also-like {
+            padding: 4rem 0;
+            background-color: var(--primary);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-title p {
+            color: var(--error);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .product-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .product-image {
+            height: 350px;
+            background-color: var(--secondary);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .product-card:hover .product-image img {
+            transform: scale(1.05);
+        }
+
+        .product-info {
+            text-align: center;
+        }
+
+        .product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--heading);
+        }
+
+        .product-price {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .empty-related {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: var(--error);
+        }
+
+        .empty-related i {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .cart-content {
+                gap: 3rem;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1.5rem;
+            }
+            
+            .cart-page {
+                padding: 6rem 0 3rem;
+            }
+            
+            .page-title h1 {
+                font-size: 2.5rem;
+            }
+            
+            .cart-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+            
+            .cart-item {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .item-image {
+                width: 100%;
+                height: 250px;
+            }
+            
+            .item-actions {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-title h1 {
+                font-size: 2rem;
+            }
+            
+            .section-title h2 {
+                font-size: 2rem;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .promo-input {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cart Page -->
+    <section class="cart-page editable-section" data-section="93">
+        <div class="container">
+            <!-- Page Title -->
+            <div class="page-title">
+                <h1 class="editable-text editable-section no-drop-zone" data-section="94" data-text="72">Your Shopping Cart</h1>
+                <p class="editable-text editable-section no-drop-zone" data-section="95" data-text="73">Review your selected items and proceed to checkout</p>
+            </div>
+
+            <!-- Cart Content -->
+            <div class="cart-content">
+                <!-- Cart Items -->
+                <div class="cart-items editable-section no-drop-zone" data-section="96">
+                    <!-- Cart Item 1 (Editable - only first) -->
+                    <div class="cart-item editable-section no-drop-zone" data-section="97">
+                        <div class="item-image">
+                            <img src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80" alt="Aurelia Silk Dress">
+                        </div>
+                        <div class="item-details">
+                            <h3 class="item-name editable-text editable-section no-drop-zone" data-section="98" data-text="74">Aurelia Silk Dress</h3>
+                            <p class="item-variant editable-text editable-section no-drop-zone" data-section="99" data-text="75">Color: Emerald | Size: M</p>
+                            <p class="item-price editable-text editable-section no-drop-zone" data-section="100" data-text="76">$1,850</p>
+                            <div class="item-quantity">
+                                <button class="quantity-NObtn" onclick="decreaseQuantity(this)">-</button>
+                                <input type="text" class="quantity-input" value="1" readonly>
+                                <button class="quantity-NObtn" onclick="increaseQuantity(this)">+</button>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <div class="item-total editable-text editable-section no-drop-zone" data-section="101" data-text="77">$1,850</div>
+                            <button class="remove-NObtn editable-text editable-section no-drop-zone" data-section="102" data-text="78" onclick="removeItem(this)">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Item 2 (Not editable) -->
+                    <div class="cart-item">
+                        <div class="item-image">
+                            <img src="https://images.unsplash.com/photo-1539533113205-9fcb5d3b4e47?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=870&q=80" alt="Tailored Wool Blazer">
+                        </div>
+                        <div class="item-details">
+                            <h3 class="item-name">Tailored Wool Blazer</h3>
+                            <p class="item-variant">Color: Navy | Size: S</p>
+                            <p class="item-price">$1,250</p>
+                            <div class="item-quantity">
+                                <button class="quantity-NObtn" onclick="decreaseQuantity(this)">-</button>
+                                <input type="text" class="quantity-input" value="1" readonly>
+                                <button class="quantity-NObtn" onclick="increaseQuantity(this)">+</button>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <div class="item-total">$1,250</div>
+                            <button class="remove-NObtn" onclick="removeItem(this)">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Item 3 (Not editable) -->
+                    <div class="cart-item">
+                        <div class="item-image">
+                            <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=870&q=80" alt="Cashmere Coat">
+                        </div>
+                        <div class="item-details">
+                            <h3 class="item-name">Alpine Cashmere Coat</h3>
+                            <p class="item-variant">Color: Charcoal | Size: L</p>
+                            <p class="item-price">$2,750</p>
+                            <div class="item-quantity">
+                                <button class="quantity-NObtn" onclick="decreaseQuantity(this)">-</button>
+                                <input type="text" class="quantity-input" value="1" readonly>
+                                <button class="quantity-NObtn" onclick="increaseQuantity(this)">+</button>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <div class="item-total">$2,750</div>
+                            <button class="remove-NObtn" onclick="removeItem(this)">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary editable-section no-drop-zone" data-section="103">
+                    <h3 class="summary-title editable-text editable-section no-drop-zone" data-section="104" data-text="79">Order Summary</h3>
+                    
+                    <div class="summary-row">
+                        <span class="editable-text editable-section no-drop-zone" data-section="105" data-text="80">Subtotal</span>
+                        <span id="subtotal">$5,850</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="editable-text editable-section no-drop-zone" data-section="106" data-text="81">Shipping</span>
+                        <span id="shipping" class="editable-text editable-section no-drop-zone" data-section="107" data-text="82">Free</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span class="editable-text editable-section no-drop-zone" data-section="108" data-text="83">Tax</span>
+                        <span id="tax">$468</span>
+                    </div>
+                    
+                    <div class="summary-row total">
+                        <span class="editable-text editable-section no-drop-zone" data-section="109" data-text="84">Total</span>
+                        <span id="total">$6,318</span>
+                    </div>
+                    
+                    <div class="promo-code">
+                        <label class="editable-text editable-section no-drop-zone" data-section="110" data-text="85">Promo Code</label>
+                        <div class="promo-input">
+                            <input type="text" id="promoCode" placeholder="Enter code">
+                            <button class="apply-NObtn editable-text editable-section no-drop-zone" data-section="111" data-text="86" onclick="applyPromo()">Apply</button>
+                        </div>
+                    </div>
+                    
+                    <button class="NObtn NObtn-dark checkout-NObtn editable-text editable-section no-drop-zone" data-section="112" data-text="87" onclick="proceedToCheckout()">Proceed to Checkout</button>
+                    
+                    <div class="continue-shopping">
+                        <a href="?page=shop" class="editable-text editable-section no-drop-zone" data-section="113" data-text="88">Continue Shopping</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- You May Also Like Section -->
+    <section class="also-like editable-section" data-section="114">
+        <div class="container">
+            <div class="section-title">
+                <h2 class="editable-text editable-section no-drop-zone" data-section="115" data-text="89">You May Also Like</h2>
+                <p class="editable-text editable-section no-drop-zone" data-section="116" data-text="90">Complete your look with these complementary pieces</p>
+            </div>
+            
+            <div class="products-grid">
+                <!-- Product 1 (Editable - only first) -->
+                <div class="product-card editable-section no-drop-zone" data-section="117">
+                    <a href="?page=product-details">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1559847844-5315695dadae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1031&q=80" alt="Evening Gown">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-name editable-text editable-section no-drop-zone" data-section="118" data-text="91">Celestial Evening Gown</h3>
+                            <p class="product-price editable-text editable-section no-drop-zone" data-section="119" data-text="92">$3,200</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Product 2 (Not editable) -->
+                <div class="product-card">
+                    <a href="?page=product-details">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1031&q=80" alt="Designer Handbag">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-name">Luxe Leather Handbag</h3>
+                            <p class="product-price">$950</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Product 3 (Not editable) -->
+                <div class="product-card">
+                    <a href="?page=product-details">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1592878904946-b3cd8ae243d0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80" alt="Silk Scarf">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-name">Italian Silk Scarf</h3>
+                            <p class="product-price">$320</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Product 4 (Not editable) -->
+                <div class="product-card">
+                    <a href="?page=product-details">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=870&q=80" alt="Leather Shoes">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-name">Leather Evening Shoes</h3>
+                            <p class="product-price">$680</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Quantity Controls
+        function increaseQuantity(button) {
+            const item = button.closest('.cart-item');
+            const input = item.querySelector('.quantity-input');
+            const price = parseFloat(item.querySelector('.item-price').textContent.replace('$', ''));
+            let quantity = parseInt(input.value);
+            
+            quantity++;
+            if (quantity > 10) quantity = 10;
+            input.value = quantity;
+            
+            updateItemTotal(item, price, quantity);
+            updateOrderSummary();
+        }
+        
+        function decreaseQuantity(button) {
+            const item = button.closest('.cart-item');
+            const input = item.querySelector('.quantity-input');
+            const price = parseFloat(item.querySelector('.item-price').textContent.replace('$', ''));
+            let quantity = parseInt(input.value);
+            
+            quantity--;
+            if (quantity < 1) quantity = 1;
+            input.value = quantity;
+            
+            updateItemTotal(item, price, quantity);
+            updateOrderSummary();
+        }
+        
+        function updateItemTotal(item, price, quantity) {
+            const totalElement = item.querySelector('.item-total');
+            const total = price * quantity;
+            totalElement.textContent = '$' + total.toFixed(2);
+        }
+        
+        // Remove Item
+        function removeItem(button) {
+            const item = button.closest('.cart-item');
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(-20px)';
+            
+            setTimeout(() => {
+                item.remove();
+                updateOrderSummary();
+                checkEmptyCart();
+            }, 300);
+        }
+        
+        // Update Order Summary
+        function updateOrderSummary() {
+            let subtotal = 0;
+            const items = document.querySelectorAll('.cart-item');
+            
+            items.forEach(item => {
+                const itemTotal = parseFloat(item.querySelector('.item-total').textContent.replace('$', ''));
+                subtotal += itemTotal;
+            });
+            
+            const tax = subtotal * 0.08; // 8% tax
+            const total = subtotal + tax;
+            
+            document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
+            document.getElementById('tax').textContent = '$' + tax.toFixed(2);
+            document.getElementById('total').textContent = '$' + total.toFixed(2);
+        }
+        
+        // Apply Promo Code
+        function applyPromo() {
+            const promoCode = document.getElementById('promoCode').value.trim().toUpperCase();
+            const discountCodes = ['ELAN10', 'LUXURY20', 'FIRSTORDER'];
+            
+            if (promoCode === '') {
+                alert('Please enter a promo code');
+                return;
+            }
+            
+            if (discountCodes.includes(promoCode)) {
+                let subtotal = parseFloat(document.getElementById('subtotal').textContent.replace('$', ''));
+                let discount = 0;
+                
+                if (promoCode === 'ELAN10') {
+                    discount = subtotal * 0.10;
+                } else if (promoCode === 'LUXURY20') {
+                    discount = subtotal * 0.20;
+                } else if (promoCode === 'FIRSTORDER') {
+                    discount = 50; // $50 off
+                }
+                
+                // Add discount row if not already present
+                let discountRow = document.querySelector('.summary-row.discount');
+                if (!discountRow) {
+                    discountRow = document.createElement('div');
+                    discountRow.className = 'summary-row discount highlight';
+                    discountRow.innerHTML = '<span>Discount</span><span id="discount">-$0.00</span>';
+                    const taxRow = document.querySelector('.summary-row.total');
+                    taxRow.parentNode.insertBefore(discountRow, taxRow);
+                }
+                
+                document.getElementById('discount').textContent = '-$' + discount.toFixed(2);
+                
+                // Update total
+                let total = parseFloat(document.getElementById('total').textContent.replace('$', ''));
+                total = subtotal + (subtotal * 0.08) - discount;
+                document.getElementById('total').textContent = '$' + total.toFixed(2);
+                
+                alert('Promo code applied successfully!');
+            } else {
+                alert('Invalid promo code');
+            }
+        }
+        
+        // Check Empty Cart
+        function checkEmptyCart() {
+            const cartItems = document.querySelector('.cart-items');
+            const items = cartItems.querySelectorAll('.cart-item');
+            
+            if (items.length === 0) {
+                const emptyCartHTML = `
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <h3>Your cart is empty</h3>
+                        <p>Looks like you haven't added any items to your cart yet. Start shopping to fill it with luxury pieces.</p>
+                        <a href="?page=shop" class="NObtn NObtn-primary">Start Shopping</a>
+                    </div>
+                `;
+                cartItems.innerHTML = emptyCartHTML;
+            }
+        }
+        
+        // Proceed to Checkout
+        function proceedToCheckout() {
+            const items = document.querySelectorAll('.cart-item');
+            if (items.length === 0) {
+                alert('Your cart is empty. Add items before proceeding to checkout.');
+                return;
+            }
+            
+            const total = document.getElementById('total').textContent;
+            console.log('Proceeding to checkout with total:', total);
+            alert('Proceeding to checkout...\nTotal: ' + total);
+            // In real implementation, this would redirect to checkout page
+            // window.location.href = '?page=checkout';
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateOrderSummary();
+        });
+    </script>
+</body>
+</html>
