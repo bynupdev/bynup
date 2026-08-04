@@ -20,7 +20,6 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 # secret =  whsec_3b1c08b6e3f42fc10d84cc6e876dc8d2abbb7d861f1659cae87df42de59155e3
 
 
@@ -56,18 +55,37 @@ if os.getenv('CUSTOM_DOMAIN'):
     CSRF_TRUSTED_ORIGINS.append(f'https://{os.getenv("CUSTOM_DOMAIN")}')
 
 # Session and Cookie Security - CRITICAL FOR PRODUCTION!
+# if not DEBUG:
+#     SESSION_COOKIE_SECURE = True
+#     CSRF_COOKIE_SECURE = True
+#     SESSION_COOKIE_HTTPONLY = True
+#     CSRF_COOKIE_HTTPONLY = True  # Set to False if you need JavaScript access to CSRF token
+#     SESSION_COOKIE_SAMESITE = 'Lax'
+#     CSRF_COOKIE_SAMESITE = 'Lax'
+#     SECURE_SSL_REDIRECT = True
+#     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+#     SECURE_HSTS_SECONDS = 31536000  # 1 year
+#     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#     SECURE_HSTS_PRELOAD = True
+
+
+# Replace your entire cookie security block (around line 54-67) with this:
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    CSRF_COOKIE_HTTPONLY = True  # Set to False if you need JavaScript access to CSRF token
+    CSRF_COOKIE_HTTPONLY = False  # ← CHANGE THIS FROM True TO False
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SAMESITE = 'Lax'
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# Add these TWO lines right after that block:
+SESSION_COOKIE_DOMAIN = '.bynup.store'
+CSRF_COOKIE_DOMAIN = '.bynup.store'
     
 #increase data upload limit
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024 #100MB

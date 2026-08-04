@@ -1,0 +1,1651 @@
+<!-- builder/templates/builder/admin/ai_design_instructions.html -->
+
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    /* ============================================
+       ROOT VARIABLES
+    ============================================ */
+    :root {
+        --primary: #4361ee;
+        --primary-dark: #3a56d4;
+        --secondary: #6c757d;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --bg-light: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --text-dark: #0f172a;
+        --text-muted: #64748b;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        --radius: 12px;
+        --radius-sm: 8px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ============================================
+       LAYOUT
+    ============================================ */
+    .ai-design-container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* ============================================
+       HEADER
+    ============================================ */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding: 24px 32px;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: var(--radius);
+        color: white;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .page-header-left h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+
+    .page-header-left p {
+        margin: 0;
+        opacity: 0.8;
+        font-size: 14px;
+    }
+
+    .page-header-right {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .header-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 20px;
+        font-size: 13px;
+        backdrop-filter: blur(4px);
+    }
+
+    .header-badge i {
+        font-size: 16px;
+    }
+
+    /* ============================================
+       STATS GRID
+    ============================================ */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-card .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-card .stat-label {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .stat-card .stat-icon {
+        float: right;
+        font-size: 28px;
+        opacity: 0.2;
+    }
+
+    .stat-card.primary .stat-number { color: var(--primary); }
+    .stat-card.success .stat-number { color: var(--success); }
+    .stat-card.warning .stat-number { color: var(--warning); }
+    .stat-card.info .stat-number { color: var(--info); }
+
+    /* ============================================
+       MAIN GRID
+    ============================================ */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1024px) {
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ============================================
+       LEFT PANEL
+    ============================================ */
+    .left-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .panel-card {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .panel-card-header {
+        padding: 16px 20px;
+        background: var(--bg-light);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .panel-card-header h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-dark);
+    }
+
+    .panel-card-body {
+        padding: 20px;
+    }
+
+    /* ============================================
+       FORM ELEMENTS
+    ============================================ */
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+    }
+
+    .form-label .required {
+        color: var(--danger);
+        margin-left: 2px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        transition: var(--transition);
+        background: var(--bg-card);
+        color: var(--text-dark);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+    }
+
+    .form-control-sm {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .form-control:disabled {
+        background: var(--bg-light);
+        cursor: not-allowed;
+    }
+
+    .form-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .form-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 6px;
+    }
+
+    .form-hint i {
+        font-size: 13px;
+    }
+
+    /* ============================================
+       COLOR PREVIEW
+    ============================================ */
+    .color-preview-strip {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .color-preview-strip .color-chip {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 2px solid var(--border-color);
+        transition: var(--transition);
+        cursor: default;
+    }
+
+    .color-preview-strip .color-chip:hover {
+        transform: scale(1.1);
+        z-index: 2;
+    }
+
+    /* ============================================
+       BUTTONS
+    ============================================ */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+    .btn-primary:hover:not(:disabled) {
+        background: var(--primary-dark);
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .btn-success {
+        background: var(--success);
+        color: white;
+    }
+    .btn-success:hover:not(:disabled) {
+        background: #059669;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+    .btn-danger:hover:not(:disabled) {
+        background: #dc2626;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .btn-outline {
+        background: transparent;
+        color: var(--text-dark);
+        border: 1px solid var(--border-color);
+    }
+    .btn-outline:hover:not(:disabled) {
+        background: var(--bg-light);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-sm {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    .btn-block {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    /* ============================================
+       RIGHT PANEL
+    ============================================ */
+    .right-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .instructions-wrapper {
+        position: relative;
+    }
+
+    .instructions-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--bg-light);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .instructions-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .instructions-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .badge-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--bg-light);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
+    }
+
+    .badge-primary { background: #dbeafe; color: var(--primary); border-color: #bfdbfe; }
+    .badge-success { background: #d1fae5; color: var(--success); border-color: #a7f3d0; }
+    .badge-warning { background: #fef3c7; color: var(--warning); border-color: #fcd34d; }
+    .badge-danger { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
+    .badge-info { background: #e0f2fe; color: var(--info); border-color: #bae6fd; }
+
+    .instructions-textarea {
+        width: 100%;
+        min-height: 500px;
+        padding: 20px 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 12px;
+        line-height: 1.8;
+        color: var(--text-dark);
+        background: #0f172a;
+        color: #e2e8f0;
+        resize: vertical;
+        transition: var(--transition);
+    }
+
+    .instructions-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+    }
+
+    .instructions-textarea::placeholder {
+        color: #64748b;
+        opacity: 0.6;
+    }
+
+    /* ============================================
+       STATUS INDICATOR
+    ============================================ */
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        transition: var(--transition);
+    }
+
+    .status-indicator .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .status-indicator .dot.idle { background: var(--secondary); }
+    .status-indicator .dot.loading { background: var(--warning); animation: pulse-dot 1s infinite; }
+    .status-indicator .dot.success { background: var(--success); }
+    .status-indicator .dot.error { background: var(--danger); }
+
+    .status-indicator.idle { background: var(--bg-light); color: var(--text-muted); }
+    .status-indicator.loading { background: #fef3c7; color: #92400e; }
+    .status-indicator.success { background: #d1fae5; color: #065f46; }
+    .status-indicator.error { background: #fee2e2; color: #991b1b; }
+
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ============================================
+       AI RESPONSE SECTION
+    ============================================ */
+    .ai-response-section {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .ai-response-section .panel-card-body {
+        padding: 20px;
+    }
+
+    .ai-response-textarea {
+        width: 100%;
+        min-height: 180px;
+        padding: 16px 20px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-dark);
+        background: var(--bg-light);
+        resize: vertical;
+        transition: var(--transition);
+    }
+
+    .ai-response-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+    }
+
+    .ai-response-textarea::placeholder {
+        color: #94a3b8;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ============================================
+       RESPONSE MESSAGES
+    ============================================ */
+    .response-message {
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        margin-top: 12px;
+        display: none;
+    }
+
+    .response-message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    .response-message.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .response-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .response-message.warning {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    .response-message.info {
+        background: #e0f2fe;
+        color: #075985;
+        border: 1px solid #bae6fd;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============================================
+       LOADING OVERLAY
+    ============================================ */
+    .loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(4px);
+        border-radius: var(--radius-sm);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 16px;
+        z-index: 10;
+    }
+
+    .loading-overlay.show {
+        display: flex;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .loading-overlay .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255,255,255,0.1);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    .loading-overlay .loading-text {
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .loading-overlay .loading-sub {
+        color: rgba(255,255,255,0.6);
+        font-size: 12px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* ============================================
+       THEME PREVIEW
+    ============================================ */
+    .theme-preview {
+        margin-top: 12px;
+        padding: 16px;
+        background: var(--bg-light);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        display: none;
+    }
+
+    .theme-preview.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    .theme-preview .theme-name {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+    }
+
+    .theme-preview .theme-colors {
+        display: flex;
+        gap: 8px;
+        margin: 8px 0;
+    }
+
+    .theme-preview .theme-colors span {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 2px solid var(--border-color);
+    }
+
+    .theme-preview .theme-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+
+    /* ============================================
+       RESPONSIVE
+    ============================================ */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .page-header-right {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .stat-card .stat-number {
+            font-size: 24px;
+        }
+
+        .instructions-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .instructions-toolbar-left,
+        .instructions-toolbar-right {
+            flex-wrap: wrap;
+        }
+
+        .badge-group {
+            flex-wrap: wrap;
+        }
+
+        .instructions-textarea {
+            min-height: 300px;
+            font-size: 11px;
+            padding: 16px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            padding: 14px 16px;
+        }
+
+        .stat-card .stat-number {
+            font-size: 20px;
+        }
+    }
+
+    /* ============================================
+       SCROLLBAR STYLING
+    ============================================ */
+    .instructions-textarea::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .instructions-textarea::-webkit-scrollbar-track {
+        background: #1e293b;
+    }
+
+    .instructions-textarea::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+    }
+
+    .instructions-textarea::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ai-design-container">
+
+    <!-- ============================================
+    HEADER
+    ============================================ -->
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1>🎨 AI Design Generator</h1>
+            <p>Generate comprehensive, creative instructions for AI chatbots to design unique websites</p>
+        </div>
+        <div class="page-header-right">
+            <span class="header-badge">
+                <i class="fas fa-paint-brush"></i>
+                <span>Creative Mode</span>
+            </span>
+            <span class="header-badge">
+                <i class="fas fa-cubes"></i>
+                <span id="totalSectionsBadge">73 Sections</span>
+            </span>
+            <span class="header-badge">
+                <i class="fas fa-font"></i>
+                <span id="totalTextsBadge">54 Text Elements</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- ============================================
+    STATS
+    ============================================ -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <span class="stat-icon">🎯</span>
+            <div class="stat-number" id="statSections">73</div>
+            <div class="stat-label">CSS Sections</div>
+        </div>
+        <div class="stat-card success">
+            <span class="stat-icon">📝</span>
+            <div class="stat-number" id="statTexts">54</div>
+            <div class="stat-label">Text Elements</div>
+        </div>
+        <div class="stat-card warning">
+            <span class="stat-icon">🎨</span>
+            <div class="stat-number">5</div>
+            <div class="stat-label">Style Directions</div>
+        </div>
+        <div class="stat-card info">
+            <span class="stat-icon">✨</span>
+            <div class="stat-number">100%</div>
+            <div class="stat-label">Unique Output</div>
+        </div>
+    </div>
+
+    <!-- ============================================
+    MAIN GRID
+    ============================================ -->
+    <div class="main-grid">
+
+        <!-- ============================================
+        LEFT PANEL - SELECTION
+        ============================================ -->
+        <div class="left-panel">
+
+            <!-- Selection Card -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <h3><i class="fas fa-sliders-h" style="color: var(--primary); margin-right: 8px;"></i>Select Combination</h3>
+                    <span class="badge badge-primary">Step 1</span>
+                </div>
+                <div class="panel-card-body">
+                    <!-- Industry -->
+                    <div class="form-group">
+                        <label class="form-label">Industry <span class="required">*</span></label>
+                        <select class="form-control" id="industry">
+                            <option value="fashion">👗 Fashion</option>
+                            <option value="technology">💻 Technology</option>
+                            <option value="beauty">✨ Beauty</option>
+                            <option value="food_beverage" selected>🍽️ Food & Beverage</option>
+                            <option value="home_decor">🏠 Home Decor</option>
+                            <option value="health_wellness">🧘 Health & Wellness</option>
+                            <option value="sports">⚽ Sports</option>
+                            <option value="education">📚 Education</option>
+                            <option value="other">🔮 Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Style Direction -->
+                    <div class="form-group">
+                        <label class="form-label">Style Direction <span class="required">*</span></label>
+                        <select class="form-control" id="style">
+                            <option value="dark_luxury">🌙 Dark Luxury</option>
+                            <option value="bold_vibrant">🔥 Bold & Vibrant</option>
+                            <option value="organic_earthy">🌿 Organic & Earthy</option>
+                            <option value="minimalist_architectural">🏛️ Minimalist Architectural</option>
+                            <option value="playful_whimsical" selected>🎨 Playful & Whimsical</option>
+                        </select>
+                        <div id="themeDescription" class="form-text" style="margin-top: 6px; font-style: italic;">Fun, creative, approachable. Pastels, bright colors, rounded everything.</div>
+                    </div>
+
+                    <!-- Color Palette -->
+                    <div class="form-group">
+                        <label class="form-label">Color Palette <span class="required">*</span></label>
+                        <select class="form-control" id="palette">
+                            <!-- Will be populated by JavaScript -->
+                        </select>
+                        <div class="color-preview-strip" id="palettePreview"></div>
+                    </div>
+
+                    <!-- Max Uses -->
+                    <div class="form-group">
+                        <label class="form-label">Max Uses</label>
+                        <input type="number" class="form-control form-control-sm" id="maxUses" value="1" min="1">
+                        <div class="form-text">How many times this design can be used</div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button class="btn btn-primary btn-block" id="generateBtn">
+                        <i class="fas fa-magic"></i>
+                        Generate Instructions
+                    </button>
+
+                    <div class="form-hint" style="margin-top: 12px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Covers <strong id="coverageSections">73</strong> sections and <strong id="coverageTexts">54</strong> text elements</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <h3><i class="fas fa-info-circle" style="color: var(--info); margin-right: 8px;"></i>Status</h3>
+                </div>
+                <div class="panel-card-body">
+                    <div id="combinationStatus">
+                        <div class="status-indicator idle">
+                            <span class="dot idle"></span>
+                            Select a combination to check availability
+                        </div>
+                    </div>
+                    <div id="themePreview" class="theme-preview"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================
+        RIGHT PANEL - INSTRUCTIONS
+        ============================================ -->
+        <div class="right-panel">
+
+            <!-- Instructions Card -->
+            <div class="panel-card">
+                <div class="panel-card-header">
+                    <h3><i class="fas fa-code" style="color: var(--warning); margin-right: 8px;"></i>AI Instructions</h3>
+                    <span class="badge badge-warning">Step 2</span>
+                </div>
+                <div class="panel-card-body" style="padding: 0;">
+                    <div class="instructions-wrapper">
+                        <!-- Loading Overlay -->
+                        <div class="loading-overlay" id="loadingOverlay">
+                            <div class="spinner"></div>
+                            <div class="loading-text">Generating Instructions...</div>
+                            <div class="loading-sub">This may take a few seconds</div>
+                        </div>
+
+                        <!-- Toolbar -->
+                        <div class="instructions-toolbar">
+                            <div class="instructions-toolbar-left">
+                                <div class="badge-group">
+                                    <span class="badge badge-primary" id="sectionCount"><i class="fas fa-cubes"></i> 0 sections</span>
+                                    <span class="badge badge-success" id="textCount"><i class="fas fa-font"></i> 0 text elements</span>
+                                    <span class="badge badge-info" id="themeBadge"><i class="fas fa-palette"></i> Theme: -</span>
+                                </div>
+                            </div>
+                            <div class="instructions-toolbar-right">
+                                <button class="btn btn-sm btn-outline" id="downloadBtn" title="Download Instructions">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary" id="copyBtn" title="Copy to Clipboard">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Textarea -->
+                        <textarea class="instructions-textarea" id="instructionsText" placeholder="Generate instructions to see them here..." readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Response & Save Card -->
+            <div class="ai-response-section">
+                <div class="panel-card-header">
+                    <h3><i class="fas fa-robot" style="color: var(--success); margin-right: 8px;"></i>AI Response &amp; Save</h3>
+                    <span class="badge badge-success">Step 3</span>
+                </div>
+                <div class="panel-card-body">
+                    <div class="form-group">
+                        <label class="form-label">Paste AI-Generated JSON</label>
+                        <textarea class="ai-response-textarea" id="aiResponse" placeholder="Paste the JSON response from AI here..."></textarea>
+                        <div class="form-text">Expected format: <code>{ "home": { "text_contents": { ... }, "style_customizations": { ... } } }</code></div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-success" id="saveBtn">
+                            <i class="fas fa-save"></i> Save Design
+                        </button>
+                        <button class="btn btn-outline" id="validateBtn">
+                            <i class="fas fa-check-circle"></i> Validate JSON
+                        </button>
+                        <button class="btn btn-outline" id="clearBtn">
+                            <i class="fas fa-eraser"></i> Clear
+                        </button>
+                    </div>
+
+                    <div id="validationResult" class="response-message"></div>
+                    <div id="saveResult" class="response-message"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================
+    FOOTER - How It Works
+    ============================================ -->
+    <div class="panel-card" style="margin-top: 24px;">
+        <div class="panel-card-header">
+            <h3><i class="fas fa-lightbulb" style="color: var(--warning); margin-right: 8px;"></i>How It Works</h3>
+        </div>
+        <div class="panel-card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="text-align: center; padding: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-weight: 700; font-size: 18px;">1</div>
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Select Combination</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Choose industry, style, and color palette</p>
+                </div>
+                <div style="text-align: center; padding: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--warning); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-weight: 700; font-size: 18px;">2</div>
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Generate Instructions</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">AI creates detailed design instructions</p>
+                </div>
+                <div style="text-align: center; padding: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--info); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-weight: 700; font-size: 18px;">3</div>
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Copy to AI Chatbot</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Paste into Claude, ChatGPT, or Gemini</p>
+                </div>
+                <div style="text-align: center; padding: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--success); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-weight: 700; font-size: 18px;">4</div>
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Paste &amp; Save</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Save the AI-generated design JSON</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ============================================
+// COMPLETE JAVASCRIPT FOR AI DESIGN INSTRUCTIONS
+// ============================================
+
+(function() {
+    'use strict';
+
+    // ============================================
+    // CONSTANTS
+    // ============================================
+
+    const THEME_DESCRIPTIONS = {
+        'dark_luxury': 'Sophisticated, moody, premium. Deep navies, charcoal, and gold accents. Serif display fonts with elegant spacing.',
+        'bold_vibrant': 'High-energy, daring, modern. Electric accents on dark or white backgrounds. Playful typography with personality.',
+        'organic_earthy': 'Warm, natural, grounded. Terracotta, sage, and cream tones. Rounded corners and flowing layouts.',
+        'minimalist_architectural': 'Clean, sharp, modern. Pure whites, blacks, and muted blues. Geometric layouts with precision.',
+        'playful_whimsical': 'Fun, creative, approachable. Pastels, bright colors, rounded everything. Quirky details and unexpected touches.'
+    };
+
+    const COLOR_PALETTES = {
+        'fashion_luxury': ['#0a0a0a', '#1a1a1a', '#c9a959', '#f5f0e8'],
+        'fashion_modern': ['#1a1a2e', '#16213e', '#e94560', '#ffffff'],
+        'tech_dark': ['#0a0a0a', '#1a1a2e', '#4cc9f0', '#0d0d0d'],
+        'tech_modern': ['#1e3a5f', '#2d5a7a', '#4a7a9a', '#f5f8fa'],
+        'beauty_pink': ['#2d1a2a', '#4a2a4a', '#e8a0b0', '#f5f0f5'],
+        'beauty_clean': ['#1a2a2a', '#2d4a4a', '#a0d4d4', '#f0f5f5'],
+        'decor_organic': ['#2d5a27', '#4a7a44', '#c9b99a', '#f5f0e8'],
+        'decor_warm': ['#8B5A2B', '#A67B5B', '#D4A373', '#F5EDE4'],
+        'food_warm': ['#8B4513', '#D2691E', '#F4A460', '#FFF8F0'],
+        'food_fresh': ['#2E7D32', '#43A047', '#FFD54F', '#FFFDE7'],
+        'wellness_calm': ['#2d5a27', '#4a7a44', '#8fa89b', '#f5f0e8'],
+        'sports_energetic': ['#1a1a2e', '#2d1a2e', '#ff6b35', '#f5f0f5'],
+        'edu_classic': ['#1a2a3a', '#2d4a5a', '#c9a959', '#f5f0e8'],
+        'default_modern': ['#1a1a2e', '#16213e', '#e94560', '#ffffff'],
+        'default_dark': ['#0a0a0a', '#1a1a2e', '#4cc9f0', '#0d0d0d']
+    };
+
+    const PALETTE_BY_INDUSTRY = {
+        'fashion': ['fashion_luxury', 'fashion_modern'],
+        'technology': ['tech_dark', 'tech_modern'],
+        'beauty': ['beauty_pink', 'beauty_clean'],
+        'food_beverage': ['food_warm', 'food_fresh'],
+        'home_decor': ['decor_organic', 'decor_warm'],
+        'health_wellness': ['wellness_calm'],
+        'sports': ['sports_energetic'],
+        'education': ['edu_classic'],
+        'other': ['default_modern', 'default_dark']
+    };
+
+    // ============================================
+    // DOM REFERENCES
+    // ============================================
+
+    const DOM = {
+        industry: document.getElementById('industry'),
+        style: document.getElementById('style'),
+        palette: document.getElementById('palette'),
+        maxUses: document.getElementById('maxUses'),
+        generateBtn: document.getElementById('generateBtn'),
+        instructionsText: document.getElementById('instructionsText'),
+        copyBtn: document.getElementById('copyBtn'),
+        downloadBtn: document.getElementById('downloadBtn'),
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        saveBtn: document.getElementById('saveBtn'),
+        validateBtn: document.getElementById('validateBtn'),
+        clearBtn: document.getElementById('clearBtn'),
+        aiResponse: document.getElementById('aiResponse'),
+        saveResult: document.getElementById('saveResult'),
+        validationResult: document.getElementById('validationResult'),
+        combinationStatus: document.getElementById('combinationStatus'),
+        themePreview: document.getElementById('themePreview'),
+        themeDescription: document.getElementById('themeDescription'),
+        palettePreview: document.getElementById('palettePreview'),
+        statSections: document.getElementById('statSections'),
+        statTexts: document.getElementById('statTexts'),
+        sectionCount: document.getElementById('sectionCount'),
+        textCount: document.getElementById('textCount'),
+        themeBadge: document.getElementById('themeBadge'),
+        coverageSections: document.getElementById('coverageSections'),
+        coverageTexts: document.getElementById('coverageTexts'),
+        totalSectionsBadge: document.getElementById('totalSectionsBadge'),
+        totalTextsBadge: document.getElementById('totalTextsBadge')
+    };
+
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
+
+    function getCsrfToken() {
+        // Try meta tag
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.content;
+
+        // Try input field
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input) return input.value;
+
+        // Try cookies
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+
+        return '';
+    }
+
+    // ============================================
+    // NOTIFICATION SYSTEM
+    // ============================================
+
+    function showNotification(message, type = 'info', duration = 3000) {
+        const container = DOM.saveResult;
+        container.className = `response-message show ${type}`;
+        container.innerHTML = message;
+        container.style.display = 'block';
+
+        if (duration > 0) {
+            setTimeout(() => {
+                container.className = 'response-message';
+                container.style.display = 'none';
+            }, duration);
+        }
+    }
+
+    // ============================================
+    // UI UPDATE FUNCTIONS
+    // ============================================
+
+    function initPaletteDropdown() {
+        const industry = DOM.industry.value;
+        const palettes = PALETTE_BY_INDUSTRY[industry] || ['default_modern'];
+        const currentValue = DOM.palette.value;
+
+        DOM.palette.innerHTML = '';
+        palettes.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p;
+            option.textContent = p.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            DOM.palette.appendChild(option);
+        });
+
+        if (palettes.includes(currentValue)) {
+            DOM.palette.value = currentValue;
+        }
+
+        updatePalettePreview();
+    }
+
+    function updatePalettePreview() {
+        const colors = COLOR_PALETTES[DOM.palette.value] || [];
+        DOM.palettePreview.innerHTML = colors.map(c =>
+            `<span class="color-chip" style="background: ${c};" title="${c}"></span>`
+        ).join('');
+    }
+
+    function updateThemeDescription() {
+        const desc = THEME_DESCRIPTIONS[DOM.style.value] || '';
+        DOM.themeDescription.textContent = desc;
+    }
+
+    function updateStats(sections, texts) {
+        const s = sections || 73;
+        const t = texts || 54;
+
+        if (DOM.statSections) DOM.statSections.textContent = s;
+        if (DOM.statTexts) DOM.statTexts.textContent = t;
+        if (DOM.sectionCount) DOM.sectionCount.innerHTML = `<i class="fas fa-cubes"></i> ${s} sections`;
+        if (DOM.textCount) DOM.textCount.innerHTML = `<i class="fas fa-font"></i> ${t} text elements`;
+        if (DOM.coverageSections) DOM.coverageSections.textContent = s;
+        if (DOM.coverageTexts) DOM.coverageTexts.textContent = t;
+        if (DOM.totalSectionsBadge) DOM.totalSectionsBadge.textContent = `${s} Sections`;
+        if (DOM.totalTextsBadge) DOM.totalTextsBadge.textContent = `${t} Text Elements`;
+    }
+
+    // ============================================
+    // CHECK COMBINATION STATUS
+    // ============================================
+
+    function checkCombination() {
+        const industry = DOM.industry.value;
+        const style = DOM.style.value;
+        const palette = DOM.palette.value;
+
+        fetch(`/builder/admin/ai-designs/check/?industry=${industry}&style=${style}&palette=${palette}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    DOM.combinationStatus.innerHTML = `
+                        <div class="status-indicator warning">
+                            <span class="dot warning"></span>
+                            <span><strong>Design exists</strong> for this combination</span>
+                            <span style="margin-left: auto; font-size: 12px; opacity: 0.7;">ID: ${data.design_id}</span>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 13px; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap;">
+                            <span>Used: ${data.used_count}/${data.max_uses}</span>
+                            <span>Available: ${data.is_available ? '✅ Yes' : '❌ No'}</span>
+                        </div>
+                    `;
+                } else {
+                    DOM.combinationStatus.innerHTML = `
+                        <div class="status-indicator success">
+                            <span class="dot success"></span>
+                            <span><strong>No design exists yet.</strong> Ready to generate!</span>
+                        </div>
+                    `;
+                }
+            })
+            .catch(() => {
+                DOM.combinationStatus.innerHTML = `
+                    <div class="status-indicator error">
+                        <span class="dot error"></span>
+                        <span>Error checking status. Please try again.</span>
+                    </div>
+                `;
+            });
+    }
+
+    // ============================================
+    // GENERATE INSTRUCTIONS
+    // ============================================
+
+    function generateInstructions() {
+        const industry = DOM.industry.value;
+        const style = DOM.style.value;
+        const palette = DOM.palette.value;
+
+        DOM.loadingOverlay.classList.add('show');
+        DOM.instructionsText.value = '';
+        DOM.themePreview.classList.remove('show');
+
+        DOM.combinationStatus.innerHTML = `
+            <div class="status-indicator loading">
+                <span class="dot loading"></span>
+                <span>Generating instructions...</span>
+            </div>
+        `;
+
+        fetch(`/builder/admin/ai-designs/generate-instructions/?industry=${industry}&style=${style}&palette=${palette}`)
+            .then(response => response.json())
+            .then(data => {
+                DOM.loadingOverlay.classList.remove('show');
+
+                if (data.error) {
+                    DOM.combinationStatus.innerHTML = `
+                        <div class="status-indicator error">
+                            <span class="dot error"></span>
+                            <span>Error: ${data.error}</span>
+                        </div>
+                    `;
+                    showNotification(`Error: ${data.error}`, 'error');
+                    return;
+                }
+
+                // Set instructions
+                DOM.instructionsText.value = data.prompt;
+
+                // Update stats
+                const sections = data.totalSections || 73;
+                const texts = data.totalTexts || 54;
+                updateStats(sections, texts);
+
+                // Update theme badge
+                DOM.themeBadge.innerHTML = `<i class="fas fa-palette"></i> ${data.theme?.name || data.style || 'Theme'}`;
+
+                // Update status
+                DOM.combinationStatus.innerHTML = `
+                    <div class="status-indicator success">
+                        <span class="dot success"></span>
+                        <span><strong>Instructions generated!</strong> ${sections} sections · ${texts} text elements</span>
+                    </div>
+                `;
+
+                // Show theme preview
+                if (data.theme && data.colors) {
+                    const colors = data.colors;
+                    DOM.themePreview.innerHTML = `
+                        <div class="theme-name">${data.theme.name}</div>
+                        <div class="theme-colors">
+                            ${Object.entries(colors).map(([name, color]) =>
+                                `<span style="background: ${color};" title="${name}: ${color}"></span>`
+                            ).join('')}
+                        </div>
+                        <div class="theme-desc">${data.theme.description || ''}</div>
+                        ${data.theme.fonts ? `<div class="theme-desc" style="margin-top: 4px;">Fonts: ${data.theme.fonts.display}</div>` : ''}
+                    `;
+                    DOM.themePreview.classList.add('show');
+                }
+
+                showNotification('Instructions generated successfully!', 'success', 2000);
+            })
+            .catch(error => {
+                DOM.loadingOverlay.classList.remove('show');
+                DOM.combinationStatus.innerHTML = `
+                    <div class="status-indicator error">
+                        <span class="dot error"></span>
+                        <span>Error: ${error.message}</span>
+                    </div>
+                `;
+                showNotification(`Error: ${error.message}`, 'error');
+            });
+    }
+
+    // ============================================
+    // COPY INSTRUCTIONS
+    // ============================================
+
+    function copyInstructions() {
+        if (!DOM.instructionsText.value) {
+            showNotification('Please generate instructions first.', 'warning');
+            return;
+        }
+
+        navigator.clipboard.writeText(DOM.instructionsText.value)
+            .then(() => {
+                const original = DOM.copyBtn.innerHTML;
+                DOM.copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => { DOM.copyBtn.innerHTML = original; }, 2000);
+                showNotification('Instructions copied to clipboard!', 'success', 2000);
+            })
+            .catch(() => {
+                // Fallback
+                DOM.instructionsText.select();
+                document.execCommand('copy');
+                showNotification('Copied to clipboard!', 'success', 2000);
+            });
+    }
+
+    // ============================================
+    // DOWNLOAD INSTRUCTIONS
+    // ============================================
+
+    function downloadInstructions() {
+        if (!DOM.instructionsText.value) {
+            showNotification('Please generate instructions first.', 'warning');
+            return;
+        }
+
+        const blob = new Blob([DOM.instructionsText.value], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai_design_instructions_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showNotification('Instructions downloaded!', 'success', 2000);
+    }
+
+    // ============================================
+    // VALIDATE JSON
+    // ============================================
+
+    function validateJSON() {
+        const jsonText = DOM.aiResponse.value.trim();
+
+        // Reset validation result
+        DOM.validationResult.className = 'response-message';
+        DOM.validationResult.style.display = 'none';
+
+        if (!jsonText) {
+            DOM.validationResult.className = 'response-message show warning';
+            DOM.validationResult.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please paste the AI-generated JSON first.';
+            DOM.validationResult.style.display = 'block';
+            return;
+        }
+
+        try {
+            const data = JSON.parse(jsonText);
+            let errors = [];
+            let warnings = [];
+
+            // Validate structure
+            if (!data.home) {
+                errors.push('Missing "home" key');
+            } else {
+                const home = data.home;
+
+                // Validate text_contents
+                if (!home.text_contents) {
+                    errors.push('Missing "text_contents" in home');
+                } else {
+                    const textKeys = Object.keys(home.text_contents);
+                    if (textKeys.length < 30) {
+                        warnings.push(`Only ${textKeys.length} text elements found (expected 50+)`);
+                    }
+                }
+
+                // Validate style_customizations
+                if (!home.style_customizations) {
+                    errors.push('Missing "style_customizations" in home');
+                } else {
+                    const styleKeys = Object.keys(home.style_customizations);
+                    if (styleKeys.length < 50) {
+                        warnings.push(`Only ${styleKeys.length} sections found (expected 70+)`);
+                    }
+
+                    // Check for custom_css
+                    let hasCustomCss = 0;
+                    for (const [key, value] of Object.entries(home.style_customizations)) {
+                        if (value && value.custom_css) {
+                            hasCustomCss++;
+                        }
+                    }
+                    if (hasCustomCss < styleKeys.length * 0.5) {
+                        warnings.push(`Only ${hasCustomCss}/${styleKeys.length} sections have custom_css`);
+                    }
+                }
+            }
+
+            // Build result message
+            let html = '';
+            if (errors.length === 0 && warnings.length === 0) {
+                html = '<i class="fas fa-check-circle"></i> <strong>Valid JSON!</strong> All required fields present.';
+                DOM.validationResult.className = 'response-message show success';
+            } else {
+                if (errors.length > 0) {
+                    html += `<div style="margin-bottom: 4px;"><strong>Errors:</strong> ${errors.join(', ')}</div>`;
+                }
+                if (warnings.length > 0) {
+                    html += `<div><strong>Warnings:</strong> ${warnings.join(', ')}</div>`;
+                }
+                DOM.validationResult.className = errors.length > 0 ? 'response-message show error' : 'response-message show warning';
+            }
+            DOM.validationResult.innerHTML = html;
+            DOM.validationResult.style.display = 'block';
+
+        } catch (e) {
+            DOM.validationResult.className = 'response-message show error';
+            DOM.validationResult.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Invalid JSON:</strong> ${e.message}`;
+            DOM.validationResult.style.display = 'block';
+        }
+    }
+
+    // ============================================
+    // SAVE DESIGN
+    // ============================================
+
+    function saveDesign() {
+        const jsonText = DOM.aiResponse.value.trim();
+
+        // Reset save result
+        DOM.saveResult.className = 'response-message';
+        DOM.saveResult.style.display = 'none';
+
+        if (!jsonText) {
+            DOM.saveResult.className = 'response-message show warning';
+            DOM.saveResult.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please paste the AI-generated JSON first.';
+            DOM.saveResult.style.display = 'block';
+            return;
+        }
+
+        let customizations;
+        try {
+            customizations = JSON.parse(jsonText);
+        } catch (e) {
+            DOM.saveResult.className = 'response-message show error';
+            DOM.saveResult.innerHTML = `<i class="fas fa-times-circle"></i> Invalid JSON: ${e.message}`;
+            DOM.saveResult.style.display = 'block';
+            return;
+        }
+
+        const industry = DOM.industry.value;
+        const style = DOM.style.value;
+        const palette = DOM.palette.value;
+        const maxUses = parseInt(DOM.maxUses.value) || 1;
+
+        // Disable button and show loading
+        DOM.saveBtn.disabled = true;
+        DOM.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        const csrfToken = getCsrfToken();
+
+        fetch('/builder/admin/ai-designs/save/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                industry: industry,
+                style: style,
+                palette: palette,
+                customizations: customizations,
+                max_uses: maxUses,
+                notes: `Generated via AI Chatbot on ${new Date().toLocaleString()}`
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Re-enable button
+            DOM.saveBtn.disabled = false;
+            DOM.saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Design';
+
+            if (data.success) {
+                DOM.saveResult.className = 'response-message show success';
+                DOM.saveResult.innerHTML = `<i class="fas fa-check-circle"></i> <strong>${data.message}</strong><br><small>Design ID: ${data.design_id}</small>`;
+                DOM.saveResult.style.display = 'block';
+                DOM.aiResponse.value = '';
+                checkCombination();
+                showNotification('Design saved successfully!', 'success', 3000);
+            } else {
+                DOM.saveResult.className = 'response-message show error';
+                DOM.saveResult.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'An error occurred while saving.'}`;
+                DOM.saveResult.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            DOM.saveBtn.disabled = false;
+            DOM.saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Design';
+            DOM.saveResult.className = 'response-message show error';
+            DOM.saveResult.innerHTML = `<i class="fas fa-times-circle"></i> Error: ${error.message}`;
+            DOM.saveResult.style.display = 'block';
+        });
+    }
+
+    // ============================================
+    // CLEAR AI RESPONSE
+    // ============================================
+
+    function clearResponse() {
+        if (DOM.aiResponse.value.trim() && !confirm('Clear the AI response?')) {
+            return;
+        }
+        DOM.aiResponse.value = '';
+        DOM.validationResult.className = 'response-message';
+        DOM.validationResult.style.display = 'none';
+        DOM.saveResult.className = 'response-message';
+        DOM.saveResult.style.display = 'none';
+        showNotification('Cleared!', 'info', 1500);
+    }
+
+    // ============================================
+    // EVENT LISTENERS SETUP
+    // ============================================
+
+    function setupEventListeners() {
+        // Industry change -> update palette dropdown
+        DOM.industry.addEventListener('change', () => {
+            initPaletteDropdown();
+            checkCombination();
+        });
+
+        // Style change -> update description
+        DOM.style.addEventListener('change', () => {
+            updateThemeDescription();
+            checkCombination();
+        });
+
+        // Palette change -> update preview
+        DOM.palette.addEventListener('change', () => {
+            updatePalettePreview();
+            checkCombination();
+        });
+
+        // Generate button
+        DOM.generateBtn.addEventListener('click', generateInstructions);
+
+        // Copy button
+        DOM.copyBtn.addEventListener('click', copyInstructions);
+
+        // Download button
+        DOM.downloadBtn.addEventListener('click', downloadInstructions);
+
+        // Validate button
+        DOM.validateBtn.addEventListener('click', validateJSON);
+
+        // Save button
+        DOM.saveBtn.addEventListener('click', saveDesign);
+
+        // Clear button
+        DOM.clearBtn.addEventListener('click', clearResponse);
+
+        // Auto-validate on paste
+        DOM.aiResponse.addEventListener('paste', () => {
+            setTimeout(validateJSON, 500);
+        });
+
+        // Clear validation on input
+        DOM.aiResponse.addEventListener('input', () => {
+            if (DOM.validationResult.style.display !== 'none') {
+                DOM.validationResult.className = 'response-message';
+                DOM.validationResult.style.display = 'none';
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Enter to save
+            if (e.ctrlKey && e.key === 'Enter' && document.activeElement !== DOM.aiResponse) {
+                e.preventDefault();
+                DOM.saveBtn.click();
+            }
+            // Ctrl+Shift+G to generate
+            if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+                e.preventDefault();
+                DOM.generateBtn.click();
+            }
+        });
+    }
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+
+    function init() {
+        // Initialize UI
+        initPaletteDropdown();
+        updateThemeDescription();
+        updateStats(73, 54);
+
+        // Check initial combination
+        checkCombination();
+
+        // Setup event listeners
+        setupEventListeners();
+
+        console.log('✅ AI Design Instructions initialized');
+    }
+
+    // Run when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();
+
+</script>
+{% endblock %}

@@ -1,0 +1,515 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+.form-step {
+    display: none;
+}
+.form-step.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.progress-step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+.progress-step.active {
+    border-color: #4361ee;
+    background: #4361ee;
+    color: white;
+}
+.progress-step.done {
+    border-color: #28a745;
+    background: #28a745;
+    color: white;
+}
+.progress-line {
+    flex: 1;
+    height: 3px;
+    background: #dee2e6;
+}
+.progress-line.done {
+    background: #28a745;
+}
+.option-card {
+    border: 2px solid #e1e5eb;
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+.option-card:hover {
+    border-color: #4361ee;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.option-card.selected {
+    border-color: #4361ee;
+    background: #f0f4ff;
+}
+.option-card .icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: block;
+}
+.option-card .label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+.option-card .description {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Bar -->
+            <div class="d-flex align-items-center mb-5" id="progressBar">
+                <div class="progress-step active" data-step="1">1</div>
+                <div class="progress-line" data-step="1"></div>
+                <div class="progress-step" data-step="2">2</div>
+                <div class="progress-line" data-step="2"></div>
+                <div class="progress-step" data-step="3">3</div>
+                <div class="progress-line" data-step="3"></div>
+                <div class="progress-step" data-step="4">4</div>
+            </div>
+
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+                    <form id="aiDesignBriefForm" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" id="currentStep" value="1">
+
+                        <!-- Step 1: Store Name & Industry -->
+                        <div class="form-step active" data-step="1">
+                            <h3 class="fw-bold mb-3">Tell us about your store</h3>
+                            <p class="text-muted mb-4">We'll use this to create a personalized design</p>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Store Name *</label>
+                                <input type="text" class="form-control form-control-lg" 
+                                       name="store_name" id="storeNameInput" required
+                                       placeholder="e.g., Luxe Home Decor">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">What industry are you in? *</label>
+                                <select class="form-select form-select-lg" name="industry" id="industrySelect" required>
+                                    <option value="">Select your industry...</option>
+                                    <option value="fashion">Fashion & Apparel</option>
+                                    <option value="technology">Technology & Electronics</option>
+                                    <option value="home_decor">Home & Decor</option>
+                                    <option value="health_wellness">Health & Wellness</option>
+                                    <option value="food_beverage">Food & Beverage</option>
+                                    <option value="beauty">Beauty & Cosmetics</option>
+                                    <option value="sports">Sports & Outdoors</option>
+                                    <option value="education">Education & Learning</option>
+                                    <option value="professional_services">Professional Services</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-lg w-100 next-step">
+                                Continue <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+
+                        <!-- Step 2: Style & Vibe -->
+                        <div class="form-step" data-step="2">
+                            <h3 class="fw-bold mb-3">Choose your style</h3>
+                            <p class="text-muted mb-4">Select the vibe that best represents your brand</p>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="minimalist">
+                                        <span class="icon">✨</span>
+                                        <div class="label">Minimalist</div>
+                                        <div class="description">Clean, simple, and elegant</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="bold">
+                                        <span class="icon">🔥</span>
+                                        <div class="label">Bold & Vibrant</div>
+                                        <div class="description">Eye-catching and energetic</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="luxury">
+                                        <span class="icon">💎</span>
+                                        <div class="label">Luxury</div>
+                                        <div class="description">Premium and sophisticated</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="organic">
+                                        <span class="icon">🌿</span>
+                                        <div class="label">Organic</div>
+                                        <div class="description">Natural and earthy</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="playful">
+                                        <span class="icon">🎨</span>
+                                        <div class="label">Playful</div>
+                                        <div class="description">Fun and whimsical</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="option-card style-option" data-value="professional">
+                                        <span class="icon">💼</span>
+                                        <div class="label">Professional</div>
+                                        <div class="description">Trustworthy and corporate</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="style" id="selectedStyle" required>
+
+                            <div class="d-flex gap-3">
+                                <button type="button" class="btn btn-outline-secondary btn-lg prev-step">
+                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                </button>
+                                <button type="button" class="btn btn-primary btn-lg flex-grow-1 next-step">
+                                    Continue <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Color Palette -->
+                        <div class="form-step" data-step="3">
+                            <h3 class="fw-bold mb-3">Choose your colors</h3>
+                            <p class="text-muted mb-4">Select a color palette that fits your brand</p>
+
+                            <div class="row g-3 mb-4" id="paletteOptions">
+                                <div class="col-md-6">
+                                    <div class="option-card palette-option" data-palette="corporate_trust">
+                                        <div class="color-strip d-flex mb-2" style="height: 30px; border-radius: 6px; overflow: hidden;">
+                                            <div style="flex:1; background:#4361ee;"></div>
+                                            <div style="flex:1; background:#3a0ca3;"></div>
+                                            <div style="flex:1; background:#f72585;"></div>
+                                            <div style="flex:1; background:#ffffff;"></div>
+                                            <div style="flex:1; background:#212529;"></div>
+                                        </div>
+                                        <div class="label">Corporate Trust</div>
+                                        <div class="description">Professional and reliable</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="option-card palette-option" data-palette="vibrant_modern">
+                                        <div class="color-strip d-flex mb-2" style="height: 30px; border-radius: 6px; overflow: hidden;">
+                                            <div style="flex:1; background:#ff006e;"></div>
+                                            <div style="flex:1; background:#fbb13c;"></div>
+                                            <div style="flex:1; background:#3b9e9e;"></div>
+                                            <div style="flex:1; background:#fcf7f8;"></div>
+                                            <div style="flex:1; background:#3a2d32;"></div>
+                                        </div>
+                                        <div class="label">Vibrant Modern</div>
+                                        <div class="description">Creative and energetic</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="option-card palette-option" data-palette="luxury_gold">
+                                        <div class="color-strip d-flex mb-2" style="height: 30px; border-radius: 6px; overflow: hidden;">
+                                            <div style="flex:1; background:#0b0c10;"></div>
+                                            <div style="flex:1; background:#c6a15b;"></div>
+                                            <div style="flex:1; background:#fff8e7;"></div>
+                                            <div style="flex:1; background:#1a1e24;"></div>
+                                            <div style="flex:1; background:#f5efe6;"></div>
+                                        </div>
+                                        <div class="label">Luxury Gold</div>
+                                        <div class="description">Premium and sophisticated</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="option-card palette-option" data-palette="nature_inspired">
+                                        <div class="color-strip d-flex mb-2" style="height: 30px; border-radius: 6px; overflow: hidden;">
+                                            <div style="flex:1; background:#2d5a27;"></div>
+                                            <div style="flex:1; background:#606c38;"></div>
+                                            <div style="flex:1; background:#d4d8b3;"></div>
+                                            <div style="flex:1; background:#fefae0;"></div>
+                                            <div style="flex:1; background:#283618;"></div>
+                                        </div>
+                                        <div class="label">Nature Inspired</div>
+                                        <div class="description">Organic and calming</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="palette" id="selectedPalette" required>
+
+                            <div class="d-flex gap-3">
+                                <button type="button" class="btn btn-outline-secondary btn-lg prev-step">
+                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                </button>
+                                <button type="button" class="btn btn-primary btn-lg flex-grow-1 next-step">
+                                    Continue <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Review & Generate -->
+                        <div class="form-step" data-step="4">
+                            <h3 class="fw-bold mb-3">Review & Generate</h3>
+                            <p class="text-muted mb-4">We'll create your store based on these preferences</p>
+
+                            <div class="bg-light p-4 rounded-3 mb-4" id="reviewContainer">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Store Name:</strong>
+                                        <span id="reviewStoreName" class="text-muted ms-2">-</span>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Industry:</strong>
+                                        <span id="reviewIndustry" class="text-muted ms-2">-</span>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Style:</strong>
+                                        <span id="reviewStyle" class="text-muted ms-2">-</span>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <strong>Color Palette:</strong>
+                                        <span id="reviewPalette" class="text-muted ms-2">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                This will take about 10-15 seconds. You'll be able to edit everything afterward.
+                            </div>
+
+                            <div class="d-flex gap-3">
+                                <button type="button" class="btn btn-outline-secondary btn-lg prev-step">
+                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                </button>
+                                <button type="submit" class="btn btn-success btn-lg flex-grow-1" id="generateBtn">
+                                    <i class="fas fa-magic me-2"></i>Generate My Store
+                                    <span class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    // Store user selections for review
+    const selections = {
+        store_name: '',
+        industry: '',
+        style: '',
+        palette: ''
+    };
+
+    // ===== STEP NAVIGATION =====
+    function goToStep(step) {
+        if (step < 1 || step > totalSteps) return;
+        currentStep = step;
+
+        // Update form steps
+        document.querySelectorAll('.form-step').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.step) === step);
+        });
+
+        // Update progress bar
+        document.querySelectorAll('.progress-step').forEach(el => {
+            const stepNum = parseInt(el.dataset.step);
+            el.classList.remove('active', 'done');
+            if (stepNum < step) el.classList.add('done');
+            if (stepNum === step) el.classList.add('active');
+        });
+
+        document.querySelectorAll('.progress-line').forEach(el => {
+            const stepNum = parseInt(el.dataset.step);
+            el.classList.toggle('done', stepNum < step);
+        });
+
+        document.getElementById('currentStep').value = step;
+
+        // Update review section on step 4
+        if (step === 4) {
+            updateReview();
+        }
+
+        // Scroll to top of form
+        const cardBody = document.querySelector('.card-body');
+        if (cardBody) {
+            cardBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // ===== UPDATE REVIEW =====
+    function updateReview() {
+        // Get all review elements
+        const storeNameEl = document.getElementById('reviewStoreName');
+        const industryEl = document.getElementById('reviewIndustry');
+        const styleEl = document.getElementById('reviewStyle');
+        const paletteEl = document.getElementById('reviewPalette');
+        
+        // Safely update each element with null checks
+        if (storeNameEl) {
+            storeNameEl.textContent = selections.store_name || '-';
+        }
+        if (industryEl) {
+            industryEl.textContent = selections.industry || '-';
+        }
+        if (styleEl) {
+            styleEl.textContent = selections.style || '-';
+        }
+        if (paletteEl) {
+            paletteEl.textContent = selections.palette || '-';
+        }
+    }
+
+    // ===== NEXT STEP BUTTONS =====
+    document.querySelectorAll('.next-step').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const form = document.getElementById('aiDesignBriefForm');
+            const step = parseInt(document.getElementById('currentStep').value);
+
+            // Validate current step
+            if (step === 1) {
+                const storeName = document.getElementById('storeNameInput').value.trim();
+                const industry = document.getElementById('industrySelect').value;
+                
+                if (!storeName || !industry) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                selections.store_name = storeName;
+                selections.industry = industry;
+            }
+
+            if (step === 2) {
+                const style = document.getElementById('selectedStyle').value;
+                if (!style) {
+                    alert('Please select a style');
+                    return;
+                }
+                selections.style = style;
+            }
+
+            if (step === 3) {
+                const palette = document.getElementById('selectedPalette').value;
+                if (!palette) {
+                    alert('Please select a color palette');
+                    return;
+                }
+                selections.palette = palette;
+            }
+
+            goToStep(step + 1);
+        });
+    });
+
+    // ===== PREVIOUS STEP BUTTONS =====
+    document.querySelectorAll('.prev-step').forEach(btn => {
+        btn.addEventListener('click', function() {
+            goToStep(currentStep - 1);
+        });
+    });
+
+    // ===== STYLE SELECTION =====
+    document.querySelectorAll('.style-option').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.style-option').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('selectedStyle').value = this.dataset.value;
+        });
+    });
+
+    // ===== PALETTE SELECTION =====
+    document.querySelectorAll('.palette-option').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.palette-option').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('selectedPalette').value = this.dataset.palette;
+        });
+    });
+
+    // ===== FORM SUBMISSION =====
+    document.getElementById('aiDesignBriefForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('generateBtn');
+        const spinner = btn.querySelector('.spinner-border');
+        const btnText = btn.querySelector('span:not(.spinner-border)');
+        
+        // Disable button and show loading state
+        btn.disabled = true;
+        if (btnText) btnText.textContent = 'Generating...';
+        if (spinner) spinner.classList.remove('d-none');
+
+        // Get all form data
+        const formData = new FormData(this);
+        formData.append('selections', JSON.stringify(selections));
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        
+        fetch('{% url "ai_generate_website" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken ? csrfToken.value : ''
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Redirect to editor with the AI-generated page
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
+                // Reset button state
+                btn.disabled = false;
+                if (btnText) btnText.textContent = 'Generate My Store';
+                if (spinner) spinner.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error.message);
+            // Reset button state
+            btn.disabled = false;
+            if (btnText) btnText.textContent = 'Generate My Store';
+            if (spinner) spinner.classList.add('d-none');
+        });
+    });
+});
+</script>
+{% endblock %}

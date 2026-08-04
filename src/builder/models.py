@@ -86,6 +86,8 @@ class PublishedPage(models.Model):
     component_layout=models.JSONField(default=list, blank=True) #stores applied components in their order
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    contact_number = models.CharField(max_length=100, blank=True, null=True)
     # NEW: Current page for multi-page templates
     current_page = models.CharField(
         max_length=50,

@@ -9250,18 +9250,37 @@ def onboarding_wizard(request):
 
 
 
+# def get_templates_api(request):
+#     """API endpoint for template selection during onboarding"""
+#     templates = Template.objects.filter(is_active=True).values(
+#         'id', 'name', 'title', 'description', 
+#         'preview_image', 'is_responsive'
+#     )
+    
+#     return JsonResponse({
+#         'success': True,
+#         'templates': list(templates)
+#     })
+
+
 def get_templates_api(request):
-    """API endpoint for template selection during onboarding"""
-    templates = Template.objects.filter(is_active=True).values(
-        'id', 'name', 'title', 'description', 
-        'preview_image', 'is_responsive'
-    )
+    templates = Template.objects.filter(is_active=True)
+    
+    data = []
+    for template in templates:
+        data.append({
+            'id': template.id,
+            'name': template.name,
+            'title': template.title,
+            'description': template.description,
+            'preview_image': template.preview_image.url if template.preview_image else None,
+            'is_responsive': template.is_responsive,
+        })
     
     return JsonResponse({
         'success': True,
-        'templates': list(templates)
+        'templates': data
     })
-
 
 @csrf_exempt
 @check_website_limit
@@ -9347,6 +9366,8 @@ def launch_editor(request):
                 login(request, user)
                 print(f"✅ [launch_editor] User created and logged in: {user.username}")
             
+
+            
             # 2. Get or create template
             template_name = data.get('template_name', 'ecommerce_4')
             print(f"\n📄 [launch_editor] Getting/Creating template: {template_name}")
@@ -9396,6 +9417,47 @@ def launch_editor(request):
             
             # 4. ✅ Create published page with SEPARATE brand_name and subdomain
             print(f"\n📝 [launch_editor] Creating PublishedPage...")
+            currency = data.get('currency', 'USD')
+            currency_symbols = {
+                # Major World Currencies
+                'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
+                # Americas
+                'CAD': 'C$', 'MXN': 'MX$', 'BRL': 'R$', 'ARS': '$', 'CLP': 'CLP$',
+                'COP': 'COL$', 'PEN': 'S/', 'UYU': '$U', 'PYG': '₲', 'BOB': 'Bs',
+                'VES': 'Bs.S', 'CRC': '₡', 'DOP': 'RD$', 'GTQ': 'Q', 'HNL': 'L',
+                'NIO': 'C$', 'PAB': 'B/.', 'BSD': 'B$', 'BBD': 'Bds$', 'BZD': 'BZ$',
+                'BMD': 'BD$', 'KYD': 'CI$', 'TTD': 'TT$', 'JMD': 'J$', 'HTG': 'G',
+                'CUP': '₱', 'AWG': 'Afl', 'ANG': 'ƒ',
+                # Europe
+                'CHF': 'Fr', 'NOK': 'kr', 'SEK': 'kr', 'DKK': 'kr', 'ISK': 'kr',
+                'RUB': '₽', 'TRY': '₺', 'PLN': 'zł', 'CZK': 'Kč', 'HUF': 'Ft',
+                'RON': 'lei', 'BGN': 'лв', 'HRK': 'kn', 'RSD': 'дин', 'ALL': 'L',
+                'MKD': 'ден', 'BAM': 'KM', 'MDL': 'lei', 'BYN': 'Br', 'UAH': '₴',
+                'GEL': '₾', 'AMD': '֏', 'AZN': '₼',
+                # Asia Pacific
+                'AUD': 'A$', 'NZD': 'NZ$', 'SGD': 'S$', 'HKD': 'HK$', 'KRW': '₩',
+                'INR': '₹', 'IDR': 'Rp', 'MYR': 'RM', 'PHP': '₱', 'THB': '฿',
+                'VND': '₫', 'PKR': '₨', 'BDT': '৳', 'LKR': 'Rs', 'NPR': 'रू',
+                'MMK': 'K', 'KHR': '៛', 'LAK': '₭', 'MNT': '₮', 'TWD': 'NT$',
+                'MOP': 'MOP$', 'KZT': '₸', 'UZS': 'soʻm', 'TJS': 'SM', 'KGS': 'с',
+                'ILS': '₪', 'JOD': 'د.ا', 'IQD': 'ع.د', 'IRR': '﷼', 'SAR': '﷼',
+                'AED': 'د.إ', 'QAR': 'ر.ق', 'KWD': 'د.ك', 'BHD': 'د.ب', 'OMR': 'ر.ع',
+                'YER': '﷼', 'LBP': 'ل.ل', 'SYP': '£S', 'AFN': '؋',
+                # Africa
+                'ZAR': 'R', 'EGP': '£E', 'NGN': '₦', 'KES': 'KSh', 'GHS': '₵',
+                'MAD': 'د.م.', 'DZD': 'د.ج', 'TND': 'د.ت', 'LYD': 'ل.د', 'SDG': 'ج.س',
+                'ETB': 'ብር', 'UGX': 'USh', 'TZS': 'TSh', 'RWF': 'FRw', 'BIF': 'FBu',
+                'CDF': 'FC', 'GNF': 'FG', 'XOF': 'CFA', 'XAF': 'FCFA', 'MUR': '₨',
+                'MGA': 'Ar', 'ZMW': 'ZK', 'MWK': 'MK', 'BWP': 'P', 'NAD': 'N$',
+                'SZL': 'E', 'LSL': 'L', 'ZWL': 'Z$', 'MZN': 'MT', 'AOA': 'Kz',
+                'MRO': 'UM', 'CVE': '$', 'SCR': 'SR', 'KMF': 'CF', 'DJF': 'Fdj',
+                'ERN': 'Nfk', 'SOS': 'Sh', 'GMD': 'D', 'SLL': 'Le', 'LRD': 'L$',
+                # Oceania
+                'PGK': 'K', 'FJD': 'FJ$', 'SBD': 'SI$', 'VUV': 'Vt', 'TOP': 'T$',
+                'WST': 'WS$', 'XPF': '₣',
+            }
+            
+            currency_symbol = currency_symbols.get(currency, '$')
             page = PublishedPage.objects.create(
                 user=user,
                 template=template,
@@ -9403,7 +9465,11 @@ def launch_editor(request):
                 brand_name=brand_name,      # ✅ User's original brand name - NEVER CHANGED
                 subdomain=subdomain,         # ✅ Generated subdomain - CAN CHANGE
                 is_published=False,
-                currency_code=data.get('currency', 'USD'),
+                currency_code=currency,
+                currency_symbol=currency_symbol,
+                currency_position='before',  # Default
+                thousand_separator=',',
+                decimal_separator='.',
                 page_customizations={},
             )
             

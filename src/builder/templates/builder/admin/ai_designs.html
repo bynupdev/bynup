@@ -1,0 +1,136 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="h2 mb-4">AI Design Templates</h1>
+    
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Designs</h5>
+                    <h2 class="mb-0">{{ total_designs }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Available</h5>
+                    <h2 class="mb-0 text-success">{{ available_designs }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Used</h5>
+                    <h2 class="mb-0 text-warning">{{ used_designs }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Combinations</h5>
+                    <h2 class="mb-0">{{ industries|length }} × {{ styles|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="mb-4">
+        <a href="{% url 'admin_ai_design_instructions' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Generate New Design
+        </a>
+        <button class="btn btn-outline-secondary" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+    
+    <!-- Designs Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Industry</th>
+                            <th>Style</th>
+                            <th>Palette</th>
+                            <th>Used</th>
+                            <th>Max Uses</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for design in designs %}
+                        <tr>
+                            <td><code>{{ design.design_id|slice:":8" }}</code></td>
+                            <td>{{ design.industry|title }}</td>
+                            <td>{{ design.style|title }}</td>
+                            <td>{{ design.palette|title }}</td>
+                            <td>{{ design.used_count }}</td>
+                            <td>{{ design.max_uses }}</td>
+                            <td>
+                                {% if design.is_available %}
+                                    <span class="badge bg-success">Available</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Used</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ design.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'admin_ai_design_detail' design.design_id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteDesign('{{ design.design_id }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+                                <p class="text-muted">No designs created yet.</p>
+                                <a href="{% url 'admin_ai_design_instructions' %}" class="btn btn-primary btn-sm">
+                                    Create Your First Design
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteDesign(designId) {
+    if (confirm('Delete this design permanently?')) {
+        fetch(`/builder/admin/ai-designs/${designId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
