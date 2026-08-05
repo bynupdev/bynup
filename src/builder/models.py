@@ -1087,7 +1087,7 @@ class ProductVariant(models.Model):
     low_stock_threshold = models.IntegerField(default=5)
 
     # Media
-    image = models.ImageField(upload_to='variant_images/', blank=True, null=True)
+    image = models.ImageField(upload_to='variant_images/',storage=MediaCloudinaryStorage(), blank=True, null=True)
 
     # Shipping
     weight = models.DecimalField(max_digits=8, decimal_places=2, default=0)
