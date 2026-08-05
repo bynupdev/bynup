@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-xy!6d84+s1&&fxtzoaqp9ur79v(hc^wigt87vcbdysan^#(ism'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # Render.com domain and your custom domain
 RENDER_DOMAIN = 'bynup-m6zc.onrender.com'
