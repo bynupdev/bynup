@@ -5534,7 +5534,7 @@ from django.contrib.auth.decorators import login_required
 from .models import PublishedPage, CJSettings
 from builder.services.cj_service import CJService
 
-# @login_required
+@login_required
 def cj_product_search(request, subdomain):
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
     settings_obj = get_object_or_404(CJSettings, page=page)
