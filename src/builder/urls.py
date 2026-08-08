@@ -126,6 +126,7 @@ urlpatterns = [
         views.cj_import_product, 
         name='cj_import_product'
     ),
+    
     path('cj-products/<str:subdomain>/', views.cj_products_list, name='cj_products_list'),
     path('cj-sync-product/<str:subdomain>/<str:cj_product_id>/', views.cj_sync_product, name='cj_sync_product'),
     path('cj-bulk-sync/<str:subdomain>/', views.cj_bulk_sync, name='cj_bulk_sync'),

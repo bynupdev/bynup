@@ -5484,47 +5484,43 @@ from django.utils import timezone
 from datetime import timedelta
 import requests
 
+
 def get_cj_access_token(settings_obj):
     """
-    Retrieves the token from the database. If expired or missing, 
-    fetches a new one from CJ and saves it to the database.
+    Get a valid CJ access token from settings or fetch a new one.
     """
-    # 1. Check if we already have a valid token in the database
+    from builder.services.cj_service import CJService
+    
     if settings_obj.access_token and settings_obj.token_expiry:
-        # Check if the token is still valid (using a 1-day buffer for safety)
+        # Check if token is still valid (with 1-day buffer)
         if settings_obj.token_expiry > timezone.now() + timedelta(days=1):
             return settings_obj.access_token
-
-    # 2. If no valid token, request a new one from CJ
-    print("Fetching new Access Token from CJ Dropshipping...")
+    
+    # Fetch new token
+    print("🔄 Fetching new CJ Access Token...")
     auth_url = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken"
     payload = {"apiKey": settings_obj.api_key}
     
     try:
         response = requests.post(auth_url, json=payload, timeout=10)
         data = response.json()
-
+        
         if data.get("code") == 200:
             new_token = data["data"]["accessToken"]
-            
-            # 3. Save the new token and expiry to the database
             settings_obj.access_token = new_token
-            # CJ tokens usually last 15 days
-            settings_obj.token_expiry = timezone.now() + timedelta(days=15)
+            settings_obj.token_expiry = timezone.now() + timedelta(days=14)
             settings_obj.api_status = 'active'
             settings_obj.save()
-            
+            print("✅ New CJ Access Token obtained")
             return new_token
         else:
-            print(f"CJ Auth Error: {data.get('message')}")
+            print(f"❌ CJ Auth Error: {data.get('message')}")
             settings_obj.api_status = 'invalid'
             settings_obj.save()
             return None
-            
-    except requests.exceptions.RequestException as e:
-        print(f"Connection to CJ failed: {e}")
+    except Exception as e:
+        print(f"❌ Connection to CJ failed: {e}")
         return None
-
 
 
 import requests
@@ -5842,237 +5838,551 @@ from django.utils.text import slugify
 from django.db import transaction
 import os
 
-def download_image_to_field(url_input):
-    """Parses input (string or list) and downloads the actual image."""
+
+# views.py - Complete Fixed Import View
+
+import io
+from PIL import Image
+from django.core.files.base import ContentFile
+
+import io
+from PIL import Image
+from django.core.files.base import ContentFile
+
+def compress_image_for_upload(image_content, max_size_mb=8, target_format='JPEG'):
+    """
+    Compress an image to stay under Cloudinary's 10MB limit.
+    
+    Args:
+        image_content: The image content as bytes
+        max_size_mb: Target maximum size in MB
+        target_format: Output format (JPEG, PNG, WEBP)
+    
+    Returns:
+        tuple: (compressed_content, content_type)
+    """
+    max_bytes = max_size_mb * 1024 * 1024
+    
+    # If already small enough, return original
+    if len(image_content) <= max_bytes:
+        return image_content, 'image/jpeg'
+    
     try:
-        # Handle cases where URL is a JSON string like '["http..."]'
-        if isinstance(url_input, str) and url_input.startswith('['):
-            url_list = json.loads(url_input)
-            url = url_list[0] if url_list else None
-        elif isinstance(url_input, list):
-            url = url_input[0] if url_input else None
-        else:
-            url = url_input
-
-        if not url: return None
-
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            # Clean filename from URL
-            file_name = url.split('/')[-1].split('?')[0]
-            return ContentFile(response.content, name=file_name)
+        # Open image with PIL
+        img = Image.open(io.BytesIO(image_content))
+        
+        # Handle different modes
+        if target_format == 'JPEG':
+            # Convert to RGB for JPEG
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                if img.mode == 'RGBA':
+                    background.paste(img, mask=img.split()[-1])
+                else:
+                    background.paste(img)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            content_type = 'image/jpeg'
+        elif target_format == 'WEBP':
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            content_type = 'image/webp'
+        else:  # PNG
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            content_type = 'image/png'
+        
+        # Try different quality settings
+        output = io.BytesIO()
+        quality = 85
+        img.save(output, format=target_format, quality=quality, optimize=True)
+        compressed_size = len(output.getvalue())
+        
+        # Reduce quality until under limit
+        while compressed_size > max_bytes and quality > 20:
+            quality -= 10
+            output = io.BytesIO()
+            img.save(output, format=target_format, quality=quality, optimize=True)
+            compressed_size = len(output.getvalue())
+        
+        # If still too large, resize
+        if compressed_size > max_bytes:
+            # Calculate scale factor
+            scale = (max_bytes / compressed_size) ** 0.5 * 0.95
+            new_width = int(img.width * scale)
+            new_height = int(img.height * scale)
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            output = io.BytesIO()
+            img.save(output, format=target_format, quality=quality if quality > 20 else 85, optimize=True)
+            compressed_size = len(output.getvalue())
+            
+            # If still too large, reduce quality further
+            while compressed_size > max_bytes and quality > 10:
+                quality -= 5
+                output = io.BytesIO()
+                img.save(output, format=target_format, quality=quality, optimize=True)
+                compressed_size = len(output.getvalue())
+        
+        print(f"✅ Compressed image: {len(output.getvalue())/1024/1024:.1f}MB")
+        return output.getvalue(), content_type
+        
     except Exception as e:
-        print(f"Download failed for {url_input}: {e}")
-    return None
+        print(f"⚠️ Error compressing image: {e}")
+        # Return original if compression fails
+        return image_content, 'image/jpeg'
 
+# views.py - Complete Fixed Import View
+
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
 @transaction.atomic
 def cj_import_product(request, subdomain, pid):
-    # ... (Your standard page/token/service setup) ...
-    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    """
+    Import a CJ product with all variants properly synced.
+    
+    Handles:
+    - Products with variants (color/size combinations)
+    - Products without variants (simple products)
+    - Image downloading and storage with compression
+    - Variant images
+    - Stock quantities
+    - Review importing
+    - Stock synchronization
+    """
+    # ===== 1. GET PAGE AND SETTINGS =====
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
     settings_obj = get_object_or_404(CJSettings, page=page)
+    
     token = get_cj_access_token(settings_obj)
+    if not token:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Failed to get CJ access token. Please check your API settings.'
+        }, status=400)
     
     service = CJService(token)
+    manager = CJManager(token)
+    
+    # ===== 2. GET PRODUCT DETAILS =====
     product_data = service.get_product_details(pid)
-    print(f'product data is {product_data}')
     
+    if not product_data:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Product not found on CJ (PID: {pid})'
+        }, status=404)
     
-    # 1. FIX: Get variants directly from nested data if list is empty
-    variants_data = product_data.get('variants', [])
+    print(f"✅ Product found: {product_data.get('productNameEn', 'Unknown')}")
     
-    # 2. Extract and Save Category
+    # ===== 3. GET VARIANTS =====
+    # Try primary method first
+    variants_data = service.get_variants(pid)
+    
+    # If no variants found, try alternative method
+    if not variants_data:
+        print("⚠️ No variants found with primary method, trying alternative...")
+        variants_data = service.get_variants_alternative(pid)
+    
+    # If still no variants, try to extract from product data directly
+    if not variants_data and 'variants' in product_data:
+        variants_data = product_data.get('variants', [])
+        print(f"📦 Found {len(variants_data)} variants in product data")
+    
+    print(f"📊 Total variants found: {len(variants_data)}")
+    
+    # Log first few variants for debugging
+    for i, v in enumerate(variants_data[:3]):
+        print(f"  Variant {i+1}: vid={v.get('vid')}, key={v.get('variantKey')}, sku={v.get('variantSku')}")
+        print(f"    Inventory: {v.get('inventoryNum', 'N/A')}")
+        if v.get('variantImage'):
+            print(f"    Image: {v.get('variantImage')[:50]}...")
+    
+    # ===== 4. CREATE OR GET CATEGORY =====
     raw_cat = product_data.get('categoryName', 'General')
-    clean_cat_name = raw_cat.split('/')[-1].strip()
-    category_obj, _ = ProductCategory.objects.get_or_create(name=clean_cat_name, page=page)
-
-    # 3. Create unique slug
-    base_slug = slugify(product_data.get('productNameEn'))
+    clean_cat_name = raw_cat.split('/')[-1].strip() if raw_cat else 'General'
+    category_obj, _ = ProductCategory.objects.get_or_create(
+        name=clean_cat_name[:100],
+        page=page
+    )
+    
+    # ===== 5. CREATE UNIQUE SLUG =====
+    base_slug = slugify(product_data.get('productNameEn', 'product'))
     slug = base_slug
     counter = 1
     while Product.objects.filter(slug=slug).exists():
         slug = f"{base_slug}-{counter}"
         counter += 1
-    # Extract the weight safely
+    
+    # ===== 6. EXTRACT WEIGHT =====
     raw_weight = str(product_data.get('productWeight', '0'))
     if '-' in raw_weight:
-        # Take the higher value in the range, or raw_weight.split('-')[0] for the lower
         raw_weight = raw_weight.split('-')[-1].strip()
-
-    # 4. Create Product
+    try:
+        weight = float(raw_weight) if raw_weight else 0.0
+    except ValueError:
+        weight = 0.0
+    
+    # ===== 7. PARSE PRICE =====
+    price_str = product_data.get('sellPrice', '0')
+    if '-' in str(price_str):
+        price_str = str(price_str).split('-')[0].strip()
+    try:
+        cj_price = float(price_str) if price_str else 0.0
+    except ValueError:
+        cj_price = 0.0
+    
+    suggest_price_str = product_data.get('suggestSellPrice', '0')
+    if '-' in str(suggest_price_str):
+        suggest_price_str = str(suggest_price_str).split('-')[0].strip()
+    try:
+        suggest_price = float(suggest_price_str) if suggest_price_str else 0.0
+    except ValueError:
+        suggest_price = 0.0
+    
+    # ===== 8. CREATE THE PRODUCT =====
     product, created = Product.objects.update_or_create(
         cj_pid=pid,
         defaults={
             'page': page,
-            'title': product_data.get('productNameEn'),
+            'title': product_data.get('productNameEn', 'Unknown Product')[:200],
             'slug': slug,
-            'description': product_data.get('description', ''),
+            'description': product_data.get('description', '')[:10000],
+            'short_description': product_data.get('productPro', '')[:500],
             'category': category_obj,
-            'price': float(product_data.get('sellPrice', 0)),
-            'compare_at_price': float(product_data.get('suggestSellPrice', 0)),
+            'price': Decimal(str(cj_price)),
+            'compare_at_price': Decimal(str(suggest_price)) if suggest_price > 0 else None,
             'status': 'active',
-            'weight': float(raw_weight) if raw_weight else 0.0,
+            'weight': Decimal(str(weight)),
+            'weight_unit': 'kg',
+            'requires_shipping': True,
+            'visible_on_store': True,
+            'cj_vid': variants_data[0].get('vid') if variants_data else None,
+            'has_variants': len(variants_data) > 1,
         }
     )
-
-     # 5. FIX: Handle Images (Parsing JSON strings)
-    raw_images = product_data.get('productImageSet', [])
-    if not raw_images: # Fallback to the string version
-        img_str = product_data.get('productImage', '[]')
-        raw_images = json.loads(img_str) if img_str.startswith('[') else [img_str]
-
-    # Save Main Image
- # 5. FIX: Handle Images (Parsing JSON strings)
-    # raw_images = product_data.get('productImageSet', [])
-    # if not raw_images: # Fallback to the string version
-    #     img_str = product_data.get('productImage', '[]')
-    #     raw_images = json.loads(img_str) if img_str.startswith('[') else [img_str]
-
-    # # Save Main Image
-    # if raw_images and not product.main_image:
-    #     img_file = download_image_to_field(raw_images[0])
-    #     if img_file:
-    #         product.main_image.save(img_file.name, img_file, save=True)
-    # 5. FIX: Handle Images (Parsing JSON strings)
-
-    # Save Main Image
-    if raw_images and not product.main_image:
-        img_file = download_image_to_field(raw_images[0])
-        if img_file:
-            product.main_image.save(img_file.name, img_file, save=True)
-    # --- Handling Gallery (ProductImages Model) ---
-    for img_url in raw_images:
-        # Check if this image is already attached to avoid duplicates
-        file_name = img_url.split('/')[-1].split('?')[0]
-        
-        if not ProductImages.objects.filter(product=product, image__icontains=file_name).exists():
-            img_res = requests.get(img_url, timeout=10)
-            if img_res.status_code == 200:
-                # Create a NEW instance and save a FRESH ContentFile
-                pi = ProductImages(product=product)
-                # This physically writes the file to your media folder
-                pi.image.save(file_name, ContentFile(img_res.content), save=True)
-    # 6. Process Variants (Mapping CJ data to your ProductVariant model)
-    colors = set()
-    sizes = set()
-
-
-    # 6. Process Variants
-    # --- Inside the variants loop ---
-    # Inside your cj_import_product view
     
-    variants = product_data.get('variants', [])
-    print(f"Product variant is {variants}")
-    for v in variants:
-        vid = v.get('vid')
-        print("===========================================================================================")
-        print(f"Product vid is {vid}")
-        print("===========================================================================================")
-
-        v_sku = v.get('variantSku')
-
-        variant_key = v.get('variantKey', '').strip()
-
-        if not variant_key or '-' not in variant_key:
-            continue  # skip invalid keys
-
-        # Split ONLY on the last hyphen (important!)
-        left, size = variant_key.rsplit('-', 1)
-        size = size.strip()
-
-        # Remove leading numbers/codes from color
-        # Example: "9301 Gray" → "Gray"
-        color_parts = left.split()
-        color = color_parts[-1].strip()
-
-        # Store results
-        if color:
-            colors.add(color)
-        if size:
-            sizes.add(size)
-
-        # Default quantity if API fails
-        total_qty = 0
+    print(f"✅ Product {'created' if created else 'updated'}: {product.title}")
+    
+    # ===== 9. HANDLE IMAGES WITH COMPRESSION =====
+    def process_image(url, max_size_mb=8, is_variant=False):
+        """
+        Download and compress an image to stay under Cloudinary's 10MB limit.
+        Returns ContentFile or None.
+        """
+        if not url:
+            return None
         
         try:
-            stock_details = service.get_stock_by_vid(vid)
-            # Map storageNum correctly
-            total_qty = sum(int(item.get('storageNum', 0)) for item in stock_details)
+            # Clean up URL
+            if not url.startswith('http'):
+                if url.startswith('//'):
+                    url = 'https:' + url
+                else:
+                    url = 'https://' + url
+            
+            # Download with timeout
+            response = requests.get(url, timeout=15, stream=True)
+            
+            if response.status_code != 200:
+                print(f"⚠️ Failed to download image: HTTP {response.status_code}")
+                return None
+            
+            # Check content type
+            content_type = response.headers.get('content-type', '')
+            if not content_type.startswith('image/'):
+                print(f"⚠️ Not an image: {content_type}")
+                return None
+            
+            # Load image
+            content = response.content
+            
+            # If image is too large, compress it
+            max_bytes = max_size_mb * 1024 * 1024
+            if len(content) > max_bytes:
+                print(f"🔄 Compressing image ({len(content)/1024/1024:.1f}MB -> target {max_size_mb}MB)")
+                
+                try:
+                    # Open image with PIL
+                    img = Image.open(io.BytesIO(content))
+                    
+                    # Convert to RGB if necessary (for PNG with alpha)
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                        img = background
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Calculate new size to stay under limit
+                    quality = 85
+                    output = io.BytesIO()
+                    img.save(output, format='JPEG', quality=quality, optimize=True)
+                    compressed_size = len(output.getvalue())
+                    
+                    # If still too large, reduce quality further
+                    while compressed_size > max_bytes and quality > 20:
+                        quality -= 10
+                        output = io.BytesIO()
+                        img.save(output, format='JPEG', quality=quality, optimize=True)
+                        compressed_size = len(output.getvalue())
+                    
+                    # If still too large, resize
+                    if compressed_size > max_bytes:
+                        print(f"🔄 Resizing image (still too large: {compressed_size/1024/1024:.1f}MB)")
+                        scale = (max_bytes / compressed_size) ** 0.5
+                        new_width = int(img.width * scale * 0.9)
+                        new_height = int(img.height * scale * 0.9)
+                        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        
+                        output = io.BytesIO()
+                        img.save(output, format='JPEG', quality=85, optimize=True)
+                        compressed_size = len(output.getvalue())
+                    
+                    # Generate filename
+                    filename = url.split('/')[-1].split('?')[0]
+                    if not filename or '.' not in filename:
+                        filename = f"{'variant' if is_variant else 'product'}.jpg"
+                    elif not filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
+                        filename = filename.split('.')[0] + '.jpg'
+                    
+                    print(f"✅ Compressed image: {len(output.getvalue())/1024/1024:.1f}MB")
+                    return ContentFile(output.getvalue(), name=filename)
+                    
+                except Exception as e:
+                    print(f"⚠️ Error compressing image: {e}")
+                    # Return original if compression fails
+                    filename = url.split('/')[-1].split('?')[0] or 'image.jpg'
+                    return ContentFile(content, name=filename)
+            
+            # Image is already small enough
+            filename = url.split('/')[-1].split('?')[0] or 'image.jpg'
+            return ContentFile(content, name=filename)
+            
+        except requests.exceptions.Timeout:
+            print(f"⚠️ Timeout downloading image from {url[:50]}...")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Request error downloading image: {e}")
+            return None
         except Exception as e:
-            print(f"Skipping stock update for {v_sku} due to timeout/error: {e}")
-            # Fallback: Use the inventoryNum already present in the variant data
-            total_qty = int(v.get('inventoryNum', 0))
-
-        # 1. Update Inventory
-        inv_obj, _ = ProductInventory.objects.update_or_create(
-            sku=v_sku,
-            defaults={'quantity': total_qty}
-        )        # 2. Update Variant
-        ProductVariant.objects.update_or_create(
-            sku=v_sku,
-            defaults={
-                'product': product,
-                'inventory': inv_obj,
-                'cj_vid':vid,
-                'price': float(v.get('variantSellPrice', 0)),
-                'option1': v.get('variantKey', 'Default'),
-            }
-        )
-    # Update product attributes
-    product.colors = ", ".join(sorted(colors))
-    product.sizes = ", ".join(sorted(sizes))
-    manager = CJManager(token=token)
-    # manager.sync_product_color_size(product)
-
-    product.cj_vid = vid
-    product.has_variants = len(variants_data) > 1
-
-    # success = manager.sync_product_color_size(product)
+            print(f"⚠️ Error downloading image: {e}")
+            return None
     
-    # if success:
-    #     return JsonResponse({
-    #         "status": "success",
-    #         "message": f"Imported {product.title} with Color: {product.colors} and Size: {product.sizes}"
-    #     })
-
-
-    product.quantity = total_qty
-    # If stock is 0, you might want to auto-set status to out_of_stock
-    if total_qty == 0:
-        product.status = 'out_of_stock'
+    # Save main product image
+    raw_images = product_data.get('productImageSet', [])
+    if not raw_images:
+        img_str = product_data.get('productImage', '[]')
+        try:
+            raw_images = json.loads(img_str) if img_str and img_str.startswith('[') else [img_str] if img_str else []
+        except json.JSONDecodeError:
+            raw_images = [img_str] if img_str else []
+    
+    # Filter out invalid URLs
+    raw_images = [img for img in raw_images if img and img.startswith('http')]
+    
+    print(f"📸 Found {len(raw_images)} product images")
+    
+    # Save main image
+    if raw_images:
+        img_file = process_image(raw_images[0], max_size_mb=8)
+        if img_file:
+            try:
+                product.main_image.save(f"{pid}_main.jpg", img_file, save=True)
+                print(f"✅ Saved main image")
+            except Exception as e:
+                print(f"⚠️ Failed to save main image: {e}")
+    
+    # Save gallery images (up to 5)
+    gallery_count = 0
+    for img_url in raw_images[1:6]:
+        if not img_url:
+            continue
+        
+        img_file = process_image(img_url, max_size_mb=8)
+        if img_file:
+            try:
+                file_name = img_url.split('/')[-1].split('?')[0] or f"{pid}_gallery_{gallery_count}.jpg"
+                if not file_name or '.' not in file_name:
+                    file_name = f"{pid}_gallery_{gallery_count}.jpg"
+                
+                if not ProductImages.objects.filter(product=product, image__icontains=file_name[:50]).exists():
+                    pi = ProductImages(product=product)
+                    pi.image.save(file_name, img_file, save=True)
+                    gallery_count += 1
+                    print(f"✅ Saved gallery image {gallery_count}")
+            except Exception as e:
+                print(f"⚠️ Failed to save gallery image: {e}")
+    
+    # ===== 10. SYNC VARIANTS =====
+    variant_stats = {'total': 0, 'created': 0, 'updated': 0, 'failed': 0}
+    
+    if variants_data:
+        print(f"🔄 Syncing {len(variants_data)} variants...")
+        variant_stats = manager.sync_all_variants(product, variants_data)
+        
+        # Update product with variant info
+        if variant_stats.get('total', 0) > 0:
+            product.has_variants = variant_stats['total'] > 1
+            
+            # Calculate total stock from variants
+            total_stock = 0
+            for variant in product.variants.all():
+                total_stock += variant.quantity if variant.quantity else 0
+            
+            product.quantity = total_stock
+            
+            if total_stock == 0:
+                product.status = 'out_of_stock'
+            else:
+                product.status = 'active'
+            
+            product.save()
+            print(f"📊 Updated product with {variant_stats['total']} variants, total stock: {total_stock}")
     else:
-        product.status = 'active'
-
-
-
-    product.save()        
-
-    # --- At the end of cj_import_product view ---
-
-    # 7. Import Reviews and Ratings
-    reviews_data = service.get_product_reviews(pid)
-
-    print(f'Review data is {reviews_data}')
-
-    for review in reviews_data:
-        comment_text = review.get('comment', '')
-        if not comment_text:
-            continue # Skip ratings that have no text if desired
-
-        # Map CJ data to your model fields
-        ProductReview.objects.get_or_create(
-            product=product,
-            comment=comment_text,
-            author_name=review.get('userName', 'Verified Buyer'),
+        print("ℹ️ No variants to sync - creating simple product")
+        product.has_variants = False
+        product.save()
+    
+    # ===== 11. IMPORT REVIEWS =====
+    review_count = 0
+    try:
+        reviews_data = service.get_product_reviews(pid)
+        for review in reviews_data[:20]:
+            comment_text = review.get('comment', '')
+            if not comment_text or len(comment_text) < 3:
+                continue
+            
+            author_name = review.get('userName', 'Verified Buyer')
+            rating = int(review.get('score', 5)) if review.get('score') else 5
+            
+            ProductReview.objects.get_or_create(
+                product=product,
+                comment=comment_text[:500],
+                author_name=author_name[:100],
+                defaults={
+                    'rating': min(5, max(1, rating)),
+                    'title': f"Customer Review"[:200],
+                    'is_verified_purchase': True,
+                    'is_approved': True,
+                    'helpful_count': 0,
+                }
+            )
+            review_count += 1
+        print(f"⭐ Imported {review_count} reviews")
+    except Exception as e:
+        print(f"⚠️ Failed to import reviews: {e}")
+    
+    # ===== 12. CREATE CJ PRODUCT RECORD =====
+    try:
+        cj_product, cj_created = CJProduct.objects.update_or_create(
+            page=page,
+            cj_product_id=pid,
             defaults={
-                'rating': int(review.get('score', 5)),
-                'title': "Customer Review",  # CJ doesn't provide titles, so we use a placeholder
-                'is_verified_purchase': True,
-                'is_approved': True, # Auto-approve imported reviews
-                'helpful_count': 0,
+                'cj_pid': pid,
+                'local_product': product,
+                'cj_sku': variants_data[0].get('variantSku', '') if variants_data else '',
+                'cj_variant_id': variants_data[0].get('vid', '') if variants_data else '',
+                'cj_price_usd': Decimal(str(cj_price)),
+                'local_selling_price': product.price,
+                'cj_stock_quantity': product.quantity,
+                'local_stock_quantity': product.quantity,
+                'sync_status': 'synced' if variants_data else 'pending',
+                'last_full_sync': timezone.now(),
+                'cj_data': product_data,
             }
         )
+        print(f"📦 CJ Product record {'created' if cj_created else 'updated'}")
+    except Exception as e:
+        print(f"⚠️ Failed to create CJ product record: {e}")
+    
+    # ===== 13. RETURN RESPONSE =====
+    return JsonResponse({
+        'status': 'success',
+        'message': f'Successfully imported {product.title}',
+        'product_id': product.id,
+        'product_slug': product.slug,
+        'created': created,
+        'variant_stats': {
+            'total': variant_stats.get('total', 0),
+            'created': variant_stats.get('created', 0),
+            'updated': variant_stats.get('updated', 0),
+            'failed': variant_stats.get('failed', 0),
+        },
+        'has_variants': product.has_variants,
+        'total_stock': product.quantity,
+        'review_count': review_count,
+        'image_count': len(raw_images),
+        'variant_images': sum(1 for v in variant_stats.get('variants', []) if v.get('has_image', False))
+    })
 
-    return JsonResponse({'status': 'success', 'message': 'Import complete'})
+
+def download_image_to_field(url):
+    """
+    Download an image from URL and return as ContentFile.
+    Handles various image formats and error cases.
+    """
+    if not url:
+        return None
+    
+    try:
+        # Clean up URL
+        if not url.startswith('http'):
+            if url.startswith('//'):
+                url = 'https:' + url
+            else:
+                url = 'https://' + url
+        
+        # Download with timeout
+        response = requests.get(url, timeout=15, stream=True)
+        
+        if response.status_code != 200:
+            print(f"⚠️ Failed to download image: HTTP {response.status_code}")
+            return None
+        
+        # Check content type
+        content_type = response.headers.get('content-type', '')
+        if not content_type.startswith('image/'):
+            print(f"⚠️ Not an image: {content_type}")
+            return None
+        
+        # Generate filename
+        content = response.content
+        if len(content) < 100:  # Too small to be an image
+            print(f"⚠️ Image too small: {len(content)} bytes")
+            return None
+        
+        # Extract filename from URL or generate one
+        filename = url.split('/')[-1].split('?')[0]
+        if not filename or '.' not in filename:
+            ext = content_type.split('/')[-1] if '/' in content_type else 'jpg'
+            if ext in ['jpeg', 'jpg', 'png', 'gif', 'webp', 'bmp', 'svg+xml']:
+                filename = f"image.{ext.replace('+xml', '')}"
+            else:
+                filename = f"image.jpg"
+        
+        # Create ContentFile
+        from django.core.files.base import ContentFile
+        return ContentFile(content, name=filename)
+        
+    except requests.exceptions.Timeout:
+        print(f"⚠️ Timeout downloading image from {url[:50]}...")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Request error downloading image: {e}")
+        return None
+    except Exception as e:
+        print(f"⚠️ Error downloading image: {e}")
+        return None
 
 # ============== OTHER VIEWS (simplified) ==============
 # @login_required

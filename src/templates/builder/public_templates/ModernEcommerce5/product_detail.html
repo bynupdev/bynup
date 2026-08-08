@@ -878,10 +878,10 @@
                         <button class="btn-buy-now" id="buy-now-btn" data-product-id="{{ product.id }}" data-product-title="{{ product.title }}" data-product-price="{{ product.price }}">
                             <i class="fas fa-bolt" data-icon="15"></i> {{ text_contents.63|default:"Buy Now" }}
                         </button>
-                        <button class="btn-add-to-cart" id="section-100" data-product-id="{{ product.id }}">
+                        <button class="btn-add-to-cart" id="add-to-cart-btn" data-product-id="{{ product.id }}">
                             <i class="fas fa-shopping-bag" data-icon="11"></i> {{ text_contents.64|default:"Add to Cart" }}
                         </button>
-                        <button class="btn-wishlist" data-add-to-wishlist="{{ product.id }}">
+                        <button class="btn-wishlist" id="wishlistBtn" data-add-to-wishlist="{{ product.id }}">
                             <i class="far fa-heart" data-icon="12"></i>
                         </button>
                     </div>
@@ -915,20 +915,12 @@
                          {% for spec in product.dynamic_specs.all %}
                         <div class="spec-item" id="section-113"><strong>{{ spec.title }}:</strong> {{ spec.value }}</div>
                         {% endfor %}
-                        <!-- <div class="spec-item" id="section-114"><strong>Brand:</strong> {{ product.brand|default:page.brand_name }}</div>
-                        <div class="spec-item" id="section-115"><strong>Dimensions:</strong> {{ product.specifications|default:"Varies by size" }}</div>
-                        <div class="spec-item" id="section-116"><strong>Weight:</strong> {{ product.weight|default:"2.5" }} {{ product.weight_unit|default:"lbs" }}</div>
-                        <div class="spec-item" id="section-117"><strong>Handcrafted:</strong> Yes</div> -->
                     </div>
                 </div>
 
                 <div class="tab-content" id="shipping-tab">
                     <div class="shipping-content" id="section-118">
                         <p><a href="{% url 'public_shipping_policy' subdomain=page.subdomain %}">{{ text_contents.30|default:"Shipping & Returns" }}</a></p>
-
-                        <!-- <p><strong>Shipping:</strong> Free standard shipping on all orders over $100. Orders typically ship within 1-2 business days and arrive in 3-7 business days.</p>
-                        <p><strong>Returns:</strong> We offer a 30-day return policy for all items in original condition. Please contact our support team to initiate a return.</p>
-                        <p><strong>Warranty:</strong> This product comes with a 2-year warranty against manufacturing defects.</p> -->
                     </div>
                 </div>
 
@@ -1112,6 +1104,7 @@
     let currentProductId = {{ product.id }};
     let variantSelections = {};
     let allProductImages = [];
+    let productGalleryImages = [];
 
     // ======================================================
     // VARIANT FUNCTIONS
@@ -1195,30 +1188,93 @@
     // GALLERY FUNCTIONS
     // ======================================================
 
+    function initProductGallery() {
+        var grid = document.getElementById('thumbnailGrid');
+        if (!grid) return;
+        
+        var thumbnails = grid.querySelectorAll('.thumbnail');
+        productGalleryImages = [];
+        thumbnails.forEach(function(thumb) {
+            var imgSrc = thumb.getAttribute('data-image');
+            if (imgSrc) {
+                productGalleryImages.push(imgSrc);
+            }
+        });
+        
+        // Add click handlers
+        thumbnails.forEach(function(thumb) {
+            thumb.addEventListener('click', function() {
+                var imgSrc = this.getAttribute('data-image');
+                if (imgSrc) {
+                    changeImage(imgSrc);
+                }
+            });
+        });
+        
+        console.log('📸 Gallery images loaded:', productGalleryImages.length);
+    }
+
+    function addVariantImageToGallery(imageUrl) {
+        if (!imageUrl) return;
+        
+        var exists = false;
+        document.querySelectorAll('.thumbnail').forEach(function(thumb) {
+            var imgSrc = thumb.getAttribute('data-image');
+            if (imgSrc === imageUrl) {
+                exists = true;
+            }
+        });
+        
+        if (!exists) {
+            var grid = document.getElementById('thumbnailGrid');
+            if (grid) {
+                // Check if we should add the image (not more than 8 thumbnails)
+                if (grid.querySelectorAll('.thumbnail').length < 8) {
+                    var thumb = document.createElement('div');
+                    thumb.className = 'thumbnail';
+                    thumb.setAttribute('data-image', imageUrl);
+                    
+                    var img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = 'Variant Image';
+                    
+                    thumb.appendChild(img);
+                    thumb.addEventListener('click', function() {
+                        changeImage(imageUrl);
+                    });
+                    grid.appendChild(thumb);
+                    productGalleryImages.push(imageUrl);
+                    console.log('📸 Added variant image to gallery:', imageUrl);
+                }
+            }
+        }
+    }
+
     function updateGalleryImages(images) {
         var grid = document.getElementById('thumbnailGrid');
         if (!grid) return;
         
         // Keep the first thumbnail (main image) and add new ones
-        var firstThumb = grid.querySelector('.thumbnail:first-child');
         grid.innerHTML = '';
         
-        // Add all images
-        images.forEach(function(imgSrc, index) {
+        // Add all images (limit to 8)
+        var maxImages = Math.min(images.length, 8);
+        for (var i = 0; i < maxImages; i++) {
+            var imgSrc = images[i];
             var thumb = document.createElement('div');
-            thumb.className = 'thumbnail' + (index === 0 ? ' active' : '');
+            thumb.className = 'thumbnail' + (i === 0 ? ' active' : '');
             thumb.setAttribute('data-image', imgSrc);
             
             var img = document.createElement('img');
             img.src = imgSrc;
-            img.alt = 'Product image ' + (index + 1);
+            img.alt = 'Product image ' + (i + 1);
             
             thumb.appendChild(img);
             thumb.addEventListener('click', function() {
-                changeImage(imgSrc);
+                changeImage(this.getAttribute('data-image'));
             });
             grid.appendChild(thumb);
-        });
+        }
     }
 
     function changeImage(src) {
@@ -1228,8 +1284,8 @@
         var thumbnails = document.querySelectorAll('.thumbnail');
         thumbnails.forEach(function(thumb) {
             thumb.classList.remove('active');
-            var img = thumb.querySelector('img');
-            if (img && img.src === src) {
+            var imgSrc = thumb.getAttribute('data-image');
+            if (imgSrc && imgSrc === src) {
                 thumb.classList.add('active');
             }
         });
@@ -1369,13 +1425,8 @@
             var mainImage = document.getElementById('mainProductImage');
             if (mainImage && variant.image) {
                 mainImage.src = variant.image;
-                // Update gallery thumbnails - add variant image as first in gallery
-                var images = [variant.image];
-                // Add additional product images
-                if (productData.additional_images) {
-                    images = images.concat(productData.additional_images);
-                }
-                updateGalleryImages(images);
+                // Add variant image to gallery
+                addVariantImageToGallery(variant.image);
             }
             
             // Update status display
@@ -1403,7 +1454,7 @@
             }
             
             // Enable buttons
-            var addBtn = document.getElementById('.btn-add-to-cart');
+            var addBtn = document.getElementById('add-to-cart-btn');
             var buyBtn = document.getElementById('buy-now-btn');
             
             if (addBtn) {
@@ -1441,11 +1492,11 @@
     }
 
     // ======================================================
-    // ADD TO CART - DIRECT FETCH
+    // ADD TO CART - FIXED
     // ======================================================
 
-    function addToCartProduct(productId, quantity, instantCheckout) {
-        console.log('🛒 addToCartProduct called:', productId, quantity, instantCheckout);
+    window.addToCart = function(productId, quantity, instantCheckout) {
+        console.log('🛒 addToCart called:', productId, quantity, instantCheckout);
         
         // Check if all variants are selected
         var selectedOptions = variantSelections[productId] || {};
@@ -1521,7 +1572,7 @@
                     }
                 });
                 
-                var btn = document.getElementById('.btn-add-to-cart');
+                var btn = document.getElementById('add-to-cart-btn');
                 if (btn) {
                     var origText = btn.textContent;
                     btn.textContent = 'Added!';
@@ -1549,7 +1600,7 @@
             console.error('❌ Error:', error);
             showNotification(error.message || 'Error adding to cart', false);
         });
-    }
+    };
 
     // ======================================================
     // CHECKOUT
@@ -1667,7 +1718,10 @@
     // ======================================================
 
     function toggleWishlist(productId) {
-        var button = document.querySelector('.btn-wishlist');
+        var button = document.getElementById('wishlistBtn');
+        if (!button) {
+            button = document.querySelector('.btn-wishlist');
+        }
         if (!button) return;
         
         var icon = button.querySelector('i');
@@ -1687,10 +1741,9 @@
         }
         
         var url = (isInWishlist ? '/builder/wishlist/remove/' : '/builder/wishlist/add/') + subdomain + '/';
-        var method = isInWishlist ? 'DELETE' : 'POST';
         
         fetch(url, {
-            method: method,
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
@@ -1796,17 +1849,8 @@
 
         document.body.setAttribute('data-page-subdomain', subdomain);
 
-        // Initialize gallery with all images
-        var images = [];
-        if (productData.main_image) {
-            images.push(productData.main_image);
-        }
-        if (productData.additional_images) {
-            images = images.concat(productData.additional_images);
-        }
-        if (images.length > 0) {
-            updateGalleryImages(images);
-        }
+        // Initialize gallery
+        initProductGallery();
 
         // Initialize variant selector
         variantSelections[productData.id] = {};
@@ -1832,15 +1876,17 @@
             }
         }
 
-        // Add to Cart button
-        var addBtn = document.getElementById('.btn-add-to-cart');
+        // Add to Cart button - FIXED: Proper ID
+        var addBtn = document.getElementById('add-to-cart-btn');
         if (addBtn) {
             var newAddBtn = addBtn.cloneNode(true);
             addBtn.parentNode.replaceChild(newAddBtn, addBtn);
             newAddBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var qty = parseInt(document.getElementById('quantityInput').value) || 1;
-                addToCartProduct({{ product.id }}, qty, false);
+                var productId = this.getAttribute('data-product-id') || productData.id;
+                window.addToCart(productId, qty, false);
             });
         }
 
@@ -1851,19 +1897,23 @@
             buyBtn.parentNode.replaceChild(newBuyBtn, buyBtn);
             newBuyBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var qty = parseInt(document.getElementById('quantityInput').value) || 1;
-                addToCartProduct({{ product.id }}, qty, true);
+                var productId = this.getAttribute('data-product-id') || productData.id;
+                window.addToCart(productId, qty, true);
             });
         }
 
         // Wishlist button
-        var wishBtn = document.querySelector('.btn-wishlist');
+        var wishBtn = document.getElementById('wishlistBtn');
         if (wishBtn) {
             var newWishBtn = wishBtn.cloneNode(true);
             wishBtn.parentNode.replaceChild(newWishBtn, wishBtn);
             newWishBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                toggleWishlist({{ product.id }});
+                e.stopPropagation();
+                var productId = this.getAttribute('data-add-to-wishlist') || productData.id;
+                toggleWishlist(productId);
             });
         }
 
@@ -1950,7 +2000,8 @@
         }
 
         console.log('✅ Product page initialized, subdomain:', subdomain);
-        console.log('📸 Gallery images:', images.length);
+        console.log('📸 Gallery images:', productGalleryImages.length);
+        console.log('📦 Product ID for add to cart:', productData.id);
     });
 </script>
 </body>

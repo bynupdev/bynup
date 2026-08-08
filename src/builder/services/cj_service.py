@@ -1,14 +1,5 @@
+# services/cj_service.py - COMPLETE FIXED VERSION WITH PROPER VARIANT FETCHING
 
-
-
-
-
-
-
-
-
-# services/cj_service.py
-# services/cj_service.py - UPDATED WITH PROPER AUTHENTICATION
 import requests
 import json
 import time
@@ -36,11 +27,6 @@ class CJAuthenticationException(CJServiceException):
     pass
 
 
-# builder/cj_service.py
-import requests
-from django.utils import timezone
-from datetime import timedelta
-                
 class CJOrderRequest:
     """Order request data model"""
     def __init__(self, **kwargs):
@@ -52,20 +38,6 @@ class CJOrderRequest:
         self.shipping_method = kwargs.get('shipping_method')
         self.currency = kwargs.get('currency', 'USD')
 
-
-import requests
-import logging
-from django.utils import timezone
-from datetime import timedelta
-from django.conf import settings
-
-logger = logging.getLogger(__name__)
-
-
-import requests
-import logging
-
-logger = logging.getLogger(__name__)
 
 class CJService:
     BASE_URL = "https://developers.cjdropshipping.com/api2.0/v1"
@@ -87,79 +59,171 @@ class CJService:
             logger.error(f"Error fetching warehouses: {e}")
             return []
 
-    # def get_stock_details(self, pid):
-    #     """Fetches stock breakdown across all warehouses for a specific PID."""
-    #     url = f"{self.BASE_URL}/product/variant/queryByPid"
-    #     try:
-    #         response = requests.get(url, headers=self.headers, params={"pid": pid}, timeout=20)
-    #         data = response.json()
-
-    #         print(f"Stock data is {data}")
-    #         # Returns list of {areaId, areaEn, stockNum}
-    #         return data.get('data', []) if data.get('code') == 200 else []
-    #     except Exception as e:
-    #         logger.error(f"Error fetching stock details for {pid}: {e}")
-    #         return []
     def get_stock_by_vid(self, vid):
         """Fetches warehouse-specific stock for a single Variant ID."""
         url = f"{self.BASE_URL}/product/stock/queryByVid"
         try:
-            # Note: 'vid' is a required parameter for this specific endpoint
             response = requests.get(url, headers=self.headers, params={"vid": vid}, timeout=20)
             data = response.json()
-            print(f"Stock data in service is: {data}")
             
             if data.get('code') == 200:
-                # Returns a list of warehouse objects: 
-                # [{"areaId": "0", "areaEn": "China Warehouse", "stockNum": 150}, ...]
-                return data.get('data', []) 
+                return data.get('data', [])
             else:
-                print(f"CJ API Error: {data.get('message')}")
+                print(f"CJ API Error (stock): {data.get('message')}")
                 return []
         except Exception as e:
             print(f"Request failed for vid {vid}: {e}")
             return []
        
     def get_product_details(self, pid):
-            url = f"{self.BASE_URL}/product/query"
-            res = requests.get(url, headers=self.headers, params={"pid": pid})
+        """Get full product details including all variants"""
+        url = f"{self.BASE_URL}/product/query"
+        try:
+            res = requests.get(url, headers=self.headers, params={"pid": pid}, timeout=30)
             data = res.json()
+            
+            print(f"Product details response code: {data.get('code')}")
+            
             if data.get("code") == 200:
                 prod = data.get("data", {})
                 # Ensure images are clean
                 if not prod.get('productImage') and prod.get('productImageList'):
                     prod['productImage'] = prod['productImageList'][0]
                 return prod
+            else:
+                print(f"Product details error: {data.get('message')}")
+                return None
+        except Exception as e:
+            print(f"Error getting product details: {e}")
             return None
     
     def get_variants(self, pid):
-        """Fetches all color/size variants for a product."""
+        """
+        Fetches all variants for a product with full details.
+        
+        CJ API endpoint: /product/variant/queryByPid
+        Returns: List of variant objects
+        """
         url = f"{self.BASE_URL}/product/variant/queryByPid"
-        res = requests.get(url, headers=self.headers, params={"pid": pid})
-        return res.json().get('data', []) if res.json().get('code') == 200 else []
+        
+        # Try with page parameters to ensure we get all variants
+        all_variants = []
+        page_num = 1
+        page_size = 100
+        
+        try:
+            while True:
+                params = {
+                    "pid": pid,
+                    "pageNumber": page_num,
+                    "pageSize": page_size
+                }
+                
+                print(f"Fetching variants page {page_num} for PID: {pid}")
+                res = requests.get(url, headers=self.headers, params=params, timeout=30)
+                data = res.json()
+                
+                print(f"Variants response code: {data.get('code')}")
+                
+                if data.get('code') == 200:
+                    response_data = data.get('data', {})
+                    
+                    # Handle different response structures
+                    if isinstance(response_data, dict):
+                        variants = response_data.get('list', [])
+                        if not variants:
+                            variants = response_data.get('data', [])
+                        if not variants:
+                            # Some APIs return data directly
+                            variants = [response_data] if response_data else []
+                    elif isinstance(response_data, list):
+                        variants = response_data
+                    else:
+                        variants = []
+                    
+                    if variants:
+                        all_variants.extend(variants)
+                        print(f"Found {len(variants)} variants on page {page_num}")
+                        
+                        # Check if there are more pages
+                        total = response_data.get('total', 0) if isinstance(response_data, dict) else 0
+                        if total > 0 and len(all_variants) >= total:
+                            break
+                        elif len(variants) < page_size:
+                            break
+                        else:
+                            page_num += 1
+                    else:
+                        break
+                else:
+                    print(f"Variants API error: {data.get('message')}")
+                    break
+                    
+        except Exception as e:
+            print(f"Error getting variants for PID {pid}: {e}")
+        
+        print(f"Total variants found for PID {pid}: {len(all_variants)}")
+        return all_variants
+    
+    def get_variant_details(self, vid):
+        """Fetches the variant details (including variantKey) from CJ."""
+        url = f"{self.BASE_URL}/product/variant/queryByVid"
+        params = {"vid": vid}
+        try:
+            response = requests.get(url, headers=self.headers, params=params, timeout=20)
+            data = response.json()
+            if data.get('code') == 200:
+                return data.get('data')
+            return None
+        except Exception as e:
+            print(f"CJ API Error (queryByVid): {e}")
+            return None
     
     def get_product_reviews(self, pid):
         """Fetches real customer reviews from CJ."""
         url = f"{self.BASE_URL}/product/comment/list"
         params = {"pid": pid, "pageNumber": 1, "pageSize": 20}
         try:
-            res = requests.get(url, headers=self.headers, params=params, )
+            res = requests.get(url, headers=self.headers, params=params, timeout=20)
             data = res.json()
             if data.get("code") == 200:
                 return data.get("data", {}).get("list", [])
             return []
         except Exception:
             return []
-  
-    # builder/services/cj_service.py
+    
+    def get_variants_alternative(self, pid):
+        """
+        Alternative method to fetch variants using the product/query endpoint.
+        Sometimes variants are nested in the product data.
+        """
+        url = f"{self.BASE_URL}/product/query"
+        params = {"pid": pid}
+        
+        try:
+            res = requests.get(url, headers=self.headers, params=params, timeout=30)
+            data = res.json()
+            
+            if data.get('code') == 200:
+                product_data = data.get('data', {})
+                
+                # Check if variants are directly in the product data
+                if 'variants' in product_data:
+                    variants = product_data.get('variants', [])
+                    print(f"Found {len(variants)} variants in product data")
+                    return variants
+                
+                # Check for variantList or similar
+                if 'variantList' in product_data:
+                    variants = product_data.get('variantList', [])
+                    print(f"Found {len(variants)} variants in variantList")
+                    return variants
+                    
+            return []
+        except Exception as e:
+            print(f"Error fetching variants via product query: {e}")
+            return []
 
-#         # http://localhost:8000/builder/cj-search/lux1/?q=phone
-
-
-
-
-import requests
-import time
 
 class CJManager:
     def __init__(self, token):
@@ -169,50 +233,38 @@ class CJManager:
             "platformToken": token,
             "Content-Type": "application/json"
         }
+        self.service = CJService(token)
 
     def get_logistic_name(self, vid, country_code, zip_code, city, province):
-        """
-        FUNCTION 1: Replicates test_logistics.
-        Finds the exact shipping string needed for the order.
-        """
+        """Get shipping logistics name for a variant."""
         url = f"{self.base_url}/api2.0/v1/logistic/freightCalculate"
-        print(f"url is {url}")
         payload = {
-            "startCountryCode": "CN", # Use "US" if product is in US warehouse
+            "startCountryCode": "CN",
             "endCountryCode": country_code,
             "zip": zip_code,
             "province": province,
-            "city": "Los Angeles",
+            "city": city,
             "products": [{"vid": vid, "quantity": 1}]
         }
         
         try:
             response = requests.post(url, headers=self.headers, json=payload, timeout=20)
             data = response.json()
-            print(f"Logistic data is {data}")
             if data.get('code') == 200 and data.get('data'):
-                methods = data['data'][0].get('logisticName')
-                print(f"Logistic name is {methods}")
-                # Extracts the specific method name (e.g., 'FedEx-432')
                 return data['data'][0].get('logisticName')
         except Exception as e:
             print(f"Logistics API Error: {e}")
         return None
 
-    def create_cj_order(self, order_data, logistic_name):
-        """
-        FUNCTION 2: Replicates test_order_creation.
-        Sends the final payload to CJ using the logistic_name found in Step 1.
-        """
+    def create_cj_order_multiple(self, order_data, logistic_name, products_data):
+        """Create CJ order with multiple products."""
         url = f"{self.base_url}/api2.0/v1/shopping/order/createOrderV2"
-
-        print(f"Order data is {order_data}")
         
         payload = {
             "orderNumber": f"{order_data['number']}-{int(time.time())}",
             "shippingZip": str(order_data['zip']),
             "shippingCountryCode": str(order_data['country_code']),
-            "shippingCountry": str(order_data['country_name']), # Verified requirement from test
+            "shippingCountry": str(order_data['country_name']),
             "countryCode": str(order_data['country_code']),
             "shippingProvince": str(order_data['province']),
             "shippingCity": str(order_data['city']),
@@ -222,82 +274,24 @@ class CJManager:
             "logisticName": logistic_name,
             "payType": 3,
             "fromCountryCode": "CN",
-            "products": [{"vid": order_data['vid'], "quantity": 1}]
+            "products": products_data
         }
         
-        response = requests.post(url, headers=self.headers, json=payload)
-        print(f"Order response is {response}")
-        return response.json()
-
-    # def fulfill_cj_order(self, order):
-    #     """
-    #     THE WRAPPER: Coordinates Function 1 and Function 2.
-    #     Call this function from your views.py.
-    #     """
-
-    #     print(f"CJ Order {order.country_iso}")
-        
-    #     for item in order.items.all():
-    #         vid=item.vid
-    #         # 1. Run the logistics function
-    #         logistic_name = self.get_logistic_name(
-    #             vid=vid,
-    #             country_code=order.country_iso,
-    #             zip_code=order.delivery_zip,
-    #             city=order.delivery_city,
-    #             province=order.delivery_state
-    #         )
-
-    #         # Fallback if lookup returns nothing
-    #         if not logistic_name:
-    #             logistic_name = "CJPacket Sensitive"
-
-    #         # 2. Package data for the order function
-    #         order_info = {
-    #             "number": order.order_number,
-    #             "zip": order.delivery_zip,
-    #             "country_code": order.country_iso,
-    #             "country_name": order.customer_country,
-    #             "province": order.delivery_state,
-    #             "city": order.delivery_city,
-    #             "address": order.delivery_address,
-    #             "name": order.customer_name,
-    #             "phone": order.phone,
-    #             "vid": vid
-    #         }
-
-    #         # print(f"Order info is {order_info}")
-        
-    #         # print(f"Logistic name is {logistic_name}")
-    #         # 3. Run the order creation function
-    #         result = self.create_cj_order(order_info, logistic_name)
-    #         print(f"result is {result}")
-    #         # 4. Handle DB updates
-    #         if result.get('code') == 200:
-    #             order.cj_order_id = result['data'].get('orderId')
-    #             order.status = 'FULFILLED'
-    #             order.save()
-    #             print(f"order status is {order.status}")
-
-                
-        
-    #     return True
+        try:
+            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+            return response.json()
+        except Exception as e:
+            print(f"Error creating CJ order: {e}")
+            return {"code": 500, "message": str(e)}
     
-
-
     def fulfill_cj_order_corrected(self, order):
-        """
-        CORRECTED: Creates a single CJ order with all items
-        """
-        print(f"Processing CJ Order {order.order_number}")
-        
-        # 1. Collect all product data
+        """Create a single CJ order with all items."""
         products_data = []
         
         for item in order.items.all():
-            if item.vid:
+            if item.cj_vid:
                 product_item = {
-                    "vid": item.vid,
+                    "vid": item.cj_vid,
                     "quantity": item.quantity
                 }
                 products_data.append(product_item)
@@ -306,7 +300,7 @@ class CJManager:
             print("No valid VIDs found in order items")
             return False
         
-        # 2. Get logistics for FIRST product
+        # Get logistics for FIRST product
         first_vid = products_data[0]['vid']
         logistic_name = self.get_logistic_name(
             vid=first_vid,
@@ -319,7 +313,6 @@ class CJManager:
         if not logistic_name:
             logistic_name = "CJPacket Sensitive"
         
-        # 3. Prepare order data
         order_info = {
             "number": order.order_number,
             "zip": order.delivery_zip,
@@ -332,277 +325,526 @@ class CJManager:
             "phone": order.phone,
         }
         
-        # 4. Create CJ order
         result = self.create_cj_order_multiple(order_info, logistic_name, products_data)
-        print(f"CJ Order Creation Result: {result}")
         
-        # 5. Handle response
         if result.get('code') == 200:
             cj_order_id = result['data'].get('orderId')
-            
-            # Save CJ order ID to the order
             order.cj_order_id = cj_order_id
             order.cj_fulfilled_at = timezone.now()
-            order.status = 'fulfilled'  # Or 'processing'
+            order.status = 'fulfilled'
             order.save()
-            
-            # Also update individual items if needed
-            for item in order.items.all():
-                item.cj_fulfilled = True  # Add this field to OrderItem if needed
-                item.save()
-            
-            print(f"✅ Order {order.order_number} fulfilled with CJ ID: {cj_order_id}")
             return True
         else:
-            error_msg = result.get('message', 'Unknown error')
-            print(f"❌ Failed to create CJ order: {error_msg}")
+            print(f"Failed to create CJ order: {result.get('message')}")
             return False
+
+    # ============================================================
+    # ===== FIXED: PROPER COLOR/SIZE EXTRACTION =====
+    # ============================================================
     
-    def create_cj_order_multiple(self, order_data, logistic_name, products_data):
+    def _extract_color_size(self, variant_key):
         """
-        Create CJ order with multiple products
-        """
-        url = f"{self.base_url}/api2.0/v1/shopping/order/createOrderV2"
+        Extract color and size from CJ variantKey string.
         
-        payload = {
-            "orderNumber": f"{order_data['number']}-{int(time.time())}",
-            "shippingZip": order_data['zip'],
-            "shippingCountryCode": order_data['country_code'],
-            "shippingCountry": order_data['country_name'],
-            "countryCode": order_data['country_code'],
-            "shippingProvince": order_data['province'],
-            "shippingCity": order_data['city'],
-            "shippingAddress": order_data['address'],
-            "shippingCustomerName": order_data['name'],
-            "shippingPhone": order_data['phone'],
-            "logisticName": logistic_name,
-            "payType": 3,
-            "fromCountryCode": "CN",
-            "products": products_data
+        Handles formats like:
+        - "Black Zone2-S" -> color: "Black Zone2", size: "S"
+        - "Black Zone8 Set-2XL" -> color: "Black Zone8 Set", size: "2XL"
+        - "Color:Black-Size:S" -> color: "Black", size: "S"
+        - "Color:Black,Size:S" -> color: "Black", size: "S"
+        - "Black Zone2-S-XL" -> color: "Black Zone2", size: "S-XL" (rare)
+        """
+        color_value = None
+        size_value = None
+        
+        if not variant_key:
+            return color_value, size_value
+        
+        # ===== METHOD 1: Check for "Color:" and "Size:" format =====
+        if 'Color:' in variant_key or 'Size:' in variant_key:
+            parts = variant_key.split('-')
+            for part in parts:
+                if 'Color:' in part:
+                    color_value = part.split('Color:', 1)[1].strip()
+                elif 'Size:' in part:
+                    size_value = part.split('Size:', 1)[1].strip()
+            
+            # Also check comma format
+            if not color_value or not size_value:
+                for part in parts:
+                    if 'Color,' in part:
+                        color_value = part.split('Color,', 1)[1].strip()
+                    elif 'Size,' in part:
+                        size_value = part.split('Size,', 1)[1].strip()
+            
+            return color_value, size_value
+        
+        # ===== METHOD 2: Last hyphen separates color and size =====
+        # Find the LAST hyphen to split (handles names with hyphens like "Zone2")
+        last_hyphen = variant_key.rfind('-')
+        if last_hyphen > 0:
+            # Split at the LAST hyphen
+            color_value = variant_key[:last_hyphen].strip()
+            size_value = variant_key[last_hyphen + 1:].strip()
+            
+            # Clean up - if size still has hyphens, it might be part of color
+            if size_value and '-' in size_value:
+                # Try to find where size typically starts (S, M, L, XL, etc.)
+                size_patterns = ['S-', 'M-', 'L-', 'XL-', 'XXL-', 'XXXL-', '2XL-', '3XL-', '4XL-', '5XL-', '6XL-', '7XL-', '8XL-']
+                found = False
+                for pattern in size_patterns:
+                    if pattern in variant_key:
+                        # Find the position of the pattern
+                        pos = variant_key.find(pattern)
+                        if pos > 0:
+                            color_value = variant_key[:pos].strip()
+                            size_value = variant_key[pos:].strip()
+                            found = True
+                            break
+                
+                # If not found with patterns, keep the last part as size
+                if not found:
+                    parts = variant_key.split('-')
+                    # Usually size is the last part for common formats
+                    if len(parts) >= 2:
+                        color_value = '-'.join(parts[:-1]).strip()
+                        size_value = parts[-1].strip()
+            
+            return color_value, size_value
+        
+        # ===== METHOD 3: Check for common size patterns at the end =====
+        # Look for size patterns without a hyphen
+        size_patterns = [' S', ' M', ' L', ' XL', ' XXL', ' XXXL', ' 2XL', ' 3XL', ' 4XL', ' 5XL', ' 6XL']
+        for pattern in size_patterns:
+            if variant_key.endswith(pattern):
+                color_value = variant_key[:-len(pattern)].strip()
+                size_value = pattern.strip()
+                return color_value, size_value
+        
+        # ===== METHOD 4: Fallback - return the whole key as color =====
+        return variant_key, None
+    
+    def _parse_variant_price(self, variant_data):
+        """Safely parse variant price from CJ data."""
+        price = variant_data.get('variantSellPrice')
+        if price is None:
+            price = variant_data.get('variantPrice')
+        if price is None:
+            price = 0
+        try:
+            return float(price)
+        except (ValueError, TypeError):
+            return 0.0
+    
+    def _create_or_update_variant(self, product_obj, vid, variant_data, color=None, size=None):
+        """
+        Create or update a ProductVariant with CJ data.
+        Now includes proper stock quantity handling.
+        
+        Returns:
+            (ProductVariant, created) tuple
+        """
+        from builder.models import ProductVariant, ProductInventory
+        
+        variant_sku = variant_data.get('variantSku', '')
+        variant_price = self._parse_variant_price(variant_data)
+        variant_image_url = variant_data.get('variantImage', '')
+        
+        # ===== GET STOCK QUANTITY =====
+        # Try multiple sources for stock information
+        total_stock = 0
+        
+        # Method 1: Try the stock API endpoint (most accurate)
+        try:
+            stock_data = self.service.get_stock_by_vid(vid)
+            if stock_data:
+                total_stock = sum(int(item.get('stockNum', 0)) for item in stock_data)
+                print(f"📦 Stock from API for {vid}: {total_stock}")
+        except Exception as e:
+            print(f"⚠️ Error getting stock from API for vid {vid}: {e}")
+        
+        # Method 2: If API returned 0, try inventoryNum from variant data
+        if total_stock == 0:
+            inventory_num = variant_data.get('inventoryNum')
+            if inventory_num is not None:
+                try:
+                    total_stock = int(inventory_num)
+                    print(f"📦 Stock from inventoryNum for {vid}: {total_stock}")
+                except (ValueError, TypeError):
+                    total_stock = 0
+        
+        # Method 3: Try inventoryNum from nested data
+        if total_stock == 0:
+            # Sometimes inventory is in a nested structure
+            inventories = variant_data.get('inventories', [])
+            if inventories:
+                try:
+                    total_stock = sum(int(item.get('quantity', 0)) for item in inventories)
+                    print(f"📦 Stock from inventories for {vid}: {total_stock}")
+                except (ValueError, TypeError):
+                    total_stock = 0
+        
+        # Method 4: Check if there's a stock field directly
+        if total_stock == 0:
+            stock_field = variant_data.get('stock', 0)
+            if stock_field:
+                try:
+                    total_stock = int(stock_field)
+                    print(f"📦 Stock from stock field for {vid}: {total_stock}")
+                except (ValueError, TypeError):
+                    total_stock = 0
+        
+        # Method 5: Try to get from product data (fallback)
+        if total_stock == 0:
+            # Some products have a listedNum field
+            listed_num = variant_data.get('listedNum', 0)
+            if listed_num:
+                try:
+                    total_stock = int(listed_num)
+                    print(f"📦 Stock from listedNum for {vid}: {total_stock}")
+                except (ValueError, TypeError):
+                    total_stock = 0
+        
+        print(f"📊 Final stock for variant {vid}: {total_stock}")
+        
+        # Build options dict
+        options = {}
+        if color:
+            options['Color'] = color
+        if size:
+            options['Size'] = size
+        
+        # Determine SKU
+        sku = variant_sku
+        if not sku:
+            sku = f"VAR-{vid}"
+        
+        # Create or update variant
+        variant, created = ProductVariant.objects.update_or_create(
+            sku=sku,
+            defaults={
+                'product': product_obj,
+                'cj_vid': vid,
+                'options': options,
+                'option1': size or '',
+                'option2': color or '',
+                'price': Decimal(str(variant_price)) if variant_price else Decimal('0.00'),
+                'compare_at_price': product_obj.compare_at_price,
+                'quantity': total_stock,
+                'track_quantity': True,
+                'low_stock_threshold': 5,
+                'barcode': variant_data.get('barcode', ''),
+            }
+        )
+        
+        # ===== HANDLE VARIANT IMAGE =====
+        if variant_image_url:
+            try:
+                # Download and save the variant image
+                import requests
+                from django.core.files.base import ContentFile
+                import io
+                from PIL import Image
+                
+                # Clean up URL
+                if not variant_image_url.startswith('http'):
+                    if variant_image_url.startswith('//'):
+                        variant_image_url = 'https:' + variant_image_url
+                    else:
+                        variant_image_url = 'https://' + variant_image_url
+                
+                # Download image
+                response = requests.get(variant_image_url, timeout=15, stream=True)
+                
+                if response.status_code == 200:
+                    content_type = response.headers.get('content-type', '')
+                    if content_type.startswith('image/'):
+                        content = response.content
+                        
+                        # Compress if too large (max 5MB for variant images)
+                        max_bytes = 5 * 1024 * 1024
+                        if len(content) > max_bytes:
+                            try:
+                                img = Image.open(io.BytesIO(content))
+                                
+                                # Convert to RGB if necessary
+                                if img.mode in ('RGBA', 'LA', 'P'):
+                                    background = Image.new('RGB', img.size, (255, 255, 255))
+                                    if img.mode == 'P':
+                                        img = img.convert('RGBA')
+                                    if img.mode == 'RGBA':
+                                        background.paste(img, mask=img.split()[-1])
+                                    else:
+                                        background.paste(img)
+                                    img = background
+                                elif img.mode != 'RGB':
+                                    img = img.convert('RGB')
+                                
+                                # Compress
+                                quality = 85
+                                output = io.BytesIO()
+                                img.save(output, format='JPEG', quality=quality, optimize=True)
+                                compressed_size = len(output.getvalue())
+                                
+                                while compressed_size > max_bytes and quality > 20:
+                                    quality -= 10
+                                    output = io.BytesIO()
+                                    img.save(output, format='JPEG', quality=quality, optimize=True)
+                                    compressed_size = len(output.getvalue())
+                                
+                                content = output.getvalue()
+                                print(f"✅ Compressed variant image: {len(content)/1024/1024:.1f}MB")
+                            except Exception as e:
+                                print(f"⚠️ Error compressing variant image: {e}")
+                        
+                        # Generate filename
+                        filename = variant_image_url.split('/')[-1].split('?')[0]
+                        if not filename or '.' not in filename:
+                            filename = f"variant_{vid}.jpg"
+                        elif not filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
+                            filename = filename.split('.')[0] + '.jpg'
+                        
+                        # Save the image
+                        variant.image.save(filename, ContentFile(content), save=True)
+                        print(f"✅ Saved variant image for {vid}")
+            except Exception as e:
+                print(f"⚠️ Failed to save variant image for {vid}: {e}")
+        
+        # Create or update inventory
+        inventory, _ = ProductInventory.objects.update_or_create(
+            sku=sku,
+            defaults={
+                'quantity': total_stock,
+                'track_quantity': True,
+                'low_stock_threshold': 5,
+                'allow_backorders': False,
+            }
+        )
+        
+        variant.inventory = inventory
+        variant.save()
+        
+        print(f"✅ Variant {vid}: stock={total_stock}, sku={sku}")
+        
+        return variant, created
+
+    # ============================================================
+    # ===== MAIN METHOD: SYNC ALL VARIANTS =====
+    # ============================================================
+    
+    def sync_all_variants(self, product_obj, variants_data=None):
+        """
+        Sync ALL CJ variants for a product to your ProductVariant model.
+        Now includes variant images and proper stock handling.
+        
+        Args:
+            product_obj: Your local Product instance
+            variants_data: Optional pre-fetched variants data from CJ
+        
+        Returns:
+            dict: Statistics about synced variants (always has 'total' key)
+        """
+        from builder.models import ProductVariant
+        
+        # Initialize stats with default values
+        stats = {
+            'total': 0,
+            'created': 0,
+            'updated': 0,
+            'failed': 0,
+            'variants': []
+        }
+        
+        if not product_obj.cj_pid:
+            print("No CJ PID found for this product")
+            stats['error'] = 'No CJ PID'
+            return stats
+        
+        # Get variants from CJ if not provided
+        if variants_data is None:
+            # Try the primary method first
+            variants_data = self.service.get_variants(product_obj.cj_pid)
+            
+            # If no variants found, try the alternative method
+            if not variants_data:
+                print("No variants found with primary method, trying alternative...")
+                variants_data = self.service.get_variants_alternative(product_obj.cj_pid)
+        
+        if not variants_data:
+            print(f"No variants found for PID: {product_obj.cj_pid}")
+            stats['error'] = 'No variants found'
+            return stats
+        
+        print(f"Found {len(variants_data)} variants for PID: {product_obj.cj_pid}")
+        
+        # Log first few variants for debugging
+        for i, v in enumerate(variants_data[:3]):
+            print(f"  Variant {i+1}: vid={v.get('vid')}, key={v.get('variantKey')}, sku={v.get('variantSku')}")
+            print(f"    Inventory: {v.get('inventoryNum', 'N/A')}")
+            if v.get('variantImage'):
+                print(f"    Image: {v.get('variantImage')[:50]}...")
+        
+        stats['total'] = len(variants_data)
+        
+        colors = set()
+        sizes = set()
+        
+        # Delete existing variants for this product to avoid duplicates
+        existing_variants = ProductVariant.objects.filter(product=product_obj)
+        if existing_variants.exists():
+            print(f"Deleting {existing_variants.count()} existing variants before re-sync...")
+            existing_variants.delete()
+        
+        for variant_data in variants_data:
+            try:
+                vid = variant_data.get('vid')
+                if not vid:
+                    stats['failed'] += 1
+                    continue
+                
+                variant_key = variant_data.get('variantKey', '')
+                variant_image = variant_data.get('variantImage', '')
+                
+                # Extract color and size using the improved method
+                color_value, size_value = self._extract_color_size(variant_key)
+                
+                if color_value:
+                    colors.add(color_value)
+                if size_value:
+                    sizes.add(size_value)
+                
+                # Create variant with image and stock
+                variant, created = self._create_or_update_variant(
+                    product_obj=product_obj,
+                    vid=vid,
+                    variant_data=variant_data,
+                    color=color_value,
+                    size=size_value
+                )
+                
+                if created:
+                    stats['created'] += 1
+                else:
+                    stats['updated'] += 1
+                
+                stats['variants'].append({
+                    'vid': vid,
+                    'created': created,
+                    'color': color_value,
+                    'size': size_value,
+                    'sku': variant_data.get('variantSku', ''),
+                    'price': variant_data.get('variantSellPrice'),
+                    'stock': variant.quantity,
+                    'has_image': bool(variant_image)
+                })
+                
+                print(f"✅ Synced variant: {variant_key} -> Color: {color_value}, Size: {size_value}, Stock: {variant.quantity}")
+                
+            except Exception as e:
+                print(f"Error syncing variant {variant_data.get('vid')}: {e}")
+                stats['failed'] += 1
+        
+        # Update product with color and size options
+        if colors:
+            product_obj.colors = ', '.join(sorted(colors))
+        if sizes:
+            product_obj.sizes = ', '.join(sorted(sizes))
+        
+        product_obj.has_variants = len(variants_data) > 1
+        product_obj.save()
+        
+        print(f"✅ Variant sync complete: {stats['created']} created, {stats['updated']} updated, {stats['failed']} failed")
+        print(f"📊 Colors: {', '.join(sorted(colors))}")
+        print(f"📊 Sizes: {', '.join(sorted(sizes))}")
+        
+        return stats
+
+    # ============================================================
+    # ===== SINGLE VARIANT SYNC (for updating a single variant) =====
+    # ============================================================
+    
+    def sync_single_variant(self, product_obj, vid):
+        """
+        Sync a single variant from CJ to your ProductVariant model.
+        
+        Args:
+            product_obj: Your local Product instance
+            vid: The CJ variant ID to sync
+        
+        Returns:
+            dict: Statistics about the synced variant
+        """
+        stats = {
+            'success': False,
+            'vid': vid,
+            'created': False,
+            'updated': False,
+            'error': None
         }
         
         try:
-            response = requests.post(url, headers=self.headers, json=payload)
-            return response.json()
+            # Get variant details from CJ
+            variant_data = self.service.get_variant_details(vid)
+            
+            if not variant_data:
+                stats['error'] = 'Variant not found in CJ'
+                return stats
+            
+            # Extract color and size
+            variant_key = variant_data.get('variantKey', '')
+            color_value, size_value = self._extract_color_size(variant_key)
+            
+            # Create or update variant
+            variant, created = self._create_or_update_variant(
+                product_obj=product_obj,
+                vid=vid,
+                variant_data=variant_data,
+                color=color_value,
+                size=size_value
+            )
+            
+            stats['success'] = True
+            stats['created'] = created
+            stats['updated'] = not created
+            stats['variant'] = {
+                'id': variant.id,
+                'sku': variant.sku,
+                'color': color_value,
+                'size': size_value,
+                'price': float(variant.price) if variant.price else 0,
+                'quantity': variant.quantity
+            }
+            
+            # Update product colors/sizes if needed
+            if color_value:
+                existing_colors = set(product_obj.colors.split(', ')) if product_obj.colors else set()
+                existing_colors.add(color_value)
+                product_obj.colors = ', '.join(sorted(existing_colors))
+            
+            if size_value:
+                existing_sizes = set(product_obj.sizes.split(', ')) if product_obj.sizes else set()
+                existing_sizes.add(size_value)
+                product_obj.sizes = ', '.join(sorted(existing_sizes))
+            
+            product_obj.save()
+            
+            print(f"✅ Synced single variant: {variant_key} -> Color: {color_value}, Size: {size_value}")
+            
         except Exception as e:
-            print(f"Error creating CJ order: {e}")
-            return {"code": 500, "message": str(e)}
-    def get_variant_details(self, vid):
-        """Fetches the variant details (including variantKey) from CJ."""
-        url = f"{self.base_url}/api2.0/v1/product/variant/queryByVid"
-        params = {"vid": vid}
+            stats['error'] = str(e)
+            print(f"Error syncing variant {vid}: {e}")
+        
+        return stats
 
-        print("==============================================================")
-        print("==============================================================")
-        print(f"Got to func one {url}")
-        print("==============================================================")
-        print("==============================================================")
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=20)
-            data = response.json()
-            print("==============================================================")
-            print("==============================================================")
-            print(f"New variant data is {data}")
-            print("==============================================================")
-            print("==============================================================")
-
-            if data.get('code') == 200:
-                return data.get('data')
-        except Exception as e:
-            print(f"CJ API Error (queryByVid): {e}")
-        return None
-
-    # --- NEW METHOD: PROCESS & SAVE DATA ---
+    # ============================================================
+    # ===== LEGACY METHOD (kept for compatibility) =====
+    # ============================================================
+    
     def sync_product_color_size(self, product_obj):
         """
-        Takes a Django Product object, calls CJ for its variant details,
-        extracts color/size from the variantKey, and saves the model.
+        DEPRECATED: Use sync_all_variants instead.
+        This is kept for backwards compatibility.
         """
-        # Endpoint to get details for ONE specific variant
-        url = f"{self.base_url}/api2.0/v1/product/variant/queryByVid"
-        params = {"vid": product_obj.cj_vid}
-        print("==============================================================")
-        print("==============================================================")
-        print(f"Got to func two {url}")
-        print("==============================================================")
-        print("==============================================================")
-        
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=20)
-            res_json = response.json()
-            print("==============================================================")
-            print("==============================================================")
-            print(f"Json Got to func two Json {res_json}")
-            print("==============================================================")
-            print("==============================================================")
-            
-            if res_json.get('code') == 200 and res_json.get('data'):
-                variant_data = res_json['data']
-                print("==============================================================")
-                print("==============================================================")
-                print(f"VD Got to func two Vriant data {variant_data}")
-                print("==============================================================")
-                print("==============================================================")
-                # variantKey looks like "Color:Black-Size:M"
-                variant_key = variant_data.get('variantKey', '')
-                print('variant key is: ',variant_key)
-                
-                if variant_key:
-                    # Logic to split the string into actual values
-                    print("Inside key")
-                    parts = variant_key.split('-')
-                    print(f'parts: {parts}')
-                    for part in parts:
-                        if ':' in part:
-                            print("hiphen function")
-                            attr_name, attr_val = part.split(':', 1)
-                            clean_name = attr_name.strip().lower()
-                            print(f'Clean name is {clean_name}')
-                            clean_val = attr_val.strip()
-                            print(f'Clean value is {clean_val}')
-                            
-                            if clean_name == 'color':
-                                product_obj.colors = clean_val
-                            elif clean_name == 'size':
-                                product_obj.sizes = clean_val
-
-                        elif ',' in part:
-                            print("Coma function")
-                            attr_name, attr_val = part.split(',', 1)
-                            clean_name = attr_name.strip().lower()
-                            print(f'Clean name is {clean_name}')
-                            clean_val = attr_val.strip()
-                            print(f'Clean value is {clean_val}')
-                            
-                            if clean_name == 'color':
-                                product_obj.colors = clean_val
-                            elif clean_name == 'size':
-                                product_obj.sizes = clean_val
-
-                        
-                    
-                    # Update other potential missing data like price while we're at it
-                    if not product_obj.price:
-                        product_obj.price = variant_data.get('variantPrice')
-                        
-                    product_obj.save()
-                    return True
-        except Exception as e:
-            print(f"Error syncing attributes for VID {product_obj.cj_vid}: {e}")
-        
-        return False
-# def fulfill_cj_order(order):
-#     """
-#     Identifies CJ products in an order and sends them to CJ for fulfillment using real data.
-#     """
-#     from builder.models import CJSettings, Product
-#     import requests
-#     import logging
-
-#     logger = logging.getLogger(__name__)
-
-#     # 1. Setup Service and Token
-#     account = CJSettings.objects.first()
-#     if not account or not account.access_token:
-#         logger.error("CJ Access Token missing from CJSettings.")
-#         return
-    
-#     # The value for platformToken is exactly the same as your access_token
-#     headers = {
-#         "CJ-Access-Token": account.access_token,
-#         "platformToken": account.access_token,  # <--- ADD THIS
-#         "Content-Type": "application/json"
-#     }
-    
-#     cj_items = []
-    
-#     # 2. Map items to CJ VIDs
-#     for item in order.items.all():
-#         try:
-#             product_obj = Product.objects.get(id=item.product_id)
-#             if product_obj.cj_pid:
-#                 # Ensure the vid is the actual CJ Variant ID, not a string like 'Color:None'
-#                 cj_items.append({
-#                     "vid": product_obj.cj_vid, 
-#                     "quantity": item.quantity,
-#                     "shippingName": item.product_title[:100] # CJ limits title length
-#                 })
-#         except (Product.DoesNotExist, ValueError):
-#             continue
-
-#     if not cj_items:
-#         return 
-
-#     # 3. Build Payload with Real Data & Fallbacks
-#     # CJ API is strict: City, Province, and Phone cannot be empty strings.
-#     url = "https://developers.cjdropshipping.com/api2.0/v1/shopping/order/createOrder"
-    
-# #     payload = {
-# #     "orderNumber": str(order.order_number),
-# #     "shippingZip": str(order.delivery_zip or "12345"),
-# #     "shippingCountryCode": "US", # Original field
-# #     "countryCode": "US",         # ADD THIS: Satisfies V2 validator
-# #     "shippingProvince": str(order.delivery_state or "CA"),
-# #     "shippingCity": str(order.delivery_city or "City"),
-# #     "shippingAddress": str(order.delivery_address or "Address"),
-# #     "shippingCustomerName": str(order.customer_name or "Customer"),
-# #     "shippingPhone": str(order.customer_phone or "0000000000"),
-# #     "remark": f"Order from {order.page.subdomain}",
-# #     "payType": 3,
-# #     "products": cj_items # Ensure cj_items uses the REAL Hex VIDs!
-# # }
-#     # Call the freight calculator first
-#     cj_service = CJService(token=account.access_token)
-#     best_logistic = cj_service.get_best_logistic(item.product_variant, "US")
-#     print(f"Best logistic selected: {best_logistic}")
-#     payload = {
-#         "orderNumber": "ORD-F49E69F6",
-
-#         "platform": "api",               # 🔥 REQUIRED
-
-#         "shippingCountryCode": "US",
-#         "shippingCountry": "United States",
-#         "shippingProvince": "California",
-#         "shippingCity": "Los Angeles",
-#         "shippingAddress": "12345 Street",
-#         "shippingZip": "12345",
-#         "shippingCustomerName": "Mfecho Jerase",
-#         "shippingPhone": "0000000000",
-
-#         "remark": "Order from lux1",
-#         "payType": 3,
-#         "fromCountryCode": "CN",
-
-#         "logisticName": best_logistic,
-#         "shopLogisticsType": 1,
-
-#         "products": [
-#             {
-#                 "vid": "1992892143659040770",
-#                 "quantity": 1
-#             }
-#         ]
-#     }
-#     print(payload["shippingAddress"])
-#     # 4. Execute Request
-#     try:
-#         response = requests.post(url, headers=headers, json=payload, timeout=15)
-#         res_data = response.json()
-
-#         if res_data.get('code') == 200:
-#             # Successfully imported to CJ
-#             cj_order_id = res_data.get('data', {}).get('orderId')
-#             order.cj_order_id = cj_order_id
-#             order.status = 'processing' # Or your internal status
-#             order.save()
-#             print(f"✅ Success: Order {order.order_number} pushed to CJ. CJ ID: {cj_order_id}")
-#         else:
-#             print(f"❌ CJ API Error: {res_data.get('message')}")
-#             # Log the payload for debugging if it still fails
-#             print(f"Debug Payload: {payload}")
-            
-#     except Exception as e:
-#         logger.error(f"Fulfillment Connection Failed: {str(e)}")
-
+        print("⚠️ sync_product_color_size is deprecated. Use sync_all_variants instead.")
+        return self.sync_all_variants(product_obj)
 
 # #         # http://localhost:8000/builder/cj-search/lux1/?q=phone
