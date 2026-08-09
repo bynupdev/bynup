@@ -1598,7 +1598,7 @@ class CJSettings(models.Model):
     
     # API Configuration
     api_key = models.CharField(max_length=255, help_text="Your CJ Dropshipping API key")
-    access_token = models.CharField(max_length=512, blank=True, null=True)
+    access_token = models.CharField(max_length=9999, blank=True, null=True)
     token_expiry = models.DateTimeField(blank=True, null=True)
     api_status = models.CharField(
         max_length=20,

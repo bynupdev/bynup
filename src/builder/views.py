@@ -5324,44 +5324,52 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def cj_settings(request, subdomain):
-    """CJ Settings view"""
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    
+
     try:
         cj_settings_obj = page.cj_settings.get()
     except CJSettings.DoesNotExist:
         cj_settings_obj = None
-    
+
     if request.method == 'POST':
         action = request.POST.get('action')
-        
+
         if action == 'save_settings':
             # Create or update settings
             if not cj_settings_obj:
                 cj_settings_obj = CJSettings(page=page)
-            
+
             api_key = request.POST.get('api_key', '').strip()
+
+            # Only update if a new key is provided
             if api_key:
                 cj_settings_obj.api_key = api_key
-                
-                # Test the API key
+
+                # TEST THE API KEY HERE
                 try:
-                    cj_service = CJService(api_key, str(page.id))
-                    test_result = cj_service.test_connection()
+                    # Import your CJ service
+                    from .services.cj_service import CJService
                     
-                    if test_result['success']:
+                    # Try to get access token with the API key
+                    test_service = CJService(api_key)
+                    # Try a simple API call to validate
+                    response = test_service.get_warehouses()
+                    
+                    # If we got a valid response (even empty list is fine)
+                    if response is not None:
                         cj_settings_obj.api_status = 'active'
                         cj_settings_obj.is_active = True
-                        messages.success(request, 'CJ API connection successful!')
+                        messages.success(request, 'API key validated successfully!')
                     else:
                         cj_settings_obj.api_status = 'invalid'
                         cj_settings_obj.is_active = False
-                        messages.error(request, f'API connection failed: {test_result["message"]}')
+                        messages.error(request, 'Invalid API key. Please check and try again.')
                         
                 except Exception as e:
                     cj_settings_obj.api_status = 'invalid'
-                    messages.error(request, f'API test error: {str(e)}')
-            
+                    cj_settings_obj.is_active = False
+                    messages.error(request, f'API key validation failed: {str(e)}')
+
             # Update other settings
             cj_settings_obj.auto_fulfill = request.POST.get('auto_fulfill') == 'on'
             cj_settings_obj.auto_sync_prices = request.POST.get('auto_sync_prices') == 'on'
@@ -5369,50 +5377,50 @@ def cj_settings(request, subdomain):
             cj_settings_obj.default_profit_margin = request.POST.get('default_profit_margin', '30.00')
             cj_settings_obj.default_warehouse = request.POST.get('default_warehouse', 'CN')
             cj_settings_obj.currency = request.POST.get('currency', 'USD')
-            cj_settings_obj.save()
+            cj_settings_obj.price_sync_interval = int(request.POST.get('price_sync_interval', 24))
+            cj_settings_obj.inventory_sync_interval = int(request.POST.get('inventory_sync_interval', 6))
             
+            cj_settings_obj.save()
             messages.success(request, 'Settings saved successfully!')
-            return redirect('cj_settings', subdomain=subdomain)
-        
+
         elif action == 'test_connection' and cj_settings_obj:
             # Test connection with existing API key
             try:
-                cj_service = CJService(cj_settings_obj.api_key, str(page.id))
-                test_result = cj_service.test_connection()
+                from .services.cj_service import CJService
+                test_service = CJService(cj_settings_obj.api_key)
+                response = test_service.get_warehouses()
                 
-                if test_result['success']:
+                if response is not None:
                     cj_settings_obj.api_status = 'active'
-                    cj_settings_obj.save(update_fields=['api_status'])
+                    cj_settings_obj.is_active = True
+                    cj_settings_obj.save(update_fields=['api_status', 'is_active'])
                     messages.success(request, 'API connection test successful!')
                 else:
                     cj_settings_obj.api_status = 'invalid'
-                    cj_settings_obj.save(update_fields=['api_status'])
-                    messages.error(request, f'API test failed: {test_result["message"]}')
+                    cj_settings_obj.is_active = False
+                    cj_settings_obj.save(update_fields=['api_status', 'is_active'])
+                    messages.error(request, 'API test failed. Invalid API key.')
                     
             except Exception as e:
-                messages.error(request, f'Connection test error: {str(e)}')
-            
-            return redirect('cj_settings', subdomain=subdomain)
-        
+                messages.error(request, f'Connection test failed: {str(e)}')
+
         elif action == 'toggle_active' and cj_settings_obj:
-            # Toggle active status
             cj_settings_obj.is_active = not cj_settings_obj.is_active
             cj_settings_obj.save(update_fields=['is_active'])
-            
             status = 'activated' if cj_settings_obj.is_active else 'deactivated'
             messages.success(request, f'CJ integration {status}')
-            return redirect('cj_settings', subdomain=subdomain)
-    
+
+        return redirect('cj_settings', subdomain=subdomain)
+
     # Calculate API usage for display
     api_usage = {
         'today': cj_settings_obj.daily_api_calls if cj_settings_obj else 0,
         'limit': cj_settings_obj.max_daily_calls if cj_settings_obj else 950,
         'percentage': 0
     }
-    
     if cj_settings_obj and cj_settings_obj.max_daily_calls > 0:
         api_usage['percentage'] = (cj_settings_obj.daily_api_calls / cj_settings_obj.max_daily_calls) * 100
-    
+
     context = {
         'page': page,
         'cj_settings': cj_settings_obj,
@@ -5431,9 +5439,8 @@ def cj_settings(request, subdomain):
             ('RU', 'Russia Warehouse'),
         ]
     }
-    
-    return render(request, 'builder/cj_settings.html', context)
 
+    return render(request, 'builder/cj_settings.html', context)
 
 
 def json_response(success: bool, data: Dict = None, error: str = None, 

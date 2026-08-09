@@ -1,112 +1,1046 @@
+{% extends "builder/base.html" %}
+{% load static %}
 
+{% block title %}CJ Dropshipping · Product Search{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+<style>
+    .cj-search-page {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f6f9fc;
+        padding: 32px 24px 60px;
+        min-height: calc(100vh - 200px);
+    }
+    .cj-container {
+        max-width: 1280px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .cj-subnav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 20px;
+        margin-bottom: 28px;
+        padding: 12px 20px;
+        background: white;
+        border-radius: 60px;
+        box-shadow: 0 2px 12px rgba(0, 20, 40, 0.04);
+    }
+    .cj-subnav a {
+        color: #2c4a6a;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 40px;
+        transition: 0.15s;
+    }
+    .cj-subnav a:hover {
+        background: #ecf3fa;
+        color: #0a66c2;
+    }
+    .cj-subnav a.active {
+        background: #0a66c2;
+        color: white;
+    }
+    .cj-subnav .divider {
+        color: #d0ddee;
+        font-size: 18px;
+    }
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        gap: 16px;
+    }
+    .page-header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #122b44;
+    }
+    .page-header h1 i {
+        color: #0a66c2;
+        background: rgba(10, 102, 194, 0.08);
+        padding: 10px;
+        border-radius: 14px;
+        font-size: 22px;
+    }
+    .header-stats {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: white;
+        padding: 8px 20px 8px 24px;
+        border-radius: 60px;
+        box-shadow: 0 4px 12px rgba(0, 20, 40, 0.04);
+    }
+    .header-stats span {
+        font-size: 14px;
+        font-weight: 500;
+        color: #2c4a6a;
+    }
+    .header-stats .badge-count {
+        background: #0a66c2;
+        color: white;
+        padding: 2px 12px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .search-section {
+        background: white;
+        border-radius: 24px;
+        padding: 24px 28px;
+        box-shadow: 0 8px 30px rgba(0, 20, 40, 0.06);
+        margin-bottom: 32px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+    }
+    .search-input-wrapper {
+        flex: 1 1 320px;
+        position: relative;
+    }
+    .search-input-wrapper i {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #7d96b2;
+        font-size: 16px;
+    }
+    .search-input-wrapper input {
+        width: 100%;
+        padding: 16px 20px 16px 50px;
+        border: 1.5px solid #e2e9f2;
+        border-radius: 60px;
+        font-size: 15px;
+        font-weight: 500;
+        background: #f9fcff;
+        transition: 0.2s;
+        color: #122b44;
+    }
+    .search-input-wrapper input:focus {
+        border-color: #0a66c2;
+        box-shadow: 0 0 0 4px rgba(10, 102, 194, 0.08);
+        outline: none;
+        background: white;
+    }
+    .search-input-wrapper input::placeholder {
+        color: #97afc7;
+        font-weight: 400;
+    }
+    .search-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+    }
+    .btn-primary {
+        background: #0a66c2;
+        color: white;
+        border: none;
+        padding: 14px 32px;
+        border-radius: 60px;
+        font-weight: 600;
+        font-size: 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: 0.15s;
+        box-shadow: 0 4px 12px rgba(10, 102, 194, 0.2);
+    }
+    .btn-primary:hover {
+        background: #084a8f;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(10, 102, 194, 0.25);
+    }
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .btn-outline {
+        background: transparent;
+        border: 1.5px solid #d0ddee;
+        color: #2c4a6a;
+        padding: 12px 24px;
+        border-radius: 60px;
+        font-weight: 500;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: 0.15s;
+    }
+    .btn-outline:hover {
+        border-color: #0a66c2;
+        color: #0a66c2;
+        background: rgba(10, 102, 194, 0.03);
+    }
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .results-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #122b44;
+    }
+    .results-header h2 span {
+        font-weight: 400;
+        color: #5d7f9e;
+        font-size: 16px;
+    }
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 24px;
+    }
+    .product-card {
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 20, 40, 0.04);
+        transition: 0.25s ease;
+        border: 1px solid #ebf0f7;
+        display: flex;
+        flex-direction: column;
+    }
+    .product-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 40px rgba(0, 20, 40, 0.08);
+        border-color: #d0e0f0;
+    }
+    .product-image {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: #f2f6fc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+    }
+    .product-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transition: 0.3s;
+    }
+    .product-card:hover .product-image img {
+        transform: scale(1.02);
+    }
+    .product-badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: rgba(10, 102, 194, 0.85);
+        backdrop-filter: blur(4px);
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 14px;
+        border-radius: 40px;
+        letter-spacing: 0.3px;
+    }
+    .product-body {
+        padding: 18px 20px 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .product-title {
+        font-weight: 600;
+        font-size: 16px;
+        color: #0b1e30;
+        line-height: 1.4;
+        margin-bottom: 6px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .product-sku {
+        font-size: 12px;
+        color: #7d96b2;
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+    .product-price-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .price-current {
+        font-size: 22px;
+        font-weight: 700;
+        color: #0a1e32;
+    }
+    .price-compare {
+        font-size: 15px;
+        color: #97afc7;
+        text-decoration: line-through;
+        font-weight: 400;
+    }
+    .product-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+    }
+    .product-actions .btn-sm {
+        flex: 1;
+        padding: 10px 0;
+        border-radius: 40px;
+        font-weight: 600;
+        font-size: 13px;
+        border: none;
+        cursor: pointer;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .btn-import {
+        background: #0a66c2;
+        color: white;
+    }
+    .btn-import:hover {
+        background: #084a8f;
+    }
+    .btn-import:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+    .btn-import.imported {
+        background: #10b981;
+        cursor: default;
+    }
+    .btn-import.imported:hover {
+        background: #10b981;
+    }
+    .btn-import.failed {
+        background: #dc2626;
+        cursor: pointer;
+    }
+    .btn-import.failed:hover {
+        background: #b91c1c;
+    }
+    .btn-detail {
+        background: #ecf3fa;
+        color: #1d3b5a;
+    }
+    .btn-detail:hover {
+        background: #dce8f5;
+    }
 
+    /* ---- Offline/Network Error State ---- */
+    .network-error-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 28px;
+        border: 1px solid #f0d0d0;
+        grid-column: 1 / -1;
+    }
+    .network-error-state i {
+        font-size: 48px;
+        color: #f59e0b;
+        margin-bottom: 16px;
+    }
+    .network-error-state h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1d3b5a;
+        margin-bottom: 8px;
+    }
+    .network-error-state p {
+        color: #5d7f9e;
+        max-width: 420px;
+        margin: 0 auto 20px;
+        font-size: 15px;
+    }
 
- {%extends "builder/base.html" %}
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 28px;
+        border: 1px dashed #d0ddee;
+    }
+    .empty-state i {
+        font-size: 56px;
+        color: #bfd5e9;
+        margin-bottom: 24px;
+    }
+    .empty-state h3 {
+        font-size: 22px;
+        font-weight: 600;
+        color: #1d3b5a;
+        margin-bottom: 8px;
+    }
+    .empty-state p {
+        color: #5d7f9e;
+        max-width: 420px;
+        margin: 0 auto 24px;
+        font-size: 15px;
+    }
+    .shimmer-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #ebf0f7;
+        overflow: hidden;
+    }
+    .shimmer-image {
+        width: 100%;
+        aspect-ratio: 1/1;
+        background: #f0f5fc;
+    }
+    .shimmer-body {
+        padding: 18px 20px 20px;
+    }
+    .shimmer-line {
+        height: 14px;
+        background: #edf2f9;
+        border-radius: 40px;
+        margin-bottom: 10px;
+        width: 80%;
+    }
+    .shimmer-line.short {
+        width: 50%;
+    }
+    .shimmer-line.long {
+        width: 95%;
+    }
+    .toast-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 380px;
+        width: 100%;
+    }
+    .toast-message {
+        background: #1e293b;
+        color: white;
+        padding: 14px 20px;
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideUp 0.3s ease;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    .toast-message.success {
+        border-left: 4px solid #10b981;
+    }
+    .toast-message.error {
+        border-left: 4px solid #dc2626;
+    }
+    .toast-message.info {
+        border-left: 4px solid #0a66c2;
+    }
+    .toast-message i {
+        font-size: 18px;
+    }
+    .toast-message.success i {
+        color: #10b981;
+    }
+    .toast-message.error i {
+        color: #dc2626;
+    }
+    .toast-message.info i {
+        color: #0a66c2;
+    }
+    .toast-message .toast-close {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 4px;
+    }
+    .toast-message .toast-close:hover {
+        color: white;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 768px) {
+        .cj-search-page { padding: 20px 16px; }
+        .cj-subnav {
+            border-radius: 30px;
+            padding: 10px 16px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            gap: 6px 12px;
+        }
+        .cj-subnav a {
+            font-size: 13px;
+            padding: 4px 10px;
+            white-space: nowrap;
+        }
+        .cj-subnav .divider { font-size: 14px; }
+    }
+    @media (max-width: 640px) {
+        .page-header { flex-direction: column; align-items: stretch; }
+        .header-stats {
+            justify-content: space-around;
+            padding: 6px 12px;
+            flex-wrap: wrap;
+        }
+        .search-section {
+            padding: 18px;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-actions { flex-direction: column; width: 100%; }
+        .btn-primary { width: 100%; justify-content: center; }
+        .results-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+    }
+    @media (max-width: 440px) {
+        .results-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
 
- {%block content%}
+{% block content %}
+<div class="cj-search-page">
+    <div class="cj-container">
 
-<div class="container-fluid py-4">
-    <div class="card bg-dark text-white border-0 shadow-sm mb-4">
-        <div class="card-body p-4">
-            <h4 class="mb-1">Import from CJ Dropshipping</h4>
-            <p class="text-white-50">Paste a Product URL from CJ or search by keywords.</p>
-            
-            <form method="GET" action="." class="mt-3">
-                <div class="input-group input-group-lg shadow-sm">
-                    <input type="text" name="q" class="form-control border-0" 
-                           placeholder="Paste link (e.g., https://cjdropshipping.com/product/...) or keywords" 
-                           value="{{ query }}">
-                    <button class="btn btn-primary px-4" type="submit">
-                        <i class="fas fa-search me-2"></i> Find Product
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+        <!-- ===== SUB-NAVIGATION ===== -->
+        <nav class="cj-subnav">
+            <a href="{% url 'cj_dashboard' page.subdomain %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <span class="divider">|</span>
+            <a href="{% url 'cj_search_page' page.subdomain %}" class="active">
+                <i class="fas fa-search"></i> Search
+            </a>
+            <a href="{% url 'cj_products_list' page.subdomain %}">
+                <i class="fas fa-box"></i> My Products
+            </a>
+            <a href="{% url 'cj_orders' page.subdomain %}">
+                <i class="fas fa-truck"></i> Orders
+            </a>
+            <a href="{% url 'cj_sync_logs' page.subdomain %}">
+                <i class="fas fa-history"></i> Logs
+            </a>
+            <a href="{% url 'cj_settings' page.subdomain %}" style="margin-left: auto;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </nav>
 
-    {% if error_message %}
-    <div class="alert alert-danger border-0 shadow-sm">
-        <i class="fas fa-exclamation-circle me-2"></i> {{ error_message }}
-    </div>
-    {% endif %}
-
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4">
-        {% for product in cj_products %}
-        <div class="col">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="position-relative">
-                    <img src="{{ product.productImage }}" class="card-img-top" alt="{{ product.productNameEn }}" style="height: 200px; object-fit: cover;">
-                    
-                    <div class="position-absolute top-0 end-0 m-2">
-                        {% if product.in_stock %}
-                        <span class="badge bg-success shadow-sm">In Stock: {{ product.stock_qty }}</span>
-                        {% else %}
-                        <span class="badge bg-danger shadow-sm">Out of Stock</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="card-body d-flex flex-column">
-                    <h6 class="card-title text-truncate mb-1" title="{{ product.productNameEn }}">
-                        {{ product.productNameEn }}
-                    </h6>
-                    <p class="text-primary fw-bold mb-3">${{ product.sellPrice }}</p>
-                    
-                    <div class="mt-auto">
-                        <button class="btn btn-outline-primary w-100 btn-sm mb-2" 
-                                onclick="window.open('https://cjdropshipping.com/product/{{ product.cj_url_slug }}-p-{{ product.pid }}.html', '_blank')">
-                            <i class="fas fa-external-link-alt me-1"></i> View on CJ
-                        </button>
-                        <button class="btn btn-primary w-100" 
-                                onclick="importToStore('{{ product.pid }}')"
-                                >
-                            {% if product.in_stock %}Import Product{% else %}Unavailable{% endif %}
-                        </button>
-                    </div>
-                </div>
+        <!-- ===== PAGE HEADER ===== -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-search"></i>
+                Product Search
+            </h1>
+            <div class="header-stats">
+                <span><i class="far fa-clock"></i> <span id="lastSyncTime">-</span></span>
+                <span class="badge-count" id="resultCount">0</span>
             </div>
         </div>
-        {% empty %}
-        {% if query and not error_message %}
-        <div class="col-12 text-center py-5">
-            <i class="fas fa-box-open fa-3x text-light mb-3"></i>
-            <p class="text-muted">No products found for your search.</p>
+
+        <!-- ===== SEARCH BAR ===== -->
+        <div class="search-section">
+            <div class="search-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by product name or PID…" value="{{ query|default:'' }}" />
+            </div>
+            <div class="search-actions">
+                <button class="btn-primary" id="searchBtn">
+                    <i class="fas fa-arrow-right"></i> Search
+                </button>
+                <button class="btn-outline" id="clearBtn">
+                    <i class="fas fa-times-circle"></i> Clear
+                </button>
+                <button class="btn-outline" id="refreshBtn" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
         </div>
-        {% endif %}
-        {% endfor %}
+
+        <!-- ===== RESULTS ===== -->
+        <div class="results-header">
+            <h2>Products <span id="resultSubtitle">(0 found)</span></h2>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <span style="font-size:13px; color:#5d7f9e;">Sort by:</span>
+                <select id="sortSelect" style="border:1.5px solid #e2e9f2; border-radius:40px; padding:8px 16px; font-size:13px; font-weight:500; background:white; color:#1d3b5a;">
+                    <option value="relevance">Relevance</option>
+                    <option value="price-low">Price: Low → High</option>
+                    <option value="price-high">Price: High → Low</option>
+                    <option value="name">Name A → Z</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="resultsContainer">
+            <div class="results-grid" id="resultsGrid">
+                <!-- Shimmer loading cards -->
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+                <div class="shimmer-card"><div class="shimmer-image"></div><div class="shimmer-body"><div class="shimmer-line long"></div><div class="shimmer-line"></div><div class="shimmer-line short"></div></div></div>
+            </div>
+        </div>
+
+        <!-- ===== EMPTY STATE ===== -->
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <i class="fas fa-box-open"></i>
+            <h3>No products found</h3>
+            <p>Try adjusting your search terms. You can also search by CJ Product ID (PID) for exact matches.</p>
+            <button class="btn-primary" id="resetSearchBtn" style="padding:12px 32px; font-size:14px;">
+                <i class="fas fa-undo-alt"></i> Reset search
+            </button>
+        </div>
+
+        <!-- ===== TOAST CONTAINER ===== -->
+        <div class="toast-container" id="toastContainer"></div>
+
     </div>
 </div>
 
+{% block extra_js %}
 <script>
-function importToStore(pid) {
-    // Show loading state
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Importing...';
-    btn.disabled = true;
+    (function() {
+        'use strict';
 
-    fetch(`/builder/cj-import-product/{{ page.subdomain }}/${pid}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json'
+        // ----- DOM refs -----
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const resetSearchBtn = document.getElementById('resetSearchBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const resultCount = document.getElementById('resultCount');
+        const resultSubtitle = document.getElementById('resultSubtitle');
+        const sortSelect = document.getElementById('sortSelect');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // ----- state -----
+        let currentQuery = searchInput.value.trim() || '';
+        let currentSort = 'relevance';
+        let isLoading = false;
+        let products = [];
+        let importedPids = new Set();
+        let hasLoadedOnce = false;
+
+        // ----- toast notification -----
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            toast.className = `toast-message ${type}`;
+            const iconMap = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-triangle'
+            };
+            toast.innerHTML = `
+                <i class="fas ${iconMap[type] || iconMap.info}"></i>
+                <span>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, duration);
         }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.status === 'success') {
-            alert('Success! Product added to your shop.');
-            btn.innerHTML = 'Imported';
-            btn.classList.replace('btn-primary', 'btn-success');
-        } else {
-            alert('Error: ' + data.message);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+
+        // ----- update result count -----
+        function updateResultCount(count) {
+            resultCount.textContent = count;
+            resultSubtitle.textContent = `(${count} found)`;
         }
-    });
-}
+
+        // ----- render product cards -----
+        function renderProducts(productList) {
+            if (!productList || productList.length === 0) {
+                resultsGrid.innerHTML = '';
+                emptyState.style.display = 'block';
+                updateResultCount(0);
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            let html = '';
+            productList.forEach(p => {
+                const pid = p.pid || p.cj_product_id || p.id;
+                const title = p.productNameEn || p.productName || p.title || 'Untitled Product';
+                
+                let imageUrl = p.productImage || p.image || '/static/images/placeholder.png';
+                if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+                    imageUrl = 'https://' + imageUrl;
+                }
+                
+                const price = p.sellPrice || p.price || p.cj_price_usd || '0.00';
+                const comparePrice = p.suggestSellPrice || p.compare_at_price || null;
+                const isImported = importedPids.has(String(pid));
+
+                let importBtnClass = 'btn-import';
+                let importBtnText = '<i class="fas fa-cloud-download-alt"></i> Import';
+                let importDisabled = false;
+                let importData = `data-pid="${pid}"`;
+
+                if (isImported) {
+                    importBtnClass += ' imported';
+                    importBtnText = '<i class="fas fa-check"></i> Imported';
+                    importDisabled = true;
+                    importData = '';
+                }
+
+                html += `
+                    <div class="product-card" data-pid="${pid}">
+                        <div class="product-image">
+                            <img src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.src='/static/images/placeholder.png'" />
+                            ${isImported ? '<span class="product-badge"><i class="fas fa-check"></i> Imported</span>' : ''}
+                        </div>
+                        <div class="product-body">
+                            <div class="product-title">${title}</div>
+                            <div class="product-sku">PID: ${pid}</div>
+                            <div class="product-price-row">
+                                <span class="price-current">$${parseFloat(price).toFixed(2)}</span>
+                                ${comparePrice ? `<span class="price-compare">$${parseFloat(comparePrice).toFixed(2)}</span>` : ''}
+                            </div>
+                            <div class="product-actions">
+                                <button class="btn-sm ${importBtnClass}" ${importData} ${importDisabled ? 'disabled' : ''}>
+                                    ${importBtnText}
+                                </button>
+                                <button class="btn-sm btn-detail detail-btn" data-pid="${pid}">
+                                    <i class="fas fa-eye"></i> Detail
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsGrid.innerHTML = html;
+            updateResultCount(productList.length);
+
+            // ----- attach event listeners -----
+            document.querySelectorAll('.btn-import:not(.imported):not(:disabled)').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const pid = this.dataset.pid;
+                    if (pid) importProduct(pid, this);
+                });
+            });
+
+            document.querySelectorAll('.btn-import.failed').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const pid = this.dataset.pid;
+                    if (pid) {
+                        this.className = 'btn-sm btn-import';
+                        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+                        this.disabled = true;
+                        importProduct(pid, this);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.detail-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const pid = this.dataset.pid;
+                    if (pid) {
+                        window.location.href = `/builder/cj-product/${window.pageSubdomain}/${pid}/`;
+                    }
+                });
+            });
+        }
+
+        // ----- show network error state (no auto-refresh!) -----
+        function showNetworkError(message = 'Unable to connect to the server') {
+            resultsGrid.innerHTML = `
+                <div class="network-error-state">
+                    <i class="fas fa-wifi-slash"></i>
+                    <h3>Connection Error</h3>
+                    <p>${message}</p>
+                    <button class="btn-primary" id="networkRetryBtn" style="padding:12px 28px; font-size:14px;">
+                        <i class="fas fa-redo"></i> Retry
+                    </button>
+                </div>
+            `;
+            document.getElementById('networkRetryBtn')?.addEventListener('click', () => {
+                fetchProducts(currentQuery, currentSort);
+            });
+            emptyState.style.display = 'none';
+            updateResultCount(0);
+        }
+
+        // ----- fetch imported PIDs from backend -----
+        async function fetchImportedPids() {
+            try {
+                const response = await fetch(`/builder/cj-products-json/${window.pageSubdomain}/`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.products) {
+                        data.products.forEach(p => {
+                            if (p.cj_product_id) importedPids.add(String(p.cj_product_id));
+                        });
+                    }
+                }
+            } catch (err) {
+                // Silent fail - we'll still show products, just without import status
+                console.warn('Could not fetch imported PIDs:', err);
+            }
+        }
+
+        // ----- fetch products from server -----
+        async function fetchProducts(query, sort) {
+            // Prevent multiple simultaneous requests
+            if (isLoading) return;
+            isLoading = true;
+            searchBtn.disabled = true;
+
+            // Show shimmer
+            resultsGrid.innerHTML = Array(6).fill(0).map(() => `
+                <div class="shimmer-card">
+                    <div class="shimmer-image"></div>
+                    <div class="shimmer-body">
+                        <div class="shimmer-line long"></div>
+                        <div class="shimmer-line"></div>
+                        <div class="shimmer-line short"></div>
+                    </div>
+                </div>
+            `).join('');
+            emptyState.style.display = 'none';
+
+            try {
+                const url = new URL('/builder/cj-search/' + window.pageSubdomain + '/', window.location.origin);
+                const params = new URLSearchParams();
+                if (query) params.append('q', query);
+                params.append('sort', sort);
+                url.search = params.toString();
+
+                // Use AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                const response = await fetch(url.toString(), {
+                    headers: { 
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                // Check if response is OK
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned invalid response format');
+                }
+
+                const data = await response.json();
+                
+                products = data.products || data.results || [];
+
+                // Get imported PIDs from response or fetch separately
+                if (data.imported_pids) {
+                    importedPids = new Set(data.imported_pids.map(String));
+                } else {
+                    await fetchImportedPids();
+                }
+
+                // Sort
+                let sorted = [...products];
+                if (sort === 'price-low') sorted.sort((a, b) => (a.sellPrice || 0) - (b.sellPrice || 0));
+                else if (sort === 'price-high') sorted.sort((a, b) => (b.sellPrice || 0) - (a.sellPrice || 0));
+                else if (sort === 'name') sorted.sort((a, b) => (a.productNameEn || '').localeCompare(b.productNameEn || ''));
+
+                renderProducts(sorted);
+                document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString();
+                hasLoadedOnce = true;
+
+            } catch (err) {
+                console.error('Search error:', err);
+                
+                // Only show network error if we've never loaded successfully
+                if (!hasLoadedOnce) {
+                    // Check if it's a network error
+                    if (err.name === 'AbortError') {
+                        showNetworkError('Request timed out. Please check your connection and try again.');
+                    } else if (err.message === 'Failed to fetch' || err.message.includes('network')) {
+                        showNetworkError('No internet connection. Please check your network and try again.');
+                    } else {
+                        showNetworkError(err.message || 'Something went wrong. Please try again.');
+                    }
+                } else {
+                    // We had data before, show a toast instead of breaking the UI
+                    showToast('Failed to refresh results. Please try again.', 'warning', 4000);
+                    // Keep existing products visible
+                }
+            } finally {
+                isLoading = false;
+                searchBtn.disabled = false;
+            }
+        }
+
+        // ----- import product -----
+        async function importProduct(pid, btnElement) {
+            if (!pid) return;
+            btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+            btnElement.disabled = true;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                const response = await fetch(`/builder/cj-import-product/${window.pageSubdomain}/${pid}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned invalid response');
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'success' || data.success) {
+                    btnElement.className = 'btn-sm btn-import imported';
+                    btnElement.innerHTML = '<i class="fas fa-check"></i> Imported';
+                    btnElement.disabled = true;
+                    importedPids.add(String(pid));
+                    showToast('Product imported successfully!', 'success');
+                    // Refresh the list
+                    setTimeout(() => fetchProducts(currentQuery, currentSort), 1500);
+                } else {
+                    throw new Error(data.message || data.error || 'Import failed');
+                }
+            } catch (err) {
+                console.error('Import error:', err);
+                
+                let errorMessage = 'Import failed';
+                if (err.name === 'AbortError') {
+                    errorMessage = 'Import timed out. Please try again.';
+                } else if (err.message === 'Failed to fetch' || err.message.includes('network')) {
+                    errorMessage = 'Network error. Please check your connection.';
+                } else {
+                    errorMessage = err.message || 'Import failed';
+                }
+                
+                btnElement.className = 'btn-sm btn-import failed';
+                btnElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Retry';
+                btnElement.disabled = false;
+                showToast('Import failed: ' + errorMessage, 'error', 5000);
+            }
+        }
+
+        // ----- event: search -----
+        function doSearch() {
+            currentQuery = searchInput.value.trim();
+            fetchProducts(currentQuery, currentSort);
+        }
+
+        searchBtn.addEventListener('click', doSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doSearch();
+        });
+
+        // ----- clear -----
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            currentQuery = '';
+            fetchProducts('', currentSort);
+        });
+
+        // ----- refresh -----
+        refreshBtn.addEventListener('click', () => {
+            fetchProducts(currentQuery, currentSort);
+        });
+
+        // ----- reset search -----
+        resetSearchBtn?.addEventListener('click', () => {
+            searchInput.value = '';
+            currentQuery = '';
+            sortSelect.value = 'relevance';
+            currentSort = 'relevance';
+            fetchProducts('', 'relevance');
+        });
+
+        // ----- sort -----
+        sortSelect.addEventListener('change', function() {
+            currentSort = this.value;
+            fetchProducts(currentQuery, currentSort);
+        });
+
+        // ----- get subdomain from page context -----
+        window.pageSubdomain = '{{ page.subdomain|escapejs }}';
+
+        // ----- initial load with graceful failure handling -----
+        // Try to load, but don't break the UI if it fails
+        fetchProducts(currentQuery, currentSort);
+
+        // Check online/offline status and show appropriate message
+        window.addEventListener('online', () => {
+            showToast('Connection restored. Refreshing...', 'info', 3000);
+            fetchProducts(currentQuery, currentSort);
+        });
+
+        window.addEventListener('offline', () => {
+            if (hasLoadedOnce) {
+                showToast('You are offline. Some features may not work.', 'warning', 5000);
+            }
+        });
+
+    })();
 </script>
- {%endblock%}
-
-
+{% endblock %}
+{% endblock %}
