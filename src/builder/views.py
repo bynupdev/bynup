@@ -5550,26 +5550,26 @@ def cj_product_search(request, subdomain):
     cj_products = []
     error_message = None
     
-    token = get_cj_access_token(settings_obj) # Uses your existing token helper
+    # Get token
+    token = get_cj_access_token(settings_obj)
     
     if query and token:
         service = CJService(token)
         
-        # 1. Parse Query for PID (UUID or Numeric)
+        # Parse Query for PID (UUID or Numeric)
         uuid_pattern = r'p-([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
         numeric_pattern = r'-p-(\d+)'
-        
         uuid_match = re.search(uuid_pattern, query)
         numeric_match = re.search(numeric_pattern, query)
-        
         extracted_id = None
+        
         if uuid_match:
             extracted_id = uuid_match.group(1)
         elif numeric_match:
             extracted_id = numeric_match.group(1)
-        elif len(query) > 15: # Fallback for raw ID strings
+        elif len(query) > 15:
             extracted_id = query
-
+        
         try:
             if extracted_id:
                 # DIRECT FETCH
@@ -5579,83 +5579,57 @@ def cj_product_search(request, subdomain):
                     cj_products = [res.json().get("data")]
             else:
                 # KEYWORD SEARCH
-                res = requests.get(f"{service.BASE_URL}/product/list", 
-                                   headers=service.headers, 
+                res = requests.get(f"{service.BASE_URL}/product/list",
+                                   headers=service.headers,
                                    params={"productName": query, "pageSize": 20, "sortType": "3"})
                 cj_products = res.json().get("data", {}).get("list", [])
-
-            # 2. ENRICH WITH WAREHOUSE DATA
-            # This allows the user to choose their shipping origin manually
+            
+            # ENRICH WITH STOCK DATA - FIXED: Use get_stock_by_vid instead of get_stock_details
             for item in cj_products:
-                warehouses = []
-
-                # 1️⃣ CJ Warehouse breakdown
-                cj_warehouses = service.get_stock_details(item['pid'])
-                # Expected: list of dicts with warehouse info
-
-                for wh in cj_warehouses:
-                    warehouses.append({
-                        "name": wh.get("warehouseName", "CJ Warehouse"),
-                        "region": wh.get("warehouseRegion", "Unknown"),
-                        "qty": int(wh.get("availableStock", 0)),
-                        "type": "CJ"
-                    })
-
-                # 2️⃣ Supplier stock fallback
-                supplier_stock = service.get_supplier_stock(item['pid'])
-                if supplier_stock > 0:
-                    warehouses.append({
-                        "name": "Supplier Warehouse",
-                        "region": "China",
-                        "qty": supplier_stock,
-                        "type": "SUPPLIER"
-                    })
-
-                # 3️⃣ Attach to product
-                item['warehouses'] = warehouses
-
-                # 4️⃣ Convenience flags
-                item['total_stock'] = sum(w['qty'] for w in warehouses)
-                item['in_stock'] = item['total_stock'] > 0
-
-                # IMAGE & STOCK NORMALIZATION
-                # for item in cj_products:
-                #     # 1. Fix Image Path
-                #     img = item.get('productImage', '')
-                #     if img and not img.startswith('http'):
-                #         item['productImage'] = f"https://{img.lstrip('/')}"
-                #     elif not img:
-                #         # Final fallback to a placeholder if no image found
-                #         item['productImage'] = "/static/images/placeholder.png"
-
-                # 2. Re-run your stock and warehouse logic
-                # item['warehouse_list'] = service.get_stock_details(item['pid'])
-                # item['stock_qty'] = sum(int(w['stockNum']) for w in item['warehouse_list'])
-                # if item['stock_qty'] == 0:
-                #     item['stock_qty'] = service.get_supplier_stock(item['pid'])
-
-
-                # Extract or create a slug for the URL
-                # CJ usually uses the English name converted to lowercase with dashes
-                name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
-                # Clean up non-alphanumeric characters
-                name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
+                # Get stock from variants
+                total_stock = 0
+                variants = item.get('variants', [])
                 
+                for variant in variants:
+                    vid = variant.get('vid')
+                    if vid:
+                        try:
+                            stock_data = service.get_stock_by_vid(vid)
+                            if stock_data:
+                                for wh in stock_data:
+                                    total_stock += int(wh.get('stockNum', 0))
+                        except Exception as e:
+                            print(f"Error getting stock for vid {vid}: {e}")
+                
+                # Also try supplier stock as fallback
+                if total_stock == 0:
+                    try:
+                        # Try to get from variant inventory
+                        for variant in variants:
+                            if variant.get('inventoryNum'):
+                                total_stock += int(variant.get('inventoryNum', 0))
+                    except:
+                        pass
+                
+                item['total_stock'] = total_stock
+                item['in_stock'] = total_stock > 0
+                
+                # Generate slug for URL
+                name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
+                name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
                 item['cj_url_slug'] = name_slug
+                
         except Exception as e:
             error_message = f"Search failed: {str(e)}"
-    # supplier_stock = service.get_supplier_stock(item['pid'])
-    # print(f'Supplier stock is {supplier_stock}')
     
-
-    return render(request, 'builder/dashboard/cj_search.html', {
+    context = {
         'page': page,
         'cj_products': cj_products,
         'query': query,
         'error_message': error_message
-    })
-
-
+    }
+    
+    return render(request, 'builder/dashboard/cj_search.html', context)
 
 @login_required
 @require_http_methods(["GET"])
