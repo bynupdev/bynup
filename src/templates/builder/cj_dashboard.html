@@ -1,3 +1,4 @@
+<!-- builder/templates/builder/cj_dashboard.html -->
 {% extends 'builder/base.html' %}
 {% load static %}
 
@@ -117,6 +118,14 @@
         background: #d97706;
     }
 
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
     .btn-sm {
         padding: 5px 12px;
         font-size: 12px;
@@ -131,6 +140,7 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        flex-wrap: wrap;
     }
 
     .alert-warning {
@@ -149,6 +159,12 @@
         background: #eff6ff;
         border: 1px solid #bfdbfe;
         color: #1e3a5f;
+    }
+
+    .alert-danger {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
     }
 
     .alert .btn {
@@ -213,6 +229,7 @@
     .stat-card .icon.green { background: #d1fae5; color: #10b981; }
     .stat-card .icon.yellow { background: #fef3c7; color: #f59e0b; }
     .stat-card .icon.purple { background: #ede9fe; color: #7c3aed; }
+    .stat-card .icon.red { background: #fee2e2; color: #ef4444; }
 
     .stat-card .progress-bar {
         margin-top: 12px;
@@ -239,6 +256,14 @@
         font-size: 12px;
         color: #5d7f9e;
         margin-top: 4px;
+    }
+
+    /* ===== Three Column Layout ===== */
+    .three-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
     }
 
     /* ===== Two Column Layout ===== */
@@ -396,6 +421,7 @@
     .activity-item .content .meta .badge.success { background: #d1fae5; color: #065f46; }
     .activity-item .content .meta .badge.error { background: #fee2e2; color: #991b1b; }
     .activity-item .content .meta .badge.warning { background: #fef3c7; color: #92400e; }
+    .activity-item .content .meta .badge.info { background: #eff6ff; color: #1e40af; }
 
     /* ===== Status Items ===== */
     .status-item {
@@ -430,6 +456,7 @@
     .badge.success { background: #d1fae5; color: #065f46; }
     .badge.error { background: #fee2e2; color: #991b1b; }
     .badge.warning { background: #fef3c7; color: #92400e; }
+    .badge.info { background: #eff6ff; color: #1e40af; }
     .badge.secondary { background: #f3f4f6; color: #4b5563; }
 
     .badge i {
@@ -464,6 +491,9 @@
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
         }
+        .three-col {
+            grid-template-columns: 1fr 1fr;
+        }
     }
 
     @media (max-width: 768px) {
@@ -482,6 +512,9 @@
             justify-content: center;
         }
         .two-col {
+            grid-template-columns: 1fr;
+        }
+        .three-col {
             grid-template-columns: 1fr;
         }
         .stats-grid {
@@ -521,40 +554,56 @@
         <div class="dashboard-header">
             <div>
                 <h1>
-                    <i class="fas fa-truck"></i>
+                    <i class="fas fa-dolly"></i>
                     CJ Dropshipping
                 </h1>
                 <div class="subtitle">Overview for {{ page.brand_name }}</div>
             </div>
             <div class="header-actions">
-                <a href="{% url 'cj_product_search' page.subdomain %}" class="btn btn-primary">
+                <a href="{% url 'cj_search_page' page.subdomain %}" class="btn btn-primary">
                     <i class="fas fa-search"></i> Search Products
                 </a>
-                <a href="{% url 'cj_products_list' page.subdomain %}" class="btn btn-secondary">
+                <!-- <a href="{% url 'cj_products_list' page.subdomain %}" class="btn btn-secondary">
                     <i class="fas fa-box"></i> Products
-                </a>
-                <a href="{% url 'cj_orders' page.subdomain %}" class="btn btn-secondary">
+                </a> -->
+                <!-- <a href="{% url 'cj_orders' page.subdomain %}" class="btn btn-secondary">
                     <i class="fas fa-shopping-cart"></i> Orders
-                </a>
+                </a> -->
                 <a href="{% url 'cj_settings' page.subdomain %}" class="btn btn-outline">
                     <i class="fas fa-cog"></i> Settings
                 </a>
             </div>
         </div>
 
-        <!-- ===== INACTIVE ALERT ===== -->
-        {% if not cj_settings.is_active or cj_settings.api_status == 'invalid' %}
+        <!-- ===== ALERTS ===== -->
+        {% if not is_configured %}
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
             <div>
-                <strong>CJ Integration is inactive.</strong> 
-                {% if cj_settings.api_status == 'invalid' %}
-                    Your API key appears to be invalid.
-                {% else %}
-                    Configure your API key to start dropshipping.
-                {% endif %}
+                <strong>CJ Integration is not configured.</strong> 
+                Add your API key to start dropshipping.
             </div>
             <a href="{% url 'cj_settings' page.subdomain %}" class="btn btn-warning btn-sm">Configure Now</a>
+        </div>
+        {% elif cj_settings.api_status == 'invalid' %}
+        <div class="alert alert-danger">
+            <i class="fas fa-times-circle"></i>
+            <div>
+                <strong>Invalid API Key.</strong> 
+                Please update your CJ API key in settings.
+            </div>
+            <a href="{% url 'cj_settings' page.subdomain %}" class="btn btn-danger btn-sm">Update Key</a>
+        </div>
+        {% elif cj_settings.api_status == 'active' and cj_settings.is_active %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <div>
+                <strong>Connected!</strong> 
+                CJ Dropshipping integration is active and working.
+            </div>
+            <span style="font-size:12px; color:#065f46;">
+                <i class="fas fa-clock"></i> Last check: {{ cj_settings.last_api_check|timesince|default:"Never" }} ago
+            </span>
         </div>
         {% endif %}
 
@@ -624,91 +673,164 @@
                          style="width: {{ stats.sync_success_rate|default:0 }}%;"></div>
                 </div>
                 <div class="progress-label">
+                    <span>{{ stats.successful_syncs|default:0 }}/{{ stats.total_syncs|default:0 }} successful</span>
                     <span>API: {{ stats.api_usage.today|default:0 }}/{{ stats.api_usage.limit|default:950 }}</span>
-                    <span>{{ stats.api_usage.percentage|default:0 }}%</span>
                 </div>
             </div>
         </div>
 
-        <!-- ===== TWO COLUMN LAYOUT ===== -->
-        <div class="two-col">
+        <!-- ===== THREE COLUMN: Quick Actions + Status + Recent Orders ===== -->
+        <div class="three-col">
 
-            <!-- ===== LEFT: Quick Actions + Status ===== -->
-            <div>
-                <!-- Quick Actions -->
-                <div class="card" style="margin-bottom:24px;">
-                    <div class="card-header">
-                        <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="quick-actions">
-                            <a href="{% url 'cj_product_search' page.subdomain %}" class="quick-action">
-                                <span class="icon"><i class="fas fa-search"></i></span>
-                                <span class="name">Search Products</span>
-                                <span class="desc">Find new products to sell</span>
-                            </a>
-                            <a href="{% url 'cj_bulk_sync' page.subdomain %}" class="quick-action">
-                                <span class="icon"><i class="fas fa-sync-alt"></i></span>
-                                <span class="name">Sync All</span>
-                                <span class="desc">Update prices & stock</span>
-                            </a>
-                            <a href="{% url 'cj_create_order' page.subdomain %}" class="quick-action">
-                                <span class="icon"><i class="fas fa-plus-circle"></i></span>
-                                <span class="name">Create Order</span>
-                                <span class="desc">Manual fulfillment</span>
-                            </a>
-                            <a href="{% url 'cj_sync_logs' page.subdomain %}" class="quick-action">
-                                <span class="icon"><i class="fas fa-history"></i></span>
-                                <span class="name">View Logs</span>
-                                <span class="desc">Monitor activity</span>
-                            </a>
-                        </div>
-                    </div>
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
                 </div>
-
-                <!-- Integration Status -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-plug"></i> Integration Status</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="status-item">
-                            <span class="label">API Connection</span>
-                            <span class="badge {% if cj_settings.api_status == 'active' %}success{% else %}error{% endif %}">
-                                <i class="fas fa-circle"></i> {{ cj_settings.api_status|default:'Not configured'|title }}
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="label">Auto-sync</span>
-                            <span class="badge {% if cj_settings.auto_sync_prices or cj_settings.auto_sync_inventory %}success{% else %}secondary{% endif %}">
-                                {% if cj_settings.auto_sync_prices and cj_settings.auto_sync_inventory %}
-                                    Both Enabled
-                                {% elif cj_settings.auto_sync_prices %}
-                                    Prices Only
-                                {% elif cj_settings.auto_sync_inventory %}
-                                    Inventory Only
-                                {% else %}
-                                    Disabled
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="label">Auto-fulfill</span>
-                            <span class="badge {% if cj_settings.auto_fulfill %}success{% else %}secondary{% endif %}">
-                                {{ cj_settings.auto_fulfill|yesno:"Enabled,Disabled" }}
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="label">Webhook</span>
-                            <span class="badge {% if cj_settings.webhook_url %}success{% else %}secondary{% endif %}">
-                                {% if cj_settings.webhook_url %}Configured{% else %}Not Set{% endif %}
-                            </span>
-                        </div>
+                <div class="card-body">
+                    <div class="quick-actions">
+                        <a href="{% url 'cj_search_page' page.subdomain %}" class="quick-action">
+                            <span class="icon"><i class="fas fa-search"></i></span>
+                            <span class="name">Search Products</span>
+                            <span class="desc">Find new products to sell</span>
+                        </a>
+                        <a href="{% url 'cj_products_list' page.subdomain %}" class="quick-action">
+                            <span class="icon"><i class="fas fa-box"></i></span>
+                            <span class="name">View Products</span>
+                            <span class="desc">Manage imported products</span>
+                        </a>
+                        <a href="{% url 'cj_bulk_sync' page.subdomain %}" class="quick-action">
+                            <span class="icon"><i class="fas fa-sync-alt"></i></span>
+                            <span class="name">Sync All</span>
+                            <span class="desc">Update prices & stock</span>
+                        </a>
+                        <a href="{% url 'cj_create_order' page.subdomain %}" class="quick-action">
+                            <span class="icon"><i class="fas fa-plus-circle"></i></span>
+                            <span class="name">Create Order</span>
+                            <span class="desc">Manual fulfillment</span>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <!-- ===== RIGHT: Recent Activity ===== -->
+            <!-- Integration Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-plug"></i> Integration Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="status-item">
+                        <span class="label">API Connection</span>
+                        <span class="badge {% if cj_settings.api_status == 'active' %}success{% elif cj_settings.api_status == 'invalid' %}error{% else %}warning{% endif %}">
+                            <i class="fas fa-circle"></i> {{ cj_settings.api_status|default:'Not configured'|title }}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">API Key</span>
+                        <span class="value">
+                            {% if cj_settings.api_key %}
+                                <i class="fas fa-check-circle text-success"></i> 
+                                {{ cj_settings.api_key|slice:":8" }}...{{ cj_settings.api_key|slice:"-4:" }}
+                            {% else %}
+                                <span class="text-muted">Not set</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Access Token</span>
+                        <span class="badge {% if cj_settings.access_token %}success{% else %}secondary{% endif %}">
+                            {% if cj_settings.access_token %}
+                                <i class="fas fa-key"></i> Valid
+                                {% if cj_settings.token_expiry %}
+                                    (expires {{ cj_settings.token_expiry|timeuntil }})
+                                {% endif %}
+                            {% else %}
+                                Not obtained
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Auto-sync</span>
+                        <span class="badge {% if cj_settings.auto_sync_prices or cj_settings.auto_sync_inventory %}success{% else %}secondary{% endif %}">
+                            {% if cj_settings.auto_sync_prices and cj_settings.auto_sync_inventory %}
+                                Both Enabled
+                            {% elif cj_settings.auto_sync_prices %}
+                                Prices Only
+                            {% elif cj_settings.auto_sync_inventory %}
+                                Inventory Only
+                            {% else %}
+                                Disabled
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Auto-fulfill</span>
+                        <span class="badge {% if cj_settings.auto_fulfill %}success{% else %}secondary{% endif %}">
+                            {{ cj_settings.auto_fulfill|yesno:"Enabled,Disabled" }}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Daily API Calls</span>
+                        <span class="value">
+                            {{ cj_settings.daily_api_calls|default:0 }} / {{ cj_settings.max_daily_calls|default:950 }}
+                            <span class="badge {% if stats.api_usage.percentage|default:0 > 80 %}warning{% elif stats.api_usage.percentage|default:0 > 50 %}info{% else %}success{% endif %}">
+                                {{ stats.api_usage.percentage|default:0 }}%
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Recent Orders</h5>
+                    <a href="{% url 'cj_orders' page.subdomain %}" class="btn btn-secondary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                        <div class="activity-list">
+                            {% for order in recent_orders %}
+                            <div class="activity-item">
+                                <div class="icon {% if order.status == 'delivered' or order.status == 'shipped' %}success{% elif order.status == 'cancelled' or order.status == 'failed' %}error{% else %}info{% endif %}">
+                                    <i class="fas fa-receipt"></i>
+                                </div>
+                                <div class="content">
+                                    <div class="title">#{{ order.order_number }}</div>
+                                    <div class="meta">
+                                        <span>${{ order.total_amount|floatformat:2 }}</span>
+                                        <span>•</span>
+                                        <span>{{ order.created_at|timesince }} ago</span>
+                                        <span class="badge 
+                                            {% if order.status == 'delivered' %}success
+                                            {% elif order.status == 'shipped' %}info
+                                            {% elif order.status == 'cancelled' or order.status == 'failed' %}error
+                                            {% else %}warning{% endif %}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <h6>No Orders Yet</h6>
+                            <p>Orders will appear here once you start fulfilling through CJ.</p>
+                            <a href="{% url 'cj_create_order' page.subdomain %}" class="btn btn-primary btn-sm" style="margin-top:12px;">
+                                <i class="fas fa-plus"></i> Create First Order
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TWO COLUMN: Recent Activity + Recent Products ===== -->
+        <div class="two-col">
+
+            <!-- Recent Activity -->
             <div class="card">
                 <div class="card-header">
                     <h5><i class="fas fa-history"></i> Recent Activity</h5>
@@ -728,7 +850,8 @@
                                         {% if activity.sync_type == 'product_search' %}fa-search
                                         {% elif activity.sync_type == 'product_import' %}fa-box
                                         {% elif activity.sync_type == 'order_submit' %}fa-shopping-cart
-                                        {% elif activity.sync_type == 'order_status_check' %}fa-truck
+                                        {% elif activity.sync_type == 'order_status_check' %}fa-dolly
+                                        {% elif activity.sync_type == 'webhook' %}fa-plug
                                         {% else %}fa-sync-alt{% endif %}">
                                     </i>
                                 </div>
@@ -748,7 +871,7 @@
                                     </div>
                                     {% if activity.error_message %}
                                         <div style="font-size:12px; color:#ef4444; margin-top:4px;">
-                                            {{ activity.error_message|truncatechars:80 }}
+                                            <i class="fas fa-exclamation-circle"></i> {{ activity.error_message|truncatechars:80 }}
                                         </div>
                                     {% endif %}
                                 </div>
@@ -760,6 +883,59 @@
                             <i class="fas fa-inbox"></i>
                             <h6>No Activity Yet</h6>
                             <p>Activity will appear here once you start importing products or creating orders.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Products -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-box"></i> Recent Products</h5>
+                    <a href="{% url 'cj_products_list' page.subdomain %}" class="btn btn-secondary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_products %}
+                        <div class="activity-list">
+                            {% for cj_product in recent_products %}
+                            <div class="activity-item">
+                                <div class="icon {% if cj_product.sync_status == 'synced' %}success{% elif cj_product.sync_status == 'failed' %}error{% else %}warning{% endif %}">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="content">
+                                    <div class="title">
+                                        {% if cj_product.local_product %}
+                                            {{ cj_product.local_product.title|truncatechars:40 }}
+                                        {% else %}
+                                            {{ cj_product.cj_product_id }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="meta">
+                                        <span>PID: {{ cj_product.cj_pid|default:cj_product.cj_product_id }}</span>
+                                        {% if cj_product.cj_price_usd %}
+                                            <span>• ${{ cj_product.cj_price_usd|floatformat:2 }}</span>
+                                        {% endif %}
+                                        <span class="badge {% if cj_product.sync_status == 'synced' %}success{% elif cj_product.sync_status == 'failed' %}error{% else %}warning{% endif %}">
+                                            {{ cj_product.get_sync_status_display }}
+                                        </span>
+                                    </div>
+                                    {% if cj_product.last_sync_error %}
+                                        <div style="font-size:11px; color:#ef4444; margin-top:2px;">
+                                            {{ cj_product.last_sync_error|truncatechars:60 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-box-open"></i>
+                            <h6>No Products Imported</h6>
+                            <p>Start by searching and importing products from CJ.</p>
+                            <a href="{% url 'cj_search_page' page.subdomain %}" class="btn btn-primary btn-sm" style="margin-top:12px;">
+                                <i class="fas fa-search"></i> Search Products
+                            </a>
                         </div>
                     {% endif %}
                 </div>

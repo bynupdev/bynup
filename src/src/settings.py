@@ -28,6 +28,38 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-xy!6d84+s1&&fxtzoaqp9ur79v(hc^wigt87vcbdysan^#(ism'
+OPENROUTER_API_KEY=os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_MODELS = [
+    # NVIDIA Models (Free)
+    'nvidia/nemotron-3.5-lightning:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'nvidia/nemotron-nano-9b-v2:free',
+    
+    # Google Gemma Models (Free)
+    'google/gemma-4-31b-it:free',
+    'google/gemma-4-26b-a4b-it:free',
+    
+    # OpenAI OSS (Free)
+    'openai/gpt-oss-20b:free',
+    
+    # Other Free Models
+    'liquid/lfm-2.5-2.6b:free',
+    'poolside/laguna-s-2.1:free',
+    'poolside/laguna-xs-2.1:free',
+    'cohere/north-mini-code:free',
+    'openrouter/free',
+    
+    # Paid Models (fallback if you have credits)
+    'openai/gpt-3.5-turbo',
+    'openai/gpt-4o-mini',
+    'openai/gpt-4o',
+    'anthropic/claude-3-haiku',
+    'mistralai/mistral-small-3.1-24b-instruct',
+    'meta-llama/llama-3.1-70b-instruct',
+]
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -84,8 +116,8 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 # Add these TWO lines right after that block:
-SESSION_COOKIE_DOMAIN = '.bynup.store'
-CSRF_COOKIE_DOMAIN = '.bynup.store'
+# SESSION_COOKIE_DOMAIN = '.bynup.store'
+# CSRF_COOKIE_DOMAIN = '.bynup.store'
     
 #increase data upload limit
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024 #100MB
@@ -132,6 +164,11 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'anymail',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     
 
     # my apps
@@ -159,6 +196,7 @@ MIDDLEWARE = [
     'middleware.fix_auth_middleware.FixAuthenticationMiddleware',
     'analytics.analytics_middleware.AnalyticsMiddleware', # Add this
     'accounts.middleware.AuthRedirectMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     
 
 ]
@@ -193,62 +231,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'src.wsgi.application'
 # Channels configuration
 ASGI_APPLICATION = 'src.asgi.application'
-# Channels layer - use InMemory for development, Redis for production
-# if DEBUG:
-#     CHANNEL_LAYERS = {
-#         'default': {
-#             'BACKEND': 'channels.layers.InMemoryChannelLayer'
-#         }
-#     }
-# else:
-#     CHANNEL_LAYERS = {
-#         'default': {
-#             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#             'CONFIG': {
-#                 "hosts": [('127.0.0.1', 6379)],
-#             },
-#         },
-#     }
 
-# # Cache Configuration - Use in-memory for development, Redis for production
-# if DEBUG:
-#     CACHES = {
-#         'default': {
-#             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-#             'LOCATION': 'unique-snowflake',
-#         }
-#     }
-# else:
-#     CACHES = {
-#         'default': {
-#             'BACKEND': 'django_redis.cache.RedisCache',
-#             'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
-#             'OPTIONS': {
-#                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-#                 'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-#             }
-#         }
-#     }
-
-# # Celery Configuration - Use in-memory for development, Redis for production
-# if DEBUG:
-#     # Use in-memory broker for development (no Redis needed)
-#     CELERY_BROKER_URL = 'memory://'
-#     CELERY_RESULT_BACKEND = 'cache+memory://'
-#     CELERY_TASK_ALWAYS_EAGER = True  # Tasks run synchronously in development
-#     CELERY_TASK_EAGER_PROPAGATES = True
-# else:
-#     CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-#     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-
-# CELERY_ACCEPT_CONTENT = ['json']
-# CELERY_TASK_SERIALIZER = 'json'
-# CELERY_RESULT_SERIALIZER = 'json'
-# CELERY_TIMEZONE = 'UTC'
-
-# REPLACE your entire CACHES and CHANNEL_LAYERS with this:
-
-# Cache Configuration - Use local memory cache (NO REDIS)
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -361,10 +344,14 @@ CLOUDINARY_STORAGE = {
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.MultiUserBackend',
     'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+SITE_ID = 1
+
+
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/accounts/dashboard/'
+LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 # settings.py additions

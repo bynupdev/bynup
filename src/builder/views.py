@@ -5442,6 +5442,75 @@ def cj_settings(request, subdomain):
 
     return render(request, 'builder/cj_settings.html', context)
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def validate_cj_api_key(request):
+    """
+    Validate a CJ Dropshipping API key by testing the connection.
+    """
+    try:
+        import json
+        data = json.loads(request.body)
+        api_key = data.get('api_key', '').strip()
+        
+        if not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'API key is required'
+            }, status=400)
+        
+        # Test the API key by calling CJ's authentication endpoint
+        auth_url = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken"
+        
+        response = requests.post(
+            auth_url,
+            json={"apiKey": api_key},
+            timeout=10,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("code") == 200:
+                # Valid API key - we got a token
+                return JsonResponse({
+                    'success': True,
+                    'message': 'API key validated successfully'
+                })
+            else:
+                # API returned an error
+                error_msg = result.get("msg", "Invalid API key")
+                return JsonResponse({
+                    'success': False,
+                    'error': error_msg
+                }, status=400)
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'API returned status {response.status_code}'
+            }, status=400)
+            
+    except requests.exceptions.Timeout:
+        return JsonResponse({
+            'success': False,
+            'error': 'Connection timed out. Please try again.'
+        }, status=408)
+    except requests.exceptions.ConnectionError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Could not connect to CJ API. Please check your internet connection.'
+        }, status=503)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Validation failed: {str(e)}'
+        }, status=500)
+
 
 def json_response(success: bool, data: Dict = None, error: str = None, 
                  status: int = 200) -> JsonResponse:
@@ -7055,24 +7124,140 @@ def cj_sync_logs(request, subdomain):
     
     return render(request, 'builder/cj_sync_logs.html', context)
 
+# builder/views.py - Updated CJ Dashboard View
+
 @login_required
 def cj_dashboard(request, subdomain):
+    """Enhanced CJ Dropshipping dashboard with all stats populated"""
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    cj_settings, created = CJSettings.objects.get_or_create(page=page)
     
-    query = request.GET.get('search', '')
-    products = []
+    # Get or create CJ settings
+    cj_settings, created = CJSettings.objects.get_or_create(
+        page=page,
+        defaults={
+            'api_key': '',
+            'is_active': False,
+            'api_status': 'inactive',
+        }
+    )
     
-    if query and cj_settings.api_key:
-        service = CJService(cj_settings)
-        results = service.search_products(query)
-        products = results.get('data', {}).get('list', [])
-
-    return render(request, 'builder/cj_dashboard.html', {
+    # ===== STATS CALCULATIONS =====
+    
+    # 1. Product Stats
+    cj_products = CJProduct.objects.filter(page=page)
+    total_products = cj_products.count()
+    synced_products = cj_products.filter(sync_status='synced').count()
+    failed_products = cj_products.filter(sync_status='failed').count()
+    pending_products = cj_products.filter(sync_status='pending').count()
+    
+    sync_rate = 0
+    if total_products > 0:
+        sync_rate = round((synced_products / total_products) * 100)
+    
+    # 2. Order Stats
+    cj_orders = CJOrder.objects.filter(page=page)
+    total_orders = cj_orders.count()
+    fulfilled_orders = cj_orders.filter(status__in=['shipped', 'delivered']).count()
+    pending_orders = cj_orders.filter(status__in=['pending', 'submitted', 'processing']).count()
+    
+    order_completion = 0
+    if total_orders > 0:
+        order_completion = round((fulfilled_orders / total_orders) * 100)
+    
+    # 3. Revenue Stats
+    monthly_revenue = 0
+    monthly_profit = 0
+    monthly_orders = cj_orders.filter(
+        created_at__gte=timezone.now() - timedelta(days=30)
+    )
+    for order in monthly_orders:
+        monthly_revenue += float(order.total_amount or 0)
+        monthly_profit += float(order.profit or 0)
+    
+    profit_margin = 0
+    if monthly_revenue > 0:
+        profit_margin = round((monthly_profit / monthly_revenue) * 100, 1)
+    
+    # Revenue target (assuming $1000 target)
+    revenue_target = 0
+    if monthly_revenue > 0:
+        revenue_target = min(100, round((monthly_revenue / 1000) * 100))
+    
+    # 4. Sync Health
+    sync_logs = CJSyncLog.objects.filter(page=page)
+    total_syncs = sync_logs.count()
+    successful_syncs = sync_logs.filter(status='success').count()
+    
+    sync_success_rate = 0
+    if total_syncs > 0:
+        sync_success_rate = round((successful_syncs / total_syncs) * 100, 1)
+    
+    # 5. API Usage
+    api_usage = {
+        'today': cj_settings.daily_api_calls or 0,
+        'limit': cj_settings.max_daily_calls or 950,
+        'percentage': 0
+    }
+    if api_usage['limit'] > 0:
+        api_usage['percentage'] = round((api_usage['today'] / api_usage['limit']) * 100)
+    
+    # ===== RECENT ACTIVITY =====
+    recent_activity = CJSyncLog.objects.filter(page=page).order_by('-started_at')[:20]
+    
+    # ===== RECENT ORDERS =====
+    recent_orders = CJOrder.objects.filter(page=page).order_by('-created_at')[:5]
+    
+    # ===== RECENT PRODUCTS =====
+    recent_products = CJProduct.objects.filter(page=page).select_related('local_product').order_by('-created_at')[:5]
+    
+    # ===== API STATUS CHECKS =====
+    api_status = {
+        'is_connected': cj_settings.api_status == 'active' and cj_settings.is_active,
+        'is_valid': cj_settings.api_status != 'invalid' and cj_settings.api_key,
+        'has_token': bool(cj_settings.access_token),
+        'token_expiry': cj_settings.token_expiry,
+        'last_check': cj_settings.last_api_check,
+    }
+    
+    # ===== STATS SUMMARY =====
+    stats = {
+        'total_products': total_products,
+        'synced_products': synced_products,
+        'failed_products': failed_products,
+        'pending_products': pending_products,
+        'sync_rate': sync_rate,
+        
+        'total_orders': total_orders,
+        'fulfilled_orders': fulfilled_orders,
+        'pending_orders': pending_orders,
+        'order_completion': order_completion,
+        
+        'monthly_revenue': monthly_revenue,
+        'monthly_profit': monthly_profit,
+        'profit_margin': profit_margin,
+        'revenue_target': revenue_target,
+        
+        'sync_success_rate': sync_success_rate,
+        'total_syncs': total_syncs,
+        'successful_syncs': successful_syncs,
+        
+        'api_usage': api_usage,
+    }
+    
+    context = {
         'page': page,
         'cj_settings': cj_settings,
-        'cj_products': products
-    })
+        'stats': stats,
+        'recent_activity': recent_activity,
+        'recent_orders': recent_orders,
+        'recent_products': recent_products,
+        'api_status': api_status,
+        'is_configured': bool(cj_settings.api_key) and cj_settings.is_active,
+        'has_products': total_products > 0,
+        'has_orders': total_orders > 0,
+    }
+    
+    return render(request, 'builder/cj_dashboard.html', context)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -9541,19 +9726,6 @@ def onboarding_wizard(request):
 
 
 
-# def get_templates_api(request):
-#     """API endpoint for template selection during onboarding"""
-#     templates = Template.objects.filter(is_active=True).values(
-#         'id', 'name', 'title', 'description', 
-#         'preview_image', 'is_responsive'
-#     )
-    
-#     return JsonResponse({
-#         'success': True,
-#         'templates': list(templates)
-#     })
-
-
 def get_templates_api(request):
     templates = Template.objects.filter(is_active=True)
     
@@ -9770,6 +9942,62 @@ def launch_editor(request):
             print(f"   subdomain in DB: '{page.subdomain}'")
             print(f"   template: {page.template_name}")
             print(f"   user: {page.user.username}")
+
+            # ===== ✅ FIXED: SAVE CJ API KEY IF PROVIDED =====
+            store_type = data.get('store_type')
+            # ✅ FIX: Handle None value safely
+            cj_api_key = data.get('cj_api_key')
+            
+            # Only proceed if store_type is CJ-related AND we have a non-empty key
+            if store_type in ['cj', 'both'] and cj_api_key and isinstance(cj_api_key, str):
+                cj_api_key = cj_api_key.strip()
+                if cj_api_key:
+                    print(f"🔑 [launch_editor] Saving CJ API key for store type: {store_type}")
+                    try:
+                        # Check if CJ settings already exist
+                        cj_settings, created = CJSettings.objects.get_or_create(
+                            page=page,
+                            defaults={
+                                'api_key': cj_api_key,
+                                'is_active': True,
+                                'api_status': 'active',
+                                'default_profit_margin': 30.00,
+                                'default_warehouse': 'CN',
+                                'currency': currency,
+                            }
+                        )
+                        if not created:
+                            # Update existing settings
+                            cj_settings.api_key = cj_api_key
+                            cj_settings.is_active = True
+                            cj_settings.api_status = 'active'
+                            cj_settings.currency = currency
+                            cj_settings.save()
+                        
+                        # Try to get an access token to confirm it works
+                        try:
+                            from builder.services.cj_service import CJService
+                            service = CJService(cj_api_key)
+                            token = service.get_access_token()
+                            if token:
+                                cj_settings.access_token = token
+                                cj_settings.token_expiry = timezone.now() + timedelta(days=14)
+                                cj_settings.api_status = 'active'
+                                cj_settings.save()
+                                print(f"✅ [launch_editor] CJ API key validated and token obtained")
+                        except Exception as e:
+                            print(f"⚠️ [launch_editor] CJ token fetch failed: {e}")
+                            # Still save the key even if token fetch fails
+                            cj_settings.api_status = 'pending'
+                            cj_settings.save()
+                            
+                    except Exception as e:
+                        print(f"❌ [launch_editor] Error saving CJ settings: {e}")
+                        # Continue even if CJ settings fail - user can set up later
+                else:
+                    print(f"⚠️ [launch_editor] CJ API key was empty string, skipping")
+            else:
+                print(f"ℹ️ [launch_editor] No CJ API key to save (store_type: {store_type})")
             
             # 5. Apply the palette
             palette_id = data.get('palette_id')
