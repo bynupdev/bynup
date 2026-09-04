@@ -74,6 +74,9 @@ ALLOWED_HOSTS = [
     '*',  # Temporarily keep this if needed, but better to specify exact domains
 ]
 
+# Allauth configuration to skip the intermediate page
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
 # CSRF Settings - CRITICAL FOR PRODUCTION!
 CSRF_TRUSTED_ORIGINS = [
     f'https://{RENDER_DOMAIN}',
