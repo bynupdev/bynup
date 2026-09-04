@@ -62,7 +62,7 @@ OPENROUTER_MODELS = [
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # Render.com domain and your custom domain
 RENDER_DOMAIN = 'bynup-m6zc.onrender.com'
