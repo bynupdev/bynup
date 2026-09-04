@@ -1,677 +1,401 @@
 {% extends 'builder/base.html' %}
 
-{% block title %}Join bynUp - Create Your Account{% endblock %}
+{% block title %}Create Account - bynUp{% endblock %}
+
+{% load socialaccount %}
 
 {% block extra_css %}
 <style>
-    /* Hero Section - Matching base.html colors */
-    .registration-hero {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        padding: 4rem 0;
-        margin-bottom: 0;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .registration-hero::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.05)" fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
-        background-size: cover;
-        opacity: 0.3;
-    }
-    
-    .hero-content {
-        position: relative;
-        z-index: 2;
-    }
-    
-    .rocket-icon {
-        animation: float 3s ease-in-out infinite;
-    }
-    
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-    }
-    
-    /* Card Styles - Matching base.html */
-    .form-card {
-        border: 1px solid var(--gray-200);
-        border-radius: var(--border-radius);
-        transition: var(--transition);
-        background: white;
-    }
-    
-    .form-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
-    }
-    
-    .card-header-simple {
-        background: white;
-        border-bottom: 1px solid var(--gray-200);
-        padding: 1.5rem;
-    }
-    
-    /* Form Styles - Matching base.html */
-    .form-control-custom {
-        border: 1px solid var(--gray-200);
-        border-radius: var(--border-radius);
-        padding: 0.6rem 1rem;
-        transition: var(--transition);
-        font-size: 0.9rem;
-        width: 100%;
-    }
-    
-    .form-control-custom:focus {
-        border-color: var(--primary-color);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    }
-    
-    .form-label-custom {
-        font-weight: 500;
-        color: var(--dark-color);
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-    
-    /* Password Strength */
-    .password-strength {
-        margin-top: 0.5rem;
-    }
-    
-    .strength-bar {
-        height: 3px;
-        border-radius: 2px;
-        transition: all 0.3s ease;
-        background: var(--gray-200);
-        width: 0;
-    }
-    
-    .strength-bar.weak { background: #ef4444; width: 25%; }
-    .strength-bar.fair { background: #f59e0b; width: 50%; }
-    .strength-bar.good { background: #10b981; width: 75%; }
-    .strength-bar.strong { background: #10b981; width: 100%; }
-    
-    .strength-text {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-        color: var(--gray-500);
-    }
-    
-    /* Feature List - Clean and Simple */
-    .feature-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .feature-list li {
-        padding: 1rem 0;
-        border-bottom: 1px solid var(--gray-200);
+    .signup-wrapper {
+        min-height: 100vh;
         display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        padding: 2rem 1rem;
+    }
+
+    .signup-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        max-width: 420px;
+        width: 100%;
+        padding: 2.5rem 2.5rem 2rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .signup-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .signup-header .brand {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        letter-spacing: -0.5px;
+    }
+
+    .signup-header .brand span {
+        color: #4361ee;
+    }
+
+    .signup-header .subtitle {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #2d3748;
+        margin-bottom: 0.35rem;
+    }
+
+    .form-group .required {
+        color: #dc3545;
+        margin-left: 2px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.6rem 0.875rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background: #fafbfc;
+        color: #1a1a2e;
+    }
+
+    .form-group input:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        outline: none;
+        background: white;
+    }
+
+    .form-group input::placeholder {
+        color: #a0aec0;
+        font-size: 0.85rem;
+    }
+
+    .form-group .help-text {
+        font-size: 0.75rem;
+        color: #a0aec0;
+        margin-top: 0.25rem;
+    }
+
+    .form-group .error-text {
+        font-size: 0.8rem;
+        color: #dc3545;
+        margin-top: 0.25rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 1rem;
     }
-    
-    .feature-list li:last-child {
-        border-bottom: none;
-    }
-    
-    .feature-icon {
-        width: 32px;
-        height: 32px;
-        background: #f8fafc;
-        border-radius: var(--border-radius);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--primary-color);
-        flex-shrink: 0;
-        font-size: 0.9rem;
-    }
-    
-    .feature-content {
-        flex: 1;
-    }
-    
-    .feature-title {
-        font-weight: 600;
-        color: var(--dark-color);
-        margin-bottom: 0.25rem;
-        font-size: 0.95rem;
-    }
-    
-    .feature-desc {
-        font-size: 0.85rem;
-        color: var(--gray-500);
-        margin: 0;
-        line-height: 1.4;
-    }
-    
-    /* Stats Section */
-    .stats-section {
-        background: #f8fafc;
-        padding: 1.5rem;
-        border-radius: var(--border-radius);
-        margin-top: 1.5rem;
-    }
-    
-    .stat-number {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        margin-bottom: 0.25rem;
-    }
-    
-    .stat-label {
-        font-size: 0.8rem;
-        color: var(--gray-500);
-    }
-    
-    /* Buttons - Matching base.html */
-    .btn-primary-custom {
-        background: var(--primary-color);
+
+    .btn-primary {
+        width: 100%;
+        padding: 0.7rem;
+        background: #4361ee;
         color: white;
         border: none;
-        border-radius: var(--border-radius);
-        padding: 0.75rem;
+        border-radius: 6px;
+        font-size: 0.95rem;
         font-weight: 500;
-        font-size: 0.9rem;
-        transition: var(--transition);
-        width: 100%;
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        overflow: hidden;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
     }
-    
-    .btn-primary-custom:hover {
-        background: var(--secondary-color);
-        transform: translateY(-1px);
+
+    .btn-primary:hover {
+        background: #3651d4;
     }
-    
-    .btn-primary-custom:disabled {
-        opacity: 0.8;
+
+    .btn-primary:active {
+        transform: scale(0.98);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.7;
         cursor: not-allowed;
-        transform: none !important;
     }
-    
-    /* Button Loading State - Store Style */
-    .btn-primary-custom .btn-text {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary-custom.loading .btn-text {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    
-    .btn-primary-custom .btn-spinner {
+
+    .btn-primary .spinner {
         display: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto;
     }
-    
-    .btn-primary-custom.loading .btn-spinner {
+
+    .btn-primary.loading .spinner {
         display: block;
     }
-    
-    /* Store-style Spinner - Dots */
-    .store-spinner {
-        width: 28px;
-        height: 28px;
-        position: relative;
+
+    .btn-primary.loading .btn-text {
+        display: none;
     }
-    
-    .store-spinner .spinner-dot {
-        position: absolute;
-        width: 7px;
-        height: 7px;
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .btn-google {
+        width: 100%;
+        padding: 0.7rem;
         background: white;
-        border-radius: 50%;
-        animation: storeSpin 1.4s ease-in-out infinite;
-    }
-    
-    .store-spinner .spinner-dot:nth-child(1) {
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        animation-delay: 0s;
-    }
-    
-    .store-spinner .spinner-dot:nth-child(2) {
-        top: 50%;
-        right: 0;
-        transform: translateY(-50%);
-        animation-delay: 0.2s;
-    }
-    
-    .store-spinner .spinner-dot:nth-child(3) {
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        animation-delay: 0.4s;
-    }
-    
-    .store-spinner .spinner-dot:nth-child(4) {
-        top: 50%;
-        left: 0;
-        transform: translateY(-50%);
-        animation-delay: 0.6s;
-    }
-    
-    @keyframes storeSpin {
-        0%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
-        }
-        50% {
-            opacity: 1;
-            transform: scale(1.2);
-        }
-    }
-    
-    .btn-outline-custom {
-        background: transparent;
-        border: 1px solid var(--gray-200);
-        color: var(--gray-500);
-        border-radius: var(--border-radius);
-        padding: 0.5rem 1rem;
+        color: #1a1a2e;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.95rem;
         font-weight: 500;
-        font-size: 0.9rem;
-        transition: var(--transition);
-        text-decoration: none;
-        display: inline-flex;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+        display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
+        gap: 0.6rem;
+        text-decoration: none;
     }
-    
-    .btn-outline-custom:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-        background: transparent;
+
+    .btn-google:hover {
+        background: #f8fafc;
+        border-color: #4361ee;
     }
-    
-    /* Alert Styles */
-    .alert-custom {
-        border-radius: var(--border-radius);
-        border: 1px solid var(--gray-200);
-        background: #fef2f2;
-        color: #dc2626;
-        padding: 1rem;
-        margin-bottom: 1rem;
+
+    .btn-google img {
+        width: 18px;
+        height: 18px;
     }
-    
-    /* Checkbox */
-    .form-check-custom {
+
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 1.5rem 0;
+        color: #a0aec0;
+        font-size: 0.8rem;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .divider::before {
+        margin-right: 1rem;
+    }
+
+    .divider::after {
+        margin-left: 1rem;
+    }
+
+    .footer-links {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .footer-links a {
+        color: #4361ee;
+        text-decoration: none;
+    }
+
+    .footer-links a:hover {
+        text-decoration: underline;
+    }
+
+    .checkbox-group {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        margin: 0.25rem 0 0.5rem;
     }
-    
-    .form-check-custom input {
+
+    .checkbox-group input[type="checkbox"] {
         width: 16px;
         height: 16px;
+        accent-color: #4361ee;
         cursor: pointer;
+        margin: 0;
     }
-    
-    .form-check-custom label {
+
+    .checkbox-group label {
         font-size: 0.85rem;
-        color: var(--gray-500);
+        color: #4a5568;
         cursor: pointer;
     }
-    
-    .form-check-custom a {
-        color: var(--primary-color);
+
+    .checkbox-group label a {
+        color: #4361ee;
         text-decoration: none;
     }
-    
-    .form-check-custom a:hover {
+
+    .checkbox-group label a:hover {
         text-decoration: underline;
     }
-    
-    /* Badge */
-    .badge-custom {
-        background: rgba(37, 99, 235, 0.1);
-        color: var(--primary-color);
-        padding: 0.5rem 1rem;
-        border-radius: 30px;
+
+    .alert-error {
+        background: #fff5f5;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
         font-size: 0.85rem;
-        font-weight: 500;
+        margin-bottom: 1.25rem;
     }
-    
-    /* Info Box */
-    .info-box {
-        background: #f8fafc;
-        padding: 1rem;
-        border-radius: var(--border-radius);
-        text-align: center;
-        margin-top: 1rem;
-    }
-    
-    .info-box i {
-        color: var(--primary-color);
-        font-size: 1.25rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .registration-hero {
-            padding: 2rem 0;
+
+    @media (max-width: 480px) {
+        .signup-card {
+            padding: 1.5rem;
         }
-        
-        .hero-content h1 {
-            font-size: 1.75rem;
+
+        .form-row {
+            grid-template-columns: 1fr;
+            gap: 0;
         }
-        
-        .stat-number {
+
+        .signup-header .brand {
             font-size: 1.25rem;
         }
-        
-        .feature-list li {
-            padding: 0.75rem 0;
-        }
-
-        .store-spinner {
-            width: 24px;
-            height: 24px;
-        }
-
-        .store-spinner .spinner-dot {
-            width: 6px;
-            height: 6px;
-        }
-    }
-    
-    /* Animation */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .animate-fadeInUp {
-        animation: fadeInUp 0.5s ease-out;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-{%load socialaccount%}
-<!-- Hero Section -->
- <a href="{% provider_login_url 'google' %}">Sign in with Google</a>
-<div class="registration-hero">
-    <div class="container hero-content">
-        <div class="row align-items-center">
-            <div class="col-lg-8 animate-fadeInUp">
-                <h1 class="display-4 fw-bold mb-3" style="color: white;">Start Building Amazing <span style="color: #fbbf24;">Websites</span></h1>
-                <p class="lead mb-4" style="color: rgba(255,255,255,0.9);">Join thousands of creators building their online presence with bynUp</p>
-                <div class="d-flex gap-3 flex-wrap">
-                    <span class="badge-custom">
-                        <i class="fas fa-check-circle me-2"></i>No credit card required
-                    </span>
-                    <span class="badge-custom">
-                        <i class="fas fa-clock me-2"></i>14-day free trial
-                    </span>
-                </div>
-            </div>
-            <div class="col-lg-4 text-center animate-fadeInUp">
-                <i class="fas fa-rocket fa-6x rocket-icon" style="color: #fbbf24; opacity: 0.9;"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="container py-5">
-    <div class="row g-4">
-        <!-- Registration Form -->
-        <div class="col-lg-7">
-            <div class="form-card animate-fadeInUp">
-                <div class="card-header-simple">
-                    <h4 class="mb-0" style="color: var(--dark-color);">
-                        <i class="fas fa-user-plus me-2" style="color: var(--primary-color);"></i>Create Your Free Account
-                    </h4>
-                    <p class="text-muted mb-0 mt-2 small">Start your journey with bynUp today</p>
-                </div>
-                <div class="p-4">
-                    <form method="post" id="registerForm">
-                        {% csrf_token %}
-                        
-                        {% if form.non_field_errors %}
-                        <div class="alert-custom">
-                            {% for error in form.non_field_errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.first_name.id_for_label }}" class="form-label-custom">
-                                        First Name <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.first_name }}
-                                    {% if form.first_name.errors %}
-                                        <div class="text-danger small mt-1">{{ form.first_name.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.last_name.id_for_label }}" class="form-label-custom">
-                                        Last Name <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.last_name }}
-                                    {% if form.last_name.errors %}
-                                        <div class="text-danger small mt-1">{{ form.last_name.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.username.id_for_label }}" class="form-label-custom">
-                                Username <span class="text-danger">*</span>
-                            </label>
-                            {{ form.username }}
-                            {% if form.username.errors %}
-                                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
-                            {% endif %}
-                            <div class="form-text small text-muted">Choose a unique username for your account.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.email.id_for_label }}" class="form-label-custom">
-                                Email Address <span class="text-danger">*</span>
-                            </label>
-                            {{ form.email }}
-                            {% if form.email.errors %}
-                                <div class="text-danger small mt-1">{{ form.email.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.company.id_for_label }}" class="form-label-custom">
-                                Company <span class="text-muted">(Optional)</span>
-                            </label>
-                            {{ form.company }}
-                            {% if form.company.errors %}
-                                <div class="text-danger small mt-1">{{ form.company.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.password1.id_for_label }}" class="form-label-custom">
-                                Password <span class="text-danger">*</span>
-                            </label>
-                            {{ form.password1 }}
-                            {% if form.password1.errors %}
-                                <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
-                            {% endif %}
-                            <div class="password-strength">
-                                <div class="strength-bar" id="strengthBar"></div>
-                                <div class="strength-text" id="strengthText"></div>
-                            </div>
-                            {% if form.password1.help_text %}
-                                <div class="form-text small text-muted">{{ form.password1.help_text }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.password2.id_for_label }}" class="form-label-custom">
-                                Confirm Password <span class="text-danger">*</span>
-                            </label>
-                            {{ form.password2 }}
-                            {% if form.password2.errors %}
-                                <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-4 form-check-custom">
-                            <input type="checkbox" class="form-check-input" id="terms" required>
-                            <label class="form-check-label" for="terms">
-                                I agree to the <a href="#" target="_blank">Terms of Service</a> and <a href="#" target="_blank">Privacy Policy</a>
-                            </label>
-                        </div>
-
-                        <button type="submit" class="btn-primary-custom" id="submitBtn">
-                            <span class="btn-text">
-                                <i class="fas fa-rocket me-2"></i>Create My Account
-                            </span>
-                            <span class="btn-spinner">
-                                <span class="store-spinner">
-                                    <span class="spinner-dot"></span>
-                                    <span class="spinner-dot"></span>
-                                    <span class="spinner-dot"></span>
-                                    <span class="spinner-dot"></span>
-                                </span>
-                            </span>
-                        </button>
-                    </form>
-
-                    <hr class="my-4" style="border-color: var(--gray-200);">
-
-                    <div class="text-center">
-                        <p class="mb-2 text-muted small">Already have an account?</p>
-                        <a href="{% url 'accounts:login' %}" class="btn-outline-custom">
-                            <i class="fas fa-sign-in-alt me-1"></i>Sign In Here
-                        </a>
-                    </div>
-                </div>
-            </div>
+<div class="signup-wrapper">
+    <div class="signup-card">
+        <!-- Header -->
+        <div class="signup-header">
+            <div class="brand">byn<span>Up</span></div>
+            <p class="subtitle">Create your account</p>
         </div>
 
-        <!-- Features & Benefits -->
-        <div class="col-lg-5">
-            <div class="form-card animate-fadeInUp" style="animation-delay: 0.1s;">
-                <div class="card-header-simple">
-                    <h5 class="mb-0" style="color: var(--dark-color);">
-                        <i class="fas fa-star me-2" style="color: var(--primary-color);"></i>Why Join bynUp?
-                    </h5>
+        <!-- Google Signup Button -->
+        <a href="{% provider_login_url 'google' %}" class="btn-google">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Continue with Google
+        </a>
+
+        <!-- Divider -->
+        <div class="divider">or</div>
+
+        <!-- Form -->
+        <form method="post" id="signupForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <!-- Name Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.first_name.id_for_label }}">First name <span class="required">*</span></label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                    <div class="error-text">{{ form.first_name.errors }}</div>
+                    {% endif %}
                 </div>
-                <div class="p-4">
-                    <ul class="feature-list">
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-drag-drop"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">Drag & Drop Builder</div>
-                                <p class="feature-desc">Create beautiful websites without any coding knowledge</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-palette"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">Professional Templates</div>
-                                <p class="feature-desc">Choose from dozens of responsive, modern templates</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-globe"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">Custom Domains</div>
-                                <p class="feature-desc">Connect your own domain name for a professional look</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-shopping-cart"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">E-commerce Ready</div>
-                                <p class="feature-desc">Sell products, accept payments, and manage orders</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">SEO Tools</div>
-                                <p class="feature-desc">Optimize your site for search engines and grow traffic</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-icon">
-                                <i class="fas fa-headset"></i>
-                            </div>
-                            <div class="feature-content">
-                                <div class="feature-title">24/7 Support</div>
-                                <p class="feature-desc">Get help whenever you need it from our expert team</p>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <!-- Stats Section -->
-                    <div class="stats-section">
-                        <div class="row text-center">
-                            <div class="col-4">
-                                <div class="stat-number">10K+</div>
-                                <div class="stat-label">Active Users</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-number">20+</div>
-                                <div class="stat-label">Templates</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-number">99.9%</div>
-                                <div class="stat-label">Uptime</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="info-box">
-                        <i class="fas fa-gem"></i>
-                        <div class="feature-title mb-1">Ready to Start Building?</div>
-                        <p class="feature-desc mb-0">Create your account and launch your first website in minutes!</p>
-                    </div>
+                <div class="form-group">
+                    <label for="{{ form.last_name.id_for_label }}">Last name <span class="required">*</span></label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                    <div class="error-text">{{ form.last_name.errors }}</div>
+                    {% endif %}
                 </div>
             </div>
+
+            <!-- Username -->
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">Username <span class="required">*</span></label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                <div class="error-text">{{ form.username.errors }}</div>
+                {% endif %}
+                <div class="help-text">Choose a unique username.</div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">Email <span class="required">*</span></label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <div class="error-text">{{ form.email.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Company (Optional) -->
+            <!-- <div class="form-group">
+                <label for="{{ form.company.id_for_label }}">Company</label>
+                {{ form.company }}
+                {% if form.company.errors %}
+                <div class="error-text">{{ form.company.errors }}</div>
+                {% endif %}
+                <div class="help-text">Optional — leave blank if not applicable.</div>
+            </div> -->
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="{{ form.password1.id_for_label }}">Password <span class="required">*</span></label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                <div class="error-text">{{ form.password1.errors }}</div>
+                {% endif %}
+                <div class="help-text">At least 8 characters, with letters and numbers.</div>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="form-group">
+                <label for="{{ form.password2.id_for_label }}">Confirm password <span class="required">*</span></label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                <div class="error-text">{{ form.password2.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Terms -->
+            <div class="checkbox-group">
+                <input type="checkbox" id="terms" required>
+                <label for="terms">
+                    I agree to the <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>
+                </label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-primary" id="submitBtn">
+                <span class="btn-text">Create account</span>
+                <span class="spinner"></span>
+            </button>
+        </form>
+
+        <!-- Footer Links -->
+        <div class="footer-links">
+            Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a>
         </div>
     </div>
 </div>
@@ -680,82 +404,33 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Add custom classes to form inputs
-    const formControls = document.querySelectorAll('#registerForm input[type="text"], #registerForm input[type="email"], #registerForm input[type="password"]');
-    formControls.forEach(input => {
-        input.classList.add('form-control-custom');
-    });
-    
-    // Password strength indicator
-    const password1 = document.getElementById('{{ form.password1.id_for_label }}');
-    const strengthBar = document.getElementById('strengthBar');
-    const strengthText = document.getElementById('strengthText');
-    
-    if (password1) {
-        password1.addEventListener('input', function() {
-            const strength = checkPasswordStrength(this.value);
-            updatePasswordStrength(strength);
+    const form = document.getElementById('signupForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Add form-control class to all inputs
+    document.querySelectorAll('#signupForm input[type="text"], #signupForm input[type="email"], #signupForm input[type="password"]')
+        .forEach(input => {
+            input.classList.add('form-control');
         });
-    }
-    
-    function checkPasswordStrength(password) {
-        let strength = 0;
-        if (password.length >= 8) strength++;
-        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
-        if (password.match(/\d/)) strength++;
-        if (password.match(/[^a-zA-Z\d]/)) strength++;
-        return strength;
-    }
-    
-    function updatePasswordStrength(strength) {
-        const bar = strengthBar;
-        const text = strengthText;
-        
-        bar.className = 'strength-bar';
-        
-        switch(strength) {
-            case 1:
-                bar.classList.add('weak');
-                text.innerHTML = 'Weak password - add more characters';
-                break;
-            case 2:
-                bar.classList.add('fair');
-                text.innerHTML = 'Fair password - add numbers or symbols';
-                break;
-            case 3:
-                bar.classList.add('good');
-                text.innerHTML = 'Good password';
-                break;
-            case 4:
-                bar.classList.add('strong');
-                text.innerHTML = 'Strong password!';
-                break;
-            default:
-                bar.style.width = '0%';
-                text.innerHTML = '';
-        }
-    }
-    
+
     // Password confirmation validation
+    const password1 = document.getElementById('{{ form.password1.id_for_label }}');
     const password2 = document.getElementById('{{ form.password2.id_for_label }}');
+
     if (password2) {
         password2.addEventListener('input', function() {
             if (password1.value !== this.value) {
                 this.setCustomValidity('Passwords do not match');
-                this.style.borderColor = '#ef4444';
+                this.style.borderColor = '#dc3545';
             } else {
                 this.setCustomValidity('');
-                this.style.borderColor = 'var(--gray-200)';
+                this.style.borderColor = '#e2e8f0';
             }
         });
     }
 
-    // Add loading spinner on form submit - ONLY THIS ADDITION
-    const form = document.getElementById('registerForm');
-    const submitBtn = document.getElementById('submitBtn');
-
+    // Submit loading state
     form.addEventListener('submit', function() {
-        // Show loading state on button
         submitBtn.disabled = true;
         submitBtn.classList.add('loading');
     });
