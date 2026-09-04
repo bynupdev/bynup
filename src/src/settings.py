@@ -76,6 +76,9 @@ ALLOWED_HOSTS = [
 
 # Allauth configuration to skip the intermediate page
 SOCIALACCOUNT_LOGIN_ON_GET = True
+# Auto-signup to skip additional forms
+SOCIALACCOUNT_AUTO_SIGNUP = True
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 
 # CSRF Settings - CRITICAL FOR PRODUCTION!
 CSRF_TRUSTED_ORIGINS = [
