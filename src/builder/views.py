@@ -8191,7 +8191,8 @@ from django.shortcuts import get_object_or_404
 import json
 from .models import ColorPalette, ColorPaletteColor, PageColorPalette, CustomColorOverride, PublishedPage
 
-@login_required
+
+@csrf_exempt
 def get_color_palettes(request):
     """
     API endpoint to get all available color palettes
@@ -10556,7 +10557,7 @@ def onboarding_wizard(request):
     return render(request, 'builder/onboarding/wizard.html', context)
 
 
-
+@csrf_exempt
 def get_templates_api(request):
     templates = Template.objects.filter(is_active=True)
     
