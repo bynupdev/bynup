@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.cache import cache
 
-from builder.models import CJProduct
+from builder.models import *
 
 logger = logging.getLogger(__name__)
 
@@ -236,8 +236,11 @@ class CJManager:
         self.service = CJService(token)
 
     def get_logistic_name(self, vid, country_code, zip_code, city, province):
-        """Get shipping logistics name for a variant."""
+        """
+        Get shipping logistics name for a variant.
+        """
         url = f"{self.base_url}/api2.0/v1/logistic/freightCalculate"
+        
         payload = {
             "startCountryCode": "CN",
             "endCountryCode": country_code,
@@ -247,61 +250,274 @@ class CJManager:
             "products": [{"vid": vid, "quantity": 1}]
         }
         
+        print(f"\n📦 Getting logistics for VID {vid}")
+        print(f"   Country: {country_code}, City: {city}")
+        
         try:
             response = requests.post(url, headers=self.headers, json=payload, timeout=20)
             data = response.json()
+            
             if data.get('code') == 200 and data.get('data'):
-                return data['data'][0].get('logisticName')
+                logistic_name = data['data'][0].get('logisticName')
+                print(f"   ✅ Logistics: {logistic_name}")
+                return logistic_name
+            else:
+                print(f"   ⚠️ No logistics found: {data.get('message')}")
+                return None
+                
+        except requests.exceptions.Timeout:
+            print(f"   ⚠️ Timeout getting logistics")
+            return None
+            
         except Exception as e:
-            print(f"Logistics API Error: {e}")
-        return None
+            print(f"   ⚠️ Error getting logistics: {e}")
+            return None
 
-    def create_cj_order_multiple(self, order_data, logistic_name, products_data):
-        """Create CJ order with multiple products."""
+
+    def create_cj_order_multiple(self, order_info, logistic_name, products_data):
+        """
+        Create a CJ order with multiple products.
+        This is called by fulfill_cj_order_corrected.
+        """
         url = f"{self.base_url}/api2.0/v1/shopping/order/createOrderV2"
         
         payload = {
-            "orderNumber": f"{order_data['number']}-{int(time.time())}",
-            "shippingZip": str(order_data['zip']),
-            "shippingCountryCode": str(order_data['country_code']),
-            "shippingCountry": str(order_data['country_name']),
-            "countryCode": str(order_data['country_code']),
-            "shippingProvince": str(order_data['province']),
-            "shippingCity": str(order_data['city']),
-            "shippingAddress": str(order_data['address']),
-            "shippingCustomerName": str(order_data['name']),
-            "shippingPhone": str(order_data['phone']),
+            "orderNumber": f"{order_info['number']}-{int(time.time())}",
+            "shippingZip": str(order_info['zip']),
+            "shippingCountryCode": str(order_info['country_code']),
+            "shippingCountry": str(order_info['country_name']),
+            "countryCode": str(order_info['country_code']),
+            "shippingProvince": str(order_info['province']),
+            "shippingCity": str(order_info['city']),
+            "shippingAddress": str(order_info['address']),
+            "shippingCustomerName": str(order_info['name']),
+            "shippingPhone": str(order_info['phone']),
             "logisticName": logistic_name,
-            "payType": 3,
+            "payType": 3,  # Prepaid
             "fromCountryCode": "CN",
             "products": products_data
         }
         
+        print(f"\n📤 Sending order to CJ:")
+        print(f"   URL: {url}")
+        print(f"   Order Number: {payload['orderNumber']}")
+        print(f"   Products: {len(payload['products'])}")
+        
         try:
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
-            return response.json()
-        except Exception as e:
-            print(f"Error creating CJ order: {e}")
+            print(f"   Response Status: {response.status_code}")
+            
+            result = response.json()
+            print(f"   Response Code: {result.get('code')}")
+            
+            if result.get('code') != 200:
+                print(f"   Response Message: {result.get('message')}")
+            
+            return result
+            
+        except requests.exceptions.Timeout:
+            print(f"❌ Timeout creating CJ order")
+            return {"code": 408, "message": "Request timeout"}
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Request error creating CJ order: {e}")
             return {"code": 500, "message": str(e)}
-    
-    def fulfill_cj_order_corrected(self, order):
-        """Create a single CJ order with all items."""
-        products_data = []
+            
+        except Exception as e:
+            print(f"❌ Unexpected error creating CJ order: {e}")
+            return {"code": 500, "message": str(e)}
         
-        for item in order.items.all():
-            if item.cj_vid:
-                product_item = {
-                    "vid": item.cj_vid,
-                    "quantity": item.quantity
-                }
-                products_data.append(product_item)
+    def fulfill_cj_order_corrected(self, order):
+        """
+        Create a CJ order with all items.
+        Supports:
+        - Regular products with direct CJ VID
+        - Products with variants (finds CJ VID from variants)
+        - Grouped products (finds CJ VID from their variants)
+        - Products with CJProduct records
+        - Combines quantities for duplicate VIDs
+        """
+        products_data = []
+        fulfillment_errors = []
+        processed_vids = set()
+        
+        print(f"\n{'='*60}")
+        print(f"🔄 Fulfilling CJ Order: {order.order_number}")
+        print(f"   Order ID: {order.id}")
+        print(f"   Items: {order.items.count()}")
+        print(f"   Customer: {order.customer_name}")
+        print(f"{'='*60}")
+        
+        for idx, item in enumerate(order.items.all(), 1):
+            cj_vid = None
+            product = item.product
+            variant = item.variant
+            
+            print(f"\n📦 Item {idx}: {product.title}")
+            print(f"   Quantity: {item.quantity}")
+            
+            # ============================================================
+            # METHOD 1: Direct CJ VID from the product
+            # ============================================================
+            if product.cj_vid:
+                cj_vid = product.cj_vid
+                print(f"   ✅ Direct CJ VID from product: {cj_vid}")
+            
+            # ============================================================
+            # METHOD 2: CJ VID from the item's variant
+            # ============================================================
+            if not cj_vid and variant and variant.cj_vid:
+                cj_vid = variant.cj_vid
+                print(f"   ✅ CJ VID from cart variant: {cj_vid}")
+            
+            # ============================================================
+            # METHOD 3: Find CJ VID from product's variants
+            # ============================================================
+            if not cj_vid:
+                variant_with_cj = product.variants.filter(cj_vid__isnull=False).first()
+                if variant_with_cj:
+                    cj_vid = variant_with_cj.cj_vid
+                    print(f"   ✅ CJ VID from product variant {variant_with_cj.id}: {cj_vid}")
+            
+            # ============================================================
+            # METHOD 4: Grouped product - find CJ VID from its variants
+            # ============================================================
+            if not cj_vid:
+                try:
+                    from builder.models import GroupedProduct
+                    grouped = GroupedProduct.objects.filter(product=product).first()
+                    if grouped:
+                        print(f"   🔍 Found grouped product: {grouped.group_display_name}")
+                        print(f"   🔍 Variant IDs in group: {grouped.variant_ids}")
+                        
+                        # Get variants in this group
+                        variants_in_group = ProductVariant.objects.filter(
+                            id__in=grouped.variant_ids,
+                            cj_vid__isnull=False
+                        )
+                        
+                        # Try to get the specific variant if we have selected options
+                        selected_options = {}
+                        if hasattr(item, 'selected_options') and item.selected_options:
+                            selected_options = item.selected_options
+                            print(f"   🔍 Selected options: {selected_options}")
+                            
+                            # Try to match exact variant by options
+                            for v in variants_in_group:
+                                match = True
+                                for key, value in selected_options.items():
+                                    if v.options.get(key) != value:
+                                        match = False
+                                        break
+                                if match and v.cj_vid:
+                                    cj_vid = v.cj_vid
+                                    print(f"   ✅ Matched variant by options: {v.id} -> {cj_vid}")
+                                    break
+                        
+                        # If still no match, use the first variant with CJ VID
+                        if not cj_vid:
+                            first_variant = variants_in_group.first()
+                            if first_variant and first_variant.cj_vid:
+                                cj_vid = first_variant.cj_vid
+                                print(f"   ✅ First variant with CJ VID: {first_variant.id} -> {cj_vid}")
+                except Exception as e:
+                    print(f"   ⚠️ Error checking grouped product: {e}")
+            
+            # ============================================================
+            # METHOD 5: CJProduct record (legacy/fallback)
+            # ============================================================
+            if not cj_vid:
+                try:
+                    from builder.models import CJProduct
+                    cj_product = CJProduct.objects.get(
+                        page=order.page,
+                        local_product=product
+                    )
+                    if cj_product.cj_variant_id:
+                        cj_vid = cj_product.cj_variant_id
+                        print(f"   ✅ CJ VID from CJProduct: {cj_vid}")
+                except CJProduct.DoesNotExist:
+                    pass
+                except Exception as e:
+                    print(f"   ⚠️ Error checking CJProduct: {e}")
+            
+            # ============================================================
+            # METHOD 6: Try to find any variant with CJ VID (last resort)
+            # ============================================================
+            if not cj_vid:
+                any_variant = product.variants.filter(cj_vid__isnull=False).first()
+                if any_variant:
+                    cj_vid = any_variant.cj_vid
+                    print(f"   ✅ Last resort - found CJ VID in variant {any_variant.id}: {cj_vid}")
+            
+            # ============================================================
+            # Add to products_data if we found a VID
+            # ============================================================
+            if cj_vid:
+                # Check if this VID already exists (combine quantities)
+                existing = None
+                for p in products_data:
+                    if p.get('vid') == cj_vid:
+                        existing = p
+                        break
+                
+                if existing:
+                    existing['quantity'] += item.quantity
+                    print(f"   📦 Combined quantity for VID {cj_vid}: {existing['quantity']}")
+                else:
+                    products_data.append({
+                        "vid": cj_vid,
+                        "quantity": item.quantity
+                    })
+                    processed_vids.add(cj_vid)
+                    print(f"   📦 Added product: VID {cj_vid}, Qty: {item.quantity}")
+            else:
+                error_msg = f"No CJ VID found for product: {product.title} (ID: {product.id})"
+                print(f"   ❌ {error_msg}")
+                fulfillment_errors.append({
+                    'item_id': item.id,
+                    'product_id': product.id,
+                    'product_title': product.title,
+                    'variant_id': variant.id if variant else None,
+                    'error': error_msg
+                })
+        
+        # ============================================================
+        # Check if we have any products to fulfill
+        # ============================================================
+        print(f"\n{'='*60}")
+        print(f"📊 Fulfillment Summary:")
+        print(f"   Total items processed: {order.items.count()}")
+        print(f"   Products with CJ VID: {len(products_data)}")
+        print(f"   Errors: {len(fulfillment_errors)}")
+        print(f"{'='*60}")
         
         if not products_data:
-            print("No valid VIDs found in order items")
+            print("❌ No valid CJ VIDs found in order items")
+            
+            # Create sync log for failure
+            try:
+                from builder.models import CJSyncLog
+                CJSyncLog.objects.create(
+                    page=order.page,
+                    sync_type='order_submit',
+                    status='failed',
+                    error_message='No valid CJ VIDs found',
+                    error_details={'errors': fulfillment_errors},
+                    started_at=timezone.now(),
+                    completed_at=timezone.now()
+                )
+            except Exception as e:
+                print(f"⚠️ Could not create sync log: {e}")
+            
             return False
         
-        # Get logistics for FIRST product
+        # ============================================================
+        # Get logistics for the FIRST product
+        # ============================================================
         first_vid = products_data[0]['vid']
+        print(f"\n📦 Getting logistics for first product VID: {first_vid}")
+        
         logistic_name = self.get_logistic_name(
             vid=first_vid,
             country_code=order.country_iso,
@@ -312,7 +528,13 @@ class CJManager:
         
         if not logistic_name:
             logistic_name = "CJPacket Sensitive"
+            print(f"⚠️ Using default logistics: {logistic_name}")
+        else:
+            print(f"✅ Logistics: {logistic_name}")
         
+        # ============================================================
+        # Prepare order info
+        # ============================================================
         order_info = {
             "number": order.order_number,
             "zip": order.delivery_zip,
@@ -325,17 +547,83 @@ class CJManager:
             "phone": order.phone,
         }
         
+        print(f"\n📤 Creating CJ order with {len(products_data)} products")
+        print(f"   Products: {products_data}")
+        
+        # ============================================================
+        # Create the order on CJ
+        # ============================================================
         result = self.create_cj_order_multiple(order_info, logistic_name, products_data)
         
+        # ============================================================
+        # Process the result
+        # ============================================================
         if result.get('code') == 200:
             cj_order_id = result['data'].get('orderId')
+            print(f"\n✅ CJ Order created successfully!")
+            print(f"   CJ Order ID: {cj_order_id}")
+            
+            # Update the local order
             order.cj_order_id = cj_order_id
             order.cj_fulfilled_at = timezone.now()
             order.status = 'fulfilled'
             order.save()
+            
+            # Create success log
+            try:
+                from builder.models import CJSyncLog
+                CJSyncLog.objects.create(
+                    page=order.page,
+                    sync_type='order_submit',
+                    status='success',
+                    items_processed=len(products_data),
+                    items_succeeded=len(products_data),
+                    items_failed=len(fulfillment_errors),
+                    api_calls_made=1,
+                    started_at=timezone.now(),
+                    completed_at=timezone.now(),
+                    response_data={
+                        'order_id': cj_order_id,
+                        'products': products_data,
+                        'logistics': logistic_name
+                    }
+                )
+                print(f"   📝 Sync log created")
+            except Exception as e:
+                print(f"⚠️ Could not create sync log: {e}")
+            
             return True
+            
         else:
-            print(f"Failed to create CJ order: {result.get('message')}")
+            # Failed
+            error_msg = result.get('message', 'Unknown error')
+            error_code = result.get('code', 'Unknown')
+            print(f"\n❌ Failed to create CJ order!")
+            print(f"   Error Code: {error_code}")
+            print(f"   Error Message: {error_msg}")
+            print(f"   Full Response: {result}")
+            
+            # Create failure log
+            try:
+                from builder.models import CJSyncLog
+                CJSyncLog.objects.create(
+                    page=order.page,
+                    sync_type='order_submit',
+                    status='failed',
+                    error_message=error_msg,
+                    error_details={
+                        'code': error_code,
+                        'result': result,
+                        'products': products_data,
+                        'fulfillment_errors': fulfillment_errors
+                    },
+                    started_at=timezone.now(),
+                    completed_at=timezone.now()
+                )
+                print(f"   📝 Error log created")
+            except Exception as e:
+                print(f"⚠️ Could not create error log: {e}")
+            
             return False
 
     # ============================================================

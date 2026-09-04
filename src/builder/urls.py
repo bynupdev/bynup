@@ -60,6 +60,9 @@ urlpatterns = [
     # API endpoints
     path('api/products/<int:product_id>/status/', views.update_product_status, name='update_product_status'),
 
+    path('upload-editor-image/<str:subdomain>/', views.upload_editor_image, name='upload_editor_image'),
+     path('upload-editor-media/<str:subdomain>/', views.upload_editor_media, name='upload_editor_media'),
+
 
     path('cart/update/<str:subdomain>/', views.update_cart_item, name='update_cart_item'),
     path('cart/increment/<str:subdomain>/', views.increment_cart_item, name='increment_cart_item'),
@@ -106,6 +109,9 @@ urlpatterns = [
     path('api/delete-variant/<str:subdomain>/<int:variant_id>/', views.delete_variant, name='delete_variant'),
     path('api/duplicate-variant/<str:subdomain>/<int:variant_id>/', views.duplicate_variant, name='duplicate_variant'),
     path('api/get-variant/<str:subdomain>/<int:product_id>/', views.get_product_variant, name='get_product_variant'), 
+    path('manage-tiers/<str:subdomain>/<int:product_id>/', 
+     views.manage_product_tiers, 
+     name='manage_product_tiers'),
 
 
 
@@ -144,7 +150,42 @@ urlpatterns = [
     # Webhook (no authentication required)
     path('webhooks/cj/<str:subdomain>/', views.cj_webhook, name='cj_webhook'),
     # Public page (this should be the last pattern)
+      # Variant Grouping URLs
+    path('product-grouping/<str:subdomain>/<int:product_id>/', 
+         views.product_grouping_view, 
+         name='product_grouping_view'),
+    
+    path('api/update-grouping/<str:subdomain>/<int:product_id>/', 
+         views.update_product_grouping, 
+         name='update_product_grouping'),
+    
+    path('api/auto-detect-groups/<str:subdomain>/<int:product_id>/', 
+         views.auto_detect_groups, 
+         name='auto_detect_groups'),
+    
+    path('api/manual-group/<str:subdomain>/<int:product_id>/', 
+         views.manual_group_variants, 
+         name='manual_group_variants'),
+    
+    path('api/delete-group/<str:subdomain>/<int:product_id>/<int:group_id>/', 
+         views.delete_variant_group, 
+         name='delete_variant_group'),
+    
+    path('api/get-variant-options/<str:subdomain>/', 
+         views.get_variant_by_options, 
+         name='get_variant_by_options'),
 
+     path('api/apply-grouping/<str:subdomain>/<int:product_id>/', 
+         views.apply_grouping, 
+         name='apply_grouping'),
+    
+    path('api/restore-original/<str:subdomain>/<int:product_id>/', 
+         views.restore_original_product, 
+         name='restore_original_product'),
+    
+    path('api/auto-detect-groups/<str:subdomain>/<int:product_id>/', 
+         views.auto_detect_groups, 
+         name='auto_detect_groups'),
 
      # Color Palette System
     path('api/color-palettes/', views.get_color_palettes, name='get_color_palettes'),
@@ -214,6 +255,22 @@ urlpatterns = [
     path('onboarding/', views.onboarding_wizard, name='onboarding'),
     path('onboarding/launch-editor/', views.launch_editor, name='launch_editor'),
     path('templates/api/', views.get_templates_api, name='templates_api'),
+
+     # Copywriting System URLs
+    path('api/copy/template/<str:template_name>/', views.get_template_copy, name='get_template_copy'),
+    path('api/copy/page/<str:subdomain>/<str:page_name>/', views.get_page_copy, name='get_page_copy'),
+    path('api/copy/save/<str:subdomain>/', views.save_copy_changes, name='save_copy_changes'),
+    path('api/copy/export/<str:subdomain>/', views.export_copy_json, name='export_copy_json'),
+    path('api/copy/import/<str:subdomain>/', views.import_copy_json, name='import_copy_json'),
+    path('api/copy/bulk-import/<str:subdomain>/', views.bulk_import_copy, name='bulk_import_copy'),
+    path('api/copy/ai-prompt/<str:subdomain>/', views.generate_ai_prompt, name='generate_ai_prompt'),
+    path('api/copy/apply-ai/<str:subdomain>/', views.apply_ai_copy, name='apply_ai_copy'),
+    path('api/copy/extract/<str:template_name>/', views.extract_template_copy, name='extract_template_copy'),
+    path('api/copy/list-templates/', views.list_templates_copy, name='list_templates_copy'),
+    path('api/copy/stats/<str:subdomain>/', views.get_copy_stats, name='get_copy_stats'),
+    
+    # Copy Editor UI
+    path('copy-editor/<str:subdomain>/', views.copy_editor_view, name='copy_editor'),
 
      
     path('', views.public_page, name='public_page'),

@@ -1,0 +1,1198 @@
+<!-- templates/builder/copy_editor.html -->
+
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Copy Editor - {{ page.brand_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================================
+       MAIN LAYOUT
+       ============================================================ */
+    .copy-editor-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    
+    .copy-editor-container .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color, #e1e5eb);
+    }
+    
+    .copy-editor-container .page-header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark-color, #212529);
+        margin: 0;
+    }
+    
+    .copy-editor-container .page-header h1 small {
+        font-size: 14px;
+        font-weight: 400;
+        color: #6c757d;
+        margin-left: 8px;
+    }
+    
+    .copy-editor-container .page-header .header-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    /* ============================================================
+       CONTEXT SECTION - JUST 2 FIELDS
+       ============================================================ */
+    .context-section {
+        background: #f8f9fa;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 8px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+    }
+    
+    .context-section .context-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    
+    .context-section .context-header .label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--dark-color, #212529);
+    }
+    
+    .context-section .context-header .label i {
+        color: var(--primary-color, #4361ee);
+        margin-right: 6px;
+    }
+    
+    .context-section .context-header .char-count {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    
+    .context-section .context-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .context-section .context-row .field-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .context-section .context-row .field-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #6c757d;
+        margin-bottom: 4px;
+    }
+    
+    .context-section .context-row .field-group input,
+    .context-section .context-row .field-group textarea {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 4px;
+        font-size: 13px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background: white;
+        color: var(--dark-color, #212529);
+    }
+    
+    .context-section .context-row .field-group input:focus,
+    .context-section .context-row .field-group textarea:focus {
+        border-color: var(--primary-color, #4361ee);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.08);
+        outline: none;
+    }
+    
+    .context-section .context-row .field-group textarea {
+        resize: vertical;
+        min-height: 80px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
+    }
+    
+    .context-section .context-row .field-group textarea::placeholder {
+        color: #adb5bd;
+        font-size: 12px;
+    }
+    
+    .context-section .context-row .field-group .hint {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    .context-section .context-row .field-group .hint i {
+        margin-right: 4px;
+    }
+    
+    /* ============================================================
+       AI SECTION
+       ============================================================ */
+    .ai-section {
+        background: #f8f9fa;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 8px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    
+    .ai-section .ai-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .ai-section .ai-label .label-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--dark-color, #212529);
+    }
+    
+    .ai-section .ai-label .label-hint {
+        font-size: 12px;
+        color: #6c757d;
+        margin-left: 4px;
+    }
+    
+    .ai-section .ai-row {
+        display: flex;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .ai-section .ai-row textarea {
+        flex: 1;
+        min-height: 80px;
+        max-height: 120px;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'SF Mono', Monaco, monospace;
+        resize: vertical;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background: white;
+        color: var(--dark-color, #212529);
+        line-height: 1.5;
+    }
+    
+    .ai-section .ai-row textarea:focus {
+        border-color: var(--primary-color, #4361ee);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.08);
+        outline: none;
+    }
+    
+    .ai-section .ai-row textarea::placeholder {
+        color: #adb5bd;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 12px;
+    }
+    
+    .ai-section .ai-row .ai-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 130px;
+    }
+    
+    .ai-section .ai-row .ai-actions .btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-primary {
+        background: var(--primary-color, #4361ee);
+        color: white;
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-primary:hover {
+        background: var(--secondary-color, #3a0ca3);
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-secondary {
+        background: #e9ecef;
+        color: #495057;
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-secondary:hover {
+        background: #dee2e6;
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-outline {
+        background: transparent;
+        color: #6c757d;
+        border: 1px solid var(--border-color, #e1e5eb);
+    }
+    
+    .ai-section .ai-row .ai-actions .btn-outline:hover {
+        background: #f8f9fa;
+        border-color: #adb5bd;
+    }
+    
+    .ai-section .ai-status {
+        margin-top: 10px;
+        font-size: 13px;
+        min-height: 32px;
+    }
+    
+    .ai-section .ai-status .status-success {
+        color: #0d6832;
+        background: #e6f4ea;
+        padding: 6px 12px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .ai-section .ai-status .status-error {
+        color: #842029;
+        background: #f8d7da;
+        padding: 6px 12px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .ai-section .ai-status .status-info {
+        color: #0c5460;
+        background: #d1ecf1;
+        padding: 6px 12px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    /* ============================================================
+       COPY ITEMS TABLE
+       ============================================================ */
+    .copy-items-section {
+        background: white;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .copy-items-section .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border-color, #e1e5eb);
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .copy-items-section .table-header .left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .copy-items-section .table-header .left .page-nav {
+        display: flex;
+        gap: 4px;
+    }
+    
+    .copy-items-section .table-header .left .page-nav .page-btn {
+        padding: 4px 12px;
+        border-radius: 4px;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    
+    .copy-items-section .table-header .left .page-nav .page-btn:hover {
+        background: #e9ecef;
+        color: var(--dark-color, #212529);
+    }
+    
+    .copy-items-section .table-header .left .page-nav .page-btn.active {
+        background: var(--primary-color, #4361ee);
+        color: white;
+    }
+    
+    .copy-items-section .table-header .right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .copy-items-section .table-header .right .stats {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+        color: #6c757d;
+    }
+    
+    .copy-items-section .table-header .right .stats .stat strong {
+        color: var(--dark-color, #212529);
+    }
+    
+    .copy-items-section .table-header .right .search-box {
+        position: relative;
+    }
+    
+    .copy-items-section .table-header .right .search-box input {
+        padding: 4px 10px 4px 28px;
+        border: 1px solid var(--border-color, #e1e5eb);
+        border-radius: 4px;
+        font-size: 13px;
+        width: 180px;
+        transition: border-color 0.2s ease;
+        background: white;
+    }
+    
+    .copy-items-section .table-header .right .search-box input:focus {
+        border-color: var(--primary-color, #4361ee);
+        outline: none;
+    }
+    
+    .copy-items-section .table-header .right .search-box i {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+        font-size: 12px;
+    }
+    
+    .copy-items-section .table-body {
+        max-height: 450px;
+        overflow-y: auto;
+        padding: 0;
+    }
+    
+    .copy-items-section .table-body .copy-row {
+        display: grid;
+        grid-template-columns: 70px 1fr 80px 80px 40px;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 20px;
+        border-bottom: 1px solid #f1f3f5;
+        transition: background 0.15s ease;
+    }
+    
+    .copy-items-section .table-body .copy-row:hover {
+        background: #f8f9fa;
+    }
+    
+    .copy-items-section .table-body .copy-row:last-child {
+        border-bottom: none;
+    }
+    
+    .copy-items-section .table-body .copy-row .id {
+        font-family: 'SF Mono', Monaco, monospace;
+        font-size: 11px;
+        color: #6c757d;
+        background: #f1f3f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        text-align: center;
+    }
+    
+    .copy-items-section .table-body .copy-row .text {
+        font-size: 14px;
+        color: var(--dark-color, #212529);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .copy-items-section .table-body .copy-row .text.empty {
+        color: #adb5bd;
+        font-style: italic;
+    }
+    
+    .copy-items-section .table-body .copy-row .type {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #6c757d;
+        text-align: center;
+    }
+    
+    .copy-items-section .table-body .copy-row .status {
+        font-size: 11px;
+        text-align: center;
+        padding: 2px 8px;
+        border-radius: 12px;
+        display: inline-block;
+        width: fit-content;
+        margin: 0 auto;
+    }
+    
+    .copy-items-section .table-body .copy-row .status.customized {
+        background: #e6f4ea;
+        color: #0d6832;
+    }
+    
+    .copy-items-section .table-body .copy-row .status.default {
+        background: #f1f3f5;
+        color: #6c757d;
+    }
+    
+    .copy-items-section .table-body .copy-row .edit-btn {
+        background: none;
+        border: none;
+        color: #adb5bd;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .copy-items-section .table-body .copy-row .edit-btn:hover {
+        color: var(--primary-color, #4361ee);
+        background: #f1f3f5;
+    }
+    
+    /* ============================================================
+       EMPTY STATE
+       ============================================================ */
+    .empty-state {
+        text-align: center;
+        padding: 48px 20px;
+    }
+    
+    .empty-state i {
+        font-size: 32px;
+        color: #dee2e6;
+        margin-bottom: 12px;
+        display: block;
+    }
+    
+    .empty-state h5 {
+        color: var(--dark-color, #212529);
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    
+    .empty-state p {
+        color: #6c757d;
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+    
+    /* ============================================================
+       MODAL STYLES
+       ============================================================ */
+    .modal-content {
+        border-radius: 8px;
+        border: 1px solid var(--border-color, #e1e5eb);
+    }
+    
+    .modal-header {
+        border-bottom: 1px solid var(--border-color, #e1e5eb);
+        padding: 16px 20px;
+        background: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .modal-header .modal-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--dark-color, #212529);
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-body textarea {
+        font-family: 'SF Mono', Monaco, monospace;
+        font-size: 12px;
+        background: #1a1a2e;
+        color: #e2e8f0;
+        border: none;
+        border-radius: 4px;
+        padding: 12px 16px;
+        min-height: 400px;
+        resize: vertical;
+        width: 100%;
+        line-height: 1.6;
+    }
+    
+    .modal-body textarea:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--primary-color, #4361ee);
+    }
+    
+    .modal-footer {
+        border-top: 1px solid var(--border-color, #e1e5eb);
+        padding: 12px 20px;
+        background: #f8f9fa;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 768px) {
+        .copy-editor-container {
+            padding: 16px;
+        }
+        
+        .copy-editor-container .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+        
+        .copy-editor-container .page-header h1 {
+            font-size: 18px;
+        }
+        
+        .context-section .context-row {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .context-section .context-row .field-group {
+            min-width: unset;
+        }
+        
+        .ai-section .ai-row {
+            flex-direction: column;
+        }
+        
+        .ai-section .ai-row .ai-actions {
+            flex-direction: row;
+            min-width: unset;
+        }
+        
+        .ai-section .ai-row .ai-actions .btn {
+            flex: 1;
+        }
+        
+        .copy-items-section .table-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+        
+        .copy-items-section .table-header .left {
+            flex-wrap: wrap;
+        }
+        
+        .copy-items-section .table-header .right {
+            flex-wrap: wrap;
+        }
+        
+        .copy-items-section .table-header .right .search-box input {
+            width: 100%;
+        }
+        
+        .copy-items-section .table-body .copy-row {
+            grid-template-columns: 50px 1fr 60px 60px 32px;
+            gap: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        
+        .copy-items-section .table-body .copy-row .text {
+            white-space: normal;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .copy-editor-container {
+            padding: 12px;
+        }
+        
+        .context-section {
+            padding: 16px;
+        }
+        
+        .ai-section {
+            padding: 16px;
+        }
+        
+        .copy-items-section .table-body .copy-row {
+            grid-template-columns: 40px 1fr 40px 50px 28px;
+            gap: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .copy-items-section .table-header .left .page-nav .page-btn {
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="copy-editor-container">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            Copy Editor
+            <small>{{ page.brand_name }}</small>
+        </h1>
+        <div class="header-actions">
+            <!-- <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i> Dashboard
+            </a> -->
+            <a href="{{ page.get_absolute_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-eye me-1"></i> View Site
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         CONTEXT SECTION - JUST 2 FIELDS
+         ============================================================ -->
+    <div class="context-section">
+        <div class="context-header">
+            <span class="label">
+                <i class="fas fa-store"></i>
+                What does your business sell?
+            </span>
+            <span class="char-count" id="contextCharCount">0 characters</span>
+        </div>
+        
+        <div class="context-row">
+            <div class="field-group" style="flex: 2;">
+                <label for="businessDescription">Describe your products or services</label>
+                <textarea id="businessDescription" rows="3" placeholder="Describe what you sell, your unique selling points, and what makes your products special..."></textarea>
+                <div class="hint">
+                    <i class="fas fa-lightbulb" style="color: var(--primary-color, #4361ee);"></i>
+                    Be specific about your products, materials, quality, and what makes you different
+                </div>
+            </div>
+        </div>
+        
+        <div class="context-row" style="margin-top: 10px;">
+            <div class="field-group" style="flex: 2;">
+                <label for="productLinks">Product reference links</label>
+                <input type="text" id="productLinks" placeholder="https://example.com/product, https://example.com/category">
+                <div class="hint">
+                    <i class="fas fa-link" style="color: var(--primary-color, #4361ee);"></i>
+                    Add links to your products so the AI can see exactly what you're selling
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Section -->
+    <div class="ai-section">
+        <div class="ai-label">
+            <span class="label-text">
+                <i class="fas fa-robot me-1" style="color: var(--primary-color, #4361ee);"></i>
+                AI Copywriting
+            </span>
+            <span class="label-hint">— Paste JSON from ChatGPT, Claude, or any AI assistant</span>
+        </div>
+        
+        <div class="ai-row">
+            <textarea id="aiInput" placeholder='Paste AI JSON here...'></textarea>
+            <div class="ai-actions">
+                <button class="btn btn-primary" id="applyAITextBtn" onclick="applyAICopy('{{ page.subdomain }}')">
+                    <i class="fas fa-check me-1"></i> Apply
+                </button>
+                <button class="btn btn-secondary" onclick="generateAIPrompt('{{ page.subdomain }}')">
+                    <i class="fas fa-file-export me-1"></i> Prompt
+                </button>
+                <button class="btn btn-outline" onclick="document.getElementById('aiInput').value = ''">
+                    <i class="fas fa-times me-1"></i> Clear
+                </button>
+            </div>
+        </div>
+        
+        <div class="ai-status" id="aiStatus"></div>
+    </div>
+
+    <!-- Copy Items Table -->
+    <div class="copy-items-section">
+        <div class="table-header">
+            <div class="left">
+                <div class="page-nav" id="pageNav">
+                    <!-- Generated by JavaScript -->
+                </div>
+            </div>
+            <div class="right">
+                <div class="stats">
+                    <span class="stat"><strong id="totalElements">0</strong> Total</span>
+                    <span class="stat"><strong id="customizedElements">0</strong> Edited</span>
+                </div>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="copySearch" placeholder="Search...">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-body" id="copyItemsContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2" style="font-size: 14px;">Loading content...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Prompt Modal -->
+<div class="modal fade" id="aiPromptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-export me-2" style="color: var(--primary-color, #4361ee);"></i>
+                    AI Prompt
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Copy this prompt and paste it into your AI assistant.</p>
+                <textarea id="aiPromptOutput" class="form-control" rows="15" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary btn-sm" id="copyPromptBtn">
+                    <i class="fas fa-copy me-1"></i> Copy
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================
+// GENERATE AI PROMPT - WITH BUSINESS CONTEXT
+// ============================================================
+
+async function generateAIPrompt(subdomain) {
+    const modal = new bootstrap.Modal(document.getElementById('aiPromptModal'));
+    modal.show();
+    
+    const output = document.getElementById('aiPromptOutput');
+    output.value = 'Generating prompt...';
+    
+    try {
+        // Get context data - just 2 fields
+        const businessDescription = document.getElementById('businessDescription').value || '';
+        const productLinks = document.getElementById('productLinks').value || '';
+        
+        // Build context string
+        let contextParts = [];
+        
+        if (businessDescription) {
+            contextParts.push(`## What I Sell\n${businessDescription}`);
+        }
+        
+        if (productLinks) {
+            contextParts.push(`## Product References\n${productLinks}`);
+        }
+        
+        const contextString = contextParts.join('\n\n');
+        console.log('📝 Context being sent:', contextString);
+        
+        if (!contextString) {
+            console.log('⚠️ No context provided');
+        }
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                          document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+        
+        const response = await fetch(`/builder/api/copy/ai-prompt/${subdomain}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || ''
+            },
+            body: JSON.stringify({ context: contextString })
+        });
+        
+        const data = await response.json();
+        console.log('📥 Response:', data);
+        
+        if (data.success) {
+            output.value = data.prompt;
+            console.log('✅ Prompt generated with context');
+        } else {
+            output.value = 'Error: ' + data.error;
+        }
+    } catch (error) {
+        console.error('❌ Error:', error);
+        output.value = 'Error: ' + error.message;
+    }
+}
+
+// ============================================================
+// APPLY AI COPY
+// ============================================================
+
+async function applyAICopy(subdomain) {
+    const input = document.getElementById('aiInput');
+    const status = document.getElementById('aiStatus');
+    const applyBtn = document.getElementById('applyAITextBtn');
+    
+    if (!input || !input.value.trim()) {
+        status.innerHTML = `<span class="status-error">Please paste AI JSON first</span>`;
+        return;
+    }
+
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Applying...';
+    }
+    
+    status.innerHTML = `<span class="status-info">Processing...</span>`;
+    
+    try {
+        let aiText = input.value.trim();
+        let copyData = null;
+        
+        const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            copyData = JSON.parse(jsonMatch[1]);
+        } else {
+            copyData = JSON.parse(aiText);
+        }
+        
+        if (!copyData.pages) {
+            if (typeof copyData === 'object' && !Array.isArray(copyData)) {
+                const hasArray = Object.values(copyData).some(v => Array.isArray(v));
+                if (hasArray) {
+                    copyData = { pages: copyData };
+                }
+            }
+        }
+        
+        if (!copyData.pages) {
+            throw new Error('Invalid JSON format');
+        }
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                          document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+        
+        const response = await fetch(`/builder/api/copy/apply-ai/${subdomain}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || ''
+            },
+            body: JSON.stringify({ copy: copyData })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            status.innerHTML = `<span class="status-success">✅ ${result.message}</span>`;
+            
+            const pagesData = copyData.pages;
+            const currentPage = window.copyEditor?.currentPage || 'home';
+            
+            if (pagesData[currentPage]) {
+                for (const item of pagesData[currentPage]) {
+                    document.querySelectorAll(`[data-text="${item.id}"]`).forEach(el => {
+                        el.textContent = item.text;
+                    });
+                }
+            }
+            
+            if (window.copyEditor) {
+                setTimeout(async () => {
+                    await window.copyEditor.loadCopyData();
+                    window.copyEditor.renderCopyItems();
+                    window.copyEditor.updateStats();
+                }, 500);
+            }
+            
+            setTimeout(() => {
+                if (confirm('✅ AI copy applied.\n\nReload page to see changes?')) {
+                    location.reload();
+                }
+            }, 1500);
+            
+        } else {
+            throw new Error(result.error || 'Unknown error');
+        }
+        
+    } catch (error) {
+        status.innerHTML = `<span class="status-error">❌ ${error.message}</span>`;
+    } finally {
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i class="fas fa-check me-1"></i> Apply';
+        }
+    }
+}
+
+// ============================================================
+// COPY EDITOR CLASS
+// ============================================================
+
+class CopyEditor {
+    constructor() {
+        this.subdomain = '{{ page.subdomain }}';
+        this.currentPage = 'home';
+        this.copyData = null;
+        this.init();
+    }
+
+    async init() {
+        await this.loadCopyData();
+        this.renderPageNav();
+        this.setupSearch();
+        this.setupPageNav();
+        
+        // Auto-save context
+        this.setupAutoSave();
+    }
+
+    async loadCopyData() {
+        try {
+            const response = await fetch(`/builder/api/copy/export/${this.subdomain}/`);
+            const data = await response.json();
+            
+            if (data.success && data.copy_data) {
+                this.copyData = data.copy_data;
+            } else {
+                this.copyData = { pages: {} };
+            }
+        } catch (error) {
+            console.error('Error loading copy data:', error);
+            this.copyData = { pages: {} };
+        }
+        
+        this.renderCopyItems();
+        this.updateStats();
+    }
+
+    renderPageNav() {
+        const container = document.getElementById('pageNav');
+        if (!container) return;
+        
+        const pages = Object.keys(this.copyData?.pages || {});
+        
+        if (pages.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        container.innerHTML = pages.map(page => `
+            <button class="page-btn ${page === this.currentPage ? 'active' : ''}" 
+                    data-page="${page}">
+                ${page.charAt(0).toUpperCase() + page.slice(1)}
+            </button>
+        `).join('');
+    }
+
+    setupPageNav() {
+        document.querySelectorAll('.page-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.currentPage = btn.dataset.page;
+                this.renderPageNav();
+                this.renderCopyItems();
+                this.updateStats();
+            });
+        });
+    }
+
+    renderCopyItems() {
+        const container = document.getElementById('copyItemsContainer');
+        if (!container) return;
+        
+        const pageData = this.copyData?.pages?.[this.currentPage] || [];
+        
+        if (pageData.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-pen-fancy"></i>
+                    <h5>No content found</h5>
+                    <p>Extract copy from your template first, or use the AI assistant above.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        for (const item of pageData) {
+            const isCustomized = item.customized || false;
+            const text = item.text || '';
+            const type = item.type || 'text';
+            const id = item.id || 'unknown';
+            
+            html += `
+                <div class="copy-row" data-id="${id}">
+                    <span class="id">${id}</span>
+                    <span class="text ${!text ? 'empty' : ''}" title="${text}">
+                        ${text || '<em>Empty</em>'}
+                    </span>
+                    <span class="type">${type}</span>
+                    <span class="status ${isCustomized ? 'customized' : 'default'}">
+                        ${isCustomized ? 'Edited' : 'Default'}
+                    </span>
+                    <button class="edit-btn" onclick="window.copyEditor.editCopy('${id}')" title="Edit text">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+
+    editCopy(id) {
+        const items = this.copyData?.pages?.[this.currentPage] || [];
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        
+        const newText = prompt(`Edit text for "${id}"`, item.text);
+        if (newText !== null && newText !== item.text) {
+            item.text = newText;
+            item.customized = true;
+            this.renderCopyItems();
+            this.updateStats();
+            this.autoSave(id, newText);
+        }
+    }
+
+    async autoSave(id, text) {
+        try {
+            const response = await fetch(`/builder/api/copy/save/${this.subdomain}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCsrfToken()
+                },
+                body: JSON.stringify({
+                    page: this.currentPage,
+                    changes: [{ id, text }]
+                })
+            });
+        } catch (error) {
+            console.error('Auto-save error:', error);
+        }
+    }
+
+    updateStats() {
+        const pageData = this.copyData?.pages?.[this.currentPage] || [];
+        const total = pageData.length;
+        const customized = pageData.filter(i => i.customized).length;
+        
+        document.getElementById('totalElements').textContent = total;
+        document.getElementById('customizedElements').textContent = customized;
+    }
+
+    setupSearch() {
+        const input = document.getElementById('copySearch');
+        if (!input) return;
+        
+        input.addEventListener('input', () => {
+            const query = input.value.toLowerCase();
+            document.querySelectorAll('.copy-row').forEach(row => {
+                const text = row.querySelector('.text')?.textContent?.toLowerCase() || '';
+                const id = row.dataset.id?.toLowerCase() || '';
+                row.style.display = (!query || text.includes(query) || id.includes(query)) ? '' : 'none';
+            });
+        });
+    }
+
+    setupAutoSave() {
+        const fields = ['businessDescription', 'productLinks'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', function() {
+                    updateCharCount();
+                    saveContext();
+                });
+                el.addEventListener('change', function() {
+                    saveContext();
+                });
+            }
+        });
+        
+        loadSavedContext();
+        updateCharCount();
+    }
+
+    getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+}
+
+// ============================================================
+// CONTEXT HELPERS
+// ============================================================
+
+function updateCharCount() {
+    const text = document.getElementById('businessDescription').value || '';
+    document.getElementById('contextCharCount').textContent = text.length + ' characters';
+}
+
+function saveContext() {
+    const context = {
+        business: document.getElementById('businessDescription').value,
+        links: document.getElementById('productLinks').value
+    };
+    localStorage.setItem('copy_editor_context_' + '{{ page.subdomain }}', JSON.stringify(context));
+}
+
+function loadSavedContext() {
+    const saved = localStorage.getItem('copy_editor_context_' + '{{ page.subdomain }}');
+    if (saved) {
+        try {
+            const context = JSON.parse(saved);
+            document.getElementById('businessDescription').value = context.business || '';
+            document.getElementById('productLinks').value = context.links || '';
+            updateCharCount();
+        } catch (e) {}
+    }
+}
+
+// Copy prompt to clipboard
+document.getElementById('copyPromptBtn')?.addEventListener('click', function() {
+    const output = document.getElementById('aiPromptOutput');
+    navigator.clipboard.writeText(output.value).then(() => {
+        const original = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-check me-1"></i>Copied';
+        setTimeout(() => { this.innerHTML = original; }, 2000);
+    });
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    window.copyEditor = new CopyEditor();
+});
+</script>
+{% endblock %}

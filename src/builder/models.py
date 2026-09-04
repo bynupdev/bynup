@@ -1163,7 +1163,77 @@ class ProductReview(models.Model):
     
     def __str__(self):
         return f"{self.product.title} - {self.rating} stars"
+
+
+ # ================================================================
+
+class ProductTier(models.Model):
+    """
+    Simple pricing tiers for products - quantity based discounts
+    """
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='tiers')
+    page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='product_tiers')
     
+    quantity = models.PositiveIntegerField(default=1)
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
+    badge_text = models.CharField(max_length=50, blank=True)
+    is_default = models.BooleanField(default=False)
+    display_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['display_order', 'quantity']
+        unique_together = ['product', 'quantity']
+    
+    def __str__(self):
+        return f"{self.product.title} - {self.quantity}x (${self.price_per_unit}/each)"
+    
+    @property
+    def total_price(self):
+        return self.price_per_unit * self.quantity
+    
+    @property
+    def savings(self):
+        """Calculate savings vs buying individually"""
+        base_tier = self.product.tiers.filter(is_active=True).order_by('quantity').first()
+        if base_tier and base_tier.id != self.id:
+            base_total = base_tier.price_per_unit * self.quantity
+            return base_total - self.total_price
+        return 0
+    
+# RICH TEXT EDITOR MEDIA MODELS
+# ================================================================
+
+class EditorImage(models.Model):
+    """Images uploaded via the rich text editor"""
+    page = models.ForeignKey('PublishedPage', on_delete=models.CASCADE, related_name='editor_images')
+    image = models.ImageField(upload_to='editor_images/')
+    alt_text = models.CharField(max_length=200, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.page.brand_name} - {self.image.name[:50]}"
+
+
+class EditorMedia(models.Model):
+    """Video/audio uploaded via the rich text editor"""
+    MEDIA_TYPES = [
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+    ]
+    
+    page = models.ForeignKey('PublishedPage', on_delete=models.CASCADE, related_name='editor_media')
+    file = models.FileField(upload_to='editor_media/')
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.page.brand_name} - {self.file.name[:50]}"   
 
 class BackgroundImage(models.Model):
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='background_images')
@@ -1445,7 +1515,7 @@ class CartItem(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['cart', 'product']
+        unique_together = ['cart', 'product', 'variant']
 
     def __str__(self):
         variant_info = ''
@@ -2033,6 +2103,136 @@ class CJCachedData(models.Model):
         return timezone.now() < self.expires_at
 
 
+# builder/models.py - Add at the bottom
+
+class ProductDisplayMode(models.Model):
+    """Controls how variants are displayed for a product"""
+    
+    MODE_CHOICES = [
+        ('single', 'Single Product with Swatches'),
+        ('grouped', 'Grouped by Attribute'),
+        ('flattened', 'Flatten All Variants'),
+    ]
+    
+    product = models.OneToOneField(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='display_mode'
+    )
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='single')
+    group_by = models.CharField(max_length=20, default='image')
+    primary_attribute = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Cache for quick lookups
+    cached_groups = models.JSONField(default=dict, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.product.title} - {self.get_mode_display()}"
+
+
+class VariantGroup(models.Model):
+    """Groups variants together for display purposes"""
+    
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='variant_groups'
+    )
+    group_key = models.CharField(max_length=100)  # Unique identifier
+    display_name = models.CharField(max_length=200)
+    variants = models.ManyToManyField('ProductVariant', related_name='variant_groups')
+
+    is_in_stock = models.BooleanField(default=True)
+    primary_attribute_value = models.CharField(max_length=100, blank=True, null=True)
+    # Representative image (stored via Cloudinary)
+    image = models.ImageField(upload_to='variant_groups/', blank=True, null=True)
+    image_url = models.URLField(max_length=500, blank=True, null=True)
+    
+    display_order = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['display_order']
+        unique_together = ['product', 'group_key']
+    
+    def __str__(self):
+        return f"{self.product.title} - {self.display_name}"
+
+# builder/models.py - Add these new models
+
+class GroupedProduct(models.Model):
+    """
+    Represents a product created from a variant group.
+    This is a separate entity that doesn't modify the Product model.
+    """
+    # Reference to the original product
+    original_product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='grouped_products'
+    )
+    
+    # Reference to the actual product record
+    product = models.OneToOneField(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='grouped_source'
+    )
+    
+    # Which variants this product represents
+    variant_ids = models.JSONField(default=list, help_text="List of variant IDs in this group")
+    
+    # Group identifier
+    group_key = models.CharField(max_length=100)
+    group_display_name = models.CharField(max_length=200)
+    
+    # Original product state (for restoration)
+    original_status = models.CharField(max_length=20, default='active')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['original_product', 'group_key']
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"{self.original_product.title} - {self.group_display_name}"
+
+
+class ProductDisplayMode(models.Model):
+    """Controls how variants are displayed for a product"""
+    
+    MODE_CHOICES = [
+        ('single', 'Single Product with Swatches'),
+        ('grouped', 'Grouped by Attribute'),
+        ('flattened', 'Flatten All Variants'),
+    ]
+    
+    GROUP_BY_CHOICES = [
+        ('image', 'Group by Image'),
+        ('primary_attribute', 'Primary Attribute'),
+        ('none', 'No Grouping'),
+    ]
+    
+    product = models.OneToOneField(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='display_mode'
+    )
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='single')
+    group_by = models.CharField(max_length=20, choices=GROUP_BY_CHOICES, default='image')
+    primary_attribute = models.CharField(max_length=50, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.product.title} - {self.get_mode_display()}"
+
+    
 # builder/models.py - Add TemplateColorMapping
 
 class TemplateColorMapping(models.Model):

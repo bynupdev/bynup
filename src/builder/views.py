@@ -25,7 +25,7 @@ from payments.decorators import get_user_subscription
 from payments.models import Subscription
 from payments.decorators import check_storage_before_upload
 from payments.storage import get_user_storage_usage, format_bytes, get_storage_limit
-
+from django.db.models import Avg
 import json
 import base64
 import uuid
@@ -36,6 +36,7 @@ from django.conf import settings
 from builder.utils.color_extractor import TemplateColorExtractor
 
 from .models import *
+from .models import  ProductDisplayMode,VariantGroup
 
 @login_required
 @custom_domain_required
@@ -413,7 +414,8 @@ def public_page(request):
     component_range = list(range(1, 500))  # Support up to 20 components per section
 
     # Other dynamic data
-    products = page.products.all().order_by('-created_at') #if current_page == 'products' else []
+    # products = page.products.all().order_by('-created_at') #if current_page == 'products' else []
+    products = page.products.filter(is_active=True, status='active').order_by('-created_at')
     categories = page.product_categories.all().order_by('-id')
       # Get requested category from URL
    # Get requested category from URL
@@ -699,8 +701,118 @@ def public_page(request):
         # Save the updated colors
         page.save(update_fields=['active_palette_colors', 'updated_at'])
 
+    # # Get or create tiers for this product
+    # tiers = product.tiers.filter(is_active=True).order_by('display_order', 'quantity')
+    
+    # # If no tiers exist, create default tiers from product price
+    # if not tiers.exists():
+    #     base_price = product.price
+    #     # Create default tier objects (not saved to DB)
+    #     tier_data = [
+    #         {'quantity': 1, 'price_per_unit': base_price, 'badge_text': '', 'is_default': False},
+    #         {'quantity': 2, 'price_per_unit': round(base_price * 0.95, 2), 'badge_text': 'Save 5%', 'is_default': True},
+    #         {'quantity': 3, 'price_per_unit': round(base_price * 0.90, 2), 'badge_text': '🔥 Best Value', 'is_default': False},
+    #     ]
+        
+    #     # Convert to list of dicts for the template
+    #     tiers_list = []
+    #     for td in tier_data:
+    #         tiers_list.append({
+    #             'quantity': td['quantity'],
+    #             'price_per_unit': td['price_per_unit'],
+    #             'total_price': td['price_per_unit'] * td['quantity'],
+    #             'badge_text': td['badge_text'],
+    #             'is_default': td['is_default'],
+    #             'savings': (base_price * td['quantity']) - (td['price_per_unit'] * td['quantity'])
+    #         })
+    #     tiers = tiers_list
+    # else:
+    #     # Convert queryset to list of dicts for consistent template handling
+    #     tiers_list = []
+    #     base_tier = product.tiers.filter(is_active=True).order_by('quantity').first()
+    #     base_price = base_tier.price_per_unit if base_tier else product.price
+        
+    #     for tier in tiers:
+    #         tiers_list.append({
+    #             'id': tier.id,
+    #             'quantity': tier.quantity,
+    #             'price_per_unit': tier.price_per_unit,
+    #             'total_price': tier.total_price,
+    #             'badge_text': tier.badge_text,
+    #             'is_default': tier.is_default,
+    #             'savings': (base_price * tier.quantity) - tier.total_price
+    #         })
+    #     tiers = tiers_list
+    
+    # Add tiers to context
+    # context['tiers'] = tiers
+    # ============ TIERED PRICING - ONLY IF TIERS EXIST ============
+    # ============ TIERED PRICING ============
+    # Get the first product to use for tiered pricing
+    first_product = page.products.filter(is_active=True, status='active').first()
 
+    tiers = []
+    if first_product:
+        # Get the original product price
+        original_price = float(first_product.price)
+        
+        # Get tiers from the database
+        product_tiers = first_product.tiers.filter(is_active=True).order_by('display_order', 'quantity')
+        
+        # ALWAYS add the first tier as the original product price (quantity = 1)
+        tiers.append({
+            'quantity': 1,
+            'price_per_unit': original_price,
+            'total_price': original_price,
+            'badge_text': '',
+            'is_default': False,
+            'savings': 0,
+            'is_original': True,
+            'tier_id': None
+        })
+        
+        # If there are tiers in the database, add them
+        if product_tiers.exists():
+            for tier in product_tiers:
+                # Convert Decimal to float
+                tier_quantity = int(tier.quantity)
+                tier_price_per_unit = float(tier.price_per_unit)
+                tier_total = float(tier.total_price)
+                
+                # Calculate savings vs original price
+                savings = float((original_price * tier_quantity) - tier_total)
+                
+                tiers.append({
+                    'id': tier.id,
+                    'quantity': tier_quantity,
+                    'price_per_unit': tier_price_per_unit,
+                    'total_price': tier_total,
+                    'badge_text': tier.badge_text,
+                    'is_default': True,
+                    'savings': savings,
+                    'is_original': False,
+                    'tier_id': tier.id
+                })
+        
+        # Mark the SECOND tier as default
+        if len(tiers) > 1:
+            tiers[1]['is_default'] = True
 
+    for product in products:
+            reviews = product.reviews.all()
+            total_reviews = reviews.count()
+            
+            if total_reviews > 0:
+                # ✅ Use Avg from django.db.models
+                avg_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+            else:
+                avg_rating = 0
+            
+            # Attach review_stats to the product object
+            product.review_stats = {
+                'average_rating': float(avg_rating or 0),
+                'total_reviews': total_reviews
+            }
     # anonymouse user check end
     context = {
         'page': page,
@@ -725,6 +837,8 @@ def public_page(request):
         'categories':categories,
 
         'variants':variants,
+        'first_product': first_product,
+        'tiers': tiers,  # Will be empty list if no tiers exist
 
         'current_category': current_category,
         # 'products': filtered_products,
@@ -3300,9 +3414,126 @@ def delete_category(request, subdomain, category_id):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
+# ================================================================
+# RICH TEXT EDITOR - MEDIA UPLOAD VIEWS
+# ================================================================
+
+@login_required
+@csrf_exempt
+def upload_editor_image(request, subdomain):
+    """
+    Upload image for rich text editor.
+    Returns JSON with the image URL for CKEditor.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Check if image was sent
+        if 'upload' in request.FILES:
+            image = request.FILES['upload']
+        elif 'image' in request.FILES:
+            image = request.FILES['image']
+        else:
+            return JsonResponse({'success': False, 'error': 'No image provided'})
+        
+        # Validate file type
+        if not image.content_type.startswith('image/'):
+            return JsonResponse({'success': False, 'error': 'File must be an image'})
+        
+        # Save the image
+        editor_image = EditorImage.objects.create(
+            page=page,
+            image=image,
+            alt_text=image.name,
+            uploaded_by=request.user
+        )
+        
+        # CKEditor expects this format
+        return JsonResponse({
+            'uploaded': True,
+            'url': editor_image.image.url,
+            'fileName': image.name,
+        })
+        
+    except Exception as e:
+        return JsonResponse({'uploaded': False, 'error': {'message': str(e)}})
 
 
-
+@login_required
+@csrf_exempt
+def upload_editor_media(request, subdomain):
+    """
+    Upload image or video for Froala Editor.
+    Froala expects a specific response format.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        # Get the page
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Check if file was uploaded
+        if 'file' not in request.FILES:
+            return JsonResponse({'success': False, 'error': 'No file provided'})
+        
+        file = request.FILES['file']
+        media_type = request.POST.get('media_type', 'image')
+        
+        # Validate file type
+        if media_type == 'image' and not file.content_type.startswith('image/'):
+            return JsonResponse({
+                'success': False, 
+                'error': f'File must be an image (got {file.content_type})'
+            })
+        elif media_type == 'video' and not file.content_type.startswith('video/'):
+            return JsonResponse({
+                'success': False, 
+                'error': f'File must be a video (got {file.content_type})'
+            })
+        
+        # Import the model
+        from .models import EditorMedia
+        
+        # Save the media
+        editor_media = EditorMedia.objects.create(
+            page=page,
+            file=file,
+            media_type=media_type,
+            uploaded_by=request.user
+        )
+        
+        # Build full URL for the file
+        file_url = editor_media.file.url
+        if file_url.startswith('/'):
+            file_url = request.build_absolute_uri(file_url)
+        
+        # ====== FROALA EXPECTS THIS SPECIFIC RESPONSE FORMAT ======
+        return JsonResponse({
+            'success': True,
+            'link': file_url,  # Froala uses 'link' for the URL
+            'url': file_url,
+            'fileName': file.name,
+            'fileId': editor_media.id,
+            'media_type': media_type
+        })
+        
+    except PublishedPage.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Page not found'
+        })
+    except Exception as e:
+        import traceback
+        print(f"❌ Upload error: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False, 
+            'error': str(e)
+        })
 # End
 
 
@@ -3403,103 +3634,169 @@ from django.views.decorators.http import require_POST
 # @csrf_exempt
 # @require_POST
 # def add_to_cart(request, subdomain):
-#     """Add product to cart with variant data"""
+#     """Add product to cart with variant support - FIXED"""
 #     try:
-#         page = get_object_or_404(PublishedPage, subdomain=subdomain)
-#         data = json.loads(request.body)
-#         product_id = data.get('product_id')
-#         quantity = int(data.get('quantity', 1))
-#         selected_color = data.get('selected_color', '')
-#         selected_size = data.get('selected_size', '')
+#         print(f"🛒 ADD TO CART - Subdomain: {subdomain}")
         
-#         # Get the product
+#         page = get_object_or_404(PublishedPage, subdomain=subdomain)
+        
+#         # Parse request body
+#         try:
+#             data = json.loads(request.body)
+#         except json.JSONDecodeError:
+#             return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+        
+        
+#         product_id = data.get('product_id')
+#         variant_id = data.get('variant_id')
+#         selected_options = data.get('options', {})
+#         quantity = int(data.get('quantity', 1))
+        
+#         print(f"📦 Product ID: {product_id}, Variant ID: {variant_id}, Quantity: {quantity}")
+#         print(f"📦 Options: {selected_options}")
+        
+#         # Get product
 #         product = get_object_or_404(Product, id=product_id, page=page)
+#         print(f"✅ Product found: {product.title}")
+        
+#         # Get variant if specified
+#         variant = None
+#         if variant_id:
+#             try:
+#                 variant = ProductVariant.objects.get(id=variant_id, product=product)
+#                 print(f"✅ Variant found: {variant}")
+#             except ProductVariant.DoesNotExist:
+#                 print(f"⚠️ Variant {variant_id} not found, trying options match")
+#                 if selected_options:
+#                     variant = product.variants.filter(options=selected_options).first()
+#                     if variant:
+#                         print(f"✅ Variant found by options: {variant}")
+#         elif selected_options:
+#             variant = product.variants.filter(options=selected_options).first()
+#             if variant:
+#                 print(f"✅ Variant found by options: {variant}")
         
 #         # Ensure session exists
 #         if not request.session.session_key:
 #             request.session.create()
 #         session_key = request.session.session_key
+#         print(f"🔑 Session: {session_key}")
+#         print(f"👤 User authenticated: {request.user.is_authenticated}")
         
-#         # Get or create cart
-#         cart_filter = {'page': page}
+#         # Get or create cart - FIXED: Use correct lookup
 #         if request.user.is_authenticated:
-#             cart_filter['user'] = request.user
-#             cart_filter['session_key'] = None
+#             # For authenticated users, try to get existing cart or create new
+#             cart, created = Cart.objects.get_or_create(
+#                 user=request.user,
+#                 page=page,
+#                 defaults={
+#                     'session_key': None,
+#                     'created_at': timezone.now(),
+#                     'updated_at': timezone.now()
+#                 }
+#             )
+#             # If there's a session cart, transfer it
+#             if not created:
+#                 session_cart = Cart.objects.filter(session_key=session_key, page=page, user__isnull=True).first()
+#                 if session_cart:
+#                     # Transfer items from session cart to user cart
+#                     for item in session_cart.items.all():
+#                         item.cart = cart
+#                         item.save()
+#                     session_cart.delete()
+#                     print("🔄 Transferred session cart to user cart")
 #         else:
-#             cart_filter['user'] = None
-#             cart_filter['session_key'] = session_key
+#             # For guest users, use session key
+#             cart, created = Cart.objects.get_or_create(
+#                 session_key=session_key,
+#                 page=page,
+#                 defaults={
+#                     'user': None,
+#                     'created_at': timezone.now(),
+#                     'updated_at': timezone.now()
+#                 }
+#             )
         
-#         cart, created = Cart.objects.get_or_create(**cart_filter)
+#         print(f"🛒 Cart: {cart.id}, Created: {created}")
         
-#         # Check if same variant already exists in cart
+#         # Check if item already exists in cart (with same variant)
 #         existing_item = CartItem.objects.filter(
 #             cart=cart,
 #             product=product,
-#             selected_color=selected_color,
-#             selected_size=selected_size
+#             variant=variant
 #         ).first()
         
 #         if existing_item:
-#             # Update existing item
+#             print(f"📦 Item exists, updating quantity from {existing_item.quantity} to {existing_item.quantity + quantity}")
 #             existing_item.quantity += quantity
 #             existing_item.save()
 #             message = f'Updated {product.title} quantity'
 #         else:
-#             # Create new cart item with variant data
+#             print(f"📦 Creating new cart item")
 #             CartItem.objects.create(
 #                 cart=cart,
 #                 product=product,
-#                 quantity=quantity,
-#                 selected_color=selected_color,
-#                 selected_size=selected_size
+#                 variant=variant,
+#                 selected_options=selected_options,
+#                 quantity=quantity
 #             )
 #             message = f'Added {product.title} to cart'
+        
+#         # Get updated counts
+#         total_qty = cart.get_total_quantity()
+#         items_count = cart.items.count()
+        
+#         print(f"✅ Success: {message}, Total: {total_qty}, Items: {items_count}")
         
 #         return JsonResponse({
 #             'success': True,
 #             'message': message,
-#             'cart_total': cart.get_total_quantity(),
-#             'cart_items_count': cart.items.count(),
-#             'selected_color': selected_color,
-#             'selected_size': selected_size
+#             'cart_total': total_qty,
+#             'cart_items_count': items_count
 #         })
         
+#     except Product.DoesNotExist:
+#         print(f"❌ Product not found: {product_id}")
+#         return JsonResponse({'success': False, 'error': 'Product not found'})
 #     except Exception as e:
 #         print(f"❌ Cart error: {str(e)}")
 #         import traceback
 #         traceback.print_exc()
 #         return JsonResponse({'success': False, 'error': str(e)})
+    
 
+# builder/views.py - Complete updated add_to_cart
 
-# builder/views.py - Complete fixed add_to_cart
+from builder.services.variant_grouping import VariantGroupManager
 
 @csrf_exempt
 @require_POST
 def add_to_cart(request, subdomain):
-    """Add product to cart with variant support - FIXED"""
+    """Add product to cart with variant support - FIXED for multiple variants"""
     try:
         print(f"🛒 ADD TO CART - Subdomain: {subdomain}")
-        
         page = get_object_or_404(PublishedPage, subdomain=subdomain)
-        
+
         # Parse request body
         try:
             data = json.loads(request.body)
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'})
-        
+
         product_id = data.get('product_id')
         variant_id = data.get('variant_id')
         selected_options = data.get('options', {})
+        selected_color = data.get('selected_color', '')
+        selected_size = data.get('selected_size', '')
         quantity = int(data.get('quantity', 1))
-        
+
         print(f"📦 Product ID: {product_id}, Variant ID: {variant_id}, Quantity: {quantity}")
-        print(f"📦 Options: {selected_options}")
-        
+        print(f"📦 Options: {selected_options}, Color: {selected_color}, Size: {selected_size}")
+
         # Get product
         product = get_object_or_404(Product, id=product_id, page=page)
         print(f"✅ Product found: {product.title}")
-        
+
         # Get variant if specified
         variant = None
         if variant_id:
@@ -3512,21 +3809,30 @@ def add_to_cart(request, subdomain):
                     variant = product.variants.filter(options=selected_options).first()
                     if variant:
                         print(f"✅ Variant found by options: {variant}")
-        elif selected_options:
-            variant = product.variants.filter(options=selected_options).first()
-            if variant:
-                print(f"✅ Variant found by options: {variant}")
-        
+
+        # If no variant found but we have color/size, try to find one
+        if not variant and (selected_color or selected_size):
+            variants = product.variants.all()
+            for v in variants:
+                v_options = v.options or {}
+                v_color = v_options.get('color', '')
+                v_size = v_options.get('size', '')
+                if (not selected_color or v_color.lower() == selected_color.lower()) and \
+                   (not selected_size or v_size.lower() == selected_size.lower()):
+                    variant = v
+                    print(f"✅ Variant found by color/size: {variant}")
+                    break
+
         # Ensure session exists
         if not request.session.session_key:
             request.session.create()
         session_key = request.session.session_key
+
         print(f"🔑 Session: {session_key}")
         print(f"👤 User authenticated: {request.user.is_authenticated}")
-        
-        # Get or create cart - FIXED: Use correct lookup
+
+        # Get or create cart
         if request.user.is_authenticated:
-            # For authenticated users, try to get existing cart or create new
             cart, created = Cart.objects.get_or_create(
                 user=request.user,
                 page=page,
@@ -3536,18 +3842,16 @@ def add_to_cart(request, subdomain):
                     'updated_at': timezone.now()
                 }
             )
-            # If there's a session cart, transfer it
+            # Transfer session cart if exists
             if not created:
                 session_cart = Cart.objects.filter(session_key=session_key, page=page, user__isnull=True).first()
                 if session_cart:
-                    # Transfer items from session cart to user cart
                     for item in session_cart.items.all():
                         item.cart = cart
                         item.save()
                     session_cart.delete()
                     print("🔄 Transferred session cart to user cart")
         else:
-            # For guest users, use session key
             cart, created = Cart.objects.get_or_create(
                 session_key=session_key,
                 page=page,
@@ -3557,45 +3861,54 @@ def add_to_cart(request, subdomain):
                     'updated_at': timezone.now()
                 }
             )
-        
+
         print(f"🛒 Cart: {cart.id}, Created: {created}")
-        
-        # Check if item already exists in cart (with same variant)
+
+        # Check if item exists with SAME variant (or no variant)
         existing_item = CartItem.objects.filter(
             cart=cart,
             product=product,
             variant=variant
         ).first()
-        
+
+        cart_item = None  # ✅ Store the cart item
+
         if existing_item:
-            print(f"📦 Item exists, updating quantity from {existing_item.quantity} to {existing_item.quantity + quantity}")
+            # Increment quantity instead of error
             existing_item.quantity += quantity
             existing_item.save()
-            message = f'Updated {product.title} quantity'
+            cart_item = existing_item  # ✅ Store reference
+            message = f'Updated {product.title} quantity to {existing_item.quantity}'
+            print(f"📦 Item exists, updated quantity to {existing_item.quantity}")
         else:
-            print(f"📦 Creating new cart item")
-            CartItem.objects.create(
+            # Create new cart item with variant
+            cart_item = CartItem.objects.create(  # ✅ Store the created item
                 cart=cart,
                 product=product,
                 variant=variant,
                 selected_options=selected_options,
+                selected_color=selected_color,
+                selected_size=selected_size,
                 quantity=quantity
             )
             message = f'Added {product.title} to cart'
-        
+            print(f"📦 Created new cart item with ID: {cart_item.id}")
+
         # Get updated counts
         total_qty = cart.get_total_quantity()
         items_count = cart.items.count()
-        
+
         print(f"✅ Success: {message}, Total: {total_qty}, Items: {items_count}")
-        
+
+        # ✅ FIX: Return cart_item_id
         return JsonResponse({
             'success': True,
             'message': message,
             'cart_total': total_qty,
-            'cart_items_count': items_count
+            'cart_items_count': items_count,
+            'cart_item_id': cart_item.id  # ✅ ADD THIS
         })
-        
+
     except Product.DoesNotExist:
         print(f"❌ Product not found: {product_id}")
         return JsonResponse({'success': False, 'error': 'Product not found'})
@@ -3604,7 +3917,6 @@ def add_to_cart(request, subdomain):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
-    
 
 @csrf_exempt
 @require_POST
@@ -3661,59 +3973,52 @@ def add_to_wishlist(request, subdomain):
 # builder/views.py - Fixed get_cart_data
 
 def get_cart_data(request, subdomain):
-    """Get cart data with variant info - FIXED"""
+    """Get cart data with variant info - FIXED for multiple variants"""
     try:
         page = get_object_or_404(PublishedPage, subdomain=subdomain)
-        
+
         if not request.session.session_key:
             request.session.create()
         session_key = request.session.session_key
-        
+
         print(f"🔍 Getting cart data for: {subdomain}")
         print(f"🔑 Session: {session_key}")
         print(f"👤 User: {request.user}")
-        
-        # Find cart - FIXED: Better lookup
+
+        # Find cart
         cart = None
-        
         if request.user.is_authenticated:
-            # Try user cart first
             cart = Cart.objects.filter(user=request.user, page=page).first()
             if cart:
                 print(f"✅ Found user cart: {cart.id}")
             else:
-                # Try session cart
                 cart = Cart.objects.filter(session_key=session_key, page=page).first()
                 if cart:
                     print(f"✅ Found session cart: {cart.id}")
-                    # Transfer to user
                     cart.user = request.user
                     cart.session_key = None
                     cart.save()
                     print(f"🔄 Transferred session cart to user: {cart.id}")
         else:
-            # Guest user
             cart = Cart.objects.filter(session_key=session_key, page=page).first()
             if cart:
                 print(f"✅ Found guest cart: {cart.id}")
-        
+
         cart_data = {
             'cart_total': 0,
             'cart_items_count': 0,
             'cart_items': []
         }
-        
+
         if cart:
-            # Force refresh the cart items count
             items_count = cart.items.count()
             total_qty = cart.get_total_quantity()
-            
+
             cart_data['cart_total'] = total_qty
             cart_data['cart_items_count'] = items_count
-            
+
             print(f"📦 Cart {cart.id} has {items_count} items, total quantity: {total_qty}")
-            
-            # Get all items with proper select_related
+
             for item in cart.items.select_related('product', 'variant').all():
                 # Get variant image or product image
                 image_url = None
@@ -3721,14 +4026,18 @@ def get_cart_data(request, subdomain):
                     image_url = item.variant.image.url
                 elif item.product.main_image:
                     image_url = item.product.main_image.url
-                
-                # Get variant options for display
-                variant_options = {}
+
+                # Build variant display info
+                variant_display = []
+                if item.selected_color:
+                    variant_display.append(f"Color: {item.selected_color}")
+                if item.selected_size:
+                    variant_display.append(f"Size: {item.selected_size}")
                 if item.variant and item.variant.options:
-                    variant_options = item.variant.options
-                elif item.selected_options:
-                    variant_options = item.selected_options
-                
+                    for key, value in item.variant.options.items():
+                        if key.lower() not in ['color', 'size']:
+                            variant_display.append(f"{key}: {value}")
+
                 item_data = {
                     'id': item.id,
                     'product_id': item.product.id,
@@ -3738,22 +4047,23 @@ def get_cart_data(request, subdomain):
                     'total_price': float(item.get_total_price()),
                     'image_url': image_url,
                     'variant_id': item.variant.id if item.variant else None,
-                    'variant_options': variant_options,
+                    'variant_display': ', '.join(variant_display) if variant_display else 'Default',
+                    'selected_options': item.selected_options,
+                    'selected_color': item.selected_color,
+                    'selected_size': item.selected_size,
                 }
-                
                 cart_data['cart_items'].append(item_data)
-                print(f"  📦 Item: {item.product.title}, Qty: {item.quantity}, Price: {item.get_price()}")
+                print(f" 📦 Item: {item.product.title} ({item_data['variant_display']}), Qty: {item.quantity}")
         else:
             print("ℹ️ No cart found")
-        
+
         return JsonResponse(cart_data)
-        
+
     except Exception as e:
         print(f"❌ Get cart data error: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
-    
 
 # def get_cart_data_for_template(request, page):
 #     """Get cart data for template context - handles both authenticated and guest users"""
@@ -3919,13 +4229,66 @@ def get_cart_data_for_template(request, page):
         }
 
 
+# @csrf_exempt
+# @require_POST
+# def remove_from_cart(request, subdomain):
+#     """Remove item from cart"""
+#     try:
+#         page = get_object_or_404(PublishedPage, subdomain=subdomain)
+#         data = json.loads(request.body)
+#         product_id = data.get('product_id')
+
+#         # Ensure session exists
+#         if not request.session.session_key:
+#             request.session.create()
+        
+#         session_key = request.session.session_key
+
+#         # Find cart - try user first, then session
+#         cart = None
+#         if request.user.is_authenticated:
+#             cart = Cart.objects.filter(
+#                 user=request.user,
+#                 page=page
+#             ).first()
+            
+#             if not cart:
+#                 cart = Cart.objects.filter(
+#                     session_key=session_key,
+#                     page=page
+#                 ).first()
+#         else:
+#             cart = Cart.objects.filter(
+#                 session_key=session_key,
+#                 page=page
+#             ).first()
+
+#         if not cart:
+#             return JsonResponse({'success': False, 'error': 'Cart not found'})
+
+#         cart_item = get_object_or_404(CartItem, cart=cart, product_id=product_id)
+#         cart_item.delete()
+
+#         return JsonResponse({
+#             'success': True,
+#             'message': 'Item removed from cart',
+#             'cart_total': cart.get_total_quantity(),
+#             'cart_items_count': cart.items.count()
+#         })
+
+#     except Exception as e:
+#         print(f"❌ Remove from cart error: {str(e)}")
+#         return JsonResponse({'success': False, 'error': str(e)})
+
 @csrf_exempt
 @require_POST
 def remove_from_cart(request, subdomain):
-    """Remove item from cart"""
+    """Remove item from cart - supports both cart_item_id and product_id"""
     try:
         page = get_object_or_404(PublishedPage, subdomain=subdomain)
         data = json.loads(request.body)
+        
+        cart_item_id = data.get('cart_item_id')
         product_id = data.get('product_id')
 
         # Ensure session exists
@@ -3934,43 +4297,52 @@ def remove_from_cart(request, subdomain):
         
         session_key = request.session.session_key
 
-        # Find cart - try user first, then session
+        # Find cart
         cart = None
         if request.user.is_authenticated:
-            cart = Cart.objects.filter(
-                user=request.user,
-                page=page
-            ).first()
-            
+            cart = Cart.objects.filter(user=request.user, page=page).first()
             if not cart:
-                cart = Cart.objects.filter(
-                    session_key=session_key,
-                    page=page
-                ).first()
+                cart = Cart.objects.filter(session_key=session_key, page=page).first()
         else:
-            cart = Cart.objects.filter(
-                session_key=session_key,
-                page=page
-            ).first()
+            cart = Cart.objects.filter(session_key=session_key, page=page).first()
 
         if not cart:
             return JsonResponse({'success': False, 'error': 'Cart not found'})
 
-        cart_item = get_object_or_404(CartItem, cart=cart, product_id=product_id)
-        cart_item.delete()
+        # ✅ Check which parameter was provided
+        if cart_item_id:
+            # Remove by specific cart item ID
+            cart_item = CartItem.objects.filter(id=cart_item_id, cart=cart).first()
+            if not cart_item:
+                return JsonResponse({'success': False, 'error': 'Item not found in cart'})
+            cart_item.delete()
+            deleted_count = 1
+            print(f"🗑️ Removed cart item {cart_item_id}")
+        elif product_id:
+            # Fallback: Remove ALL items with this product_id
+            cart_items = CartItem.objects.filter(cart=cart, product_id=product_id)
+            if not cart_items.exists():
+                return JsonResponse({'success': False, 'error': 'Item not found in cart'})
+            deleted_count = cart_items.count()
+            cart_items.delete()
+            print(f"🗑️ Removed {deleted_count} items with product_id {product_id}")
+        else:
+            return JsonResponse({'success': False, 'error': 'Either cart_item_id or product_id required'})
+
+        cart_total = cart.get_total_quantity()
+        cart_items_count = cart.items.count()
 
         return JsonResponse({
             'success': True,
-            'message': 'Item removed from cart',
-            'cart_total': cart.get_total_quantity(),
-            'cart_items_count': cart.items.count()
+            'message': f'Removed {deleted_count} item(s) from cart',
+            'cart_total': cart_total,
+            'cart_items_count': cart_items_count,
+            'deleted_count': deleted_count
         })
 
     except Exception as e:
         print(f"❌ Remove from cart error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
-
-
 @csrf_exempt
 @require_POST
 def remove_from_wishlist(request, subdomain):
@@ -4971,6 +5343,86 @@ def product_detail_page(request, product_slug):
                 # Fallback: generic product detail template
                 return render(request, 'builder/product_detail.html', context)
 
+
+# builder/views.py - Add this function
+
+from django.http import JsonResponse
+import json
+
+def get_variant_by_options(request, subdomain):
+    """
+    API endpoint to get variant details by selected options.
+    Used for AJAX swatch selection in grouped product display.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'GET required'}, status=405)
+    
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, is_published=True)
+        
+        product_id = request.GET.get('product_id')
+        group_id = request.GET.get('group_id')
+        options_json = request.GET.get('options', '{}')
+        
+        try:
+            options = json.loads(options_json)
+        except json.JSONDecodeError:
+            options = {}
+        
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        variant = None
+        
+        # If group_id is provided, find variant in that group
+        if group_id:
+            from builder.services.variant_grouping import VariantGroupManager
+            group_manager = VariantGroupManager(product)
+            variant = group_manager.get_variant_for_cart(group_id, options)
+        
+        # If no variant found and options provided, try direct match
+        if not variant and options:
+            variant = product.variants.filter(options=options).first()
+        
+        # If still no variant, get first in-stock variant
+        if not variant:
+            variant = product.variants.filter(quantity__gt=0).first()
+        
+        # Last resort: first variant
+        if not variant:
+            variant = product.variants.first()
+        
+        if not variant:
+            return JsonResponse({
+                'success': False,
+                'error': 'No variant found'
+            }, status=404)
+        
+        return JsonResponse({
+            'success': True,
+            'variant': {
+                'id': variant.id,
+                'price': float(variant.price) if variant.price else None,
+                'compare_at_price': float(variant.compare_at_price) if variant.compare_at_price else None,
+                'quantity': variant.quantity,
+                'sku': variant.sku,
+                'cj_vid': variant.cj_vid,
+                'image_url': variant.image.url if variant.image else None,
+                'options': variant.options,
+                'is_in_stock': variant.quantity > 0 if variant.track_quantity else True,
+            }
+        })
+        
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Product not found'
+        }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 def product_list_page(request):
     """Product listing page for published websites"""
@@ -6455,6 +6907,327 @@ def download_image_to_field(url):
 #     })
 
 
+# builder/views.py - Add this new view
+
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from .models import Product, ProductDisplayMode, VariantGroup
+from .services.variant_grouping import VariantGroupManager
+import json
+
+
+# builder/views.py - Updated views
+
+from builder.services.variant_grouping import VariantGroupManager
+
+@login_required
+def product_grouping_view(request, subdomain, product_id):
+    """View for managing variant grouping"""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    # Get or create display mode
+    from builder.models import ProductDisplayMode
+    display_mode, created = ProductDisplayMode.objects.get_or_create(
+        product=product,
+        defaults={'mode': 'single', 'group_by': 'image'}
+    )
+    
+    # Get grouped products
+    from builder.models import GroupedProduct
+    grouped_products = GroupedProduct.objects.filter(
+        original_product=product
+    ).select_related('product')
+    
+    # Get all attributes
+    all_attributes = {}
+    for variant in product.variants.all():
+        for key, value in variant.options.items():
+            if key not in all_attributes:
+                all_attributes[key] = []
+            if value not in all_attributes[key]:
+                all_attributes[key].append(value)
+    
+    context = {
+        'page': page,
+        'product': product,
+        'variants': product.variants.all(),
+        'display_mode': display_mode,
+        'grouped_products': grouped_products,
+        'has_grouped_products': grouped_products.exists(),
+        'all_attributes': all_attributes,
+    }
+    
+    return render(request, 'builder/product_grouping.html', context)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def apply_grouping(request, subdomain, product_id):
+    """Apply grouping and create actual product records"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        data = json.loads(request.body)
+        mode = data.get('mode', 'single')
+        group_by = data.get('group_by', 'image')
+        primary_attribute = data.get('primary_attribute', '')
+        
+        manager = VariantGroupManager(product)
+        
+        # Update display mode
+        display_mode = manager.get_display_mode()
+        display_mode.mode = mode
+        display_mode.group_by = group_by
+        display_mode.primary_attribute = primary_attribute if mode == 'grouped' else ''
+        display_mode.save()
+        
+        # Process groups and create products
+        result = manager.process_groups_to_products()
+        
+        if result.get('success'):
+            return JsonResponse({
+                'success': True,
+                'message': result.get('message'),
+                'created_count': result.get('created_count', 0),
+                'product_ids': result.get('product_ids', []),
+                'mode': result.get('mode'),
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': result.get('error', 'Failed to process groups')
+            }, status=400)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def restore_original_product(request, subdomain, product_id):
+    """Restore the original product and remove grouped products"""
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        manager = VariantGroupManager(product)
+        restored = manager.restore_original()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Original product restored successfully',
+            'product_id': restored.id,
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+    
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_product_grouping(request, subdomain, product_id):
+    """
+    AJAX endpoint to update product grouping settings.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        data = json.loads(request.body)
+        
+        # Get or create display mode
+        display_mode, created = ProductDisplayMode.objects.get_or_create(
+            product=product
+        )
+        
+        # Update mode
+        mode = data.get('mode', 'single')
+        display_mode.mode = mode
+        
+        if mode == 'grouped':
+            group_by = data.get('group_by', 'image')
+            primary_attribute = data.get('primary_attribute', '')
+            display_mode.group_by = group_by
+            display_mode.primary_attribute = primary_attribute
+        else:
+            display_mode.group_by = 'none'
+            display_mode.primary_attribute = None
+        
+        display_mode.save()
+        
+        # Rebuild groups using the service
+        manager = VariantGroupManager(product)
+        manager.update_display_mode(mode, display_mode.group_by, display_mode.primary_attribute)
+        
+        # Get updated groups
+        groups = product.variant_groups.all().prefetch_related('variants')
+        groups_data = []
+        for group in groups:
+            groups_data.append({
+                'id': group.id,
+                'display_name': group.display_name,
+                'group_key': group.group_key,
+                'variant_count': group.variants.count(),
+                'image_url': group.image.url if group.image else None,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Product grouping updated successfully',
+            'display_mode': {
+                'mode': display_mode.mode,
+                'group_by': display_mode.group_by,
+                'primary_attribute': display_mode.primary_attribute,
+            },
+            'groups': groups_data,
+            'group_count': len(groups_data),
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def manual_group_variants(request, subdomain, product_id):
+    """
+    Manually group specific variants together.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        data = json.loads(request.body)
+        group_name = data.get('group_name', 'Group')
+        variant_ids = data.get('variant_ids', [])
+        
+        if not variant_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Please select at least one variant'
+            }, status=400)
+        
+        # Get the variants
+        variants = ProductVariant.objects.filter(id__in=variant_ids, product=product)
+        
+        if not variants.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'No valid variants found'
+            }, status=400)
+        
+        # Create the group
+        group_key = f"manual_{hashlib.md5(str(variant_ids).encode()).hexdigest()[:10]}"
+        
+        group = VariantGroup.objects.create(
+            product=product,
+            group_key=group_key,
+            display_name=group_name,
+            display_order=product.variant_groups.count()
+        )
+        group.variants.set(variants)
+        group.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Group "{group_name}" created with {variants.count()} variants',
+            'group': {
+                'id': group.id,
+                'display_name': group.display_name,
+                'variant_count': variants.count(),
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_variant_group(request, subdomain, product_id, group_id):
+    """
+    Delete a variant group.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        group = get_object_or_404(VariantGroup, id=group_id, product=product)
+        
+        group_name = group.display_name
+        group.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Group "{group_name}" deleted successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def auto_detect_groups(request, subdomain, product_id):
+    """
+    Auto-detect groups based on current mode.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        product = get_object_or_404(Product, id=product_id, page=page)
+        
+        # Rebuild groups using the service
+        manager = VariantGroupManager(product)
+        manager.rebuild_groups()
+        
+        groups = product.variant_groups.all().prefetch_related('variants')
+        groups_data = []
+        for group in groups:
+            groups_data.append({
+                'id': group.id,
+                'display_name': group.display_name,
+                'group_key': group.group_key,
+                'variant_count': group.variants.count(),
+                'image_url': group.image.url if group.image else None,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Auto-detected {len(groups_data)} groups',
+            'groups': groups_data,
+            'group_count': len(groups_data),
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+    
 
 @login_required
 @require_http_methods(["GET"])
@@ -7479,7 +8252,7 @@ def get_color_palettes(request):
         data['categories'] = categories
         
         # Format palettes
-        for palette in palettes[:50]:  # Limit to 50 for performance
+        for palette in palettes:  # Limit to 50 for performance
             colors = []
             for color in palette.colors.all().order_by('display_order'):
                 colors.append({
@@ -9707,7 +10480,65 @@ def upload_variant_image(request, subdomain, variant_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-
+@login_required
+def manage_product_tiers(request, subdomain, product_id):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save':
+            tier_id = request.POST.get('tier_id')
+            quantity = int(request.POST.get('quantity', 1))
+            price_per_unit = Decimal(request.POST.get('price_per_unit', 0))
+            badge_text = request.POST.get('badge_text', '')
+            is_default = request.POST.get('is_default') == 'on'
+            is_active = request.POST.get('is_active') == 'on'
+            
+            if tier_id:
+                tier = get_object_or_404(ProductTier, id=tier_id, product=product)
+                tier.quantity = quantity
+                tier.price_per_unit = price_per_unit
+                tier.badge_text = badge_text
+                tier.is_default = is_default
+                tier.is_active = is_active
+                tier.save()
+                messages.success(request, 'Tier updated!')
+            else:
+                ProductTier.objects.create(
+                    product=product,
+                    page=page,
+                    quantity=quantity,
+                    price_per_unit=price_per_unit,
+                    badge_text=badge_text,
+                    is_default=is_default,
+                    is_active=is_active,
+                    display_order=quantity
+                )
+                messages.success(request, 'Tier added!')
+            
+            # Only one default
+            if is_default:
+                ProductTier.objects.filter(product=product, is_active=True).exclude(
+                    id=tier_id if tier_id else None
+                ).update(is_default=False)
+        
+        elif action == 'delete':
+            tier_id = request.POST.get('tier_id')
+            tier = get_object_or_404(ProductTier, id=tier_id, product=product)
+            tier.delete()
+            messages.success(request, 'Tier deleted!')
+        
+        return redirect('manage_product_tiers', subdomain=subdomain, product_id=product_id)
+    
+    tiers = product.tiers.filter(is_active=True).order_by('display_order', 'quantity')
+    
+    return render(request, 'builder/manage_product_tiers.html', {
+        'page': page,
+        'product': product,
+        'tiers': tiers
+    })
 
 def onboarding_wizard(request):
     """Main onboarding wizard view - handles authentication state"""
@@ -10271,3 +11102,697 @@ def generate_initial_content(brand_name, heading_font, body_font, description, p
             }
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# builder/views.py - Add these imports at the top with your existing imports
+
+import json
+import os
+from pathlib import Path
+from datetime import datetime
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404, render
+from django.conf import settings
+
+from builder.models import PublishedPage, Template
+from builder.copywriting.template_copy import TemplateCopyManager
+
+# Initialize the copy manager
+copy_manager = TemplateCopyManager()
+
+# ============================================================
+# COPYWRITING SYSTEM - Integrated Views
+# ============================================================
+
+@login_required
+def get_template_copy(request, template_name):
+    """
+    API endpoint to get template copy data
+    """
+    try:
+        data = copy_manager.load_template_copy(template_name)
+        
+        if not data:
+            # Try to extract if not found
+            template = get_object_or_404(Template, name=template_name)
+            # Extract fresh copy from template files
+            template_path = Path(settings.BASE_DIR) / 'builder' / 'public_templates' / template_name
+            if template_path.exists():
+                all_texts = []
+                for html_file in template_path.glob('*.html'):
+                    with open(html_file, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    page_texts = copy_manager.extract_template_text(template_name, html_content)
+                    all_texts.append(page_texts)
+                
+                # Combine data
+                combined_data = {
+                    'template': template_name,
+                    'pages': {},
+                    'components': {},
+                    'global_texts': []
+                }
+                for page_data in all_texts:
+                    combined_data['pages'].update(page_data.get('pages', {}))
+                    combined_data['global_texts'].extend(page_data.get('global_texts', []))
+                
+                copy_manager.save_template_copy(template_name, combined_data)
+                data = combined_data
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+def get_page_copy(request, subdomain, page_name):
+    """
+    Get copy for a specific page
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        data = copy_manager.load_template_copy(template_name)
+        
+        if data and page_name in data.get('pages', {}):
+            return JsonResponse({
+                'success': True,
+                'page': page_name,
+                'copy': data['pages'][page_name]
+            })
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Page "{page_name}" not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+def save_copy_changes(request, subdomain):
+    """
+    Save copy changes from the editor
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        # Validate the data
+        changes = data.get('changes', [])
+        page_name = data.get('page', 'home')
+        
+        # Load existing copy
+        copy_data = copy_manager.load_template_copy(template_name)
+        
+        if not copy_data:
+            copy_data = {
+                'template': template_name,
+                'pages': {},
+                'components': {},
+                'global_texts': []
+            }
+        
+        # Update the specific page
+        if page_name not in copy_data['pages']:
+            copy_data['pages'][page_name] = []
+        
+        # Apply changes
+        for change in changes:
+            element_id = change.get('id')
+            new_text = change.get('text')
+            
+            # Find and update the element
+            found = False
+            for text_item in copy_data['pages'][page_name]:
+                if text_item['id'] == element_id:
+                    text_item['text'] = new_text
+                    text_item['customized'] = True
+                    text_item['customized_at'] = datetime.now().isoformat()
+                    found = True
+                    break
+            
+            if not found:
+                # Add new element if not found
+                copy_data['pages'][page_name].append({
+                    'id': element_id,
+                    'text': new_text,
+                    'customized': True,
+                    'customized_at': datetime.now().isoformat(),
+                    'type': 'text'
+                })
+        
+        # Save changes
+        copy_manager.apply_custom_copy(template_name, copy_data)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Copy saved successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+def export_copy_json(request, subdomain):
+    """
+    Export copy as JSON
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        data = copy_manager.load_template_copy(template_name)
+        
+        # If no data, try to extract first
+        if not data:
+            return get_template_copy(request, template_name)
+        
+        return JsonResponse({
+            'success': True,
+            'template': template_name,
+            'copy_data': data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+def import_copy_json(request, subdomain):
+    """
+    Import copy from JSON
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        copy_data = data.get('copy_data', {})
+        
+        # Validate
+        if 'pages' not in copy_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid copy data: missing pages'
+            }, status=400)
+        
+        # Apply the copy
+        result = copy_manager.apply_custom_copy(template_name, copy_data)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Copy imported successfully',
+            'version': result.get('custom_version', 1)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+def generate_ai_prompt(request, subdomain):
+    """
+    Generate an AI prompt with context and JSON format instructions
+    """
+    try:
+        print("=" * 60)
+        print("📝 GENERATE AI PROMPT")
+        print("=" * 60)
+        
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        # Get context from POST data
+        context = ''
+        if request.method == 'POST':
+            try:
+                data = json.loads(request.body)
+                context = data.get('context', '')
+                print(f"📝 Context received: {context[:200] if context else '(empty)'}...")
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error: {e}")
+        else:
+            print(f"⚠️ Request method is {request.method}, not POST")
+        
+        # Read the JSON file
+        json_path = Path(settings.BASE_DIR) / 'builder' / 'copywriting' / 'templates' / f'{template_name}.json'
+        
+        if not json_path.exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'No copy data found for "{template_name}". Run: python manage.py extract_copy --template {template_name}'
+            }, status=404)
+        
+        with open(json_path, 'r', encoding='utf-8') as f:
+            copy_data = json.load(f)
+        
+        print(f"📄 Template: {template_name}")
+        print(f"📄 Pages: {list(copy_data.get('pages', {}).keys())}")
+        
+        # Build the AI prompt with context
+        prompt = build_ai_prompt_with_json(copy_data, page, context)
+        
+        print(f"✅ Prompt generated: {len(prompt)} characters")
+        print("=" * 60)
+        
+        return JsonResponse({
+            'success': True,
+            'prompt': prompt
+        })
+    except Exception as e:
+        print(f"❌ Generate prompt error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+        
+def build_ai_prompt_with_json(data, page, context=None):
+    """Build AI prompt with JSON format instructions and optional context"""
+    template_name = data.get('template', 'unknown')
+    brand_name = page.brand_name if page else 'My Store'
+    
+    # Build the prompt using simple string concatenation to avoid escape issues
+    prompt = "# AI Copywriting Assistant - " + template_name + "\n\n"
+    prompt += "## BRAND INFORMATION\n"
+    prompt += "- Brand Name: " + brand_name + "\n"
+    prompt += "- Template: " + template_name + "\n\n"
+    
+    # Add context if provided
+    if context and context.strip():
+        prompt += "## CONTEXT FROM USER\n"
+        prompt += context + "\n\n"
+    
+    prompt += "## INSTRUCTIONS\n"
+    prompt += "You are an expert copywriter. Rewrite the following text to be more engaging, professional, and persuasive.\n\n"
+    
+    # Add context-specific instructions if context is provided
+    if context and context.strip():
+        prompt += "### Using the Context Above\n"
+        prompt += "Use the business information and product references provided in the CONTEXT FROM USER section to:\n"
+        prompt += "1. Write copy that accurately describes the products/services\n"
+        prompt += "2. Highlight the unique selling points mentioned\n"
+        prompt += "3. Use language that matches the brand's tone\n"
+        prompt += "4. Incorporate specific product details where relevant\n\n"
+    
+    prompt += "### CRITICAL: Response Format\n"
+    prompt += "You MUST respond with a VALID JSON object in this EXACT format:\n\n"
+    prompt += '{\n'
+    prompt += '  "pages": {\n'
+    prompt += '    "home": [\n'
+    prompt += '      {"id": "1", "text": "YOUR NEW HEADLINE HERE", "type": "heading"},\n'
+    prompt += '      {"id": "2", "text": "YOUR NEW PARAGRAPH HERE", "type": "paragraph"}\n'
+    prompt += '    ]\n'
+    prompt += '  }\n'
+    prompt += '}\n\n'
+    prompt += "## CURRENT CONTENT TO REWRITE\n\n"
+    
+    # Add all pages and their text
+    for page_name, page_texts in data.get('pages', {}).items():
+        prompt += "### Page: " + page_name + "\n\n"
+        for text in page_texts:
+            prompt += "ID: " + text['id'] + "\n"
+            prompt += "Current: \"" + text['text'] + "\"\n"
+            prompt += "Type: " + text['type'] + "\n\n"
+    
+    prompt += "## YOUR RESPONSE\n"
+    prompt += "Copy this template and fill in your new text:\n\n"
+    prompt += '{\n'
+    prompt += '  "pages": {\n'
+    
+    # Generate the JSON template with placeholder text
+    page_count = 0
+    for page_name, page_texts in data.get('pages', {}).items():
+        if page_count > 0:
+            prompt += ",\n"
+        prompt += '    "' + page_name + '": [\n'
+        for i, text in enumerate(page_texts):
+            line = '      {"id": "' + text['id'] + '", "text": "REWRITE THIS TEXT", "type": "' + text['type'] + '"}'
+            if i < len(page_texts) - 1:
+                line += ","
+            prompt += line + "\n"
+        prompt += "    ]"
+        page_count += 1
+    
+    prompt += "\n  }\n}"
+    
+    return prompt
+
+
+@login_required
+@csrf_exempt
+def apply_ai_copy(request, subdomain):
+    """
+    Apply AI-generated copy - uses the EXACT same logic as the editor and publish views
+    """
+    print("\n" + "=" * 80)
+    print("🚀 APPLY AI COPY - Using Editor/Publish Logic")
+    print("=" * 80)
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        print("📥 Received data:", json.dumps(data, indent=2)[:500])
+        
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        
+        # Get the AI copy - same structure as editor's page_data
+        ai_copy = data.get('copy', {})
+        
+        # Handle different JSON structures
+        if 'pages' in ai_copy:
+            pages_data = ai_copy['pages']
+        else:
+            pages_data = ai_copy
+        
+        if not pages_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'No copy data provided'
+            }, status=400)
+        
+        updated_count = 0
+        
+        # ============================================================
+        # EXACT SAME LOGIC AS THE EDITOR'S publish_page
+        # The editor sends: all_page_data[page_name]['text_contents']
+        # ============================================================
+        
+        for page_name, page_texts in pages_data.items():
+            print(f"\n📄 Processing page: {page_name}")
+            
+            # Initialize page_customizations - SAME as editor
+            if page_name not in page.page_customizations:
+                page.page_customizations[page_name] = {}
+            
+            # Initialize text_contents - SAME as editor
+            if 'text_contents' not in page.page_customizations[page_name]:
+                page.page_customizations[page_name]['text_contents'] = {}
+            
+            # Apply each text - SAME as editor
+            for text_item in page_texts:
+                element_id = str(text_item.get('id'))
+                new_text = text_item.get('text', '').strip()
+                
+                if element_id and new_text:
+                    # Clean the text - remove extra whitespace like the editor does
+                    cleaned_text = re.sub(r'\s+', ' ', new_text).strip()
+                    
+                    # Save to page_customizations - EXACT same as editor
+                    page.page_customizations[page_name]['text_contents'][element_id] = cleaned_text
+                    updated_count += 1
+                    print(f"  ✅ text_contents['{element_id}'] = '{cleaned_text[:50]}...'")
+        
+        # ============================================================
+        # SAVE THE PAGE - EXACT same as publish_page
+        # ============================================================
+        
+        page.is_published = True
+        page.save()
+        
+        print(f"\n💾 Page saved with {updated_count} updates")
+        print(f"   is_published: {page.is_published}")
+        print("=" * 80)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'AI copy applied to {updated_count} elements',
+            'updated_count': updated_count,
+            'pages_updated': list(pages_data.keys())
+        })
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+def copy_editor_view(request, subdomain):
+    """
+    Main copy editor view
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    
+    context = {
+        'page': page,
+        'template_name': page.template_name,
+    }
+    
+    return render(request, 'builder/copy_editor.html', context)
+
+
+@login_required
+def extract_template_copy(request, template_name):
+    """
+    API endpoint to extract copy from a template
+    """
+    try:
+        template = get_object_or_404(Template, name=template_name)
+        
+        # Extract fresh copy from template files
+        template_path = Path(settings.BASE_DIR) / 'builder' / 'public_templates' / template_name
+        
+        if not template_path.exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Template directory not found: {template_name}'
+            }, status=404)
+        
+        all_texts = []
+        for html_file in template_path.glob('*.html'):
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            page_texts = copy_manager.extract_template_text(template_name, html_content)
+            all_texts.append(page_texts)
+        
+        # Combine data
+        combined_data = {
+            'template': template_name,
+            'pages': {},
+            'components': {},
+            'global_texts': []
+        }
+        for page_data in all_texts:
+            combined_data['pages'].update(page_data.get('pages', {}))
+            combined_data['global_texts'].extend(page_data.get('global_texts', []))
+        
+        # Extract from components if available
+        components_dir = Path(settings.BASE_DIR) / 'builder' / 'components'
+        if components_dir.exists():
+            for comp_file in components_dir.rglob('*.html'):
+                try:
+                    with open(comp_file, 'r', encoding='utf-8') as f:
+                        comp_content = f.read()
+                    comp_data = copy_manager.extract_template_text(comp_file.stem, comp_content)
+                    combined_data['components'][comp_file.stem] = comp_data.get('global_texts', [])
+                except Exception as e:
+                    print(f"Error processing component {comp_file.name}: {e}")
+        
+        # Save the copy
+        copy_manager.save_template_copy(template_name, combined_data)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Copy extracted for {template_name}',
+            'element_count': len(combined_data.get('global_texts', [])),
+            'pages': list(combined_data.get('pages', {}).keys())
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+def list_templates_copy(request):
+    """
+    List all templates with copy status
+    """
+    try:
+        templates_path = Path(settings.BASE_DIR) / 'builder' / 'public_templates'
+        
+        templates = []
+        for template_dir in templates_path.iterdir():
+            if template_dir.is_dir():
+                has_copy = copy_manager.get_template_copy_path(template_dir.name).exists()
+                templates.append({
+                    'name': template_dir.name,
+                    'has_copy': has_copy,
+                    'pages': [f.stem for f in template_dir.glob('*.html')]
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'templates': templates
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@csrf_exempt
+def bulk_import_copy(request, subdomain):
+    """
+    Bulk import copy from JSON for multiple pages
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        copy_data = data.get('copy_data', {})
+        
+        # Validate
+        if 'pages' not in copy_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid copy data: missing pages'
+            }, status=400)
+        
+        # Apply the copy
+        result = copy_manager.apply_custom_copy(template_name, copy_data)
+        
+        # Also update the page customizations
+        for page_name, page_copy in copy_data.get('pages', {}).items():
+            if page_name not in page.page_customizations:
+                page.page_customizations[page_name] = {}
+            
+            if 'text_contents' not in page.page_customizations[page_name]:
+                page.page_customizations[page_name]['text_contents'] = {}
+            
+            for item in page_copy:
+                element_id = item.get('id')
+                text = item.get('text')
+                if element_id and text:
+                    page.page_customizations[page_name]['text_contents'][element_id] = text
+        
+        page.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Bulk import successful',
+            'pages_updated': list(copy_data.get('pages', {}).keys())
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+def get_copy_stats(request, subdomain):
+    """
+    Get copy statistics for a page
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        template_name = page.template_name
+        
+        data = copy_manager.load_template_copy(template_name)
+        
+        if not data:
+            return JsonResponse({
+                'success': True,
+                'stats': {
+                    'total_elements': 0,
+                    'customized_elements': 0,
+                    'total_words': 0,
+                    'pages': []
+                }
+            })
+        
+        total_elements = 0
+        customized_elements = 0
+        total_words = 0
+        pages_stats = []
+        
+        for page_name, page_data in data.get('pages', {}).items():
+            page_total = len(page_data)
+            page_customized = sum(1 for item in page_data if item.get('customized', False))
+            page_words = sum(len(item.get('text', '').split()) for item in page_data)
+            
+            total_elements += page_total
+            customized_elements += page_customized
+            total_words += page_words
+            
+            pages_stats.append({
+                'name': page_name,
+                'total': page_total,
+                'customized': page_customized,
+                'words': page_words
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'stats': {
+                'total_elements': total_elements,
+                'customized_elements': customized_elements,
+                'total_words': total_words,
+                'pages': pages_stats
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)    
