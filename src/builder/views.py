@@ -6227,8 +6227,8 @@ def cj_product_search(request, subdomain):
             'query': query,
             'error_message': error_message
         }
-        return render(request, 'builder/dashboard/cj_search.html', context)
-        
+        return render(request, 'builder/cj_product_search.html', context)
+    
 @login_required
 @require_http_methods(["GET"])
 def cj_search_page(request, subdomain):
