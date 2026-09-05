@@ -6067,26 +6067,60 @@ def cj_product_search(request, subdomain):
     """
     CJ Dropshipping product search - supports both HTML and JSON responses
     """
+    import json
+    
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    settings_obj = get_object_or_404(CJSettings, page=page)
+    
+    try:
+        settings_obj = CJSettings.objects.get(page=page)
+    except CJSettings.DoesNotExist:
+        if request.GET.get('ajax') == '1' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': 'CJ Dropshipping is not configured for this store'
+            })
+        context = {'page': page, 'error_message': 'CJ Dropshipping is not configured'}
+        return render(request, 'builder/dashboard/cj_search.html', context)
     
     query = request.GET.get('q', '').strip()
     cj_products = []
     error_message = None
     
-    # ============================================================
-    # FIX: Check if this is an AJAX request
-    # Checks BOTH the header AND the URL parameter
-    # ============================================================
+    # Check if AJAX request
     is_ajax = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
         request.GET.get('ajax') == '1'
     )
     
+    # If no query, return empty result
+    if not query:
+        if is_ajax:
+            return JsonResponse({
+                'success': True,
+                'data': [],
+                'query': '',
+                'count': 0
+            })
+        context = {'page': page, 'query': ''}
+        return render(request, 'builder/dashboard/cj_search.html', context)
+    
     # Get token
     token = get_cj_access_token(settings_obj)
     
-    if query and token:
+    if not token:
+        error_message = "Failed to authenticate with CJ Dropshipping API"
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'error': error_message,
+                'data': []
+            })
+        context = {'page': page, 'error_message': error_message, 'query': query}
+        return render(request, 'builder/dashboard/cj_search.html', context)
+    
+    # Perform search
+    try:
+        from builder.services.cj_service import CJService
         service = CJService(token)
         
         # Parse Query for PID (UUID or Numeric)
@@ -6103,64 +6137,82 @@ def cj_product_search(request, subdomain):
         elif len(query) > 15:
             extracted_id = query
         
-        try:
-            if extracted_id:
-                # DIRECT FETCH
-                res = requests.get(f"{service.BASE_URL}/product/query", 
-                                   headers=service.headers, params={"pid": extracted_id})
-                if res.json().get("code") == 200:
-                    cj_products = [res.json().get("data")]
-            else:
-                # KEYWORD SEARCH
-                res = requests.get(f"{service.BASE_URL}/product/list",
-                                   headers=service.headers,
-                                   params={"productName": query, "pageSize": 20, "sortType": "3"})
-                cj_products = res.json().get("data", {}).get("list", [])
+        import requests
+        if extracted_id:
+            # DIRECT FETCH
+            res = requests.get(
+                f"{service.BASE_URL}/product/query",
+                headers=service.headers,
+                params={"pid": extracted_id},
+                timeout=30
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("code") == 200:
+                    product = data.get("data")
+                    if product:
+                        cj_products = [product]
+        else:
+            # KEYWORD SEARCH
+            res = requests.get(
+                f"{service.BASE_URL}/product/list",
+                headers=service.headers,
+                params={"productName": query, "pageSize": 20, "sortType": "3"},
+                timeout=30
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("code") == 200:
+                    cj_products = data.get("data", {}).get("list", [])
+        
+        # ENRICH WITH STOCK DATA
+        for item in cj_products:
+            total_stock = 0
+            variants = item.get('variants', [])
             
-            # ENRICH WITH STOCK DATA
-            for item in cj_products:
-                # Get stock from variants
-                total_stock = 0
-                variants = item.get('variants', [])
-                
-                for variant in variants:
-                    vid = variant.get('vid')
-                    if vid:
-                        try:
-                            stock_data = service.get_stock_by_vid(vid)
-                            if stock_data:
-                                for wh in stock_data:
-                                    total_stock += int(wh.get('stockNum', 0))
-                        except Exception as e:
-                            print(f"Error getting stock for vid {vid}: {e}")
-                
-                # Also try supplier stock as fallback
-                if total_stock == 0:
+            for variant in variants:
+                vid = variant.get('vid')
+                if vid:
                     try:
-                        # Try to get from variant inventory
-                        for variant in variants:
-                            if variant.get('inventoryNum'):
-                                total_stock += int(variant.get('inventoryNum', 0))
-                    except:
-                        pass
-                
-                item['total_stock'] = total_stock
-                item['in_stock'] = total_stock > 0
-                
-                # Generate slug for URL
-                name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
-                name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
-                item['cj_url_slug'] = name_slug
-                
-        except Exception as e:
-            error_message = f"Search failed: {str(e)}"
+                        stock_data = service.get_stock_by_vid(vid)
+                        if stock_data:
+                            for wh in stock_data:
+                                total_stock += int(wh.get('stockNum', 0))
+                    except Exception as e:
+                        print(f"Error getting stock for vid {vid}: {e}")
+            
+            # Fallback to supplier stock
+            if total_stock == 0:
+                try:
+                    for variant in variants:
+                        if variant.get('inventoryNum'):
+                            total_stock += int(variant.get('inventoryNum', 0))
+                except:
+                    pass
+            
+            item['total_stock'] = total_stock
+            item['in_stock'] = total_stock > 0
+            
+            # Generate slug for URL
+            name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
+            name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
+            item['cj_url_slug'] = name_slug
+        
+        # Update API call count
+        settings_obj.daily_api_calls += 1
+        settings_obj.save(update_fields=['daily_api_calls'])
+        
+    except Exception as e:
+        error_message = f"Search failed: {str(e)}"
+        print(f"CJ search error: {e}")
+        import traceback
+        traceback.print_exc()
     
     # ============================================================
-    # FIX: Return JSON for AJAX requests, HTML for regular requests
+    # Return JSON for AJAX, HTML for regular requests
     # ============================================================
     
     if is_ajax:
-        # Return JSON response for AJAX requests
         return JsonResponse({
             'success': True if not error_message else False,
             'data': cj_products,
@@ -6169,7 +6221,6 @@ def cj_product_search(request, subdomain):
             'error': error_message
         })
     else:
-        # Return HTML response for regular page loads
         context = {
             'page': page,
             'cj_products': cj_products,
@@ -6177,6 +6228,7 @@ def cj_product_search(request, subdomain):
             'error_message': error_message
         }
         return render(request, 'builder/dashboard/cj_search.html', context)
+        
 @login_required
 @require_http_methods(["GET"])
 def cj_search_page(request, subdomain):
