@@ -272,6 +272,9 @@ urlpatterns = [
     # Copy Editor UI
     path('copy-editor/<str:subdomain>/', views.copy_editor_view, name='copy_editor'),
 
+      path('api/memory/status/', views.memory_status, name='memory_status'),
+    path('api/memory/test-public/', views.memory_test_public, name='memory_test_public'),
+    path('api/memory/test-auth/', views.memory_test_auth, name='memory_test_auth'),
      
     path('', views.public_page, name='public_page'),
 ]

@@ -6064,12 +6064,24 @@ from builder.services.cj_service import CJService
 
 @login_required
 def cj_product_search(request, subdomain):
+    """
+    CJ Dropshipping product search - supports both HTML and JSON responses
+    """
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
     settings_obj = get_object_or_404(CJSettings, page=page)
     
     query = request.GET.get('q', '').strip()
     cj_products = []
     error_message = None
+    
+    # ============================================================
+    # FIX: Check if this is an AJAX request
+    # Checks BOTH the header AND the URL parameter
+    # ============================================================
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+        request.GET.get('ajax') == '1'
+    )
     
     # Get token
     token = get_cj_access_token(settings_obj)
@@ -6105,7 +6117,7 @@ def cj_product_search(request, subdomain):
                                    params={"productName": query, "pageSize": 20, "sortType": "3"})
                 cj_products = res.json().get("data", {}).get("list", [])
             
-            # ENRICH WITH STOCK DATA - FIXED: Use get_stock_by_vid instead of get_stock_details
+            # ENRICH WITH STOCK DATA
             for item in cj_products:
                 # Get stock from variants
                 total_stock = 0
@@ -6143,15 +6155,28 @@ def cj_product_search(request, subdomain):
         except Exception as e:
             error_message = f"Search failed: {str(e)}"
     
-    context = {
-        'page': page,
-        'cj_products': cj_products,
-        'query': query,
-        'error_message': error_message
-    }
+    # ============================================================
+    # FIX: Return JSON for AJAX requests, HTML for regular requests
+    # ============================================================
     
-    return render(request, 'builder/dashboard/cj_search.html', context)
-
+    if is_ajax:
+        # Return JSON response for AJAX requests
+        return JsonResponse({
+            'success': True if not error_message else False,
+            'data': cj_products,
+            'query': query,
+            'count': len(cj_products),
+            'error': error_message
+        })
+    else:
+        # Return HTML response for regular page loads
+        context = {
+            'page': page,
+            'cj_products': cj_products,
+            'query': query,
+            'error_message': error_message
+        }
+        return render(request, 'builder/dashboard/cj_search.html', context)
 @login_required
 @require_http_methods(["GET"])
 def cj_search_page(request, subdomain):
@@ -11797,3 +11822,133 @@ def get_copy_stats(request, subdomain):
             'success': False,
             'error': str(e)
         }, status=400)    
+
+
+
+# builder/views.py
+
+import os
+import sys
+import time
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from builder.models import PublishedPage, Product
+
+def get_memory_mb():
+    """Get current memory usage in MB"""
+    try:
+        import psutil
+        pid = os.getpid()
+        process = psutil.Process(pid)
+        return process.memory_info().rss / 1024 / 1024
+    except:
+        return 0
+
+def memory_status(request):
+    """Check current memory usage"""
+    try:
+        import psutil
+        pid = os.getpid()
+        process = psutil.Process(pid)
+        memory_info = {
+            'rss': process.memory_info().rss / 1024 / 1024,
+            'vms': process.memory_info().vms / 1024 / 1024,
+        }
+        return JsonResponse({
+            'pid': pid,
+            'memory': memory_info,
+            'cpu': process.cpu_percent(interval=0.1),
+            'threads': process.num_threads(),
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e), 'python_version': sys.version})
+
+def memory_test_public(request):
+    """Test public memory usage"""
+    print("\n" + "="*60)
+    print("🟢 PUBLIC VIEW TEST")
+    print("="*60)
+    
+    start_memory = get_memory_mb()
+    start_time = time.time()
+    print(f"📊 Starting memory: {start_memory:.2f} MB")
+    
+    # Simulate some work
+    time.sleep(0.1)
+    
+    end_memory = get_memory_mb()
+    elapsed = time.time() - start_time
+    
+    print(f"📊 Ending memory: {end_memory:.2f} MB")
+    print(f"📊 Memory increased: {end_memory - start_memory:+.2f} MB")
+    print(f"⏱️  Time: {elapsed:.2f}s")
+    print("="*60)
+    
+    return JsonResponse({
+        'authenticated': False,
+        'start_memory': round(start_memory, 2),
+        'end_memory': round(end_memory, 2),
+        'diff': round(end_memory - start_memory, 2),
+        'time': round(elapsed, 2),
+        'message': 'This is a public view'
+    })
+
+@login_required
+def memory_test_auth(request):
+    """Test authenticated memory usage"""
+    print("\n" + "="*60)
+    print("🔴 AUTHENTICATED VIEW TEST")
+    print("="*60)
+    
+    start_memory = get_memory_mb()
+    start_time = time.time()
+    print(f"📊 Starting memory: {start_memory:.2f} MB")
+    
+    # Load user data
+    user = request.user
+    print(f"👤 User: {user.username} (ID: {user.id})")
+    
+    # Load pages
+    pages = PublishedPage.objects.filter(user=user)
+    page_count = pages.count()
+    print(f"📄 Pages: {page_count}")
+    
+    # Load first page data
+    page_data = []
+    for page in pages[:3]:
+        page_data.append({
+            'id': page.id,
+            'brand_name': page.brand_name,
+            'subdomain': page.subdomain,
+            'template_name': page.template_name,
+        })
+    
+    # Load products
+    products = Product.objects.filter(page__user=user)
+    product_count = products.count()
+    print(f"🛒 Products: {product_count}")
+    
+    # Simulate work
+    time.sleep(0.1)
+    
+    end_memory = get_memory_mb()
+    elapsed = time.time() - start_time
+    
+    print(f"📊 Ending memory: {end_memory:.2f} MB")
+    print(f"📊 Memory increased: {end_memory - start_memory:+.2f} MB")
+    print(f"⏱️  Time: {elapsed:.2f}s")
+    print("="*60)
+    
+    return JsonResponse({
+        'authenticated': True,
+        'user': user.username,
+        'page_count': page_count,
+        'product_count': product_count,
+        'pages': page_data,
+        'start_memory': round(start_memory, 2),
+        'end_memory': round(end_memory, 2),
+        'diff': round(end_memory - start_memory, 2),
+        'time': round(elapsed, 2),
+        'message': 'This is an authenticated view'
+    })
+

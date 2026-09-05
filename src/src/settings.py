@@ -204,6 +204,7 @@ MIDDLEWARE = [
     'accounts.middleware.AuthRedirectMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     
+    
 
 ]
 
