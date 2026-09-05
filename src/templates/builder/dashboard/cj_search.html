@@ -62,6 +62,7 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         position: relative;
         z-index: 1;
+        display: flex;
     }
 
     .search-hero .input-group input {
@@ -71,6 +72,7 @@
         background: white;
         color: #0a1e32;
         flex: 1;
+        min-width: 0;
     }
 
     .search-hero .input-group input:focus {
@@ -95,6 +97,7 @@
         align-items: center;
         gap: 8px;
         white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .search-hero .btn-search:hover {
@@ -106,7 +109,7 @@
         cursor: not-allowed;
     }
 
-    /* ===== Search Animation ===== */
+    /* ===== SEARCH LOADING ===== */
     .search-loading {
         display: none;
         align-items: center;
@@ -184,6 +187,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 20px;
+        min-height: 100px;
     }
 
     .product-card {
@@ -405,6 +409,26 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
+    /* ===== DEBUG PANEL ===== */
+    #debugPanel {
+        background: #1a1a2e;
+        color: #00ff88;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        margin-bottom: 20px;
+        display: none;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    #debugPanel.active {
+        display: block;
+    }
+
     @media (max-width: 768px) {
         .search-container { padding: 0 16px; }
         .search-hero { padding: 24px 20px; }
@@ -449,7 +473,7 @@
             </form>
         </div>
 
-        <!-- ===== SEARCH LOADING ANIMATION ===== -->
+        <!-- ===== SEARCH LOADING ===== -->
         <div class="search-loading" id="searchLoading">
             <div class="spinner"></div>
             <div class="text">
@@ -461,6 +485,9 @@
                 </span>
             </div>
         </div>
+
+        <!-- ===== DEBUG PANEL ===== -->
+        <div id="debugPanel"></div>
 
         <!-- ===== ERROR MESSAGE ===== -->
         {% if error_message %}
@@ -515,10 +542,10 @@
 
 {% block extra_js %}
 <script>
-    // Complete working CJ Search JavaScript
-
 (function() {
     'use strict';
+
+    console.log('🔵 CJ Search page loaded');
 
     const searchForm = document.getElementById('searchForm');
     const searchBtn = document.getElementById('searchBtn');
@@ -526,46 +553,88 @@
     const searchLoading = document.getElementById('searchLoading');
     const resultsGrid = document.getElementById('resultsGrid');
     const toastContainer = document.getElementById('toastContainer');
+    const debugPanel = document.getElementById('debugPanel');
+
+    // ===== DEBUG FUNCTION =====
+    function debugLog(message, data) {
+        console.log('🔍 DEBUG:', message, data || '');
+        if (debugPanel) {
+            debugPanel.classList.add('active');
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = `[${timestamp}] ${message} ${data ? JSON.stringify(data, null, 2) : ''}\n`;
+            debugPanel.textContent += logLine;
+            debugPanel.scrollTop = debugPanel.scrollHeight;
+        }
+    }
+
+    debugLog('Page loaded');
 
     // Hide loading on page load
     if (searchLoading) {
         searchLoading.classList.remove('active');
+        debugLog('Loading indicator hidden');
     }
     if (searchBtn) {
         searchBtn.disabled = false;
         searchBtn.innerHTML = '<i class="fas fa-search"></i> Find Product';
+        debugLog('Search button enabled');
     }
 
     // ===== SEARCH =====
     if (searchForm) {
+        debugLog('Search form found, attaching event listener');
+        
         searchForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Don't reload the page
-            
+            e.preventDefault();
+            debugLog('Form submitted');
+
             const query = searchInput.value.trim();
+            debugLog('Query:', query);
+
             if (!query) {
+                debugLog('Empty query, showing error');
                 showToast('Please enter a search term', 'error');
                 return;
             }
 
             // Show loading
-            if (searchLoading) searchLoading.classList.add('active');
+            if (searchLoading) {
+                searchLoading.classList.add('active');
+                debugLog('Loading indicator shown');
+            }
             if (searchBtn) {
                 searchBtn.disabled = true;
                 searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+                debugLog('Search button disabled');
+            }
+
+            // Clear previous results
+            if (resultsGrid) {
+                resultsGrid.innerHTML = '';
+                debugLog('Results grid cleared');
             }
 
             // Get subdomain from URL
-            const subdomain = window.location.pathname.split('/')[2] || '';
+            const pathParts = window.location.pathname.split('/');
+            const subdomain = pathParts[2] || '';
+            debugLog('Subdomain:', subdomain);
+
+            // Build URL
+            const url = `/builder/cj-search/${subdomain}/?q=${encodeURIComponent(query)}&ajax=1`;
+            debugLog('Fetch URL:', url);
 
             // Make the AJAX request
-            fetch(`/builder/cj-search/${subdomain}/?q=${encodeURIComponent(query)}&ajax=1`)
+            fetch(url)
                 .then(response => {
+                    debugLog('Response status:', response.status);
                     if (!response.ok) {
                         throw new Error('Server error: ' + response.status);
                     }
                     return response.json();
                 })
                 .then(data => {
+                    debugLog('Data received:', data);
+                    
                     // Hide loading
                     if (searchLoading) searchLoading.classList.remove('active');
                     if (searchBtn) {
@@ -574,32 +643,43 @@
                     }
 
                     if (data.success && data.data && data.data.length > 0) {
+                        debugLog(`Rendering ${data.data.length} products`);
                         renderProducts(data.data);
                         showToast(`Found ${data.data.length} products`, 'success');
                     } else {
+                        debugLog('No products found or error:', data.error);
                         renderEmpty(data.error || 'No products found');
                     }
                 })
                 .catch(error => {
                     console.error('Search error:', error);
+                    debugLog('ERROR:', error.message);
+                    
                     if (searchLoading) searchLoading.classList.remove('active');
                     if (searchBtn) {
                         searchBtn.disabled = false;
                         searchBtn.innerHTML = '<i class="fas fa-search"></i> Find Product';
                     }
                     showToast('Search failed: ' + error.message, 'error');
+                    renderEmpty('Search failed: ' + error.message);
                 });
         });
+    } else {
+        debugLog('⚠️ Search form NOT found!');
     }
 
     // ===== RENDER PRODUCTS =====
     function renderProducts(products) {
+        debugLog('renderProducts called with', products.length);
+
         if (!products || products.length === 0) {
+            debugLog('No products to render');
             renderEmpty('No products found');
             return;
         }
 
         let html = '';
+        let count = 0;
         for (const product of products) {
             const image = product.productImage || '/static/images/placeholder.png';
             const price = product.sellPrice || '0.00';
@@ -608,7 +688,7 @@
             const slug = product.cj_url_slug || pid;
 
             html += `
-                <div class="product-card">
+                <div class="product-card" data-pid="${pid}">
                     <div class="product-image-wrap">
                         <img src="${image}" alt="${name}" 
                              onerror="this.src='/static/images/placeholder.png'">
@@ -629,17 +709,27 @@
                     </div>
                 </div>
             `;
+            count++;
         }
+
+        debugLog(`Generated HTML for ${count} products`);
 
         if (resultsGrid) {
             resultsGrid.innerHTML = html;
+            debugLog('Results grid updated');
+        } else {
+            debugLog('⚠️ Results grid NOT found!');
         }
 
         // Attach import events
-        document.querySelectorAll('.import-btn').forEach(btn => {
+        const importBtns = document.querySelectorAll('.import-btn');
+        debugLog(`Found ${importBtns.length} import buttons`);
+        
+        importBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const pid = this.dataset.pid;
+                debugLog('Import button clicked for PID:', pid);
                 if (pid && !this.disabled) {
                     importProduct(pid, this);
                 }
@@ -649,6 +739,7 @@
 
     // ===== RENDER EMPTY =====
     function renderEmpty(message) {
+        debugLog('renderEmpty:', message);
         if (resultsGrid) {
             resultsGrid.innerHTML = `
                 <div class="empty-state">
@@ -657,12 +748,15 @@
                     <p>Try a different search term or paste a CJ product URL.</p>
                 </div>
             `;
+            debugLog('Empty state rendered');
         }
     }
 
     // ===== IMPORT PRODUCT =====
     function importProduct(pid, btnElement) {
         if (!pid) return;
+        
+        debugLog('importProduct called for PID:', pid);
         
         const originalText = btnElement.innerHTML;
         btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Importing...';
@@ -678,23 +772,27 @@
             }
         })
         .then(response => {
+            debugLog('Import response status:', response.status);
             if (!response.ok) {
                 throw new Error('Server error: ' + response.status);
             }
             return response.json();
         })
         .then(data => {
+            debugLog('Import response data:', data);
             if (data.status === 'success' || data.success) {
                 btnElement.innerHTML = '<i class="fas fa-check"></i> Imported';
                 btnElement.className = 'btn btn-success btn-sm import-btn';
                 btnElement.disabled = true;
                 showToast('Product imported successfully!', 'success');
+                debugLog('Import successful');
             } else {
                 throw new Error(data.message || data.error || 'Import failed');
             }
         })
         .catch(error => {
             console.error('Import error:', error);
+            debugLog('Import ERROR:', error.message);
             btnElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Retry';
             btnElement.className = 'btn btn-danger btn-sm import-btn';
             btnElement.disabled = false;
@@ -712,7 +810,11 @@
 
     // ===== TOAST =====
     function showToast(message, type = 'info') {
-        if (!toastContainer) return;
+        debugLog('Toast:', type, message);
+        if (!toastContainer) {
+            debugLog('⚠️ Toast container NOT found');
+            return;
+        }
         
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
@@ -731,6 +833,43 @@
             if (toast.parentElement) toast.remove();
         }, 4000);
     }
+
+    // ===== CHECK EXISTING RESULTS =====
+    // If there are already products on the page (from Django), log them
+    const existingProducts = document.querySelectorAll('.product-card');
+    if (existingProducts.length > 0) {
+        debugLog(`Found ${existingProducts.length} existing products on page load`);
+        // Attach import events to existing buttons
+        document.querySelectorAll('.import-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const pid = this.dataset.pid;
+                if (pid && !this.disabled) {
+                    importProduct(pid, this);
+                }
+            });
+        });
+    } else {
+        debugLog('No existing products on page load');
+    }
+
+    debugLog('CJ Search JavaScript initialized');
+
+    // Expose functions for debugging
+    window.cjDebug = {
+        search: function(query) {
+            searchInput.value = query;
+            searchForm.dispatchEvent(new Event('submit'));
+        },
+        clear: function() {
+            if (resultsGrid) resultsGrid.innerHTML = '';
+            if (debugPanel) {
+                debugPanel.textContent = '';
+                debugPanel.classList.remove('active');
+            }
+        },
+        log: debugLog
+    };
 
 })();
 </script>
