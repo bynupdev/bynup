@@ -6062,68 +6062,89 @@ from django.contrib.auth.decorators import login_required
 from .models import PublishedPage, CJSettings
 from builder.services.cj_service import CJService
 
-@login_required
+# builder/views.py
+
 def cj_product_search(request, subdomain):
     """
-    CJ Dropshipping product search - supports both HTML and JSON responses
+    CJ Dropshipping product search - ALWAYS returns JSON for AJAX calls
     """
-    import json
     
-    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    # ============================================================
+    # DETECT AJAX - Force JSON if request is AJAX
+    # ============================================================
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     
+    # Get page
     try:
-        settings_obj = CJSettings.objects.get(page=page)
-    except CJSettings.DoesNotExist:
-        if request.GET.get('ajax') == '1' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'error': 'CJ Dropshipping is not configured for this store'
-            })
-        context = {'page': page, 'error_message': 'CJ Dropshipping is not configured'}
-        return render(request, 'builder/dashboard/cj_search.html', context)
+        if request.user.is_authenticated:
+            page = PublishedPage.objects.get(subdomain=subdomain, user=request.user)
+        else:
+            page = PublishedPage.objects.get(subdomain=subdomain, is_published=True)
+    except PublishedPage.DoesNotExist:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Store not found'}, status=404)
+        return render(request, 'builder/dashboard/cj_search.html', {'error': 'Store not found'})
     
     query = request.GET.get('q', '').strip()
-    cj_products = []
-    error_message = None
     
-    # Check if AJAX request
-    is_ajax = (
-        request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
-        request.GET.get('ajax') == '1'
-    )
-    
-    # If no query, return empty result
-    if not query:
-        if is_ajax:
-            return JsonResponse({
-                'success': True,
-                'data': [],
-                'query': '',
-                'count': 0
-            })
-        context = {'page': page, 'query': ''}
+    # ============================================================
+    # IF NOT AJAX - Render HTML
+    # ============================================================
+    if not is_ajax:
+        context = {'page': page, 'query': query, 'cj_products': []}
         return render(request, 'builder/dashboard/cj_search.html', context)
+    
+    # ============================================================
+    # AJAX REQUEST - ALWAYS RETURN JSON
+    # ============================================================
+    
+    # If not authenticated, return error
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Please log in to search CJ products',
+            'data': []
+        }, status=401)
+    
+    # If no query, return empty
+    if not query:
+        return JsonResponse({
+            'success': True,
+            'data': [],
+            'query': '',
+            'count': 0,
+            'error': None
+        })
+    
+    # Get CJ settings
+    try:
+        cj_settings_obj = CJSettings.objects.get(page=page)
+    except CJSettings.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'CJ Dropshipping is not configured for this store',
+            'data': []
+        })
     
     # Get token
-    token = get_cj_access_token(settings_obj)
+    token = get_cj_access_token(cj_settings_obj)
     
     if not token:
-        error_message = "Failed to authenticate with CJ Dropshipping API"
-        if is_ajax:
-            return JsonResponse({
-                'success': False,
-                'error': error_message,
-                'data': []
-            })
-        context = {'page': page, 'error_message': error_message, 'query': query}
-        return render(request, 'builder/dashboard/cj_search.html', context)
+        return JsonResponse({
+            'success': False,
+            'error': 'Failed to authenticate with CJ Dropshipping API',
+            'data': []
+        })
     
-    # Perform search
     try:
+        import requests
+        import re
         from builder.services.cj_service import CJService
-        service = CJService(token)
         
-        # Parse Query for PID (UUID or Numeric)
+        service = CJService(token)
+        cj_products = []
+        
+        # Parse Query for PID
         uuid_pattern = r'p-([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
         numeric_pattern = r'-p-(\d+)'
         uuid_match = re.search(uuid_pattern, query)
@@ -6137,7 +6158,6 @@ def cj_product_search(request, subdomain):
         elif len(query) > 15:
             extracted_id = query
         
-        import requests
         if extracted_id:
             # DIRECT FETCH
             res = requests.get(
@@ -6151,7 +6171,7 @@ def cj_product_search(request, subdomain):
                 if data.get("code") == 200:
                     product = data.get("data")
                     if product:
-                        cj_products = [product]
+                        cj_products.append(product)
         else:
             # KEYWORD SEARCH
             res = requests.get(
@@ -6165,11 +6185,10 @@ def cj_product_search(request, subdomain):
                 if data.get("code") == 200:
                     cj_products = data.get("data", {}).get("list", [])
         
-        # ENRICH WITH STOCK DATA
+        # Enrich with stock
         for item in cj_products:
             total_stock = 0
             variants = item.get('variants', [])
-            
             for variant in variants:
                 vid = variant.get('vid')
                 if vid:
@@ -6178,56 +6197,38 @@ def cj_product_search(request, subdomain):
                         if stock_data:
                             for wh in stock_data:
                                 total_stock += int(wh.get('stockNum', 0))
-                    except Exception as e:
-                        print(f"Error getting stock for vid {vid}: {e}")
-            
-            # Fallback to supplier stock
+                    except:
+                        pass
             if total_stock == 0:
-                try:
-                    for variant in variants:
-                        if variant.get('inventoryNum'):
-                            total_stock += int(variant.get('inventoryNum', 0))
-                except:
-                    pass
+                for variant in variants:
+                    if variant.get('inventoryNum'):
+                        total_stock += int(variant.get('inventoryNum', 0))
             
             item['total_stock'] = total_stock
             item['in_stock'] = total_stock > 0
             
-            # Generate slug for URL
             name_slug = item.get('productNameEn', 'product').lower().replace(' ', '-')
             name_slug = re.sub(r'[^a-z0-9-]', '', name_slug)
             item['cj_url_slug'] = name_slug
         
-        # Update API call count
-        settings_obj.daily_api_calls += 1
-        settings_obj.save(update_fields=['daily_api_calls'])
+        cj_settings_obj.daily_api_calls += 1
+        cj_settings_obj.save(update_fields=['daily_api_calls'])
         
-    except Exception as e:
-        error_message = f"Search failed: {str(e)}"
-        print(f"CJ search error: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    # ============================================================
-    # Return JSON for AJAX, HTML for regular requests
-    # ============================================================
-    
-    if is_ajax:
         return JsonResponse({
-            'success': True if not error_message else False,
+            'success': True,
             'data': cj_products,
             'query': query,
             'count': len(cj_products),
-            'error': error_message
+            'error': None
         })
-    else:
-        context = {
-            'page': page,
-            'cj_products': cj_products,
-            'query': query,
-            'error_message': error_message
-        }
-        return render(request, 'builder/cj_product_search.html', context)
+        
+    except Exception as e:
+        print(f"CJ search error: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'data': []
+        })
     
 @login_required
 @require_http_methods(["GET"])

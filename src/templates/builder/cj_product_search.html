@@ -5,53 +5,60 @@
 
 {% block extra_css %}
 <style>
-.search-container {
-    margin-bottom: 2rem;
-}
+    .search-container {
+        margin-bottom: 2rem;
+    }
 
-.product-card {
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    overflow: hidden;
-    transition: all 0.3s;
-    height: 100%;
-}
+    .product-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.3s;
+        height: 100%;
+    }
 
-.product-card:hover {
-    border-color: #4361ee;
-    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.1);
-}
+    .product-card:hover {
+        border-color: #4361ee;
+        box-shadow: 0 5px 15px rgba(67, 97, 238, 0.1);
+    }
 
-.product-image {
-    height: 200px;
-    object-fit: cover;
-    width: 100%;
-}
+    .product-image {
+        height: 200px;
+        object-fit: cover;
+        width: 100%;
+    }
 
-.product-price {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #28a745;
-}
+    .product-price {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #28a745;
+    }
 
-.product-meta {
-    font-size: 0.85rem;
-    color: #6c757d;
-}
+    .product-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
 
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    display: none;
-}
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        display: none;
+    }
+
+    .in-stock {
+        color: #28a745;
+    }
+    .out-of-stock {
+        color: #dc3545;
+    }
 </style>
 {% endblock %}
 
@@ -92,7 +99,7 @@
                            class="form-control form-control-lg" 
                            id="searchKeyword" 
                            placeholder="Search for products..." 
-                           value="{{ request.GET.q|default:'' }}">
+                           value="{{ query|default:'' }}">
                     <button class="btn btn-primary btn-lg" type="submit" id="searchBtn">
                         <i class="fas fa-search me-1"></i> Search
                     </button>
@@ -103,12 +110,69 @@
 
     <!-- Results -->
     <div id="searchResults">
-        <!-- Results will be loaded here -->
+        {% if cj_products %}
+        <!-- Products from server-side render -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="fw-bold">{{ cj_products|length }}</span> products found
+            </div>
+        </div>
+        <div class="row g-3" id="resultsGrid">
+            {% for product in cj_products %}
+            <div class="col-md-6 col-lg-4 col-xl-3">
+                <div class="product-card">
+                    <div class="position-relative">
+                        <img src="{{ product.productImage }}" 
+                             class="product-image" 
+                             alt="{{ product.productNameEn }}"
+                             onerror="this.src='{% static "default-product.jpg" %}'">
+                    </div>
+                    <div class="p-3">
+                        <h6 class="mb-2" style="min-height: 40px;">
+                            {{ product.productNameEn|truncatechars:60 }}
+                        </h6>
+                        
+                        <div class="mb-2">
+                            <span class="product-price">${{ product.sellPrice }}</span>
+                            <div class="mt-1">
+                                <small class="text-muted">
+                                    Stock: <span class="{% if product.in_stock %}in-stock{% else %}out-of-stock{% endif %}">
+                                        {% if product.in_stock %}In Stock{% else %}Out of Stock{% endif %}
+                                    </span>
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="product-meta mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>
+                                    <i class="fas fa-box me-1"></i>
+                                    SKU: {{ product.productSku|default:'N/A' }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-sm import-btn"
+                                    data-pid="{{ product.pid }}"
+                                    data-name="{{ product.productNameEn }}"
+                                    data-price="{{ product.sellPrice }}"
+                                    data-image="{{ product.productImage }}">
+                                <i class="fas fa-download me-1"></i> Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
         <div class="text-center py-5">
             <i class="fas fa-search fa-3x text-muted mb-3"></i>
             <h4 class="text-muted">Search for products</h4>
             <p class="text-muted">Enter a search term above to find products from CJ catalog</p>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -148,172 +212,141 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- In your template, add this script block -->
 <script>
-// Pass Django URLs to JavaScript
-const DJANGO_URLS = {
-    product_details: "{% url 'cj_product_details' page.subdomain 'PRODUCT_ID_PLACEHOLDER' %}"
+// Pass Django URLs and data to JavaScript
+const CJ_CONFIG = {
+    subdomain: '{{ page.subdomain }}',
+    csrfToken: '{{ csrf_token }}',
+    productDetailsUrl: "{% url 'cj_product_details' page.subdomain 'PRODUCT_ID_PLACEHOLDER' %}"
 };
-</script>
-<script>
-class CJProductSearch {
-    constructor() {
-        this.init();
-    }
 
-    init() {
-        this.setupEventListeners();
-        
-        // If URL has search parameter, perform search
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('q')) {
-            const query = urlParams.get('q');
-            document.getElementById('searchKeyword').value = query;
-            this.searchProducts(query);
+document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    const searchForm = document.getElementById('searchForm');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchKeyword = document.getElementById('searchKeyword');
+    const searchResults = document.getElementById('searchResults');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const importModal = new bootstrap.Modal(document.getElementById('importModal'));
+    const confirmImportBtn = document.getElementById('confirmImport');
+
+    let selectedProduct = null;
+
+    // ============================================================
+    // SEARCH FUNCTION
+    // ============================================================
+    async function performSearch(query) {
+        if (!query || query.trim().length < 2) {
+            showToast('Please enter at least 2 characters', 'warning');
+            return;
         }
-    }
 
-    setupEventListeners() {
-        // Search form
-        document.getElementById('searchForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const query = document.getElementById('searchKeyword').value.trim();
-            if (query) {
-                this.searchProducts(query);
-            }
-        });
+        // Show loading
+        loadingOverlay.style.display = 'flex';
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Searching...';
 
-        // Import button
-        document.getElementById('confirmImport').addEventListener('click', () => {
-            this.importProduct();
-        });
-    }
+        try {
+            // ===== CRITICAL: Add &ajax=1 to URL =====
+            const url = `/builder/cj-search/${CJ_CONFIG.subdomain}/?q=${encodeURIComponent(query)}&ajax=1`;
+            console.log('🔍 Fetching:', url);
 
-    // async searchProducts(query) {
-    //     // Show loading
-    //     document.getElementById('loadingOverlay').style.display = 'flex';
-        
-    //     try {
-    //         const response = await fetch(`/builder/cj-search/{{ page.subdomain }}/?q=${encodeURIComponent(query)}`);
-    //         const data = await response.json();
-            
-    //         document.getElementById('loadingOverlay').style.display = 'none';
-            
-    //         if (data.success) {
-    //             this.renderResults(data.products, data.pagination);
-    //         } else {
-    //             this.showError(data.error || 'Search failed');
-    //             document.getElementById('searchResults').innerHTML = `
-    //                 <div class="alert alert-danger">
-    //                     <i class="fas fa-exclamation-circle me-2"></i>
-    //                     ${data.error || 'Search failed'}
-    //                 </div>
-    //             `;
-    //         }
-    //     } catch (error) {
-    //         document.getElementById('loadingOverlay').style.display = 'none';
-    //         this.showError('Network error: ' + error.message);
-    //     }
-    // }
+            const response = await fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
-        async searchProducts(query) {
-    // Show loading
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    
-    try {
-        const response = await fetch(`/builder/cj-search/{{ page.subdomain }}/?q=${encodeURIComponent(query)}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'  // CRITICAL - tells Django it's AJAX
-            }
-        });
-        
-        // Check response type
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const data = await response.json();
-            document.getElementById('loadingOverlay').style.display = 'none';
-            
-            if (data.success) {
-                this.renderResults(data.products, data.pagination);
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                console.log('✅ Data received:', data);
+
+                loadingOverlay.style.display = 'none';
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '<i class="fas fa-search me-1"></i> Search';
+
+                if (data.success && data.data && data.data.length > 0) {
+                    renderProducts(data.data);
+                    showToast(`Found ${data.data.length} products`, 'success');
+                } else {
+                    renderEmpty(data.error || 'No products found');
+                    if (data.error) {
+                        showToast(data.error, 'error');
+                    }
+                }
             } else {
-                this.showError(data.error || 'Search failed');
+                // Got HTML instead of JSON
+                const text = await response.text();
+                console.error('❌ Got HTML response:', text.substring(0, 500));
+                
+                // Try to extract error from HTML
+                let errorMsg = 'Server returned HTML instead of JSON';
+                const match = text.match(/<title>([^<]+)<\/title>/);
+                if (match && !match[1].includes('CJ Dropshipping')) {
+                    errorMsg = `Server error: ${match[1]}`;
+                }
+                throw new Error(errorMsg);
             }
-        } else {
-            // Got HTML instead of JSON
-            const text = await response.text();
-            console.error("Got HTML response:", text.substring(0, 1000));
-            throw new Error('Server returned HTML instead of JSON. Check Django console for errors.');
+        } catch (error) {
+            console.error('❌ Search error:', error);
+            loadingOverlay.style.display = 'none';
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = '<i class="fas fa-search me-1"></i> Search';
+            
+            renderError(error.message);
+            showToast(error.message, 'error');
         }
-    } catch (error) {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        this.showError('Error: ' + error.message);
-        console.error('Search error details:', error);
     }
-}
 
-    renderResults(products, pagination) {
-        const container = document.getElementById('searchResults');
-        
+    // ============================================================
+    // RENDER FUNCTIONS
+    // ============================================================
+    function renderProducts(products) {
         if (!products || products.length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    No products found. Try a different search term.
-                </div>
-            `;
+            renderEmpty('No products found');
             return;
         }
 
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <span class="fw-bold">${pagination.total || products.length}</span> products found
+                    <span class="fw-bold">${products.length}</span> products found
                 </div>
             </div>
-            <div class="row g-3">
+            <div class="row g-3" id="resultsGrid">
         `;
 
         products.forEach(product => {
-            const detailsUrl = DJANGO_URLS.product_details.replace('PRODUCT_ID_PLACEHOLDER', product.pid);
-            // Get first image
-            let imageUrl = '';
-            if (product.productImage_parsed && product.productImage_parsed.length > 0) {
-                imageUrl = product.productImage_parsed[0];
-            } else if (product.productImage && !product.productImage.startsWith('[')) {
-                imageUrl = product.productImage;
-            }
-            
-            // Get product name
-            let productName = product.productNameEn || 'Unknown Product';
-            if (product.productName_parsed && product.productName_parsed.length > 0) {
-                productName = product.productName_parsed[0];
-            }
-            
-            const price = parseFloat(product.sellPrice || product.price || 0);
-            const margin = parseFloat(document.getElementById('importProfitMargin').value || 30);
-            const sellingPrice = price * (1 + margin / 100);
-            
+            const image = product.productImage || '/static/images/placeholder.png';
+            const price = product.sellPrice || '0.00';
+            const name = product.productNameEn || 'Unnamed Product';
+            const pid = product.pid || '';
+            const inStock = product.in_stock || false;
+
             html += `
                 <div class="col-md-6 col-lg-4 col-xl-3">
                     <div class="product-card">
                         <div class="position-relative">
-                            <img src="${imageUrl || '{% static "default-product.jpg" %}'}"
-                                 class="product-image"
-                                 alt="${productName}"
-                                 onerror="this.src='{% static "default-product.jpg" %}'">
+                            <img src="${image}" 
+                                 class="product-image" 
+                                 alt="${name}"
+                                 onerror="this.src='/static/images/placeholder.png'">
                         </div>
                         <div class="p-3">
                             <h6 class="mb-2" style="min-height: 40px;">
-                                ${productName.substring(0, 60)}
-                                ${productName.length > 60 ? '...' : ''}
+                                ${name.substring(0, 60)}${name.length > 60 ? '...' : ''}
                             </h6>
                             
                             <div class="mb-2">
-                                <span class="product-price">$${price.toFixed(2)}</span>
+                                <span class="product-price">$${price}</span>
                                 <div class="mt-1">
                                     <small class="text-muted">
-                                        Selling: <strong>$${sellingPrice.toFixed(2)}</strong>
-                                        <span class="text-success">(+${margin}%)</span>
+                                        Stock: <span class="${inStock ? 'in-stock' : 'out-of-stock'}">
+                                            ${inStock ? 'In Stock' : 'Out of Stock'}
+                                        </span>
                                     </small>
                                 </div>
                             </div>
@@ -328,14 +361,11 @@ class CJProductSearch {
                             </div>
                             
                             <div class="d-grid gap-2">
-                                <input type="text" class="product-id" placeholder="pro id: {{ product.pid}}" value="{{product.pid}}">
-                                <a href="${detailsUrl}">Product Details</a>
-                                 <a href="${detailsUrl}">Product Details</a>
                                 <button class="btn btn-success btn-sm import-btn"
-                                        data-product-id="${product.pid}"
-                                        data-product-name="${productName}"
-                                        data-product-price="${price}"
-                                        data-product-image="${imageUrl}">
+                                        data-pid="${pid}"
+                                        data-name="${name}"
+                                        data-price="${price}"
+                                        data-image="${image}">
                                     <i class="fas fa-download me-1"></i> Import
                                 </button>
                             </div>
@@ -346,33 +376,61 @@ class CJProductSearch {
         });
 
         html += '</div>';
-        container.innerHTML = html;
+        searchResults.innerHTML = html;
 
-        // Add event listeners to import buttons
+        // Attach import events
         document.querySelectorAll('.import-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.showImportModal(btn.dataset);
+            btn.addEventListener('click', function() {
+                showImportModal({
+                    pid: this.dataset.pid,
+                    name: this.dataset.name,
+                    price: this.dataset.price,
+                    image: this.dataset.image
+                });
             });
         });
     }
 
-    showImportModal(productData) {
-        this.selectedProduct = productData;
+    function renderEmpty(message) {
+        searchResults.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                ${message || 'No products found. Try a different search term.'}
+            </div>
+        `;
+    }
+
+    function renderError(message) {
+        searchResults.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                ${message || 'Search failed. Please try again.'}
+                <br>
+                <small class="text-muted">Check the console (F12) for more details</small>
+            </div>
+        `;
+    }
+
+    // ============================================================
+    // IMPORT FUNCTIONS
+    // ============================================================
+    function showImportModal(productData) {
+        selectedProduct = productData;
         
-        const price = parseFloat(productData.productPrice);
+        const price = parseFloat(productData.price || 0);
         const margin = parseFloat(document.getElementById('importProfitMargin').value || 30);
         const sellingPrice = price * (1 + margin / 100);
         
         const modalContent = `
             <div class="row">
                 <div class="col-4">
-                    <img src="${productData.productImage || '{% static "default-product.jpg" %}'}"
+                    <img src="${productData.image || '/static/images/placeholder.png'}"
                          class="img-fluid rounded"
-                         alt="${productData.productName}"
-                         onerror="this.src='{% static "default-product.jpg" %}'">
+                         alt="${productData.name}"
+                         onerror="this.src='/static/images/placeholder.png'">
                 </div>
                 <div class="col-8">
-                    <h6>${productData.productName}</h6>
+                    <h6>${productData.name}</h6>
                     <div class="mb-2">
                         <strong>Cost Price:</strong> $${price.toFixed(2)}
                     </div>
@@ -387,12 +445,11 @@ class CJProductSearch {
         `;
 
         document.getElementById('importProductDetails').innerHTML = modalContent;
-        const modal = new bootstrap.Modal(document.getElementById('importModal'));
-        modal.show();
+        importModal.show();
     }
 
-    async importProduct() {
-        if (!this.selectedProduct) return;
+    async function importProduct() {
+        if (!selectedProduct) return;
 
         const importBtn = document.getElementById('confirmImport');
         const btnText = importBtn.querySelector('.import-btn-text');
@@ -404,32 +461,22 @@ class CJProductSearch {
         spinner.classList.remove('d-none');
 
         try {
-            const response = await fetch('/builder/cj-import/{{ page.subdomain }}/', {
+            const response = await fetch(`/builder/cj-import-product/${CJ_CONFIG.subdomain}/${selectedProduct.pid}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    product_id: this.selectedProduct.productId,
-                    profit_margin: document.getElementById('importProfitMargin').value
-                })
+                    'X-CSRFToken': CJ_CONFIG.csrfToken
+                }
             });
 
             const data = await response.json();
 
-            if (data.success) {
-                this.showSuccess(`Product imported successfully!
-                    ${data.images_imported || 0} images imported
-                    ${data.has_colors ? '• Has colors' : ''}
-                    ${data.has_sizes ? '• Has sizes' : ''}
-                `);
-                
-                // Close modal
-                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+            if (data.status === 'success' || data.success) {
+                showToast('Product imported successfully!', 'success');
+                importModal.hide();
                 
                 // Update button on product card
-                const productCard = document.querySelector(`.import-btn[data-product-id="${this.selectedProduct.productId}"]`);
+                const productCard = document.querySelector(`.import-btn[data-pid="${selectedProduct.pid}"]`);
                 if (productCard) {
                     productCard.innerHTML = '<i class="fas fa-check me-1"></i> Imported';
                     productCard.classList.remove('btn-success');
@@ -437,12 +484,13 @@ class CJProductSearch {
                     productCard.disabled = true;
                 }
                 
-                this.selectedProduct = null;
+                selectedProduct = null;
             } else {
-                this.showError(data.error || 'Import failed');
+                throw new Error(data.message || data.error || 'Import failed');
             }
         } catch (error) {
-            this.showError('Network error: ' + error.message);
+            console.error('Import error:', error);
+            showToast('Import failed: ' + error.message, 'error');
         } finally {
             // Reset button
             importBtn.disabled = false;
@@ -451,14 +499,23 @@ class CJProductSearch {
         }
     }
 
-    showSuccess(message) {
+    // ============================================================
+    // TOAST NOTIFICATIONS
+    // ============================================================
+    function showToast(message, type = 'info') {
+        const colors = {
+            success: 'bg-success',
+            error: 'bg-danger',
+            warning: 'bg-warning',
+            info: 'bg-info'
+        };
+        
         const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-success border-0';
+        toast.className = `toast align-items-center text-white ${colors[type] || 'bg-info'} border-0`;
         toast.setAttribute('role', 'alert');
         toast.innerHTML = `
             <div class="d-flex">
                 <div class="toast-body">
-                    <i class="fas fa-check-circle me-2"></i>
                     ${message}
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
@@ -478,37 +535,51 @@ class CJProductSearch {
         });
     }
 
-    showError(message) {
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    
+    // Search form submit
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = searchKeyword.value.trim();
+        if (query) {
+            performSearch(query);
+        } else {
+            showToast('Please enter a search term', 'warning');
+        }
+    });
 
-        const container = document.createElement('div');
-        container.className = 'toast-container position-fixed top-0 end-0 p-3';
-        container.appendChild(toast);
-        document.body.appendChild(container);
+    // Import confirm
+    confirmImportBtn.addEventListener('click', importProduct);
 
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-
-        toast.addEventListener('hidden.bs.toast', () => {
-            container.remove();
-        });
+    // ============================================================
+    // URL PARAMETERS - Auto search if q parameter exists
+    // ============================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('q')) {
+        const query = urlParams.get('q');
+        searchKeyword.value = query;
+        // Only search if there's no existing results (from server render)
+        if (!document.querySelector('.product-card')) {
+            performSearch(query);
+        }
     }
-}
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    window.cjProductSearch = new CJProductSearch();
+    // ============================================================
+    // DEBUG HELPERS
+    // ============================================================
+    window.cjDebug = {
+        search: function(query) {
+            performSearch(query);
+        },
+        config: CJ_CONFIG
+    };
+
+    console.log('🔵 CJ Search initialized');
+    console.log('📋 Config:', CJ_CONFIG);
+    console.log('🛠️  Debug: cjDebug.search("shoes")');
+
 });
 </script>
 {% endblock %}
