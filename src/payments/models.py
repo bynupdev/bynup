@@ -1330,7 +1330,7 @@ class Plan(models.Model):
     """
     TIERS = [
         ('free', 'Starter - Free'),
-        ('pro', 'Pro - $12/mo'),
+        ('pro', 'Basic - $12/mo'),
         ('business', 'Business - $29/mo'),
         ('agency', 'Agency - $79/mo'),
     ]

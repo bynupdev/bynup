@@ -616,7 +616,7 @@ class ImageCustomization(models.Model):
     """Store custom images for editable-image elements"""
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='image_customizations')
     element_id = models.CharField(max_length=50)  # e.g., "1", "2", "3"
-    image = models.ImageField(upload_to='custom_images/', storage=MediaCloudinaryStorage(),
+    image = models.ImageField(upload_to='custom_images/', 
         blank=True,
         null=True)
     alt_text = models.CharField(max_length=200, blank=True)

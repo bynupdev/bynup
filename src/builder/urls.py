@@ -119,7 +119,13 @@ urlpatterns = [
 path('save-video-url/', views.save_video_url, name='save_video_url'),
 path('remove-video/<str:subdomain>/', views.remove_video, name='remove_video'),
 
+path('api/delete-image-customization/<str:subdomain>/',
+     views.delete_image_customization,
+     name='delete_image_customization'),
 
+path('api/delete-video-customization/<str:subdomain>/',
+     views.delete_video_customization,
+     name='delete_video_customization'),
 
      # CJ Dropshipping URLs
     path('cj-settings/<str:subdomain>/', views.cj_settings, name='cj_settings'),
@@ -301,3 +307,6 @@ path('remove-video/<str:subdomain>/', views.remove_video, name='remove_video'),
 
     path('', views.public_page, name='public_page'),
 ]
+
+
+

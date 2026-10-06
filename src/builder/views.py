@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.core.files.base import ContentFile
 from django.utils import timezone
 from datetime import timedelta
+from django.views.decorators.http import require_http_methods
 from django.template import engines
 from django.template import TemplateDoesNotExist
 from django.utils.safestring import mark_safe
@@ -37,6 +38,7 @@ from builder.utils.color_extractor import TemplateColorExtractor
 
 from .models import *
 from .models import  ProductDisplayMode,VariantGroup
+from builder.utils.media_replacements import apply_media_replacements, inject_public_css
 
 @login_required
 @custom_domain_required
@@ -273,8 +275,483 @@ def landing_page(request):
         'year': timezone.now().year,
     })
 
+# ============================================================
+# INJECTED COMPONENT SPLICER
+# Splices dropped-component HTML between native template sections.
+# Zero DB overhead — everything comes from page_customizations JSON.
+# ============================================================
+import re as _inj_re
+
+def _prepare_injected_html(html):
+    """
+    Ensure every element with data-section="N" also gets id="section-N"
+    so public-page CSS (#section-N) applies. Preserves data-section so
+    the HTML can round-trip back into the editor.
+    """
+    if not html:
+        return html
+
+    tag_re = _inj_re.compile(r'<([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>')
+    ds_re = _inj_re.compile(r'data-section\s*=\s*["\']([^"\']*)["\']')
+    id_re = _inj_re.compile(r'\bid\s*=\s*["\']')
+
+    def fix_tag(m):
+        tagname = m.group(1)
+        attrs = m.group(2)
+        ds_match = ds_re.search(attrs)
+        if not ds_match:
+            return m.group(0)
+        if id_re.search(attrs):
+            return m.group(0)
+        n = ds_match.group(1)
+        new_attrs = attrs[:ds_match.end()] + f' id="section-{n}"' + attrs[ds_match.end():]
+        return f'<{tagname}{new_attrs}>'
+
+    return tag_re.sub(fix_tag, html)
 
 
+def _apply_customizations_to_injected(html,
+                                       text_contents,
+                                       style_customizations,
+                                       icon_customizations,
+                                       image_customizations,
+                                       background_images):
+    """
+    Apply all customizations to injected-component HTML server-side.
+    Only processes IDs >= 1500, so it never touches native template content.
+    """
+    if not html:
+        return html
+
+    # ---------- Text contents ----------
+    def apply_text(m):
+        whole = m.group(0)
+        text_id = m.group('id')
+        try:
+            n = int(text_id)
+        except (ValueError, TypeError):
+            return whole
+        if n < 1500:
+            return whole
+        new_content = text_contents.get(text_id)
+        if new_content is None:
+            return whole
+        return f"{m.group('open')}{new_content}{m.group('close')}"
+
+    text_pattern = _inj_re.compile(
+        r'(?P<open><[^>]*data-text\s*=\s*["\'](?P<id>\d+)["\'][^>]*>)'
+        r'.*?'
+        r'(?P<close></[a-zA-Z][a-zA-Z0-9-]*>)',
+        _inj_re.DOTALL
+    )
+    html = text_pattern.sub(apply_text, html)
+
+    # ---------- Style customizations ----------
+    style_rules = []
+    for sid, styles in (style_customizations or {}).items():
+        try:
+            n = int(sid)
+        except (ValueError, TypeError):
+            continue
+        if n < 1500 or not isinstance(styles, dict):
+            continue
+        decls = []
+        for prop, val in styles.items():
+            if not val or not isinstance(val, str):
+                continue
+            if prop in ('hover', 'hover_animation', 'hover_settings',
+                        'text_opacity_children'):
+                continue
+            css_prop = prop.replace('_', '-')
+            decls.append(f"    {css_prop}: {val} !important;")
+        if decls:
+            style_rules.append(
+                f"#section-{sid} {{\n" + "\n".join(decls) + "\n}"
+            )
+    if style_rules:
+        html = html + "\n<style>\n" + "\n".join(style_rules) + "\n</style>"
+
+    # ---------- Background images ----------
+    bg_rules = []
+    for bid, bg in (background_images or {}).items():
+        try:
+            n = int(bid)
+        except (ValueError, TypeError):
+            continue
+        if n < 1500:
+            continue
+        url = bg.get('image_url') if isinstance(bg, dict) else bg
+        if not url:
+            continue
+        bg_rules.append(
+            f"#section-{bid} {{\n"
+            f"    background-image: url('{url}') !important;\n"
+            f"    background-size: cover !important;\n"
+            f"    background-position: center !important;\n"
+            f"    background-repeat: no-repeat !important;\n"
+            f"}}"
+        )
+    if bg_rules:
+        html = html + "\n<style>\n" + "\n".join(bg_rules) + "\n</style>"
+
+    # ---------- Icons ----------
+    def apply_icon(m):
+        whole = m.group(0)
+        icon_id = m.group('id')
+        try:
+            n = int(icon_id)
+        except (ValueError, TypeError):
+            return whole
+        if n < 1500:
+            return whole
+        data = (icon_customizations or {}).get(icon_id)
+        if not data:
+            return whole
+
+        tag = m.group('tag')
+        attrs = m.group('attrs')
+
+        cls_m = _inj_re.search(r'class\s*=\s*["\']([^"\']*)["\']', attrs)
+        classes = cls_m.group(1).split() if cls_m else []
+        classes = [c for c in classes
+                   if not (c.startswith('fa-') or c in ('fas', 'far', 'fab'))]
+        if data.get('icon_class'):
+            classes.extend(data['icon_class'].split())
+        new_class = ' '.join(classes)
+
+        if cls_m:
+            attrs = attrs[:cls_m.start()] + f'class="{new_class}"' + attrs[cls_m.end():]
+        else:
+            attrs = attrs + f' class="{new_class}"'
+
+        style_parts = []
+        if data.get('color'):
+            style_parts.append(f"color: {data['color']}")
+        if data.get('font_size'):
+            style_parts.append(f"font-size: {data['font_size']}")
+        if style_parts:
+            style_str = '; '.join(style_parts)
+            if 'style=' in attrs:
+                sm = _inj_re.search(r'style\s*=\s*["\']([^"\']*)["\']', attrs)
+                if sm:
+                    attrs = (attrs[:sm.start(1)]
+                             + sm.group(1) + '; ' + style_str
+                             + attrs[sm.end(1):])
+            else:
+                attrs = attrs + f' style="{style_str}"'
+
+        return f'<{tag}{attrs}>'
+
+    icon_pattern = _inj_re.compile(
+        r'<(?P<tag>[a-zA-Z][a-zA-Z0-9-]*)'
+        r'(?P<attrs>[^>]*data-icon\s*=\s*["\'](?P<id>\d+)["\'][^>]*)>'
+    )
+    html = icon_pattern.sub(apply_icon, html)
+
+    # ---------- Images ----------
+    def apply_image(m):
+        whole = m.group(0)
+        img_id = m.group('id')
+        try:
+            n = int(img_id)
+        except (ValueError, TypeError):
+            return whole
+        if n < 1500:
+            return whole
+        data = (image_customizations or {}).get(img_id)
+        if not data or not data.get('image_url'):
+            return whole
+
+        tag = m.group('tag')
+        attrs = m.group('attrs')
+        url = data['image_url']
+
+        if 'src=' in attrs:
+            attrs = _inj_re.sub(r'src\s*=\s*["\'][^"\']*["\']',
+                                f'src="{url}"', attrs)
+        else:
+            attrs = attrs + f' src="{url}"'
+
+        return f'<{tag}{attrs}>'
+
+    image_pattern = _inj_re.compile(
+        r'<(?P<tag>img)'
+        r'(?P<attrs>[^>]*data-image\s*=\s*["\'](?P<id>\d+)["\'][^>]*)>'
+    )
+    html = image_pattern.sub(apply_image, html)
+
+    return html
+
+def _inject_components_into_html(rendered_html,
+                                  injected_sections,
+                                  text_contents=None,
+                                  style_customizations=None,
+                                  icon_customizations=None,
+                                  image_customizations=None,
+                                  background_images=None):
+    """
+    Splice each injected item (component OR element) into the rendered HTML.
+
+    Components: anchored AFTER a native section (existing behavior).
+    Elements:   anchored INSIDE a native section (append at end of its children).
+
+    Entry shape:
+        {
+            'id': str,
+            'type': 'component' | 'element' | None (defaults to component),
+            'element_kind': str (optional, only for elements),
+            'after_section': str,          # native section ID, or 'end'
+            'parent_selector': str | None,  # if set, insert INSIDE this element
+            'display_order': int,
+            'id_range': [int, int],
+            'html': str,
+        }
+    """
+    print("\n" + "=" * 60)
+    print("🔧 _inject_components_into_html CALLED")
+    print(f"   injected_sections count: {len(injected_sections) if injected_sections else 0}")
+    if injected_sections:
+        for s in injected_sections:
+            print(f"   - type={s.get('type', 'component')!r}, "
+                  f"anchor={s.get('after_section')!r}, "
+                  f"parent={s.get('parent_selector')!r}, "
+                  f"order={s.get('display_order')}, "
+                  f"id={s.get('id')}")
+    print("=" * 60 + "\n")
+
+    if not injected_sections or not rendered_html:
+        return rendered_html
+
+    try:
+        # ----------------------------------------------------------
+        # Split into three buckets:
+        #   - top_level:  insert AFTER a section (components + 'end' elements)
+        #   - inside:     insert INSIDE a section (elements with parent_selector)
+        # ----------------------------------------------------------
+        top_level = []
+        inside = []
+
+        for inj in injected_sections:
+            if not isinstance(inj, dict) or not inj.get('html'):
+                continue
+            if inj.get('parent_selector'):
+                inside.append(inj)
+            else:
+                top_level.append(inj)
+
+        # --- Group top-level by anchor ---
+        by_anchor = {}
+        for inj in top_level:
+            anchor = str(inj.get('after_section', 'end'))
+            by_anchor.setdefault(anchor, []).append(inj)
+        for key in by_anchor:
+            by_anchor[key].sort(key=lambda x: x.get('display_order', 0))
+
+        # --- Group inside-items by parent_selector ---
+        by_parent = {}
+        for inj in inside:
+            parent = str(inj.get('parent_selector'))
+            by_parent.setdefault(parent, []).append(inj)
+        for key in by_parent:
+            by_parent[key].sort(key=lambda x: x.get('display_order', 0))
+
+        # --- Prepare injection HTML for top-level anchors ---
+        inject_map = {}
+        for k, vs in by_anchor.items():
+            parts = []
+            for v in vs:
+                h = v['html']
+                h = _prepare_injected_html(h)
+                h = _apply_customizations_to_injected(
+                    h,
+                    text_contents or {},
+                    style_customizations or {},
+                    icon_customizations or {},
+                    image_customizations or {},
+                    background_images or {},
+                )
+                parts.append(h)
+            inject_map[k] = '\n'.join(parts)
+
+        # --- Prepare injection HTML for inside-parents ---
+        inside_map = {}
+        for k, vs in by_parent.items():
+            parts = []
+            for v in vs:
+                h = v['html']
+                h = _prepare_injected_html(h)
+                h = _apply_customizations_to_injected(
+                    h,
+                    text_contents or {},
+                    style_customizations or {},
+                    icon_customizations or {},
+                    image_customizations or {},
+                    background_images or {},
+                )
+                parts.append(h)
+            inside_map[k] = '\n'.join(parts)
+
+        # ----------------------------------------------------------
+        # STATE MACHINE WALK
+        # We need:
+        #   A) After a section closes → emit its top-level injections.
+        #   B) Inside a section → emit inside-injections right before
+        #      the section's closing tag (i.e., as the last children).
+        #
+        # Both are handled by tagging each open frame with its anchor
+        # (for A) and any inside-injections that target a descendant
+        # matched by parent_selector (for B).
+        #
+        # For B, we resolve the parent_selector by matching against
+        # id="section-N" and data-section="N". Since selectors are
+        # written by the frontend as `[data-section="N"]` or
+        # `#section-N`, we normalize to a numeric key.
+        # ----------------------------------------------------------
+        out = []
+        i = 0
+        n = len(rendered_html)
+
+        open_stack = []
+        next_frame_id = 0
+        pending_top = {}       # frame_id → top-level HTML
+        pending_inside = {}    # frame_id → inside HTML
+
+        tag_re = _inj_re.compile(r'<\s*(/?)\s*([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>')
+        attr_re = _inj_re.compile(r'data-section\s*=\s*["\']([^"\']*)["\']')
+        id_anchor_re = _inj_re.compile(r'id\s*=\s*["\']section-([^"\']*)["\']')
+
+        # Normalize parent_selector keys to the bare anchor number
+        # so both `[data-section="12"]` and `#section-12` resolve to "12".
+        def _parent_key(sel):
+            if not sel:
+                return None
+            m1 = _inj_re.search(r'data-section\s*=\s*["\']([^"\']*)["\']', sel)
+            if m1:
+                return m1.group(1)
+            m2 = _inj_re.search(r'#section-([^"\'\s>]+)', sel)
+            if m2:
+                return m2.group(1)
+            return None
+
+        normalized_inside = {}
+        for sel, html in inside_map.items():
+            key = _parent_key(sel) or sel
+            normalized_inside[key] = html
+
+        VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+                'link', 'meta', 'param', 'source', 'track', 'wbr'}
+
+        while i < n:
+            if rendered_html[i] != '<':
+                j = rendered_html.find('<', i)
+                if j == -1:
+                    out.append(rendered_html[i:])
+                    break
+                out.append(rendered_html[i:j])
+                i = j
+                continue
+
+            m = tag_re.match(rendered_html, i)
+            if not m:
+                out.append(rendered_html[i])
+                i += 1
+                continue
+
+            is_close = m.group(1)
+            tag_name = m.group(2).lower()
+            attrs = m.group(3)
+            out.append(m.group(0))
+            i = m.end()
+
+            if tag_name in VOID:
+                continue
+
+            if is_close:
+                # Pop the stack until we match
+                while open_stack:
+                    top_name, top_anchor, top_frame_id = open_stack.pop()
+
+                    # Emit inside-injections FIRST (they belong before close)
+                    inner = pending_inside.pop(top_frame_id, None)
+                    if inner:
+                        out.append(inner)
+
+                    # Then the top-level injection (goes after the close)
+                    outer = pending_top.pop(top_frame_id, None)
+                    if outer:
+                        out.append(outer)
+
+                    if top_name == tag_name:
+                        break
+            else:
+                if attrs.rstrip().endswith('/'):
+                    continue
+
+                anchor_match = attr_re.search(attrs)
+                if anchor_match:
+                    anchor = anchor_match.group(1)
+                else:
+                    id_match = id_anchor_re.search(attrs)
+                    anchor = id_match.group(1) if id_match else None
+
+                frame_id = next_frame_id
+                next_frame_id += 1
+                open_stack.append((tag_name, anchor, frame_id))
+
+                if anchor:
+                    # Top-level injection for this anchor
+                    if anchor in inject_map:
+                        pending_top[frame_id] = inject_map.pop(anchor)
+                    # Inside injection for this anchor
+                    if anchor in normalized_inside:
+                        pending_inside[frame_id] = normalized_inside.pop(anchor)
+
+        # ----------------------------------------------------------
+        # Drain any leftover injections
+        # ----------------------------------------------------------
+        end_html = inject_map.pop('end', '')
+        leftover_top = '\n'.join(inject_map.values())
+        leftover_inside = '\n'.join(normalized_inside.values())
+
+        result = ''.join(out)
+
+        if leftover_inside:
+            # Attach to </body> as a fallback (better than nothing)
+            idx = result.lower().rfind('</body>')
+            print(f"[inject_components] WARNING: {len(normalized_inside)} inside-injection(s) had no matching parent")
+            print(f"[inject_components] leftover parents: {list(normalized_inside.keys())}")
+            if idx != -1:
+                result = result[:idx] + '\n' + leftover_inside + '\n' + result[idx:]
+            else:
+                result += '\n' + leftover_inside
+
+        if end_html:
+            idx = result.lower().rfind('</body>')
+            print(f"[inject_components] injecting {len(end_html)} chars at end")
+            if idx != -1:
+                result = result[:idx] + '\n' + end_html + '\n' + result[idx:]
+            else:
+                result += '\n' + end_html
+
+        if leftover_top:
+            idx = result.lower().rfind('</body>')
+            print(f"[inject_components] ANCHOR NOT FOUND — injecting {len(inject_map)} leftover(s)")
+            print(f"[inject_components] leftover anchors: {list(inject_map.keys())}")
+            if idx != -1:
+                result = result[:idx] + '\n' + leftover_top + '\n' + result[idx:]
+            else:
+                result += '\n' + leftover_top
+
+        print(f"[inject_components] done — {len(top_level)} top-level, {len(inside)} inside")
+        return result
+
+    except Exception as e:
+        import traceback
+        print(f"[inject_components] splice failed: {e}")
+        traceback.print_exc()
+        return rendered_html
+
+        
 @debug_authentication
 def public_page(request):
     """Render published page based on domain type with file-based components"""
@@ -914,16 +1391,57 @@ def public_page(request):
 
 
     # Determine correct template path
+    # Determine correct template path
     template_path = f'builder/public_templates/{page.template_name}/{current_page}.html'
-    print(f"🎯 Rendering template: {template_path}")
+    print(f" Rendering template: {template_path}")
 
+    # ============================================================
+    # INJECTED COMPONENTS — read from page_customizations JSON
+    # ============================================================
+    page_json = page.page_customizations or {}
+    this_page_json = page_json.get(current_page, {}) or {}
+    injected_sections = this_page_json.get('injected_sections', []) or []
+    for e in injected_sections:
+        if isinstance(e, dict) and e.get('type') == 'media_replacement':
+            s = e.get('src') or ''
+            if s and not s.startswith(('http://', 'https://', '//')):
+                e['src'] = request.build_absolute_uri(s if s.startswith('/') else '/' + s)
+    # ============================================================
+    # 1. Render the template to a string
+    # ============================================================
     try:
-        return render(request, template_path, context)
+        from django.template.loader import render_to_string as _rts
+        html = _rts(template_path, context, request=request)
     except TemplateDoesNotExist:
-        # Fallback to single page template
         fallback_path = f'builder/public_templates/{page.template_name}.html'
-        print(f"⚠️ Template not found, using fallback: {fallback_path}")
-        return render(request, fallback_path, context)
+        print(f" Template not found, using fallback: {fallback_path}")
+        html = _rts(fallback_path, context, request=request)
+
+    # ============================================================
+    # 2. Inject dropped components (unchanged)
+    # ============================================================
+    if injected_sections:
+        html = _inject_components_into_html(
+            html,
+            injected_sections,
+            text_contents=text_contents,
+            style_customizations=style_customizations,
+            icon_customizations=icon_customizations,
+            image_customizations=image_customizations,
+            background_images=background_images,
+        )
+
+    # ============================================================
+    # 3. NEW: Apply image → video/embed replacements
+    #    (hides original <img>, inserts <video>/<iframe> in same slot)
+    # ============================================================
+    # html = apply_media_replacements(html, injected_sections)
+    # html = inject_public_css(html)
+    from builder.utils.media_replacements import apply_media_replacements, inject_public_css
+    html = apply_media_replacements(html, injected_sections)
+    html = inject_public_css(html)
+    print("🎬 entries:", [e for e in injected_sections if isinstance(e, dict) and e.get('type')=='media_replacement'])
+    return HttpResponse(html)
 
 import re
 def apply_component_customizations(html_content, customizations, background_images=None):
@@ -1625,6 +2143,7 @@ def editor(request, template_name, subdomain=None):
     context['palette_css_variables'] = palette_css_variables
     
     # ===== 9. BUILD ALL PAGE DATA FOR JAVASCRIPT =====
+    # Build all page data for JavaScript
     all_page_data = {}
     for page_name in available_pages:
         page_specific_data = page.page_customizations.get(page_name, {})
@@ -1636,8 +2155,9 @@ def editor(request, template_name, subdomain=None):
             'component_layout': page_specific_data.get('component_layout', []),
             'component_customizations': page_specific_data.get('component_customizations', []),
             'image_customizations': page_specific_data.get('image_customizations', {}),
+            'injected_sections': page_specific_data.get('injected_sections', []),   # ← ADD THIS
         }
-    
+                
     # ===== 10. LOAD PRODUCTS FOR EDITOR PREVIEW =====
     products = page.products.filter(is_active=True, status='active').order_by('-created_at')[:10]
     categories = page.product_categories.filter(is_active=True)
@@ -2474,16 +2994,19 @@ def publish_page(request):
                 page.template_name = template_name
                 page.is_published = True
                 page.current_page = current_page
-                page.page_customizations = all_page_data
-                
-                # ✅ CRITICAL: Log what we're saving
-                print(f"\n📝 [publish_page] SAVING PAGE:")
-                print(f"   page.brand_name (about to save): '{page.brand_name}'")
-                print(f"   page.subdomain (about to save): '{page.subdomain}'")
-                
-                # Save the page
+                # Merge new data with existing, so keys the frontend didn't
+                # send (like injected_sections) survive the publish.
+                existing = page.page_customizations or {}
+                merged = dict(existing)
+                for page_name, page_dict in (all_page_data or {}).items():
+                    existing_page = merged.get(page_name)
+                    if isinstance(existing_page, dict) and isinstance(page_dict, dict):
+                        merged[page_name] = {**existing_page, **page_dict}
+                    else:
+                        merged[page_name] = page_dict
+                page.page_customizations = merged
                 page.save()
-                
+                                
                 # ✅ Verify after save
                 page.refresh_from_db()
                 print(f"\n✅ [publish_page] AFTER SAVE:")
@@ -12262,72 +12785,142 @@ def memory_test_auth(request):
 @csrf_exempt
 @check_storage_before_upload('video')
 def upload_video(request):
-    """
-    Upload video file and poster image for editable elements
-    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required'})
-    
+
     try:
-        subdomain = request.POST.get('subdomain')
-        element_id = request.POST.get('element_id')
-        page_name = request.POST.get('page_name', 'home')
-        video_file = request.FILES.get('video')
+        subdomain   = request.POST.get('subdomain')
+        element_id  = request.POST.get('element_id')
+        page_name   = request.POST.get('page_name', 'home')
+        video_file  = request.FILES.get('video')
         poster_file = request.FILES.get('poster')
-        alt_text = request.POST.get('alt_text', '')
-        autoplay = request.POST.get('autoplay', 'false') == 'true'
-        loop = request.POST.get('loop', 'false') == 'true'
-        muted = request.POST.get('muted', 'true') == 'true'
-        controls = request.POST.get('controls', 'true') == 'true'
-        # ===== ADD THIS =====
-        show_play_button = request.POST.get('show_play_button', 'true') == 'true'
-        
+        alt_text    = request.POST.get('alt_text', '')
+
         if not all([subdomain, element_id, video_file]):
             return JsonResponse({'success': False, 'error': 'Missing required fields'})
-        
+
         page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-        
-        # Delete existing video if any
+
+        # Remove any existing video customization for this element
         VideoCustomization.objects.filter(
-            page=page,
-            element_id=element_id,
-            page_name=page_name
+            page=page, element_id=element_id, page_name=page_name
         ).delete()
-        
-        # Create video customization
-        video_customization = VideoCustomization.objects.create(
+
+        vc = VideoCustomization.objects.create(
             page=page,
             element_id=element_id,
             page_name=page_name,
             video_file=video_file,
             alt_text=alt_text,
-            autoplay=autoplay,
-            loop=loop,
-            muted=muted,
-            controls=controls,
-            show_play_button=show_play_button  # ===== ADD THIS =====
         )
-        
-        # Handle poster image
+
         poster_url = None
         if poster_file:
-            video_customization.poster_image = poster_file
-            video_customization.save()
-            poster_url = video_customization.poster_image.url
-        
+            vc.poster_image = poster_file
+            vc.save()
+            poster_url = vc.poster_image.url
+
         return JsonResponse({
-            'success': True,
-            'video_url': video_customization.video_file.url,
+            'success':    True,
+            'video_url':  vc.video_file.url,
             'poster_url': poster_url,
             'element_id': element_id,
-            'show_play_button': show_play_button,  # ===== ADD THIS =====
-            'message': 'Video uploaded successfully'
+            'message':    'Video uploaded',
         })
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
+
+    
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_image_customization(request, subdomain):
+    """
+    Delete an ImageCustomization row for a given element_id/page_name.
+    Called when an image is replaced by a video, or reset to default.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        element_id = str(data.get('element_id') or '').strip()
+        page_name  = data.get('page_name') or 'home'
+
+        if not element_id:
+            return JsonResponse({'success': False, 'error': 'element_id required'}, status=400)
+
+        # Delete from ImageCustomization
+        deleted, _ = ImageCustomization.objects.filter(
+            page=page,
+            element_id=element_id,
+            page_name=page_name
+        ).delete()
+
+        # Also purge from page_customizations JSON so it doesn't come back on publish
+        if page.page_customizations and page_name in page.page_customizations:
+            pdata = page.page_customizations[page_name]
+            if 'image_customizations' in pdata and element_id in pdata['image_customizations']:
+                del pdata['image_customizations'][element_id]
+                page.save(update_fields=['page_customizations'])
+
+        return JsonResponse({'success': True, 'deleted': deleted})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_video_customization(request, subdomain):
+    """
+    Delete a VideoCustomization row for a given element_id/page_name.
+    Called when the user resets a media-replaced image.
+    """
+    try:
+        page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+        data = json.loads(request.body)
+        element_id = str(data.get('element_id') or '').strip()
+        page_name  = data.get('page_name') or 'home'
+
+        if not element_id:
+            return JsonResponse({'success': False, 'error': 'element_id required'}, status=400)
+
+        # Delete from VideoCustomization
+        qs = VideoCustomization.objects.filter(
+            page=page,
+            element_id=element_id
+        )
+        # Only filter by page_name if the model has that field
+        if hasattr(VideoCustomization, 'page_name'):
+            qs = qs.filter(page_name=page_name)
+
+        # Delete the file from storage too if present
+        for vc in qs:
+            try:
+                if vc.video_file:
+                    vc.video_file.delete(save=False)
+                if getattr(vc, 'poster_image', None):
+                    vc.poster_image.delete(save=False)
+            except Exception as e:
+                print('[delete_video_customization] file delete warning:', e)
+
+        deleted = qs.delete()[0]
+
+        return JsonResponse({'success': True, 'deleted': deleted})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    
 
 @login_required
 @csrf_exempt
