@@ -1,0 +1,1536 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+.editor-only { display: none; }
+.public-only { display: block; }
+body.editor-mode .editor-only { display: block; }
+body.editor-mode .public-only { display: none; }
+
+{% generate_section_styles style_customizations 5000 5400 %}
+{% generate_background_images background_images 5000 5400 %}
+
+/* ============================================================
+   SPLIT-DISPLAY EDITORIAL PRODUCT HERO
+   Zero horizontal overflow. Fluid type. Dock-based CTA.
+   ============================================================ */
+.sp-root {
+    /* Palette */
+    --sp-ink:        #0B0B0C;
+    --sp-ink-2:      #2A2A2E;
+    --sp-ink-3:      #52525A;
+    --sp-mute:       #8A8A92;
+    --sp-faint:      #C8C8CE;
+    --sp-line:       #E8E8EC;
+    --sp-line-2:     #F2F2F5;
+    --sp-paper:      #FDFCFA;
+    --sp-paper-2:    #F6F4F0;
+    --sp-accent:     #14532D;   /* forest green */
+    --sp-accent-2:   #1F7A47;
+    --sp-accent-bg:  #EDF5F0;
+    --sp-warn:       #B45309;
+
+    /* Fonts */
+    --sp-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --sp-font-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --sp-font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--sp-font-sans);
+    color: var(--sp-ink);
+    background: var(--sp-paper);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;          /* hard stop for any accidental overflow */
+    position: relative;
+}
+
+.sp-root *, .sp-root *::before, .sp-root *::after { box-sizing: border-box; }
+.sp-root img { max-width: 100%; display: block; }
+.sp-root button { font-family: inherit; cursor: pointer; border: none;  }
+.sp-root .sp-nav{background: none;}
+
+/* ============================================================
+   SHELL — always full width, bounded content
+   ============================================================ */
+.sp-shell {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* ============================================================
+   DESKTOP LAYOUT (≥ 1024px)
+   Fixed left gallery column + scrolling editorial right column
+   ============================================================ */
+.sp-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+@media (min-width: 1024px) {
+    .sp-split {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        align-items: start;
+    }
+}
+
+/* ---------- GALLERY (left) ---------- */
+.sp-gallery-col {
+    position: relative;
+    background: var(--sp-paper-2);
+    padding: 0;
+}
+@media (min-width: 1024px) {
+    .sp-gallery-col {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* Big frame */
+.sp-frame {
+    position: relative;
+    background: var(--sp-paper-2);
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+    width: 100%;
+}
+@media (min-width: 1024px) {
+    .sp-frame {
+        aspect-ratio: auto;
+        flex: 1;
+        min-height: 0;
+        border-radius: 4px;
+    }
+}
+
+.sp-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    display: flex; align-items: center; justify-content: center;
+    will-change: opacity;
+}
+.sp-slide.active { opacity: 1; z-index: 1; }
+.sp-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Nav arrows — always visible, no ambiguity */
+.sp-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(8px);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--sp-ink);
+    z-index: 3;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.04);
+}
+.sp-nav:hover {
+    background: var(--sp-ink);
+    color: var(--sp-paper);
+}
+.sp-nav:active { transform: translateY(-50%) scale(0.96); }
+.sp-nav-prev { left: 16px; }
+.sp-nav-next { right: 16px; }
+.sp-nav i { font-size: 15px; }
+
+/* Numbered pager — top-left, always visible */
+.sp-pager {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--sp-font-mono);
+    font-size: 11px;
+    color: var(--sp-ink);
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(8px);
+    padding: 6px 12px;
+    border-radius: 999px;
+    z-index: 3;
+    border: 1px solid rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.sp-pager-current { font-weight: 700; }
+.sp-pager-total { color: var(--sp-mute); }
+.sp-pager-sep { color: var(--sp-faint); }
+
+/* Thumbnail strip — right-side vertical on desktop, horizontal row on mobile */
+.sp-thumbs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    padding: 12px 16px 16px;
+    background: var(--sp-paper-2);
+}
+.sp-thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--sp-line-2);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    opacity: 0.55;
+    padding: 0;
+}
+.sp-thumb:hover { opacity: 0.85; transform: translateY(-2px); }
+.sp-thumb.active {
+    opacity: 1;
+    outline: 2px solid var(--sp-ink);
+    outline-offset: 2px;
+}
+.sp-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 1024px) {
+    .sp-thumbs {
+        grid-template-columns: repeat(5, 1fr);
+        padding: 16px 0 0 0;
+        background: transparent;
+    }
+}
+
+/* ---------- CONTENT (right) ---------- */
+.sp-content-col {
+    padding: 32px 20px 120px;
+    background: var(--sp-paper);
+    position: relative;
+}
+@media (min-width: 1024px) {
+    .sp-content-col {
+        padding: 64px 64px 160px 64px;
+        max-width: 640px;
+    }
+}
+
+/* Top meta row */
+.sp-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sp-mute);
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+.sp-meta-row .sp-meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--sp-accent-bg);
+    color: var(--sp-accent);
+    border-radius: 2px;
+    font-weight: 700;
+}
+.sp-meta-row .sp-meta-tag::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--sp-accent);
+}
+.sp-meta-row .sp-meta-edition {
+    color: var(--sp-mute);
+}
+
+/* Kicker */
+.sp-kicker {
+    font-family: var(--sp-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--sp-accent);
+    margin-bottom: 14px;
+}
+
+/* Title — big serif */
+.sp-title {
+    font-family: var(--sp-font-serif);
+    font-weight: 500;
+    font-size: clamp(34px, 5.5vw, 64px);
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    color: var(--sp-ink);
+    margin: 0 0 20px 0;
+}
+.sp-title em {
+    font-style: italic;
+    font-weight: 500;
+}
+
+/* Lede */
+.sp-lede {
+    font-size: clamp(14px, 1.4vw, 16px);
+    line-height: 1.6;
+    color: var(--sp-ink-2);
+    margin: 0 0 32px 0;
+    max-width: 52ch;
+}
+
+/* Ratings row */
+.sp-ratings {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+    margin-bottom: 32px;
+    border-top: 1px solid var(--sp-line);
+    border-bottom: 1px solid var(--sp-line);
+    flex-wrap: wrap;
+}
+.sp-stars {
+    display: inline-flex;
+    gap: 2px;
+    color: var(--sp-accent);
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+.sp-stars .sp-star-empty { color: var(--sp-faint); }
+.sp-rating-num {
+    font-family: var(--sp-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sp-ink);
+}
+.sp-rating-bar {
+    width: 1px;
+    height: 12px;
+    background: var(--sp-line);
+}
+.sp-rating-link {
+    font-size: 12px;
+    color: var(--sp-ink-2);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--sp-faint);
+    transition: color 0.2s ease;
+    margin-left: auto;
+}
+.sp-rating-link:hover { color: var(--sp-accent); }
+
+/* Price + buy inline — this is the "purchase module" */
+.sp-purchase-module {
+    background: var(--sp-paper-2);
+    border: 1px solid var(--sp-line);
+    border-radius: 6px;
+    padding: 22px;
+    margin-bottom: 40px;
+}
+
+.sp-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.sp-price {
+    font-family: var(--sp-font-serif);
+    font-size: clamp(28px, 3.2vw, 38px);
+    font-weight: 500;
+    color: var(--sp-ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+.sp-price-was {
+    font-size: 16px;
+    color: var(--sp-mute);
+    text-decoration: line-through;
+}
+.sp-price-badge {
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    background: var(--sp-accent);
+    color: var(--sp-paper);
+    border-radius: 2px;
+}
+
+.sp-price-sub {
+    font-size: 12px;
+    color: var(--sp-mute);
+    margin-bottom: 20px;
+}
+.sp-price-sub strong { color: var(--sp-ink); font-weight: 600; }
+
+/* ---------- Bundle selector — horizontal segmented ---------- */
+.sp-bundle-label {
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sp-mute);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.sp-bundle-label span:last-child {
+    color: var(--sp-accent);
+    font-weight: 600;
+}
+
+.sp-bundles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 18px;
+}
+.sp-bundle {
+    position: relative;
+    background: var(--sp-paper);
+    border: 1.5px solid var(--sp-line);
+    border-radius: 4px;
+    padding: 12px 8px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.sp-bundle:hover { border-color: var(--sp-faint); }
+.sp-bundle.selected {
+    border-color: var(--sp-ink);
+    background: var(--sp-paper);
+    box-shadow: inset 0 0 0 1px var(--sp-ink);
+}
+.sp-bundle-tag {
+    position: absolute;
+    top: -8px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--sp-font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    background: var(--sp-ink);
+    color: var(--sp-paper);
+    border-radius: 2px;
+    white-space: nowrap;
+}
+.sp-bundle-tag.sp-tag-accent { background: var(--sp-accent); }
+.sp-bundle-qty {
+    font-family: var(--sp-font-serif);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--sp-ink);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.sp-bundle-qty small {
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--sp-mute);
+    letter-spacing: 0;
+    margin-left: 2px;
+}
+.sp-bundle-price {
+    font-family: var(--sp-font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sp-ink);
+}
+.sp-bundle-per {
+    font-size: 9px;
+    color: var(--sp-mute);
+    font-family: var(--sp-font-mono);
+}
+
+/* ---------- Purchase type toggle ---------- */
+.sp-types {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: var(--sp-line-2);
+    padding: 4px;
+    border-radius: 4px;
+}
+.sp-type {
+    padding: 10px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--sp-ink-2);
+    border-radius: 3px;
+    transition: background 0.15s ease, color 0.15s ease;
+    position: relative;
+    cursor: pointer;
+}
+.sp-type:hover { color: var(--sp-ink); }
+.sp-type.active {
+    background: var(--sp-paper);
+    color: var(--sp-ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.sp-type-tag {
+    display: inline-block;
+    font-family: var(--sp-font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sp-accent);
+    background: var(--sp-accent-bg);
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ---------- CTA button ---------- */
+.sp-cta {
+    width: 100%;
+    padding: 18px 22px;
+    background: var(--sp-ink);
+    color: var(--sp-paper);
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--sp-font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+.sp-cta:hover { background: var(--sp-accent); }
+.sp-cta:active { transform: scale(0.99); }
+.sp-cta-left {
+    display: flex; flex-direction: column; gap: 1px;
+    align-items: flex-start;
+}
+.sp-cta-price {
+    font-family: var(--sp-font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    opacity: 0.75;
+}
+.sp-cta-right {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+.sp-pay-pill {
+    height: 20px;
+    padding: 2px 4px;
+    background: var(--sp-paper);
+    border-radius: 2px;
+    display: flex; align-items: center;
+}
+.sp-pay-pill svg { height: 100%; width: auto; }
+
+/* Stock + inline assurances */
+.sp-stock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--sp-warn);
+    margin-top: 12px;
+}
+.sp-stock::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--sp-warn);
+    animation: sp-pulse 2s ease-in-out infinite;
+}
+@keyframes sp-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+/* ---------- Trust row ---------- */
+.sp-trust {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 32px 0 40px;
+    border-top: 1px solid var(--sp-line);
+    border-bottom: 1px solid var(--sp-line);
+}
+.sp-trust-item {
+    padding: 20px 12px;
+    text-align: center;
+    border-right: 1px solid var(--sp-line);
+}
+.sp-trust-item:last-child { border-right: none; }
+.sp-trust-item i {
+    display: block;
+    font-size: 14px;
+    color: var(--sp-accent);
+    margin-bottom: 8px;
+}
+.sp-trust-item strong {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sp-ink);
+    margin-bottom: 3px;
+}
+.sp-trust-item span {
+    font-size: 10px;
+    color: var(--sp-mute);
+    line-height: 1.3;
+}
+
+/* ---------- Editorial sections (numbered) ---------- */
+.sp-article {
+    margin-bottom: 48px;
+}
+.sp-article-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--sp-line);
+}
+.sp-article-num {
+    font-family: var(--sp-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--sp-accent);
+}
+.sp-article-title {
+    font-family: var(--sp-font-serif);
+    font-size: clamp(20px, 2.2vw, 26px);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--sp-ink);
+    margin: 0;
+    flex: 1;
+}
+.sp-article-title em {
+    font-style: italic;
+    color: var(--sp-accent);
+}
+.sp-article-body {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--sp-ink-2);
+    margin: 0 0 12px 0;
+}
+.sp-article-body:last-child { margin-bottom: 0; }
+
+/* Spec grid */
+.sp-specs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--sp-line);
+    border: 1px solid var(--sp-line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 16px;
+}
+.sp-spec {
+    background: var(--sp-paper);
+    padding: 14px 16px;
+}
+.sp-spec-label {
+    font-family: var(--sp-font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sp-mute);
+    margin-bottom: 3px;
+}
+.sp-spec-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sp-ink);
+}
+
+/* ---------- Floating Purchase Dock (mobile + desktop) ---------- */
+.sp-dock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(253, 252, 250, 0.96);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--sp-line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.06);
+}
+.sp-dock.visible {
+    transform: translateY(0);
+}
+.sp-dock-inner {
+    max-width: 640px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sp-dock-info {
+    flex: 1;
+    min-width: 0;
+}
+.sp-dock-price {
+    font-family: var(--sp-font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sp-ink);
+    line-height: 1.1;
+}
+.sp-dock-sub {
+    font-size: 10px;
+    color: var(--sp-mute);
+    margin-top: 2px;
+    font-family: var(--sp-font-mono);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sp-dock-btn {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    
+    background-color: #0B0B0C;
+    color: var(--sp-paper);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s ease;
+}
+.sp-dock-btn:hover { background: var(--sp-accent); }
+.sp-dock-btn i { font-size: 11px; }
+
+@media (min-width: 1024px) {
+    .sp-dock {
+        left: auto;
+        right: 32px;
+        bottom: 32px;
+        max-width: 380px;
+        border-radius: 6px;
+        border: 1px solid var(--sp-line);
+        padding: 14px 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+    }
+}
+
+/* ============================================================
+   MOBILE TIGHTENING
+   ============================================================ */
+@media (max-width: 1023px) {
+    .sp-frame { aspect-ratio: 1 / 1; }
+    .sp-nav { width: 38px; height: 38px; }
+    .sp-nav-prev { left: 10px; }
+    .sp-nav-next { right: 10px; }
+    .sp-pager { top: 12px; left: 12px; font-size: 10px; padding: 5px 10px; }
+    .sp-thumbs { padding: 10px 12px 14px; gap: 6px; }
+    .sp-content-col { padding: 28px 20px 100px; }
+    .sp-purchase-module { padding: 18px; margin-bottom: 32px; }
+    .sp-bundle-qty { font-size: 18px; }
+    .sp-bundle-price { font-size: 10px; }
+    .sp-bundle { padding: 10px 6px 8px; }
+    .sp-trust-item { padding: 14px 8px; }
+    .sp-trust-item strong { font-size: 9px; }
+    .sp-specs { grid-template-columns: 1fr; }
+}
+
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY                                                  -->
+<!-- ============================================================ -->
+<div class="sp-root editable-section" data-section="5000">
+    <div class="editor-only">
+        <div class="sp-shell">
+            <div class="sp-split">
+
+                <!-- Gallery column -->
+                <div class="sp-gallery-col">
+                    <div class="sp-frame editable-section no-drop-zone" data-section="5001">
+                        <div class="sp-slide active">
+                            <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                                 alt="Product 1" class="editable-image" data-image="5002">
+                        </div>
+                        <div class="sp-slide">
+                            <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                                 alt="Product 2" class="editable-image" data-image="5003">
+                        </div>
+                        <div class="sp-slide">
+                            <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                                 alt="Product 3" class="editable-image" data-image="5004">
+                        </div>
+                        <div class="sp-slide">
+                            <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                                 alt="Product 4" class="editable-image" data-image="5005">
+                        </div>
+                        <div class="sp-slide">
+                            <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                                 alt="Product 5" class="editable-image" data-image="5006">
+                        </div>
+
+                        <div class="sp-pager">
+                            <span class="sp-pager-current">01</span>
+                            <span class="sp-pager-sep">/</span>
+                            <span class="sp-pager-total">05</span>
+                        </div>
+
+                        <button type="button" class="sp-nav sp-nav-prev" aria-label="Previous image">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" class="sp-nav sp-nav-next" aria-label="Next image">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="sp-thumbs">
+                        <button class="sp-thumb active" data-sp-thumb="0">
+                            <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                        </button>
+                        <button class="sp-thumb" data-sp-thumb="1">
+                            <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                        </button>
+                        <button class="sp-thumb" data-sp-thumb="2">
+                            <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                        </button>
+                        <button class="sp-thumb" data-sp-thumb="3">
+                            <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                        </button>
+                        <button class="sp-thumb" data-sp-thumb="4">
+                            <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content column -->
+                <div class="sp-content-col">
+
+                    <div class="sp-meta-row">
+                        <span class="sp-meta-tag editable-text editable-section no-drop-zone"
+                              data-section="5010" data-text="5010">In stock · ships in 48h</span>
+                        <span class="sp-meta-edition editable-text editable-section no-drop-zone"
+                              data-section="5011" data-text="5011">Edition 04 / 120</span>
+                    </div>
+
+                    <div class="sp-kicker editable-text editable-section no-drop-zone"
+                         data-section="5012" data-text="5012">Atelier Marna · Paris</div>
+
+                    <h1 class="sp-title editable-text editable-section no-drop-zone"
+                        data-section="5013" data-text="5013">The <em>Sculptural</em> Carry</h1>
+
+                    <p class="sp-lede editable-text editable-section no-drop-zone"
+                       data-section="5014" data-text="5014">An elegant carry system displaying fluid sweeping edges and organic architectural curves. Handcrafted in limited runs from full-grain leather in our Paris atelier.</p>
+
+                    <div class="sp-ratings">
+                        <div class="sp-stars">
+                            <i class="fas fa-star editable-icon" data-icon="5015"></i>
+                            <i class="fas fa-star editable-icon" data-icon="5016"></i>
+                            <i class="fas fa-star editable-icon" data-icon="5017"></i>
+                            <i class="fas fa-star editable-icon" data-icon="5018"></i>
+                            <i class="fas fa-star editable-icon" data-icon="5019"></i>
+                        </div>
+                        <span class="sp-rating-num editable-text editable-section no-drop-zone"
+                              data-section="5020" data-text="5020">4.9</span>
+                        <span class="sp-rating-bar"></span>
+                        <a href="#reviews" class="sp-rating-link editable-text editable-section no-drop-zone"
+                           data-section="5021" data-text="5021">Read all 247 reviews</a>
+                    </div>
+
+                    <!-- Purchase module -->
+                    <div class="sp-purchase-module">
+                        <div class="sp-price-row">
+                            <span class="sp-price editable-text editable-section no-drop-zone"
+                                  data-section="5030" data-text="5030">$184</span>
+                            <span class="sp-price-was editable-text editable-section no-drop-zone"
+                                  data-section="5031" data-text="5031">$248</span>
+                            <span class="sp-price-badge editable-text editable-section no-drop-zone"
+                                  data-section="5032" data-text="5032">Save 26%</span>
+                        </div>
+                        <div class="sp-price-sub editable-text editable-section no-drop-zone"
+                             data-section="5033" data-text="5033">or 4 interest-free payments of <strong>$46</strong> with Klarna</div>
+
+                        <div class="sp-bundle-label">
+                            <span>Select quantity</span>
+                            <span>Free shipping 3+</span>
+                        </div>
+                        <div class="sp-bundles">
+                            <div class="sp-bundle editable-section no-drop-zone"
+                                 data-section="5034" data-qty="1" data-price="184.00" data-perunit="184.00">
+                                <div class="sp-bundle-qty">1 <small>pc</small></div>
+                                <div class="sp-bundle-price">$184</div>
+                                <div class="sp-bundle-per">$184 ea</div>
+                            </div>
+                            <div class="sp-bundle selected editable-section no-drop-zone"
+                                 data-section="5034" data-qty="3" data-price="474.00" data-perunit="158.00">
+                                <div class="sp-bundle-tag sp-tag-accent editable-text editable-section no-drop-zone"
+                                     data-section="5035" data-text="5035">Popular</div>
+                                <div class="sp-bundle-qty">3 <small>pc</small></div>
+                                <div class="sp-bundle-price">$474</div>
+                                <div class="sp-bundle-per">$158 ea</div>
+                            </div>
+                            <div class="sp-bundle editable-section no-drop-zone"
+                                 data-section="5034" data-qty="6" data-price="864.00" data-perunit="144.00">
+                                <div class="sp-bundle-tag editable-text editable-section no-drop-zone"
+                                     data-section="5035" data-text="5035">Best value</div>
+                                <div class="sp-bundle-qty">6 <small>pc</small></div>
+                                <div class="sp-bundle-price">$864</div>
+                                <div class="sp-bundle-per">$144 ea</div>
+                            </div>
+                        </div>
+
+                        <div class="sp-types">
+                            <div class="sp-type active editable-section no-drop-zone"
+                                 data-section="5036" data-purchase="subscribe">
+                                Subscribe <span class="sp-type-tag editable-text editable-section no-drop-zone"
+                                               data-section="5037" data-text="5037">Save 15%</span>
+                            </div>
+                            <div class="sp-type editable-section no-drop-zone"
+                                 data-section="5036" data-purchase="onetime">
+                                One-time
+                            </div>
+                        </div>
+
+                        <button type="button" class="sp-cta editable-section no-drop-zone" data-section="5038">
+                            <div class="sp-cta-left">
+                                <span>Add to cart</span>
+                                <span class="sp-cta-price editable-text editable-section no-drop-zone"
+                                      data-section="5039" data-text="5039">$402.90 total</span>
+                            </div>
+                            <div class="sp-cta-right">
+                                <div class="sp-pay-pill">
+                                    <svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Visa">
+                                        <path d="M16.5 17.5h-2.7l1.7-10.2h2.7L16.5 17.5zm7.9-9.9c-.5-.2-1.3-.4-2.3-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.2 2.2 2.7 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1 0-1.6-.2-2.4-.5l-.3-.2-.4 2.3c.6.3 1.7.5 2.9.5 2.7 0 4.4-1.3 4.4-3.3 0-1.1-.7-2-2.2-2.7-.9-.4-1.5-.7-1.5-1.2 0-.4.5-.8 1.5-.8.8 0 1.4.2 1.9.4l.2.1.4-2.2zM30.8 7.3h-2.1c-.6 0-1.1.2-1.4.9l-3.9 9.3h2.8l.5-1.5h3.4l.3 1.5h2.5l-2.1-10.2zm-3.3 6.5l1.1-3 .6 3h-1.7zM11.4 7.3L8.7 14.3l-.3-1.5c-.5-1.6-2.1-3.3-3.9-4.2L6.9 17.5h2.9l4.3-10.2h-2.7z" fill="#1434CB"/>
+                                    </svg>
+                                </div>
+                                <div class="sp-pay-pill">
+                                    <svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard">
+                                        <circle cx="16" cy="13" r="7" fill="#EB001B"/>
+                                        <circle cx="24" cy="13" r="7" fill="#F79E1B"/>
+                                        <path d="M20 7.5c2.5 1.6 4 4.5 4 7.5s-1.5 5.9-4 7.5c-2.5-1.6-4-4.5-4-7.5s1.5-5.9 4-7.5z" fill="#FF5F00"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </button>
+
+                        <div class="sp-stock editable-text editable-section no-drop-zone"
+                             data-section="5040" data-text="5040">Only 14 left in the atelier</div>
+                    </div>
+
+                    <!-- Trust row -->
+                    <div class="sp-trust">
+                        <div class="sp-trust-item">
+                            <i class="fas fa-truck editable-icon" data-icon="5041"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="5042" data-text="5042">Free shipping</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="5043" data-text="5043">Orders $100+</span>
+                        </div>
+                        <div class="sp-trust-item">
+                            <i class="fas fa-undo editable-icon" data-icon="5044"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="5045" data-text="5045">30-day returns</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="5046" data-text="5046">No questions</span>
+                        </div>
+                        <div class="sp-trust-item">
+                            <i class="fas fa-shield-alt editable-icon" data-icon="5047"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="5048" data-text="5048">Secure checkout</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="5049" data-text="5049">256-bit SSL</span>
+                        </div>
+                    </div>
+
+                    <!-- Editorial sections -->
+                    <article class="sp-article">
+                        <div class="sp-article-head">
+                            <span class="sp-article-num">01</span>
+                            <h2 class="sp-article-title editable-text editable-section no-drop-zone"
+                                data-section="5050" data-text="5050">A study in <em>sculptural</em> form</h2>
+                        </div>
+                        <p class="sp-article-body editable-text editable-section no-drop-zone"
+                           data-section="5051" data-text="5051">Each piece begins as a single hide of vegetable-tanned full-grain leather, cut by hand and shaped over a wooden last. The organic curves follow the natural drape of the leather — no two pieces are identical.</p>
+                        <p class="sp-article-body editable-text editable-section no-drop-zone"
+                           data-section="5052" data-text="5052">Finished with a hand-burnished edge, a solid brass clasp, and a lifetime repair guarantee from our Paris atelier.</p>
+                    </article>
+
+                    <article class="sp-article">
+                        <div class="sp-article-head">
+                            <span class="sp-article-num">02</span>
+                            <h2 class="sp-article-title editable-text editable-section no-drop-zone"
+                                data-section="5053" data-text="5053">Specification</h2>
+                        </div>
+                        <div class="sp-specs">
+                            <div class="sp-spec">
+                                <div class="sp-spec-label editable-text editable-section no-drop-zone"
+                                     data-section="5054" data-text="5054">Material</div>
+                                <div class="sp-spec-value editable-text editable-section no-drop-zone"
+                                     data-section="5055" data-text="5055">Full-grain leather</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label editable-text editable-section no-drop-zone"
+                                     data-section="5056" data-text="5056">Dimensions</div>
+                                <div class="sp-spec-value editable-text editable-section no-drop-zone"
+                                     data-section="5057" data-text="5057">28 × 18 × 8 cm</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label editable-text editable-section no-drop-zone"
+                                     data-section="5058" data-text="5058">Origin</div>
+                                <div class="sp-spec-value editable-text editable-section no-drop-zone"
+                                     data-section="5059" data-text="5059">Paris, France</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label editable-text editable-section no-drop-zone"
+                                     data-section="5060" data-text="5060">Edition</div>
+                                <div class="sp-spec-value editable-text editable-section no-drop-zone"
+                                     data-section="5061" data-text="5061">120 numbered pieces</div>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="public-only">
+        {% resolve_product as p %}
+        {% with gallery=p.product_images.all %}
+
+        <div class="sp-shell" id="sp-product-root"
+             data-product-id="{{ p.id|default:0 }}"
+             data-base-price="{{ p.price|default:0 }}"
+             data-currency="{{ page.currency_symbol|default:'$' }}"
+             data-subdomain="{{ page.subdomain }}">
+
+            <div class="sp-split">
+
+                <!-- ======= GALLERY ======= -->
+                <div class="sp-gallery-col">
+                    <div class="sp-frame" id="sp-frame">
+                        <div class="sp-slide active" data-sp-slide="0">
+                            {% if p and p.main_image %}
+                                <img src="{{ p.main_image.url }}" alt="{{ p.title }}">
+                            {% elif image_customizations.5002 %}
+                                <img src="{{ image_customizations.5002.image_url }}" alt="{{ p.title }}">
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="{{ p.title }}">
+                            {% endif %}
+                        </div>
+
+                        {% for img in gallery|slice:":4" %}
+                            <div class="sp-slide" data-sp-slide="{{ forloop.counter }}">
+                                <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:p.title }}">
+                            </div>
+                        {% endfor %}
+
+                        {% if gallery.count < 4 %}
+                            {% if gallery.count < 1 %}
+                                <div class="sp-slide" data-sp-slide="1">
+                                    <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 2 %}
+                                <div class="sp-slide" data-sp-slide="2">
+                                    <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 3 %}
+                                <div class="sp-slide" data-sp-slide="3">
+                                    <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 4 %}
+                                <div class="sp-slide" data-sp-slide="4">
+                                    <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <div class="sp-pager">
+                            <span class="sp-pager-current" id="sp-pager-current">01</span>
+                            <span class="sp-pager-sep">/</span>
+                            <span class="sp-pager-total" id="sp-pager-total">05</span>
+                        </div>
+
+                        <button type="button" class="sp-nav sp-nav-prev" id="sp-prev" aria-label="Previous image">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" class="sp-nav sp-nav-next" id="sp-next" aria-label="Next image">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="sp-thumbs" id="sp-thumbs">
+                        <button type="button" class="sp-thumb active" data-sp-thumb="0">
+                            {% if p and p.main_image %}
+                                <img src="{{ p.main_image.url }}" alt="">
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                            {% endif %}
+                        </button>
+                        {% for img in gallery|slice:":4" %}
+                            <button type="button" class="sp-thumb" data-sp-thumb="{{ forloop.counter }}">
+                                <img src="{{ img.image.url }}" alt="">
+                            </button>
+                        {% endfor %}
+                        {% if gallery.count < 4 %}
+                            {% if gallery.count < 1 %}
+                                <button type="button" class="sp-thumb" data-sp-thumb="1">
+                                    <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 2 %}
+                                <button type="button" class="sp-thumb" data-sp-thumb="2">
+                                    <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 3 %}
+                                <button type="button" class="sp-thumb" data-sp-thumb="3">
+                                    <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 4 %}
+                                <button type="button" class="sp-thumb" data-sp-thumb="4">
+                                    <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=200" alt="">
+                                </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ======= CONTENT ======= -->
+                <div class="sp-content-col">
+
+                    <div class="sp-meta-row">
+                        <span class="sp-meta-tag" id="section-5010">{{ text_contents.5010|default:"In stock · ships in 48h" }}</span>
+                        <span class="sp-meta-edition" id="section-5011">{{ text_contents.5011|default:"Edition 04 / 120" }}</span>
+                    </div>
+
+                    <div class="sp-kicker" id="section-5012">{{ text_contents.5012|default:"Atelier Marna · Paris" }}</div>
+
+                    <h1 class="sp-title" id="section-5013">{{ text_contents.5013|default:p.title }}</h1>
+
+                    <p class="sp-lede" id="section-5014">{{ text_contents.5014|default:p.description|truncatechars:180 }}</p>
+
+                    <div class="sp-ratings">
+                        <div class="sp-stars">
+                            {% with avg=p.get_average_rating %}
+                                {% with rating=avg|default:5 %}
+                                    {% for i in "12345" %}
+                                        <i class="fas fa-star{% if forloop.counter > rating %} sp-star-empty{% endif %}"></i>
+                                    {% endfor %}
+                                {% endwith %}
+                            {% endwith %}
+                        </div>
+                        <span class="sp-rating-num" id="section-5020">
+                            {{ p.get_average_rating|default:"4.9"|floatformat:1 }}
+                        </span>
+                        <span class="sp-rating-bar"></span>
+                        <a href="#reviews" class="sp-rating-link" id="section-5021">
+                            Read all {{ p.get_review_count|default:0 }} reviews
+                        </a>
+                    </div>
+
+                    <!-- PURCHASE MODULE -->
+                    <div class="sp-purchase-module">
+                        <div class="sp-price-row">
+                            <span class="sp-price" id="section-5030">{{ page.currency_symbol|default:"$" }}{{ p.price|floatformat:0 }}</span>
+                            {% if p.compare_at_price and p.compare_at_price > p.price %}
+                                <span class="sp-price-was" id="section-5031">{{ page.currency_symbol }}{{ p.compare_at_price|floatformat:0 }}</span>
+                                <span class="sp-price-badge" id="section-5032">Save {{ p.discount_percentage }}%</span>
+                            {% endif %}
+                        </div>
+                        <div class="sp-price-sub" id="section-5033">
+                            or 4 interest-free payments of <strong>{{ page.currency_symbol|default:"$" }}{{ p.price|mul:0.25|floatformat:0 }}</strong> with Klarna
+                        </div>
+
+                        <div class="sp-bundle-label">
+                            <span>Select quantity</span>
+                            <span>Free shipping 3+</span>
+                        </div>
+                        {% if tiers %}
+                        <div class="sp-bundles" id="sp-bundles">
+                            {% for tier in tiers %}
+                                <div class="sp-bundle{% if tier.is_default %} selected{% endif %}"
+                                     data-qty="{{ tier.quantity }}"
+                                     data-price="{{ tier.total_price|stringformat:'.2f' }}"
+                                     data-perunit="{{ tier.price_per_unit|stringformat:'.2f' }}"
+                                     onclick="spSelectBundle(this)">
+                                    {% if tier.badge_text %}
+                                        <div class="sp-bundle-tag{% if tier.is_default %} sp-tag-accent{% endif %}">{{ tier.badge_text }}</div>
+                                    {% endif %}
+                                    <div class="sp-bundle-qty">{{ tier.quantity }} <small>pc</small></div>
+                                    <div class="sp-bundle-price">{{ page.currency_symbol }}{{ tier.total_price|floatformat:0 }}</div>
+                                    <div class="sp-bundle-per">{{ page.currency_symbol }}{{ tier.price_per_unit|floatformat:0 }} ea</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="sp-bundles" id="sp-bundles">
+                            <div class="sp-bundle selected" data-qty="1" data-price="{{ p.price|floatformat:2 }}" data-perunit="{{ p.price|floatformat:2 }}" onclick="spSelectBundle(this)">
+                                <div class="sp-bundle-qty">1 <small>pc</small></div>
+                                <div class="sp-bundle-price">{{ page.currency_symbol }}{{ p.price|floatformat:0 }}</div>
+                                <div class="sp-bundle-per">{{ page.currency_symbol }}{{ p.price|floatformat:0 }} ea</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="sp-types" id="sp-types">
+                            <div class="sp-type active" data-purchase="subscribe" onclick="spSelectPurchase(this)">
+                                Subscribe <span class="sp-type-tag">Save 15%</span>
+                            </div>
+                            <div class="sp-type" data-purchase="onetime" onclick="spSelectPurchase(this)">
+                                One-time
+                            </div>
+                        </div>
+
+                        <button type="button" class="sp-cta" id="sp-cta" onclick="spBuyNow()">
+                            <div class="sp-cta-left">
+                                <span>Add to cart</span>
+                                <span class="sp-cta-price">
+                                    <span data-role="cta-total">{{ page.currency_symbol|default:"$" }}{{ p.price|mul:0.85|floatformat:2 }}</span> total
+                                </span>
+                            </div>
+                            <div class="sp-cta-right">
+                                <div class="sp-pay-pill">
+                                    <svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Visa">
+                                        <path d="M16.5 17.5h-2.7l1.7-10.2h2.7L16.5 17.5zm7.9-9.9c-.5-.2-1.3-.4-2.3-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.2 2.2 2.7 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1 0-1.6-.2-2.4-.5l-.3-.2-.4 2.3c.6.3 1.7.5 2.9.5 2.7 0 4.4-1.3 4.4-3.3 0-1.1-.7-2-2.2-2.7-.9-.4-1.5-.7-1.5-1.2 0-.4.5-.8 1.5-.8.8 0 1.4.2 1.9.4l.2.1.4-2.2zM30.8 7.3h-2.1c-.6 0-1.1.2-1.4.9l-3.9 9.3h2.8l.5-1.5h3.4l.3 1.5h2.5l-2.1-10.2zm-3.3 6.5l1.1-3 .6 3h-1.7zM11.4 7.3L8.7 14.3l-.3-1.5c-.5-1.6-2.1-3.3-3.9-4.2L6.9 17.5h2.9l4.3-10.2h-2.7z" fill="#1434CB"/>
+                                    </svg>
+                                </div>
+                                <div class="sp-pay-pill">
+                                    <svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard">
+                                        <circle cx="16" cy="13" r="7" fill="#EB001B"/>
+                                        <circle cx="24" cy="13" r="7" fill="#F79E1B"/>
+                                        <path d="M20 7.5c2.5 1.6 4 4.5 4 7.5s-1.5 5.9-4 7.5c-2.5-1.6-4-4.5-4-7.5s1.5-5.9 4-7.5z" fill="#FF5F00"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </button>
+
+                        <div class="sp-stock" id="section-5040">{{ text_contents.5040|default:"Only a few units left" }}</div>
+                    </div>
+
+                    <!-- Trust row -->
+                    <div class="sp-trust">
+                        <div class="sp-trust-item">
+                            <i class="fas fa-truck"></i>
+                            <strong>{{ text_contents.5042|default:"Free shipping" }}</strong>
+                            <span>{{ text_contents.5043|default:"Orders $100+" }}</span>
+                        </div>
+                        <div class="sp-trust-item">
+                            <i class="fas fa-undo"></i>
+                            <strong>{{ text_contents.5045|default:"30-day returns" }}</strong>
+                            <span>{{ text_contents.5046|default:"No questions" }}</span>
+                        </div>
+                        <div class="sp-trust-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <strong>{{ text_contents.5048|default:"Secure checkout" }}</strong>
+                            <span>{{ text_contents.5049|default:"256-bit SSL" }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Editorial -->
+                    <article class="sp-article">
+                        <div class="sp-article-head">
+                            <span class="sp-article-num">01</span>
+                            <h2 class="sp-article-title" id="section-5050">{{ text_contents.5050|default:"A study in sculptural form" }}</h2>
+                        </div>
+                        <p class="sp-article-body" id="section-5051">{{ text_contents.5051|default:p.description|truncatechars:400 }}</p>
+                        <p class="sp-article-body" id="section-5052">{{ text_contents.5052|default:"Finished with a hand-burnished edge, a solid brass clasp, and a lifetime repair guarantee from our Paris atelier." }}</p>
+                    </article>
+
+                    <article class="sp-article">
+                        <div class="sp-article-head">
+                            <span class="sp-article-num">02</span>
+                            <h2 class="sp-article-title" id="section-5053">{{ text_contents.5053|default:"Specification" }}</h2>
+                        </div>
+                        <div class="sp-specs">
+                            <div class="sp-spec">
+                                <div class="sp-spec-label">{{ text_contents.5054|default:"Material" }}</div>
+                                <div class="sp-spec-value">{{ text_contents.5055|default:"Full-grain leather" }}</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label">{{ text_contents.5056|default:"Dimensions" }}</div>
+                                <div class="sp-spec-value">{{ text_contents.5057|default:"28 × 18 × 8 cm" }}</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label">{{ text_contents.5058|default:"Origin" }}</div>
+                                <div class="sp-spec-value">{{ text_contents.5059|default:"Paris, France" }}</div>
+                            </div>
+                            <div class="sp-spec">
+                                <div class="sp-spec-label">{{ text_contents.5060|default:"Edition" }}</div>
+                                <div class="sp-spec-value">{{ text_contents.5061|default:"120 numbered pieces" }}</div>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- FLOATING PURCHASE DOCK -->
+        <div class="sp-dock" id="sp-dock">
+            <div class="sp-dock-inner">
+                <div class="sp-dock-info">
+                    <div class="sp-dock-price">
+                        <span data-role="dock-total">{{ page.currency_symbol|default:"$" }}{{ p.price|mul:0.85|floatformat:2 }}</span>
+                    </div>
+                    <div class="sp-dock-sub" data-role="dock-sub">
+                        Subscribe · save 15% · free shipping
+                    </div>
+                </div>
+                <button type="button" class="sp-dock-btn" onclick="spBuyNow()">
+                    Add to cart
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        {% endwith %}
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var SP = window.SP_HERO = window.SP_HERO || {};
+    if (SP._init) return;
+    SP._init = true;
+
+    function root() {
+        return document.querySelector('.public-only #sp-product-root')
+            || document.getElementById('sp-product-root');
+    }
+    function q(sel) { var r = root(); return r ? r.querySelector(sel) : null; }
+    function qa(sel) { var r = root(); return r ? r.querySelectorAll(sel) : []; }
+    function sym() {
+        var r = root();
+        return (r && r.dataset.currency) ? r.dataset.currency : '$';
+    }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) ? r.dataset.subdomain : window.location.hostname.split('.')[0];
+    }
+
+    var state = {
+        productId: 0,
+        bundleQty: 1,
+        bundlePrice: 0,
+        bundlePerUnit: 0,
+        purchase: 'subscribe',
+        discount: 0.15,
+        slide: 0,
+        totalSlides: 0
+    };
+
+    function init() {
+        var r = root();
+        if (!r) return;
+
+        if (r.dataset.productId) state.productId = parseInt(r.dataset.productId, 10) || 0;
+        if (r.dataset.basePrice) {
+            var bp = parseFloat(r.dataset.basePrice);
+            if (!isNaN(bp)) { state.bundlePrice = bp; state.bundlePerUnit = bp; }
+        }
+
+        var b = r.querySelector('.sp-bundle.selected') || r.querySelector('.sp-bundle');
+        if (b) {
+            state.bundleQty = parseInt(b.dataset.qty, 10) || 1;
+            state.bundlePrice = parseFloat(b.dataset.price) || state.bundlePrice;
+            state.bundlePerUnit = parseFloat(b.dataset.perunit) || state.bundlePerUnit;
+            if (!b.classList.contains('selected')) b.classList.add('selected');
+        }
+
+        // ---- Gallery ----
+        state.totalSlides = r.querySelectorAll('.sp-slide').length;
+        var pagerTotal = document.getElementById('sp-pager-total');
+        if (pagerTotal) pagerTotal.textContent = String(state.totalSlides).padStart(2, '0');
+
+        var prev = r.querySelector('#sp-prev');
+        var next = r.querySelector('#sp-next');
+        if (prev) prev.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            goSlide(state.slide - 1);
+        });
+        if (next) next.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            goSlide(state.slide + 1);
+        });
+
+        r.querySelectorAll('.sp-thumb').forEach(function (t) {
+            t.addEventListener('click', function (e) {
+                e.preventDefault();
+                goSlide(parseInt(t.dataset.spThumb, 10) || 0);
+            });
+        });
+
+        // Keyboard
+        document.addEventListener('keydown', function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft')  goSlide(state.slide - 1);
+            if (e.key === 'ArrowRight') goSlide(state.slide + 1);
+        });
+
+        // ---- Dock: show after purchase module is out of view ----
+        var dock = document.getElementById('sp-dock');
+        var module = r.querySelector('.sp-purchase-module');
+        if (dock && module) {
+            var update = function () {
+                var rect = module.getBoundingClientRect();
+                var trigger = rect.bottom < 60;   // module scrolled above the fold
+                dock.classList.toggle('visible', trigger);
+            };
+            window.addEventListener('scroll', update, { passive: true });
+            update();
+        }
+
+        updatePrices();
+    }
+
+    function goSlide(idx) {
+        if (state.totalSlides <= 0) return;
+        if (idx < 0) idx = state.totalSlides - 1;
+        if (idx >= state.totalSlides) idx = 0;
+        state.slide = idx;
+
+        qa('.sp-slide').forEach(function (s, i) {
+            s.classList.toggle('active', i === idx);
+        });
+        qa('.sp-thumb').forEach(function (t, i) {
+            t.classList.toggle('active', i === idx);
+        });
+
+        var cur = document.getElementById('sp-pager-current');
+        if (cur) cur.textContent = String(idx + 1).padStart(2, '0');
+    }
+
+    function calcSubscribeTotal() { return state.bundlePrice * (1 - state.discount); }
+    function calcOnetimeTotal()   { return state.bundlePrice; }
+    function calcActiveTotal()    { return state.purchase === 'subscribe' ? calcSubscribeTotal() : calcOnetimeTotal(); }
+
+    function updatePrices() {
+        var s = sym();
+
+        var ctaTotal = q('[data-role="cta-total"]');
+        if (ctaTotal) ctaTotal.textContent = s + calcActiveTotal().toFixed(2);
+
+        var dockTotal = q('[data-role="dock-total"]');
+        if (dockTotal) dockTotal.textContent = s + calcActiveTotal().toFixed(2);
+
+        var dockSub = q('[data-role="dock-sub"]');
+        if (dockSub) {
+            dockSub.textContent = state.purchase === 'subscribe'
+                ? 'Subscribe · save 15% · free shipping'
+                : 'One-time · free shipping $100+';
+        }
+    }
+
+    SP.selectBundle = function (el) {
+        qa('.sp-bundle').forEach(function (b) { b.classList.remove('selected'); });
+        el.classList.add('selected');
+        state.bundleQty = parseInt(el.dataset.qty, 10) || 1;
+        state.bundlePrice = parseFloat(el.dataset.price) || 0;
+        state.bundlePerUnit = parseFloat(el.dataset.perunit) || 0;
+        updatePrices();
+    };
+    window.spSelectBundle = SP.selectBundle;
+
+    SP.selectPurchase = function (el) {
+        qa('.sp-type').forEach(function (p) { p.classList.remove('active'); });
+        el.classList.add('active');
+        state.purchase = el.dataset.purchase || 'onetime';
+        updatePrices();
+    };
+    window.spSelectPurchase = SP.selectPurchase;
+
+    SP.buyNow = function () {
+        if (!state.productId) { alert('Demo mode — connect a product.'); return; }
+        var qty = state.bundleQty || 1;
+        var unitPrice = state.purchase === 'subscribe'
+            ? state.bundlePerUnit * (1 - state.discount)
+            : state.bundlePerUnit;
+        var total = state.purchase === 'subscribe' ? calcSubscribeTotal() : calcOnetimeTotal();
+        var titleEl = q('.sp-title');
+        var title = titleEl ? titleEl.textContent.trim() : 'Product';
+
+        var params = new URLSearchParams({
+            type: 'instant',
+            product: JSON.stringify({
+                id: state.productId, title: title, description: '',
+                price: unitPrice, quantity: qty, total_price: total,
+                selected_color: '', selected_size: '', cj_vid: '', variant_id: null
+            })
+        });
+        var cart = {
+            items: [{
+                id: state.productId, title: title, description: '',
+                price: unitPrice, quantity: qty, total_price: total
+            }],
+            subtotal: parseFloat(total.toFixed(2)),
+            shipping_amount: 0, tax_amount: 0,
+            total_amount: parseFloat(total.toFixed(2)),
+            is_buy_now: true
+        };
+        params.append('cart_data', JSON.stringify(cart));
+        window.location.href = '/payments/select-payment/' + subdomain() + '/?' + params.toString();
+    };
+    window.spBuyNow = SP.buyNow;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

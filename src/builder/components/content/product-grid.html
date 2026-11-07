@@ -1,0 +1,1009 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+.ps-editor-only { display: none; }
+.ps-public-only { display: block; }
+body.editor-mode .ps-editor-only { display: block; }
+body.editor-mode .ps-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2750 2820 %}
+{% generate_background_images background_images 2750 2820 %}
+
+.ps-root {
+    --ps-ink:        #0B0B0C;
+    --ps-ink-2:      #2A2A2E;
+    --ps-mute:       #8A8A92;
+    --ps-faint:      #C8C8CE;
+    --ps-line:       #ECECEF;
+    --ps-line-2:     #F4F4F6;
+    --ps-paper:      #FFFFFF;
+    --ps-paper-2:    #FAFAFB;
+    --ps-accent:     #C9432A;
+    --ps-accent-bg:  #FBEDE8;
+    --ps-success:    #2F6B4A;
+    --ps-success-bg: #E8F3EC;
+    --ps-gold:       #E5A00D;
+
+    --ps-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --ps-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --ps-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--ps-font);
+    color: var(--ps-ink);
+    background: var(--ps-paper);
+    line-height: 1.5;
+    padding: 72px 20px;
+    overflow: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.ps-root *, .ps-root *::before, .ps-root *::after { box-sizing: border-box; }
+.ps-root img { max-width: 100%; display: block; }
+.ps-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.ps-root a { text-decoration: none; color: inherit; }
+
+.ps-shell { max-width: 1280px; margin: 0 auto; }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.ps-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+.ps-head-left {
+    max-width: 580px;
+}
+.ps-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--ps-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ps-accent);
+    margin-bottom: 14px;
+}
+.ps-kicker::before {
+    content: "";
+    width: 20px;
+    height: 1px;
+    background: var(--ps-accent);
+}
+.ps-title {
+    font-family: var(--ps-serif);
+    font-size: clamp(28px, 3.6vw, 44px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ps-ink);
+    margin: 0 0 12px 0;
+}
+.ps-title em { font-style: italic; color: var(--ps-accent); }
+.ps-sub {
+    font-size: 14px;
+    color: var(--ps-mute);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.ps-head-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.ps-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--ps-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ps-ink);
+    padding: 12px 20px;
+    background: var(--ps-paper) !important;
+    border: 1.5px solid var(--ps-line);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.ps-view-all:hover {
+    border-color: var(--ps-ink);
+    background: var(--ps-paper-2) !important;
+}
+.ps-view-all i { font-size: 10px; }
+
+/* ============================================================
+   FILTER CHIPS
+   ============================================================ */
+.ps-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.ps-filters::-webkit-scrollbar { display: none; }
+
+.ps-filter-chip {
+    flex-shrink: 0;
+    padding: 9px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--ps-font);
+    color: var(--ps-ink-2);
+    background: var(--ps-paper) !important;
+    border: 1.5px solid var(--ps-line);
+    border-radius: 999px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+.ps-filter-chip:hover {
+    border-color: var(--ps-faint);
+    color: var(--ps-ink);
+}
+.ps-filter-chip.active {
+    background: var(--ps-ink) !important;
+    border-color: var(--ps-ink);
+    color: var(--ps-paper);
+}
+
+/* ============================================================
+   PRODUCT GRID
+   ============================================================ */
+.ps-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+@media (min-width: 640px) {
+    .ps-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+}
+@media (min-width: 1024px) {
+    .ps-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
+}
+
+/* ============================================================
+   PRODUCT CARD
+   ============================================================ */
+.ps-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--ps-paper);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+.ps-card:hover {
+    transform: translateY(-3px);
+}
+.ps-card:hover .ps-card-img img {
+    transform: scale(1.06);
+}
+.ps-card:hover .ps-card-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Image area */
+.ps-card-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    background: var(--ps-paper-2);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--ps-line);
+}
+.ps-card-img {
+    position: absolute;
+    inset: 0;
+}
+.ps-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Image placeholder when no product image */
+.ps-card-img-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ps-line-2);
+    color: var(--ps-faint);
+    font-size: 32px;
+}
+
+/* Badges */
+.ps-card-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    z-index: 2;
+    pointer-events: none;
+}
+.ps-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: var(--ps-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+}
+.ps-badge-sale {
+    background: var(--ps-accent);
+    color: var(--ps-paper);
+}
+.ps-badge-new {
+    background: var(--ps-paper);
+    color: var(--ps-ink);
+    border: 1px solid var(--ps-line);
+}
+.ps-badge-out {
+    background: var(--ps-mute);
+    color: var(--ps-paper);
+}
+
+/* Wishlist button */
+.ps-card-wish {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(6px);
+    color: var(--ps-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.15s ease;
+    z-index: 3;
+    opacity: 0;
+    transform: translateY(-4px);
+}
+.ps-card:hover .ps-card-wish {
+    opacity: 1;
+    transform: translateY(0);
+}
+.ps-card-wish:hover {
+    background: var(--ps-accent);
+    color: var(--ps-paper);
+}
+.ps-card-wish.wishlisted {
+    background: var(--ps-accent);
+    color: var(--ps-paper);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Quick-add overlay */
+.ps-card-overlay {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 2;
+}
+.ps-card-add {
+    flex: 1;
+    padding: 12px 14px;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: var(--ps-font);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s ease;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.ps-card-add:hover { background: #C9432A !important; }
+.ps-card-add:disabled {
+    background: var(--ps-mute) !important;
+    cursor: not-allowed;
+}
+.ps-card-add i { font-size: 11px; }
+
+/* Card body */
+.ps-card-body {
+    padding: 14px 4px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ps-card-cat {
+    font-family: var(--ps-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ps-mute);
+    margin-bottom: 2px;
+}
+.ps-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ps-ink);
+    line-height: 1.35;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.ps-card-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+.ps-card-stars {
+    display: inline-flex;
+    gap: 1px;
+    font-size: 10px;
+    color: var(--ps-gold);
+    letter-spacing: 0.5px;
+}
+.ps-card-stars .ps-star-off { color: var(--ps-faint); }
+.ps-card-rating-num {
+    font-family: var(--ps-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ps-mute);
+}
+.ps-card-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 4px;
+}
+.ps-card-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ps-ink);
+    letter-spacing: -0.01em;
+}
+.ps-card-price-was {
+    font-size: 12px;
+    color: var(--ps-mute);
+    text-decoration: line-through;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 640px) {
+    .ps-root { padding: 48px 16px; }
+    .ps-head { flex-direction: column; align-items: flex-start; }
+    .ps-grid { gap: 16px; }
+    .ps-card-body { padding-top: 10px; }
+    .ps-card-title { font-size: 13px; }
+    .ps-card-price { font-size: 14px; }
+    .ps-filter-chip { font-size: 11px; padding: 8px 14px; }
+    .ps-view-all { padding: 10px 16px; font-size: 10px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY — sample products for design preview             -->
+<!-- ============================================================ -->
+<div class="ps-root editable-section" data-section="2750">
+    <div class="ps-editor-only">
+        <div class="ps-shell">
+
+            <div class="ps-head">
+                <div class="ps-head-left">
+                    <span class="ps-kicker editable-text editable-section no-drop-zone"
+                          data-section="2751" data-text="2751">The collection</span>
+                    <h2 class="ps-title editable-text editable-section no-drop-zone"
+                        data-section="2752" data-text="2752">Featured <em>pieces</em>.</h2>
+                    <p class="ps-sub editable-text editable-section no-drop-zone"
+                       data-section="2753" data-text="2753">Hand-picked from our latest drop. Free shipping on orders over $100.</p>
+                </div>
+                <div class="ps-head-right">
+                    <a href="#" class="ps-view-all editable-text editable-section no-drop-zone"
+                       data-section="2754" data-text="2754">
+                        View all <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter chips -->
+            <div class="ps-filters">
+                <button type="button" class="ps-filter-chip active editable-text editable-section no-drop-zone"
+                        data-section="2755" data-text="2755">All</button>
+                <button type="button" class="ps-filter-chip editable-text editable-section no-drop-zone"
+                        data-section="2756" data-text="2756">Bags</button>
+                <button type="button" class="ps-filter-chip editable-text editable-section no-drop-zone"
+                        data-section="2757" data-text="2757">Accessories</button>
+                <button type="button" class="ps-filter-chip editable-text editable-section no-drop-zone"
+                        data-section="2758" data-text="2758">New in</button>
+                <button type="button" class="ps-filter-chip editable-text editable-section no-drop-zone"
+                        data-section="2759" data-text="2759">Under $100</button>
+            </div>
+
+            <!-- Product grid (8 sample products) -->
+            <div class="ps-grid">
+
+                <!-- Product 1 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 1" class="editable-image" data-image="2760">
+                        </div>
+                        <div class="ps-card-badges">
+                            <span class="ps-badge ps-badge-sale">Save 26%</span>
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2761" data-text="2761">Bags</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2762" data-text="2762">The Sculptural Carry</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(247)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$184</span>
+                            <span class="ps-card-price-was">$248</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 2 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 2" class="editable-image" data-image="2763">
+                        </div>
+                        <div class="ps-card-badges">
+                            <span class="ps-badge ps-badge-new">New</span>
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2764" data-text="2764">Bags</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2765" data-text="2765">The Weekender Tote</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(89)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$312</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 3 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 3" class="editable-image" data-image="2766">
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2767" data-text="2767">Accessories</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2768" data-text="2768">Leather Card Holder</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(156)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$72</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 4 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 4" class="editable-image" data-image="2769">
+                        </div>
+                        <div class="ps-card-badges">
+                            <span class="ps-badge ps-badge-sale">Save 20%</span>
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2770" data-text="2770">Bags</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2771" data-text="2771">The Mini Crossbody</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star ps-star-off"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(42)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$148</span>
+                            <span class="ps-card-price-was">$185</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 5 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 5" class="editable-image" data-image="2772">
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2773" data-text="2773">Accessories</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2774" data-text="2774">Leather Keychain</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(203)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$32</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 6 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 6" class="editable-image" data-image="2775">
+                        </div>
+                        <div class="ps-card-badges">
+                            <span class="ps-badge ps-badge-new">New</span>
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2776" data-text="2776">Bags</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2777" data-text="2777">The Document Holder</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(67)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$228</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 7 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 7" class="editable-image" data-image="2778">
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add">
+                                <i class="fas fa-shopping-bag"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2779" data-text="2779">Accessories</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2780" data-text="2780">Woven Leather Belt</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(118)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$96</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Product 8 -->
+                <a class="ps-card">
+                    <div class="ps-card-media">
+                        <div class="ps-card-img">
+                            <img src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                 alt="Product 8" class="editable-image" data-image="2781">
+                        </div>
+                        <div class="ps-card-badges">
+                            <span class="ps-badge ps-badge-out">Sold out</span>
+                        </div>
+                        <button type="button" class="ps-card-wish" aria-label="Add to wishlist">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="ps-card-overlay">
+                            <button type="button" class="ps-card-add" disabled>
+                                <i class="fas fa-bell"></i> Notify me
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="ps-card-cat editable-text editable-section no-drop-zone"
+                             data-section="2782" data-text="2782">Accessories</div>
+                        <h3 class="ps-card-title editable-text editable-section no-drop-zone"
+                            data-section="2783" data-text="2783">The Card Sleeve</h3>
+                        <div class="ps-card-rating">
+                            <div class="ps-card-stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="ps-card-rating-num">(54)</span>
+                        </div>
+                        <div class="ps-card-price-row">
+                            <span class="ps-card-price">$58</span>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY — renders real products from the DB             -->
+    <!-- ============================================================ -->
+    <div class="ps-public-only">
+        <div class="ps-shell" id="ps-root" data-subdomain="{{ page.subdomain|default:'' }}">
+
+            <div class="ps-head">
+                <div class="ps-head-left">
+                    <span class="ps-kicker" id="section-2751">{{ text_contents.2751|default:"The collection" }}</span>
+                    <h2 class="ps-title" id="section-2752">{{ text_contents.2752|default:"Featured pieces." }}</h2>
+                    <p class="ps-sub" id="section-2753">{{ text_contents.2753|default:"Hand-picked from our latest drop. Free shipping on orders over $100." }}</p>
+                </div>
+                <div class="ps-head-right">
+                    <a href="#products" class="ps-view-all">
+                        {{ text_contents.2754|default:"View all" }} <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="ps-filters">
+                <button type="button" class="ps-filter-chip active">{{ text_contents.2755|default:"All" }}</button>
+                <button type="button" class="ps-filter-chip">{{ text_contents.2756|default:"Bags" }}</button>
+                <button type="button" class="ps-filter-chip">{{ text_contents.2757|default:"Accessories" }}</button>
+                <button type="button" class="ps-filter-chip">{{ text_contents.2758|default:"New in" }}</button>
+                <button type="button" class="ps-filter-chip">{{ text_contents.2759|default:"Under $100" }}</button>
+            </div>
+
+            <div class="ps-grid" id="ps-grid">
+                {% for prod in products|slice:":8" %}
+                    <a href="{% url 'product_detail' product_slug=prod.slug %}" class="ps-card" data-product-id="{{ prod.id }}">
+                        <div class="ps-card-media">
+                            <div class="ps-card-img">
+                                {% if prod.main_image %}
+                                    <img src="{{ prod.main_image.url }}" alt="{{ prod.title }}">
+                                {% else %}
+                                    <div class="ps-card-img-placeholder">
+                                        <i class="fas fa-image"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="ps-card-badges">
+                                {% if prod.is_on_sale %}
+                                    <span class="ps-badge ps-badge-sale">Save {{ prod.discount_percentage }}%</span>
+                                {% endif %}
+                                {% if prod.is_in_stock %}
+                                {% else %}
+                                    <span class="ps-badge ps-badge-out">Sold out</span>
+                                {% endif %}
+                            </div>
+                            <button type="button"
+                                    class="ps-card-wish"
+                                    aria-label="Add to wishlist"
+                                    data-product-id="{{ prod.id }}"
+                                    onclick="event.preventDefault(); event.stopPropagation(); psAddWishlist(this);">
+                                <i class="far fa-heart"></i>
+                            </button>
+                            <div class="ps-card-overlay">
+                                {% if prod.is_in_stock %}
+                                    <button type="button"
+                                            class="ps-card-add"
+                                            data-product-id="{{ prod.id }}"
+                                            onclick="event.preventDefault(); event.stopPropagation(); psAddToCart(this);">
+                                        <i class="fas fa-shopping-bag"></i> Add to cart
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="ps-card-add" disabled>
+                                        <i class="fas fa-bell"></i> Notify me
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="ps-card-body">
+                            {% if prod.category %}
+                                <div class="ps-card-cat">{{ prod.category.name|default:"Product" }}</div>
+                            {% endif %}
+                            <h3 class="ps-card-title">{{ prod.title }}</h3>
+                            <div class="ps-card-rating">
+                                <div class="ps-card-stars">
+                                    {% with avg=prod.get_average_rating|default:5 %}
+                                        {% for i in "12345" %}
+                                            <i class="fas fa-star{% if forloop.counter > avg %} ps-star-off{% endif %}"></i>
+                                        {% endfor %}
+                                    {% endwith %}
+                                </div>
+                                <span class="ps-card-rating-num">({{ prod.get_review_count|default:0 }})</span>
+                            </div>
+                            <div class="ps-card-price-row">
+                                <span class="ps-card-price">{{ page.currency_symbol|default:"$" }}{{ prod.price|floatformat:0 }}</span>
+                                {% if prod.is_on_sale %}
+                                    <span class="ps-card-price-was">{{ page.currency_symbol }}{{ prod.compare_at_price|floatformat:0 }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                {% empty %}
+                    <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: var(--ps-mute);">
+                        <i class="fas fa-box-open" style="font-size: 32px; color: var(--ps-faint); display: block; margin-bottom: 12px;"></i>
+                        <p style="font-size: 14px; margin: 0;">No products yet. Add your first product to get started.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var PS = window.PS_GRID = window.PS_GRID || {};
+    if (PS._init) return;
+    PS._init = true;
+
+    function root() {
+        return document.querySelector('.ps-public-only #ps-root')
+            || document.getElementById('ps-root');
+    }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) || window.location.hostname.split('.')[0];
+    }
+    function csrf() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+    }
+
+    // ============================================================
+    // ADD TO CART — POST to /builder/cart/add/<subdomain>/
+    // ============================================================
+    PS.addToCart = function(btn) {
+        var productId = btn.dataset.productId;
+        if (!productId) return;
+        btn.disabled = true;
+        var originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Adding…';
+
+        fetch('/builder/cart/add/' + subdomain() + '/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf()
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: 1
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check"></i> Added';
+                setTimeout(function () {
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                }, 1500);
+            } else {
+                btn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed';
+                setTimeout(function () {
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                }, 1500);
+            }
+        })
+        .catch(function () {
+            btn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error';
+            setTimeout(function () {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 1500);
+        });
+    };
+    window.psAddToCart = PS.addToCart;
+
+    // ============================================================
+    // ADD TO WISHLIST
+    // ============================================================
+    PS.addWishlist = function(btn) {
+        var productId = btn.dataset.productId;
+        if (!productId) return;
+        var isWishlisted = btn.classList.contains('wishlisted');
+        var icon = btn.querySelector('i');
+
+        btn.disabled = true;
+
+        fetch('/builder/wishlist/add/' + subdomain() + '/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf()
+            },
+            body: JSON.stringify({ product_id: productId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                btn.classList.add('wishlisted');
+                if (icon) {
+                    icon.className = 'fas fa-heart';
+                }
+            }
+            btn.disabled = false;
+        })
+        .catch(function () {
+            btn.disabled = false;
+        });
+    };
+    window.psAddWishlist = PS.addWishlist;
+
+    // ============================================================
+    // FILTER CHIPS — client-side filter by category
+    // ============================================================
+    function initFilters() {
+        var chips = document.querySelectorAll('.ps-public-only .ps-filter-chip');
+        var cards = document.querySelectorAll('.ps-public-only .ps-card');
+
+        chips.forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                var label = chip.textContent.trim();
+                chips.forEach(function (c) { c.classList.remove('active'); });
+                chip.classList.add('active');
+
+                cards.forEach(function (card) {
+                    if (label === 'All' || label === 'New in' || label === 'Under $100') {
+                        card.style.display = '';
+                        return;
+                    }
+                    var cat = card.querySelector('.ps-card-cat');
+                    if (cat && cat.textContent.trim() === label) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }
+
+    function init() {
+        if (!root()) return;
+        initFilters();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

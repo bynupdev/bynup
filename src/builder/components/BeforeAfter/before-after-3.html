@@ -1,0 +1,597 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<style>
+.editor-only { display: none; }
+.public-only { display: block; }
+body.editor-mode .editor-only { display: block; }
+body.editor-mode .public-only { display: none; }
+
+{% generate_section_styles style_customizations 2000 2200 %}
+{% generate_background_images background_images 2000 2200 %}
+
+/* ============================================================
+   BEFORE / AFTER SLIDER
+   ============================================================ */
+.ba-root {
+    --ba-ink:        #0B0B0C;
+    --ba-ink-2:      #2A2A2E;
+    --ba-mute:       #8A8A92;
+    --ba-faint:      #C8C8CE;
+    --ba-line:       #ECECEF;
+    --ba-line-2:     #F4F4F6;
+    --ba-paper:      #FFFFFF;
+    --ba-paper-2:    #FAFAFB;
+    --ba-accent:     #C9432A;
+    --ba-accent-bg:  #FBEDE8;
+    --ba-tag-before: #2A2A2E;
+    --ba-tag-after:  #C9432A;
+
+    --ba-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --ba-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --ba-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--ba-font);
+    color: var(--ba-ink);
+    background: var(--ba-paper);
+    line-height: 1.55;
+    padding: 60px 20px;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.ba-root *, .ba-root *::before, .ba-root *::after { box-sizing: border-box; }
+.ba-root img { max-width: 100%; display: block; }
+.ba-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+.ba-shell { max-width: 1200px; margin: 0 auto; }
+
+/* ---------- Layout ---------- */
+.ba-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    align-items: center;
+}
+@media (min-width: 900px) {
+    .ba-split {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 64px;
+    }
+}
+
+/* ---------- Slider ---------- */
+.ba-slider {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 12px;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: pan-y;
+    cursor: ew-resize;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.10),
+                0 4px 12px rgba(0, 0, 0, 0.05);
+    background: var(--ba-line-2);
+}
+@media (min-width: 900px) {
+    .ba-slider { aspect-ratio: 1 / 1; }
+}
+
+.ba-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.ba-img-after {
+    clip-path: inset(0 0 0 var(--ba-pos, 50%));
+}
+
+.ba-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--ba-pos, 50%);
+    width: 2px;
+    background: #FFFFFF;
+    transform: translateX(-50%);
+    z-index: 5;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06),
+                0 0 24px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+}
+.ba-handle::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20),
+                0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.ba-handle-grip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    z-index: 6;
+    color: var(--ba-ink);
+    font-size: 12px;
+    pointer-events: none;
+}
+.ba-handle-grip i { font-size: 10px; }
+.ba-handle-grip .ba-grip-dot {
+    width: 2px;
+    height: 12px;
+    background: var(--ba-ink);
+    border-radius: 1px;
+    opacity: 0.35;
+}
+
+/* ---------- Tags ---------- */
+.ba-tag {
+    position: absolute;
+    top: 20px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: var(--ba-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #FFFFFF;
+    z-index: 4;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+}
+.ba-tag-before {
+    left: 20px;
+    background: rgba(42, 42, 46, 0.92);
+}
+.ba-tag-after {
+    right: 20px;
+    background: rgba(201, 67, 42, 0.94);
+}
+
+.ba-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.72);
+    color: #FFFFFF;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: var(--ba-mono);
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 4;
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.ba-hint i { font-size: 11px; }
+.ba-hint.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+}
+
+/* ---------- Text column ---------- */
+.ba-text { max-width: 480px; }
+
+.ba-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--ba-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ba-accent);
+    margin-bottom: 20px;
+}
+.ba-kicker::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--ba-accent);
+}
+
+.ba-title {
+    font-family: var(--ba-serif);
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--ba-ink);
+    margin: 0 0 20px 0;
+}
+.ba-title em { font-style: italic; color: var(--ba-accent); }
+
+.ba-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ba-ink-2);
+    margin: 0 0 32px 0;
+}
+
+.ba-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 32px 0;
+}
+.ba-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--ba-line);
+}
+.ba-list li:first-child { padding-top: 0; }
+.ba-list li:last-child { border-bottom: none; }
+.ba-list-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ba-accent-bg);
+    color: var(--ba-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    margin-top: 1px;
+}
+.ba-list-body { flex: 1; }
+.ba-list-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ba-ink);
+    margin-bottom: 2px;
+}
+.ba-list-desc {
+    font-size: 13px;
+    color: var(--ba-mute);
+    line-height: 1.5;
+}
+
+.ba-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 26px;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: background 0.2s ease, transform 0.1s ease;
+    text-decoration: none;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.ba-cta:hover { background: #C9432A !important; transform: translateY(-1px); }
+.ba-cta:active { transform: translateY(0); }
+.ba-cta i { font-size: 11px; }
+
+@media (max-width: 899px) {
+    .ba-root { padding: 40px 16px; }
+    .ba-slider { aspect-ratio: 4 / 5; }
+    .ba-text { max-width: 100%; text-align: left; }
+    .ba-tag { top: 14px; padding: 5px 10px; font-size: 9px; }
+    .ba-tag-before { left: 14px; }
+    .ba-tag-after { right: 14px; }
+    .ba-hint { bottom: 14px; font-size: 10px; padding: 6px 12px; }
+    .ba-handle::before,
+    .ba-handle-grip { width: 40px; height: 40px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY  — IDs in 2000–2200 range                        -->
+<!-- ============================================================ -->
+<div class="ba-root editable-section" data-section="2000">
+    <div class="editor-only">
+        <div class="ba-shell">
+            <div class="ba-split">
+
+                <div class="ba-slider editable-section no-drop-zone" data-section="2001">
+                    <img class="ba-img ba-img-before editable-image"
+                         src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                         alt="Before"
+                         data-image="2002">
+                    <img class="ba-img ba-img-after editable-image"
+                         src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                         alt="After"
+                         data-image="2003">
+
+                    <div class="ba-tag ba-tag-before editable-text editable-section no-drop-zone"
+                         data-section="2004" data-text="2004">Before</div>
+                    <div class="ba-tag ba-tag-after editable-text editable-section no-drop-zone"
+                         data-section="2005" data-text="2005">After</div>
+
+                    <div class="ba-handle" style="--ba-pos: 50%;">
+                        <div class="ba-handle-grip">
+                            <i class="fas fa-chevron-left"></i>
+                            <span class="ba-grip-dot"></span>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="ba-hint">
+                        <i class="fas fa-arrows-alt-h"></i>
+                        Drag to compare
+                    </div>
+                </div>
+
+                <div class="ba-text">
+                    <div class="ba-kicker editable-text editable-section no-drop-zone"
+                         data-section="2010" data-text="2010">The transformation</div>
+
+                    <h2 class="ba-title editable-text editable-section no-drop-zone"
+                        data-section="2011" data-text="2011">See the <em>difference</em> for yourself.</h2>
+
+                    <p class="ba-desc editable-text editable-section no-drop-zone"
+                       data-section="2012" data-text="2012">Real results from real customers. Drag the slider to see how our formula transforms the surface in 28 days.</p>
+
+                    <ul class="ba-list">
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title editable-text editable-section no-drop-zone"
+                                     data-section="2013" data-text="2013">Visible in 14 days</div>
+                                <div class="ba-list-desc editable-text editable-section no-drop-zone"
+                                     data-section="2014" data-text="2014">Noticeable difference from the second week onward.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title editable-text editable-section no-drop-zone"
+                                     data-section="2015" data-text="2015">Full results in 28 days</div>
+                                <div class="ba-list-desc editable-text editable-section no-drop-zone"
+                                     data-section="2016" data-text="2016">Complete transformation after one month of use.</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title editable-text editable-section no-drop-zone"
+                                     data-section="2017" data-text="2017">Clinically tested</div>
+                                <div class="ba-list-desc editable-text editable-section no-drop-zone"
+                                     data-section="2018" data-text="2018">Verified in an independent 28-day study.</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <a href="#product" class="ba-cta editable-text editable-section no-drop-zone"
+                       data-section="2019" data-text="2019">
+                        Shop the transformation
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="public-only">
+        
+        <div class="ba-shell" id="ba-root">
+
+            <div class="ba-split">
+
+                <div class="ba-slider" id="ba-slider">
+                    <img class="ba-img ba-img-before"
+                         src="{% if image_customizations.2002 %}{{ image_customizations.2002.image_url }}{% else %}https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1000{% endif %}"
+                         alt="{{ text_contents.2004|default:'Before' }}">
+
+                    <img class="ba-img ba-img-after" id="ba-img-after"
+                         src="{% if image_customizations.2003 %}{{ image_customizations.2003.image_url }}{% else %}https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=1000{% endif %}"
+                         alt="{{ text_contents.2005|default:'After' }}">
+
+                    <div class="ba-tag ba-tag-before" id="section-2004">{{ text_contents.2004|default:"Before" }}</div>
+                    <div class="ba-tag ba-tag-after" id="section-2005">{{ text_contents.2005|default:"After" }}</div>
+
+                    <div class="ba-handle" id="ba-handle" style="--ba-pos: 50%;">
+                        <div class="ba-handle-grip">
+                            <i class="fas fa-chevron-left"></i>
+                            <span class="ba-grip-dot"></span>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="ba-hint" id="ba-hint">
+                        <i class="fas fa-arrows-alt-h"></i>
+                        Drag to compare
+                    </div>
+                </div>
+
+                <div class="ba-text">
+                    <div class="ba-kicker" id="section-2010">{{ text_contents.2010|default:"The transformation" }}</div>
+
+                    <h2 class="ba-title" id="section-2011">{{ text_contents.2011|default:"See the difference for yourself." }}</h2>
+
+                    <p class="ba-desc" id="section-2012">{{ text_contents.2012|default:"Real results from real customers. Drag the slider to see how our formula transforms the surface in 28 days." }}</p>
+
+                    <ul class="ba-list">
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title">{{ text_contents.2013|default:"Visible in 14 days" }}</div>
+                                <div class="ba-list-desc">{{ text_contents.2014|default:"Noticeable difference from the second week onward." }}</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title">{{ text_contents.2015|default:"Full results in 28 days" }}</div>
+                                <div class="ba-list-desc">{{ text_contents.2016|default:"Complete transformation after one month of use." }}</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="ba-list-icon"><i class="fas fa-check"></i></div>
+                            <div class="ba-list-body">
+                                <div class="ba-list-title">{{ text_contents.2017|default:"Clinically tested" }}</div>
+                                <div class="ba-list-desc">{{ text_contents.2018|default:"Verified in an independent 28-day study." }}</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <a href="#product" class="ba-cta">
+                        {{ text_contents.2019|default:"Shop the transformation" }}
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var BA = window.BA_SLIDER = window.BA_SLIDER || {};
+    if (BA._init) return;
+    BA._init = true;
+
+    function root() {
+        return document.querySelector('.public-only #ba-root')
+            || document.getElementById('ba-root');
+    }
+
+    var state = { dragging: false, hasInteracted: false };
+
+    function setPosition(pct) {
+        pct = Math.max(0, Math.min(100, pct));
+        var slider = document.getElementById('ba-slider');
+        var handle = document.getElementById('ba-handle');
+        var afterImg = document.getElementById('ba-img-after');
+        if (!slider) return;
+        if (handle) handle.style.setProperty('--ba-pos', pct + '%');
+        if (afterImg) afterImg.style.setProperty('--ba-pos', pct + '%');
+        slider.style.setProperty('--ba-pos', pct + '%');
+    }
+
+    function pctFromEvent(e) {
+        var slider = document.getElementById('ba-slider');
+        if (!slider) return 50;
+        var rect = slider.getBoundingClientRect();
+        var clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        var pct = ((clientX - rect.left) / rect.width) * 100;
+        return Math.max(0, Math.min(100, pct));
+    }
+
+    function hideHint() {
+        if (state.hasInteracted) return;
+        state.hasInteracted = true;
+        var hint = document.getElementById('ba-hint');
+        if (hint) hint.classList.add('hidden');
+    }
+
+    function init() {
+        if (!root()) return;
+        var slider = document.getElementById('ba-slider');
+        if (!slider) return;
+
+        slider.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            state.dragging = true;
+            hideHint();
+            setPosition(pctFromEvent(e));
+        });
+        window.addEventListener('mousemove', function (e) {
+            if (!state.dragging) return;
+            setPosition(pctFromEvent(e));
+        });
+        window.addEventListener('mouseup', function () { state.dragging = false; });
+
+        slider.addEventListener('touchstart', function (e) {
+            state.dragging = true;
+            hideHint();
+            setPosition(pctFromEvent(e));
+        }, { passive: true });
+        slider.addEventListener('touchmove', function (e) {
+            if (!state.dragging) return;
+            setPosition(pctFromEvent(e));
+        }, { passive: true });
+        slider.addEventListener('touchend', function () { state.dragging = false; });
+
+        slider.addEventListener('click', function (e) {
+            if (state.dragging) return;
+            hideHint();
+            setPosition(pctFromEvent(e));
+        });
+
+        slider.setAttribute('tabindex', '0');
+        slider.setAttribute('role', 'slider');
+        slider.setAttribute('aria-label', 'Before and after comparison slider');
+        slider.setAttribute('aria-valuemin', '0');
+        slider.setAttribute('aria-valuemax', '100');
+        slider.setAttribute('aria-valuenow', '50');
+
+        slider.addEventListener('keydown', function (e) {
+            var current = parseFloat(
+                getComputedStyle(slider).getPropertyValue('--ba-pos').replace('%', '').trim()
+            ) || 50;
+            var step = e.shiftKey ? 10 : 2;
+            var next = current;
+            if (e.key === 'ArrowLeft')  next = current - step;
+            if (e.key === 'ArrowRight') next = current + step;
+            if (e.key === 'Home')       next = 0;
+            if (e.key === 'End')        next = 100;
+            if (next !== current) {
+                e.preventDefault();
+                hideHint();
+                setPosition(next);
+                slider.setAttribute('aria-valuenow', String(Math.round(next)));
+            }
+        });
+
+        setPosition(50);
+
+        setTimeout(function () {
+            var hint = document.getElementById('ba-hint');
+            if (hint && !state.hasInteracted) hint.classList.add('hidden');
+        }, 6000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

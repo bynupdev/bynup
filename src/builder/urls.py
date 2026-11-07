@@ -16,7 +16,12 @@ urlpatterns = [
     path('load-template/<str:template_name>/', views.load_template, name='load_template'),
     path('publish/', views.publish_page, name='publish_page'),
      path('recently-viewed/<str:subdomain>/', views.get_recently_viewed_products, name='get_recently_viewed'),
-
+     path(
+     'editor/<str:template_name>/<str:subdomain>/product/<int:product_id>/',
+     views.editor_for_product,
+     name='editor_for_product',
+     ),
+     
 
     # path('edit/<str:subdomain>/', views.edit_page, name='edit_page'),
     
@@ -24,7 +29,11 @@ urlpatterns = [
     path('get-components/', views.get_components, name='get_components'),
     path('load-component/<str:component_id>/', views.load_component, name='load_component'),
     path('save-component-layout/<str:subdomain>/', views.save_component_layout, name='save_component_layout'),
-    
+    path(
+    'api/delete-injected-section/<str:subdomain>/',
+    views.delete_injected_section,
+    name='delete_injected_section',
+),
     # Page management
     path('delete-page/<str:subdomain>/', views.delete_page, name='delete_page'),
    
@@ -63,7 +72,7 @@ urlpatterns = [
 
     path('upload-editor-image/<str:subdomain>/', views.upload_editor_image, name='upload_editor_image'),
      path('upload-editor-media/<str:subdomain>/', views.upload_editor_media, name='upload_editor_media'),
-
+     path('upload-image/', views.upload_image, name='upload_image'),
 
     path('cart/update/<str:subdomain>/', views.update_cart_item, name='update_cart_item'),
     path('cart/increment/<str:subdomain>/', views.increment_cart_item, name='increment_cart_item'),
@@ -82,6 +91,7 @@ urlpatterns = [
     path('review/submit/<str:subdomain>/', views.submit_review, name='submit_review'),
     path('review/helpful/<str:subdomain>/', views.mark_review_helpful, name='mark_review_helpful'),
     path('reviews/<str:subdomain>/<int:product_id>/', views.get_product_reviews, name='get_product_reviews'),
+    path('api/submit-review/<str:subdomain>/', views.submit_review_v2, name='submit_review_v2'),
     path('products/', views.product_list_page, name='product_list'),
     path('product/<slug:product_slug>/', views.product_detail_page, name='product_detail'),  
 
@@ -240,16 +250,18 @@ path('api/delete-video-customization/<str:subdomain>/',
      path('privacy/<str:subdomain>/edit/', views.edit_privacy, name='edit_privacy'),
      path('privacy/<str:subdomain>/', views.public_privacy, name='public_privacy'),
      # Add to your builder/urls.py
-
+         path('api/list-links/<str:subdomain>/', views.list_links, name='list_links'),
      path('api/check-subdomain/', views.check_subdomain_availability, name='check_subdomain'),
      # builder/urls.py - Add these new URLs
-     path('upload-image/', views.upload_image, name='upload_image'),
+     path('api/autosave-draft/<str:subdomain>/',
+         views.autosave_draft, name='autosave_draft'), 
+         path('api/save-link/<str:subdomain>/', views.save_link, name='save_link'),
      path('check-image-status/<str:subdomain>/', views.check_image_status, name='check_image_status'),
 
      path('get-csrf-token/', views.get_csrf_token, name='get_csrf_token'),
 
      # path('manage/<str:subdomain>/', views.website_management, name='website_management'),
-
+     path('api/update-palette-color/<str:subdomain>/', views.update_palette_color, name='update_palette_color'),
 
      path('api/storage-info/', views.get_storage_info, name='storage_info'),
      path('api/storage-info/', views.api_storage_info, name='api_storage_info'),
@@ -284,6 +296,7 @@ path('api/delete-video-customization/<str:subdomain>/',
     # Copy Editor UI
     path('copy-editor/<str:subdomain>/', views.copy_editor_view, name='copy_editor'),
 
+     
       path('api/memory/status/', views.memory_status, name='memory_status'),
     path('api/memory/test-public/', views.memory_test_public, name='memory_test_public'),
     path('api/memory/test-auth/', views.memory_test_auth, name='memory_test_auth'),
@@ -292,6 +305,7 @@ path('api/delete-video-customization/<str:subdomain>/',
         # Domain management
          path('domains/<str:subdomain>/', views.domains_page, name='domains_page'),
     path('domains/search/<str:subdomain>/', views.search_domain, name='search_domain'),
+    path('api/onboarding/check-domain/', views.onboarding_search_domain, name='onboarding_check_domain'),
     path('domains/request/<str:subdomain>/', views.request_domain, name='request_domain'),
     path('domains/list/<str:subdomain>/', views.list_domain_requests, name='list_domain_requests'),
      

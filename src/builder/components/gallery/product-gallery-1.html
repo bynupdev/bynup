@@ -1,0 +1,527 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+    /* Dual-view component toggle — PUBLIC DEFAULT */
+    .editor-only { display: none; }
+    .public-only { display: block; }
+    body.editor-mode .editor-only { display: block; }
+    body.editor-mode .public-only { display: none; }
+
+    /* Dynamic Section Styles — Range 1400-1412 */
+    {% generate_section_styles style_customizations 1400 1412 %}
+
+    /* Dynamic Background Images — Range 1400-1412 */
+    {% generate_background_images background_images 1400 1412 %}
+
+    /* ==========================================================
+       SECTION WRAPPER
+       ========================================================== */
+    .auto-gallery {
+        background: #F7F5F1;
+        padding: 64px 24px;
+    }
+
+    .auto-gallery .gallery-wrap {
+        /* max-width: 1080px; */
+        margin: 0 auto;
+    }
+
+    /* ==========================================================
+       OPTIONAL LABEL
+       ========================================================== */
+    .auto-gallery .gallery-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(26, 26, 26, 0.08);
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .auto-gallery .gallery-label-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #767066;
+    }
+    .auto-gallery .gallery-label-left i {
+        color: #6B7F5F;
+        font-size: 10px;
+    }
+    .auto-gallery .gallery-label-right {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        color: #767066;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ==========================================================
+       GALLERY CONTAINER
+       ========================================================== */
+    .auto-gallery .gallery {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4 / 5;
+        max-height: 720px;               /* was: 78vh */
+        border-radius: 8px;
+        overflow: hidden;
+        background: #F1EDE6;
+        isolation: isolate;
+    }
+
+    .auto-gallery .gallery__img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        opacity: 0;
+        transform: scale(1.02);
+        transition:
+            opacity 900ms ease,
+            transform 1800ms ease;       /* was: calc(900ms * 2) */
+        will-change: opacity, transform;
+    }
+
+    .auto-gallery .gallery__img[data-active="true"] {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .auto-gallery .gallery::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background: radial-gradient(
+            ellipse at center,
+            transparent 55%,
+            rgba(20, 20, 18, 0.06) 100%
+        );
+    }
+
+    /* ==========================================================
+       PROGRESS DOTS
+       ========================================================== */
+    .auto-gallery .gallery__dots {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 3;
+        display: flex;
+        gap: 6px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 100px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .auto-gallery .gallery__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(26, 26, 26, 0.2);
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        transition: background 180ms ease, width 180ms ease;
+        position: relative;
+    }
+    .auto-gallery .gallery__dot:hover {
+        background: rgba(26, 26, 26, 0.4);
+    }
+    .auto-gallery .gallery__dot[data-active="true"] {
+        background: #6B7F5F;
+        width: 20px;
+        border-radius: 3px;
+    }
+
+    /* ==========================================================
+       COUNTER (top right)
+       ========================================================== */
+    .auto-gallery .gallery__counter {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 3;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 100px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: #1A1A1A;
+        font-variant-numeric: tabular-nums;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .auto-gallery .gallery__counter-current {
+        color: #6B7F5F;
+        font-weight: 700;
+    }
+    .auto-gallery .gallery__counter-total {
+        color: #767066;
+    }
+
+    /* ==========================================================
+       BOTTOM LABEL
+       ========================================================== */
+    .auto-gallery .gallery-caption {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .auto-gallery .gallery-caption__title {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        color: #1A1A1A;
+        margin: 0;
+        letter-spacing: -0.005em;
+    }
+    .auto-gallery .gallery-caption__note {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 11.5px;
+        font-weight: 500;
+        color: #767066;
+        margin: 0;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .auto-gallery .gallery-caption__note i {
+        color: #6B7F5F;
+        font-size: 10px;
+    }
+
+    /* ==========================================================
+       RESPONSIVE
+       ========================================================== */
+    @media (max-width: 640px) {
+        .auto-gallery {
+            padding: 40px 16px;
+        }
+        .auto-gallery .gallery__counter {
+            top: 12px;
+            right: 12px;
+        }
+        .auto-gallery .gallery__dots {
+            bottom: 12px;
+            padding: 6px 10px;
+        }
+        .auto-gallery .gallery-caption {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .auto-gallery .gallery__img {
+            transition: opacity 400ms ease;
+            transform: none !important;
+        }
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- EDITOR VIEW (.editor-only) — IDs 1400-1412                   -->
+<!-- ============================================================ -->
+<div class="editor-only">
+
+  <section class="auto-gallery editable-section" data-section="1400" aria-label="Product gallery">
+
+      <div class="gallery-wrap">
+
+          <!-- Top label -->
+          <div class="gallery-label editable-section" data-section="1401">
+              <div class="gallery-label-left">
+                  <i class="fa-solid fa-images editable-icon editable-section" data-icon="1402" data-section="1402"></i>
+                  <span class="editable-text editable-section" data-text="1403" data-section="1403">Product gallery</span>
+              </div>
+              <div class="gallery-label-right editable-text editable-section" data-text="1404" data-section="1404">
+                  Auto · 1s per image
+              </div>
+          </div>
+
+          <!-- Gallery -->
+          <div class="gallery" id="gallery-1400">
+
+              <img
+                  class="gallery__img editable-image editable-section"
+                  data-active="true"
+                  src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&q=85&auto=format&fit=crop"
+                  alt="Product image 1"
+                  data-image="1405"
+                  data-section="1405"
+              >
+              <img
+                  class="gallery__img editable-image editable-section"
+                  data-active="false"
+                  src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=1200&q=85&auto=format&fit=crop"
+                  alt="Product image 2"
+                  data-image="1406"
+                  data-section="1406"
+                  loading="lazy"
+              >
+              <img
+                  class="gallery__img editable-image editable-section"
+                  data-active="false"
+                  src="https://images.unsplash.com/photo-1549298916-b41d501d3772?w=1200&q=85&auto=format&fit=crop"
+                  alt="Product image 3"
+                  data-image="1407"
+                  data-section="1407"
+                  loading="lazy"
+              >
+              <img
+                  class="gallery__img editable-image editable-section"
+                  data-active="false"
+                  src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=1200&q=85&auto=format&fit=crop"
+                  alt="Product image 4"
+                  data-image="1408"
+                  data-section="1408"
+                  loading="lazy"
+              >
+              <img
+                  class="gallery__img editable-image editable-section"
+                  data-active="false"
+                  src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=1200&q=85&auto=format&fit=crop"
+                  alt="Product image 5"
+                  data-image="1409"
+                  data-section="1409"
+                  loading="lazy"
+              >
+
+              <!-- Counter -->
+              <div class="gallery__counter">
+                  <span class="gallery__counter-current" data-role="counter-current">1</span>
+                  <span class="gallery__counter-total">/ <span data-role="counter-total">5</span></span>
+              </div>
+
+              <!-- Dots (injected by JS) -->
+              <div class="gallery__dots" data-role="gallery-dots" aria-hidden="true"></div>
+
+          </div>
+
+          <!-- Caption -->
+          <div class="gallery-caption">
+              <p class="gallery-caption__title editable-text editable-section" data-text="1410" data-section="1410">The Spring Collection</p>
+              <p class="gallery-caption__note editable-text editable-section" data-text="1411" data-section="1411">
+                  <i class="fa-solid fa-circle-play editable-icon editable-section" data-icon="1412" data-section="1412"></i>
+                  Auto-rotating · hover to pause
+              </p>
+          </div>
+
+      </div>
+
+  </section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- PUBLIC VIEW (.public-only) — IDs 1400-1412                   -->
+<!-- ============================================================ -->
+<div class="public-only">
+
+  <section class="auto-gallery" id="section-1400" aria-label="Product gallery">
+
+      <div class="gallery-wrap">
+
+          <!-- Top label -->
+          <div class="gallery-label" id="section-1401">
+              <div class="gallery-label-left">
+                  {% render_icon icon_customizations "1402" "fa-solid fa-images" %}
+                  <span id="section-1403">{{ text_contents.1403|default:"Product gallery" }}</span>
+              </div>
+              <div class="gallery-label-right" id="section-1404">
+                  {{ text_contents.1404|default:"Auto · 1s per image" }}
+              </div>
+          </div>
+
+          <!-- Gallery -->
+          <div class="gallery" data-role="gallery">
+
+              {% if image_customizations.1405 %}
+                  <img class="gallery__img editable-image" data-active="true" src="{{ image_customizations.1405.image_url }}" alt="{{ image_customizations.1405.alt_text|default:'Product image 1' }}" data-image="1405">
+              {% else %}
+                  <img class="gallery__img editable-image" data-active="true" src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&q=85&auto=format&fit=crop" alt="Product image 1" data-image="1405">
+              {% endif %}
+
+              {% if image_customizations.1406 %}
+                  <img class="gallery__img editable-image" data-active="false" src="{{ image_customizations.1406.image_url }}" alt="{{ image_customizations.1406.alt_text|default:'Product image 2' }}" data-image="1406" loading="lazy">
+              {% else %}
+                  <img class="gallery__img editable-image" data-active="false" src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=1200&q=85&auto=format&fit=crop" alt="Product image 2" data-image="1406" loading="lazy">
+              {% endif %}
+
+              {% if image_customizations.1407 %}
+                  <img class="gallery__img editable-image" data-active="false" src="{{ image_customizations.1407.image_url }}" alt="{{ image_customizations.1407.alt_text|default:'Product image 3' }}" data-image="1407" loading="lazy">
+              {% else %}
+                  <img class="gallery__img editable-image" data-active="false" src="https://images.unsplash.com/photo-1549298916-b41d501d3772?w=1200&q=85&auto=format&fit=crop" alt="Product image 3" data-image="1407" loading="lazy">
+              {% endif %}
+
+              {% if image_customizations.1408 %}
+                  <img class="gallery__img editable-image" data-active="false" src="{{ image_customizations.1408.image_url }}" alt="{{ image_customizations.1408.alt_text|default:'Product image 4' }}" data-image="1408" loading="lazy">
+              {% else %}
+                  <img class="gallery__img editable-image" data-active="false" src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=1200&q=85&auto=format&fit=crop" alt="Product image 4" data-image="1408" loading="lazy">
+              {% endif %}
+
+              {% if image_customizations.1409 %}
+                  <img class="gallery__img editable-image" data-active="false" src="{{ image_customizations.1409.image_url }}" alt="{{ image_customizations.1409.alt_text|default:'Product image 5' }}" data-image="1409" loading="lazy">
+              {% else %}
+                  <img class="gallery__img editable-image" data-active="false" src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=1200&q=85&auto=format&fit=crop" alt="Product image 5" data-image="1409" loading="lazy">
+              {% endif %}
+
+              <!-- Counter -->
+              <div class="gallery__counter">
+                  <span class="gallery__counter-current" data-role="counter-current">1</span>
+                  <span class="gallery__counter-total">/ <span data-role="counter-total">5</span></span>
+              </div>
+
+              <!-- Dots -->
+              <div class="gallery__dots" data-role="gallery-dots" aria-hidden="true"></div>
+
+          </div>
+
+          <!-- Caption -->
+          <div class="gallery-caption">
+              <p class="gallery-caption__title" id="section-1410">{{ text_contents.1410|default:"The Spring Collection" }}</p>
+              <p class="gallery-caption__note" id="section-1411">
+                  {% render_icon icon_customizations "1412" "fa-solid fa-circle-play" %}
+                  {{ text_contents.1411|default:"Auto-rotating · hover to pause" }}
+              </p>
+          </div>
+
+      </div>
+
+  </section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT — runs once per gallery instance, scoped by data-role -->
+<!-- ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    function initGallery(root) {
+        if (!root || root.dataset.galleryInitialized === '1') return;
+        root.dataset.galleryInitialized = '1';
+
+        const images = Array.from(root.querySelectorAll('.gallery__img'));
+        if (!images.length) return;
+
+        const dotsWrap = root.querySelector('[data-role="gallery-dots"]');
+        const counterCurrent = root.querySelector('[data-role="counter-current"]');
+        const counterTotal = root.querySelector('[data-role="counter-total"]');
+
+        const INTERVAL = 2500;
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        let current = 0;
+        let timer = null;
+        let isPaused = false;
+
+        if (counterTotal) counterTotal.textContent = images.length;
+
+        // Build dots
+        if (dotsWrap) {
+            dotsWrap.innerHTML = '';
+            images.forEach((_, i) => {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'gallery__dot';
+                dot.setAttribute('aria-label', 'Show image ' + (i + 1));
+                dot.addEventListener('click', () => {
+                    goTo(i);
+                    restart();
+                });
+                dotsWrap.appendChild(dot);
+            });
+        }
+        const dots = dotsWrap ? Array.from(dotsWrap.children) : [];
+
+        function render() {
+            images.forEach((img, i) => {
+                img.setAttribute('data-active', i === current ? 'true' : 'false');
+            });
+            dots.forEach((dot, i) => {
+                dot.setAttribute('data-active', i === current ? 'true' : 'false');
+            });
+            if (counterCurrent) counterCurrent.textContent = current + 1;
+        }
+
+        function next() {
+            current = (current + 1) % images.length;
+            render();
+        }
+
+        function goTo(index) {
+            current = index;
+            render();
+        }
+
+        function start() {
+            if (prefersReduced) return;
+            clearInterval(timer);
+            timer = setInterval(() => {
+                if (!isPaused) next();
+            }, INTERVAL);
+        }
+
+        function stop() {
+            clearInterval(timer);
+            timer = null;
+        }
+
+        function restart() {
+            stop();
+            start();
+        }
+
+        root.addEventListener('mouseenter', () => { isPaused = true; });
+        root.addEventListener('mouseleave', () => { isPaused = false; });
+
+        document.addEventListener('visibilitychange', () => {
+            isPaused = document.hidden;
+        });
+
+        render();
+        start();
+    }
+
+    function initAll() {
+        document
+            .querySelectorAll('.auto-gallery .gallery[data-role="gallery"]')
+            .forEach(initGallery);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
+</script>

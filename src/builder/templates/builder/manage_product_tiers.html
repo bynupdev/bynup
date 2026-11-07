@@ -1,0 +1,113 @@
+{% extends 'builder/base.html' %}
+{% load static %}
+
+{% block title %}Manage Tiers - {{ product.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'manage_products' subdomain=page.subdomain %}">Products</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'product_editor' subdomain=page.subdomain product_id=product.id %}">{{ product.title }}</a></li>
+            <li class="breadcrumb-item active">Tiers</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Pricing Tiers for {{ product.title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if tiers %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Quantity</th>
+                                <th>Price per Unit</th>
+                                <th>Total</th>
+                                <th>Badge</th>
+                                <th>Default</th>
+                                <th>Active</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tier in tiers %}
+                            <tr>
+                                <td>{{ tier.quantity }}</td>
+                                <td>${{ tier.price_per_unit }}</td>
+                                <td>${{ tier.total_price }}</td>
+                                <td>{{ tier.badge_text|default:"—" }}</td>
+                                <td>{% if tier.is_default %}<span class="badge bg-success">Yes</span>{% else %}—{% endif %}</td>
+                                <td>{% if tier.is_active %}<span class="badge bg-primary">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
+                                <td>
+                                    <form method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="tier_id" value="{{ tier.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Delete this tier?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center py-4">No tiers yet. Add your first tier below.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>
+                        {% if tier_id %}Edit Tier{% else %}Add Tier{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="save">
+                        <div class="mb-3">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price per Unit ($)</label>
+                            <input type="number" name="price_per_unit" class="form-control" step="0.01" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Badge Text (optional)</label>
+                            <input type="text" name="badge_text" class="form-control"
+                                   placeholder="e.g., Most Popular">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="is_default" class="form-check-input" id="is_default">
+                            <label class="form-check-label" for="is_default">Set as default tier</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="is_active" class="form-check-input" id="is_active" checked>
+                            <label class="form-check-label" for="is_active">Active</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save me-2"></i>Save Tier
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

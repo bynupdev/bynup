@@ -1,0 +1,1173 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+.editor-only { display: none; }
+.public-only { display: block; }
+body.editor-mode .editor-only { display: block; }
+body.editor-mode .public-only { display: none; }
+
+{% generate_section_styles style_customizations 3000 3300 %}
+{% generate_background_images background_images 3000 3300 %}
+
+.ph-root {
+    --ph-accent:       #B9657A;
+    --ph-accent-soft:  #FBF1F3;
+    --ph-mint:         #B7DCC6;
+    --ph-mint-deep:    #2F6B4A;
+    --ph-white:        #FFFFFF;
+    --ph-bg:           #FFFFFF;
+    --ph-bg-soft:      #FAFAFA;
+    --ph-border:       #E9E9E9;
+    --ph-border-mid:   #D6D6D6;
+    --ph-text:         #191919;
+    --ph-text-soft:    #5E5E5E;
+    --ph-text-mute:    #989898;
+    --ph-font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --ph-font-display: 'Playfair Display', Georgia, serif;
+    --ph-radius: 6px;
+    --ph-radius-lg: 10px;
+    font-family: var(--ph-font-body);
+    color: var(--ph-text);
+    line-height: 1.55;
+    background: var(--ph-bg);
+    padding: 40px 24px;
+    margin: 0 auto;
+    position: relative;
+}
+.ph-root *, .ph-root *::before, .ph-root *::after { box-sizing: border-box; }
+.ph-root img { max-width: 100%; display: block; }
+.ph-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+.ph-container { max-width: 1200px; margin: 0 auto; }
+.ph-grid { display: grid; grid-template-columns: 1fr; gap: 48px; }
+@media (min-width: 900px) {
+    .ph-grid { grid-template-columns: 1fr 1fr; gap: 72px; align-items: start; }
+}
+
+.ph-carousel { position: relative; }
+.ph-main-frame {
+    position: relative;
+    background: var(--ph-bg-soft);
+    border: 1px solid var(--ph-border);
+    border-radius: var(--ph-radius-lg);
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+.ph-slide {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+}
+.ph-slide.active { opacity: 1; z-index: 2; }
+.ph-slide img { width: 100%; height: 100%; object-fit: cover; }
+
+.ph-nav-btn {
+    position: absolute; top: 50%;
+    transform: translateY(-50%);
+    width: 44px; height: 44px;
+    background: var(--ph-white);
+    border: 1px solid var(--ph-border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5;
+    transition: border-color 0.2s ease, color 0.2s ease;
+    color: var(--ph-text);
+}
+.ph-nav-btn:hover { border-color: var(--ph-accent); color: var(--ph-accent); }
+.ph-nav-btn i { font-size: 14px; }
+.ph-nav-prev { left: 16px; }
+.ph-nav-next { right: 16px; }
+
+.ph-dots {
+    position: absolute; left: 50%; bottom: 16px;
+    transform: translateX(-50%);
+    display: flex; gap: 6px;
+    z-index: 5;
+    background: var(--ph-white);
+    border: 1px solid var(--ph-border);
+    padding: 6px 10px;
+    border-radius: 999px;
+}
+.ph-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ph-border-mid);
+    padding: 0;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.ph-dot.active { background: var(--ph-text); transform: scale(1.2); }
+
+.ph-thumbs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+.ph-thumb {
+    border: 1px solid var(--ph-border);
+    border-radius: var(--ph-radius);
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    background: var(--ph-bg-soft);
+    transition: border-color 0.2s ease;
+    position: relative;
+}
+.ph-thumb:hover { border-color: var(--ph-border-mid); }
+.ph-thumb.active { border: 2px solid var(--ph-text); padding: 1px; }
+.ph-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.ph-info { display: flex; flex-direction: column; }
+
+.ph-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ph-text-soft);
+    margin-bottom: 14px;
+}
+.ph-eyebrow .ph-dot-badge {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ph-accent);
+}
+.ph-title {
+    font-family: var(--ph-font-display);
+    font-size: 40px; line-height: 1.15;
+    font-weight: 500; color: var(--ph-text);
+    margin: 0 0 12px 0;
+    letter-spacing: -0.01em;
+}
+.ph-rating-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; flex-wrap: wrap;
+}
+.ph-stars {
+    display: inline-flex; gap: 2px;
+    color: var(--ph-accent); font-size: 13px;
+    letter-spacing: 1px;
+}
+.ph-stars .ph-star-empty { color: var(--ph-border-mid); }
+.ph-rating-score { font-size: 13px; font-weight: 600; color: var(--ph-text); }
+.ph-review-link {
+    font-size: 12px; color: var(--ph-text-soft);
+    text-decoration: underline; text-underline-offset: 3px;
+    transition: color 0.2s ease;
+}
+.ph-review-link:hover { color: var(--ph-accent); }
+
+.ph-price-block {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 8px;
+}
+.ph-price {
+    font-size: 26px; font-weight: 600;
+    color: var(--ph-text);
+    letter-spacing: -0.01em;
+}
+.ph-price-compare {
+    font-size: 15px; color: var(--ph-text-mute);
+    text-decoration: line-through;
+}
+.ph-discount {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    background: var(--ph-mint); color: var(--ph-mint-deep);
+    border-radius: 3px;
+}
+.ph-desc {
+    font-size: 14px; color: var(--ph-text-soft);
+    line-height: 1.7; margin: 12px 0 28px 0;
+}
+.ph-divider { height: 1px; background: var(--ph-border); margin: 24px 0; }
+
+.ph-field-label {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ph-text);
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.ph-field-label small {
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0; text-transform: none;
+    color: var(--ph-text-soft);
+}
+
+.ph-bundles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+}
+.ph-bundle {
+    position: relative;
+    border: 1px solid var(--ph-border-mid);
+    border-radius: var(--ph-radius);
+    padding: 16px 8px 12px;
+    background: var(--ph-white);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+.ph-bundle:hover { border-color: var(--ph-accent); }
+.ph-bundle.selected {
+    border: 2px solid var(--ph-text);
+    padding: 15px 7px 11px;
+    background: var(--ph-bg-soft);
+}
+.ph-bundle-badge {
+    position: absolute; top: -9px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--ph-text); color: var(--ph-white);
+    font-size: 8px; font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.ph-bundle-badge.ph-badge-soft { background: var(--ph-accent); }
+.ph-bundle-title {
+    font-size: 12px; font-weight: 700;
+    color: var(--ph-text); display: block;
+    margin-bottom: 2px; letter-spacing: 0.02em;
+}
+.ph-bundle-qty {
+    font-size: 10px; color: var(--ph-text-mute);
+    display: block; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ph-bundle-price {
+    font-size: 15px; font-weight: 600;
+    color: var(--ph-text); display: block;
+}
+.ph-bundle-per {
+    font-size: 10px; color: var(--ph-text-mute);
+    display: block; margin-top: 2px;
+}
+
+.ph-purchases { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 24px; }
+.ph-purchase {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--ph-border-mid);
+    border-radius: var(--ph-radius);
+    background: var(--ph-white);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    position: relative;
+}
+.ph-purchase:hover { border-color: var(--ph-accent); }
+.ph-purchase.active {
+    border: 2px solid var(--ph-text);
+    padding: 13px 15px;
+    background: var(--ph-bg-soft);
+}
+.ph-purchase-radio {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--ph-border-mid);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s ease;
+}
+.ph-purchase.active .ph-purchase-radio { border-color: var(--ph-text); }
+.ph-purchase.active .ph-purchase-radio::after {
+    content: ""; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--ph-text);
+}
+.ph-purchase-body { flex: 1; }
+.ph-purchase-title {
+    font-size: 13px; font-weight: 600; color: var(--ph-text);
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap; margin-bottom: 2px;
+}
+.ph-purchase-tag {
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--ph-mint); color: var(--ph-mint-deep);
+    text-transform: uppercase;
+}
+.ph-purchase-sub {
+    font-size: 11px; color: var(--ph-text-soft); font-weight: 400;
+}
+.ph-purchase-price {
+    text-align: right;
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: 1px; flex-shrink: 0;
+}
+.ph-purchase-price strong {
+    font-size: 15px; font-weight: 600; color: var(--ph-text);
+}
+.ph-purchase-price del {
+    font-size: 11px; color: var(--ph-text-mute);
+}
+
+.ph-cta {
+    width: 100%;
+    padding: 18px 24px;
+    background: var(--ph-text);
+    color: var(--ph-white);
+    border-radius: var(--ph-radius);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px;
+    transition: background 0.2s ease;
+    margin-bottom: 14px;
+}
+.ph-cta:hover { background: var(--ph-accent); }
+.ph-cta-left {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+}
+.ph-cta-label {
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+}
+.ph-cta-price {
+    font-size: 12px; font-weight: 500;
+    opacity: 0.85; letter-spacing: 0.02em;
+}
+.ph-cta-right {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.ph-pay-logo {
+    height: 22px; width: auto; display: block;
+    background: var(--ph-white);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+.ph-stock {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--ph-text-soft);
+    margin-bottom: 20px;
+    padding: 10px 12px;
+    background: var(--ph-accent-soft);
+    border-radius: var(--ph-radius);
+    border: 1px solid #F5E2E7;
+}
+.ph-stock i { color: var(--ph-accent); font-size: 11px; }
+.ph-stock strong { color: var(--ph-text); }
+
+.ph-trust {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 20px;
+    padding: 16px 0;
+    border-top: 1px solid var(--ph-border);
+    border-bottom: 1px solid var(--ph-border);
+}
+.ph-trust-item {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 6px; padding: 0 8px;
+    border-right: 1px solid var(--ph-border);
+}
+.ph-trust-item:last-child { border-right: none; }
+.ph-trust-item i { font-size: 14px; color: var(--ph-accent); }
+.ph-trust-item strong { font-size: 11px; font-weight: 600; color: var(--ph-text); }
+.ph-trust-item span { font-size: 10px; color: var(--ph-text-mute); line-height: 1.3; }
+
+@media (max-width: 600px) {
+    .ph-root { padding: 24px 16px; }
+    .ph-title { font-size: 28px; }
+    .ph-bundles { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .ph-bundle { padding: 12px 4px 10px; }
+    .ph-bundle-title { font-size: 10px; }
+    .ph-bundle-price { font-size: 13px; }
+    .ph-bundle-per { font-size: 9px; }
+    .ph-thumbs { gap: 6px; }
+    .ph-nav-btn { width: 36px; height: 36px; }
+    .ph-nav-prev { left: 8px; }
+    .ph-nav-next { right: 8px; }
+    .ph-purchase { padding: 12px 14px; gap: 10px; }
+    .ph-trust { grid-template-columns: 1fr; }
+    .ph-trust-item {
+        flex-direction: row; justify-content: flex-start;
+        gap: 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--ph-border);
+        padding: 10px 0; text-align: left;
+    }
+    .ph-trust-item:last-child { border-bottom: none; }
+    .ph-cta { padding: 14px 16px; flex-wrap: wrap; }
+    .ph-pay-logo { height: 18px; }
+}
+
+/* ============================================================
+   FORCE BUTTON + ARROW VISIBILITY
+   Defeats any global button reset / variable collision
+   ============================================================ */
+.ph-root .ph-cta,
+.ph-root .ph-cta:link,
+.ph-root .ph-cta:visited {
+    background-color: #191919 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #191919 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+}
+.ph-root .ph-cta:hover {
+    background-color: #B9657A !important;
+    border-color: #B9657A !important;
+    color: #FFFFFF !important;
+}
+.ph-root .ph-cta .ph-cta-label,
+.ph-root .ph-cta .ph-cta-price,
+.ph-root .ph-cta .ph-cta-left {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+}
+.ph-root .ph-cta svg,
+.ph-root .ph-cta .ph-pay-logo {
+    background: #FFFFFF !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.ph-root .ph-nav-btn {
+    background-color: #FFFFFF !important;
+    color: #191919 !important;
+    border: 1px solid #E9E9E9 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 10 !important;
+    display: flex !important;
+}
+.ph-root .ph-nav-btn:hover {
+    background-color: #FFFFFF !important;
+    color: #B9657A !important;
+    border-color: #B9657A !important;
+}
+.ph-root .ph-nav-btn i {
+    color: inherit !important;
+    display: inline-block !important;
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY                                                  -->
+<!-- ============================================================ -->
+<div class="ph-root editable-section" data-section="3000">
+    <div class="editor-only">
+        <div class="ph-container">
+            <div class="ph-grid">
+
+                <div class="ph-carousel editable-section no-drop-zone" data-section="3001">
+                    <div class="ph-main-frame">
+                        <div class="ph-slide active" data-slide="0">
+                            <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=900"
+                                 alt="Main product" class="editable-image" data-image="3002">
+                        </div>
+                        <div class="ph-slide" data-slide="1">
+                            <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=900"
+                                 alt="Product view 2" class="editable-image" data-image="3003">
+                        </div>
+                        <div class="ph-slide" data-slide="2">
+                            <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=900"
+                                 alt="Product view 3" class="editable-image" data-image="3004">
+                        </div>
+                        <div class="ph-slide" data-slide="3">
+                            <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=900"
+                                 alt="Product view 4" class="editable-image" data-image="3005">
+                        </div>
+                        <div class="ph-slide" data-slide="4">
+                            <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=900"
+                                 alt="Product view 5" class="editable-image" data-image="3006">
+                        </div>
+
+                        <button type="button" class="ph-nav-btn ph-nav-prev" aria-label="Previous image">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" class="ph-nav-btn ph-nav-next" aria-label="Next image">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+
+                        <div class="ph-dots">
+                            <button type="button" class="ph-dot active" data-dot="0"></button>
+                            <button type="button" class="ph-dot" data-dot="1"></button>
+                            <button type="button" class="ph-dot" data-dot="2"></button>
+                            <button type="button" class="ph-dot" data-dot="3"></button>
+                            <button type="button" class="ph-dot" data-dot="4"></button>
+                        </div>
+                    </div>
+                    <div class="ph-thumbs">
+                        <button type="button" class="ph-thumb active" data-thumb="0">
+                            <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumb 1">
+                        </button>
+                        <button type="button" class="ph-thumb" data-thumb="1">
+                            <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumb 2">
+                        </button>
+                        <button type="button" class="ph-thumb" data-thumb="2">
+                            <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumb 3">
+                        </button>
+                        <button type="button" class="ph-thumb" data-thumb="3">
+                            <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumb 4">
+                        </button>
+                        <button type="button" class="ph-thumb" data-thumb="4">
+                            <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Thumb 5">
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ph-info">
+                    <div class="ph-eyebrow">
+                        <span class="ph-dot-badge"></span>
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="3017" data-text="3017">New Arrival · Limited Edition</span>
+                    </div>
+
+                    <h1 class="ph-title editable-text editable-section no-drop-zone"
+                        data-section="3018" data-text="3018">The Sculptural Carry</h1>
+
+                    <div class="ph-rating-row">
+                        <div class="ph-stars">
+                            <i class="fas fa-star editable-icon" data-icon="3019"></i>
+                            <i class="fas fa-star editable-icon" data-icon="3020"></i>
+                            <i class="fas fa-star editable-icon" data-icon="3021"></i>
+                            <i class="fas fa-star editable-icon" data-icon="3022"></i>
+                            <i class="fas fa-star editable-icon" data-icon="3023"></i>
+                        </div>
+                        <span class="ph-rating-score editable-text editable-section no-drop-zone"
+                              data-section="3024" data-text="3024">4.9</span>
+                        <a href="#reviews" class="ph-review-link editable-text editable-section no-drop-zone"
+                           data-section="3025" data-text="3025">See all 247 reviews</a>
+                    </div>
+
+                    <div class="ph-price-block">
+                        <span class="ph-price editable-text editable-section no-drop-zone"
+                              data-section="3026" data-text="3026">$184.00</span>
+                        <span class="ph-price-compare editable-text editable-section no-drop-zone"
+                              data-section="3027" data-text="3027">$248.00</span>
+                        <span class="ph-discount editable-text editable-section no-drop-zone"
+                              data-section="3028" data-text="3028">Save 26%</span>
+                    </div>
+
+                    <p class="ph-desc editable-text editable-section no-drop-zone"
+                       data-section="3029" data-text="3029">An elegant sculptural carry system displaying fluid sweeping edges and organic architectural curves. Handcrafted in limited runs from full-grain leather.</p>
+
+                    <div class="ph-divider"></div>
+
+                    <div class="ph-field-label">
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="3030" data-text="3030">Choose your bundle</span>
+                        <small class="editable-text editable-section no-drop-zone"
+                               data-section="3031" data-text="3031">Free shipping on 3+</small>
+                    </div>
+                    <div class="ph-bundles">
+                        <div class="ph-bundle editable-section no-drop-zone"
+                             data-section="3032" data-qty="1" data-price="184.00" data-perunit="184.00">
+                            <span class="ph-bundle-title editable-text editable-section no-drop-zone"
+                                  data-section="3033" data-text="3033">Single</span>
+                            <span class="ph-bundle-qty editable-text editable-section no-drop-zone"
+                                  data-section="3034" data-text="3034">1 unit</span>
+                            <span class="ph-bundle-price editable-text editable-section no-drop-zone"
+                                  data-section="3035" data-text="3035">$184</span>
+                            <span class="ph-bundle-per editable-text editable-section no-drop-zone"
+                                  data-section="3036" data-text="3036">$184 each</span>
+                        </div>
+                        <div class="ph-bundle selected editable-section no-drop-zone"
+                             data-section="3032" data-qty="3" data-price="474.00" data-perunit="158.00">
+                            <span class="ph-bundle-badge editable-text editable-section no-drop-zone"
+                                  data-section="3037" data-text="3037">Most popular</span>
+                            <span class="ph-bundle-title editable-text editable-section no-drop-zone"
+                                  data-section="3033" data-text="3033">Trio</span>
+                            <span class="ph-bundle-qty editable-text editable-section no-drop-zone"
+                                  data-section="3034" data-text="3034">3 units</span>
+                            <span class="ph-bundle-price editable-text editable-section no-drop-zone"
+                                  data-section="3035" data-text="3035">$474</span>
+                            <span class="ph-bundle-per editable-text editable-section no-drop-zone"
+                                  data-section="3036" data-text="3036">$158 each</span>
+                        </div>
+                        <div class="ph-bundle editable-section no-drop-zone"
+                             data-section="3032" data-qty="6" data-price="864.00" data-perunit="144.00">
+                            <span class="ph-bundle-badge ph-badge-soft editable-text editable-section no-drop-zone"
+                                  data-section="3037" data-text="3037">Best value</span>
+                            <span class="ph-bundle-title editable-text editable-section no-drop-zone"
+                                  data-section="3033" data-text="3033">Collection</span>
+                            <span class="ph-bundle-qty editable-text editable-section no-drop-zone"
+                                  data-section="3034" data-text="3034">6 units</span>
+                            <span class="ph-bundle-price editable-text editable-section no-drop-zone"
+                                  data-section="3035" data-text="3035">$864</span>
+                            <span class="ph-bundle-per editable-text editable-section no-drop-zone"
+                                  data-section="3036" data-text="3036">$144 each</span>
+                        </div>
+                    </div>
+
+                    <div class="ph-field-label">
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="3038" data-text="3038">How would you like to receive it?</span>
+                    </div>
+                    <div class="ph-purchases">
+                        <div class="ph-purchase active editable-section no-drop-zone"
+                             data-section="3039" data-purchase="subscribe">
+                            <div class="ph-purchase-radio"></div>
+                            <div class="ph-purchase-body">
+                                <div class="ph-purchase-title">
+                                    <span class="editable-text editable-section no-drop-zone"
+                                          data-section="3040" data-text="3040">Subscribe &amp; Save 15%</span>
+                                    <span class="ph-purchase-tag editable-text editable-section no-drop-zone"
+                                          data-section="3041" data-text="3041">Free shipping</span>
+                                </div>
+                                <div class="ph-purchase-sub editable-text editable-section no-drop-zone"
+                                     data-section="3042" data-text="3042">Auto-delivery every 30 days. Cancel anytime.</div>
+                            </div>
+                            <div class="ph-purchase-price">
+                                <strong>$402.90</strong>
+                                <del>$474.00</del>
+                            </div>
+                        </div>
+                        <div class="ph-purchase editable-section no-drop-zone"
+                             data-section="3039" data-purchase="onetime">
+                            <div class="ph-purchase-radio"></div>
+                            <div class="ph-purchase-body">
+                                <div class="ph-purchase-title">
+                                    <span class="editable-text editable-section no-drop-zone"
+                                          data-section="3040" data-text="3040">One-time purchase</span>
+                                </div>
+                                <div class="ph-purchase-sub editable-text editable-section no-drop-zone"
+                                     data-section="3042" data-text="3042">Ships once. No recurring charges.</div>
+                            </div>
+                            <div class="ph-purchase-price">
+                                <strong>$474.00</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="ph-cta editable-section no-drop-zone" data-section="3043">
+                        <div class="ph-cta-left">
+                            <span class="ph-cta-label editable-text editable-section no-drop-zone"
+                                  data-section="3044" data-text="3044">Add to cart</span>
+                            <span class="ph-cta-price editable-text editable-section no-drop-zone"
+                                  data-section="3045" data-text="3045">— $402.90</span>
+                        </div>
+                        <div class="ph-cta-right">
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Visa">
+                                <rect width="40" height="26" rx="3" fill="#fff"/>
+                                <path d="M16.5 17.5h-2.7l1.7-10.2h2.7L16.5 17.5zm7.9-9.9c-.5-.2-1.3-.4-2.3-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.2 2.2 2.7 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1 0-1.6-.2-2.4-.5l-.3-.2-.4 2.3c.6.3 1.7.5 2.9.5 2.7 0 4.4-1.3 4.4-3.3 0-1.1-.7-2-2.2-2.7-.9-.4-1.5-.7-1.5-1.2 0-.4.5-.8 1.5-.8.8 0 1.4.2 1.9.4l.2.1.4-2.2zM30.8 7.3h-2.1c-.6 0-1.1.2-1.4.9l-3.9 9.3h2.8l.5-1.5h3.4l.3 1.5h2.5l-2.1-10.2zm-3.3 6.5l1.1-3 .6 3h-1.7zM11.4 7.3L8.7 14.3l-.3-1.5c-.5-1.6-2.1-3.3-3.9-4.2L6.9 17.5h2.9l4.3-10.2h-2.7z" fill="#1434CB"/>
+                            </svg>
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard">
+                                <rect width="40" height="26" rx="3" fill="#fff"/>
+                                <circle cx="16" cy="13" r="7" fill="#EB001B"/>
+                                <circle cx="24" cy="13" r="7" fill="#F79E1B"/>
+                                <path d="M20 7.5c2.5 1.6 4 4.5 4 7.5s-1.5 5.9-4 7.5c-2.5-1.6-4-4.5-4-7.5s1.5-5.9 4-7.5z" fill="#FF5F00"/>
+                            </svg>
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="American Express">
+                                <rect width="40" height="26" rx="3" fill="#1F72CD"/>
+                                <text x="20" y="17" font-family="Arial, sans-serif" font-size="9" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing="0.5">AMEX</text>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <div class="ph-stock">
+                        <i class="fas fa-bolt editable-icon" data-icon="3046"></i>
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="3047" data-text="3047">Only <strong>14 left</strong> in the Paris atelier. Ships within 48 hours.</span>
+                    </div>
+
+                    <div class="ph-trust">
+                        <div class="ph-trust-item">
+                            <i class="fas fa-truck editable-icon" data-icon="3048"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="3049" data-text="3049">Free shipping</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="3050" data-text="3050">On orders over $100</span>
+                        </div>
+                        <div class="ph-trust-item">
+                            <i class="fas fa-undo editable-icon" data-icon="3051"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="3052" data-text="3052">30-day returns</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="3053" data-text="3053">No questions asked</span>
+                        </div>
+                        <div class="ph-trust-item">
+                            <i class="fas fa-lock editable-icon" data-icon="3054"></i>
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="3055" data-text="3055">Secure checkout</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="3056" data-text="3056">256-bit encrypted</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="public-only">
+        {% resolve_product as p %}
+        {% with gallery=p.product_images.all %}
+        <div class="ph-container"
+             id="ph-product-root"
+             data-product-id="{{ p.id|default:0 }}"
+             data-base-price="{{ p.price|default:0 }}"
+             data-currency="{{ page.currency_symbol|default:'$' }}"
+             data-subdomain="{{ page.subdomain }}">
+
+            <div class="ph-grid">
+
+                <div class="ph-carousel">
+                    <div class="ph-main-frame" id="ph-main-frame">
+
+                        <div class="ph-slide active" data-slide="0">
+                            {% if p and p.main_image %}
+                                <img src="{{ p.main_image.url }}" alt="{{ p.title }} — main image">
+                            {% elif image_customizations.3002 %}
+                                <img src="{{ image_customizations.3002.image_url }}" alt="{{ p.title }}">
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=900" alt="{{ p.title }}">
+                            {% endif %}
+                        </div>
+
+                        {% for img in gallery|slice:":4" %}
+                            <div class="ph-slide" data-slide="{{ forloop.counter }}">
+                                <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:p.title }}">
+                            </div>
+                        {% endfor %}
+
+                        {% if gallery.count < 4 %}
+                            {% if gallery.count < 1 %}
+                                <div class="ph-slide" data-slide="1">
+                                    <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=900" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 2 %}
+                                <div class="ph-slide" data-slide="2">
+                                    <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=900" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 3 %}
+                                <div class="ph-slide" data-slide="3">
+                                    <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=900" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                            {% if gallery.count < 4 %}
+                                <div class="ph-slide" data-slide="4">
+                                    <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=900" alt="{{ p.title }}">
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <button type="button" class="ph-nav-btn ph-nav-prev" id="ph-prev" aria-label="Previous image">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" class="ph-nav-btn ph-nav-next" id="ph-next" aria-label="Next image">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+
+                        <div class="ph-dots" id="ph-dots">
+                            <button type="button" class="ph-dot active" data-dot="0"></button>
+                            <button type="button" class="ph-dot" data-dot="1"></button>
+                            <button type="button" class="ph-dot" data-dot="2"></button>
+                            <button type="button" class="ph-dot" data-dot="3"></button>
+                            <button type="button" class="ph-dot" data-dot="4"></button>
+                        </div>
+                    </div>
+
+                    <div class="ph-thumbs" id="ph-thumbs">
+                        <button type="button" class="ph-thumb active" data-thumb="0">
+                            {% if p and p.main_image %}
+                                <img src="{{ p.main_image.url }}" alt="{{ p.title }} — main">
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=200" alt="{{ p.title }}">
+                            {% endif %}
+                        </button>
+
+                        {% for img in gallery|slice:":4" %}
+                            <button type="button" class="ph-thumb" data-thumb="{{ forloop.counter }}">
+                                <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:p.title }}">
+                            </button>
+                        {% endfor %}
+
+                        {% if gallery.count < 4 %}
+                            {% if gallery.count < 1 %}
+                                <button type="button" class="ph-thumb" data-thumb="1">
+                                    <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=200" alt="{{ p.title }}">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 2 %}
+                                <button type="button" class="ph-thumb" data-thumb="2">
+                                    <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=200" alt="{{ p.title }}">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 3 %}
+                                <button type="button" class="ph-thumb" data-thumb="3">
+                                    <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=200" alt="{{ p.title }}">
+                                </button>
+                            {% endif %}
+                            {% if gallery.count < 4 %}
+                                <button type="button" class="ph-thumb" data-thumb="4">
+                                    <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=200" alt="{{ p.title }}">
+                                </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="ph-info">
+                    <div class="ph-eyebrow">
+                        <span class="ph-dot-badge"></span>
+                        <span id="section-3017">{{ text_contents.3017|default:"New Arrival · Limited Edition" }}</span>
+                    </div>
+
+                    <h1 class="ph-title" id="section-3018">{{ p.title|default:text_contents.3018 }}</h1>
+
+                    <div class="ph-rating-row">
+                        <div class="ph-stars">
+                            {% with avg=p.get_average_rating %}
+                                {% with rating=avg|default:5 %}
+                                    {% for i in "12345" %}
+                                        <i class="fas fa-star{% if forloop.counter > rating %} ph-star-empty{% endif %}"></i>
+                                    {% endfor %}
+                                {% endwith %}
+                            {% endwith %}
+                        </div>
+                        <span class="ph-rating-score" id="section-3024">
+                            {{ p.get_average_rating|default:"4.9"|floatformat:1 }}
+                        </span>
+                        <a href="#reviews" class="ph-review-link" id="section-3025">
+                            See all {{ p.get_review_count|default:0 }} reviews
+                        </a>
+                    </div>
+
+                    <div class="ph-price-block">
+                        <span class="ph-price" id="section-3026">{{ page.currency_symbol|default:"$" }}{{ p.price|floatformat:2 }}</span>
+                        {% if p.compare_at_price and p.compare_at_price > p.price %}
+                            <span class="ph-price-compare" id="section-3027">{{ page.currency_symbol }}{{ p.compare_at_price|floatformat:2 }}</span>
+                            <span class="ph-discount" id="section-3028">Save {{ p.discount_percentage }}%</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="ph-desc" id="section-3029">{{ text_contents.3029|default:p.description|truncatechars:220 }}</p>
+
+                    <div class="ph-divider"></div>
+
+                    <div class="ph-field-label">
+                        <span id="section-3030">{{ text_contents.3030|default:"Choose your bundle" }}</span>
+                        <small id="section-3031">{{ text_contents.3031|default:"Free shipping on 3+" }}</small>
+                    </div>
+
+                    {% if tiers %}
+                    <div class="ph-bundles" id="ph-bundles">
+                        {% for tier in tiers %}
+                            <div class="ph-bundle{% if tier.is_default %} selected{% endif %}"
+                                 data-tier-id="{{ tier.id }}"
+                                 data-qty="{{ tier.quantity }}"
+                                 data-price="{{ tier.total_price|stringformat:'.2f' }}"
+                                 data-perunit="{{ tier.price_per_unit|stringformat:'.2f' }}"
+                                 onclick="phSelectBundle(this)">
+                                {% if tier.badge_text %}
+                                    <span class="ph-bundle-badge{% if tier.is_default %} ph-badge-soft{% endif %}">{{ tier.badge_text }}</span>
+                                {% endif %}
+                                <span class="ph-bundle-title">{{ tier.quantity }} unit{{ tier.quantity|pluralize }}</span>
+                                <span class="ph-bundle-qty">{{ tier.quantity }} item{{ tier.quantity|pluralize }}</span>
+                                <span class="ph-bundle-price">{{ page.currency_symbol|default:"$" }}{{ tier.total_price|floatformat:0 }}</span>
+                                <span class="ph-bundle-per">{{ page.currency_symbol }}{{ tier.price_per_unit|floatformat:0 }} each</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="ph-bundles" id="ph-bundles">
+                        <div class="ph-bundle selected" data-qty="1" data-price="{{ p.price|floatformat:2 }}" data-perunit="{{ p.price|floatformat:2 }}" onclick="phSelectBundle(this)">
+                            <span class="ph-bundle-title">Single</span>
+                            <span class="ph-bundle-qty">1 unit</span>
+                            <span class="ph-bundle-price">{{ page.currency_symbol|default:"$" }}{{ p.price|floatformat:0 }}</span>
+                            <span class="ph-bundle-per">{{ page.currency_symbol }}{{ p.price|floatformat:0 }} each</span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="ph-field-label">
+                        <span id="section-3038">{{ text_contents.3038|default:"How would you like to receive it?" }}</span>
+                    </div>
+                    <div class="ph-purchases" id="ph-purchases">
+                        <div class="ph-purchase active" data-purchase="subscribe" onclick="phSelectPurchase(this)">
+                            <div class="ph-purchase-radio"></div>
+                            <div class="ph-purchase-body">
+                                <div class="ph-purchase-title">
+                                    <span>{{ text_contents.3040|default:"Subscribe & Save 15%" }}</span>
+                                    <span class="ph-purchase-tag">{{ text_contents.3041|default:"Free shipping" }}</span>
+                                </div>
+                                <div class="ph-purchase-sub">{{ text_contents.3042|default:"Auto-delivery every 30 days. Cancel anytime." }}</div>
+                            </div>
+                            <div class="ph-purchase-price">
+                                <strong data-role="subscribe-total">{{ page.currency_symbol|default:"$" }}{{ p.price|mul:0.85|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                        <div class="ph-purchase" data-purchase="onetime" onclick="phSelectPurchase(this)">
+                            <div class="ph-purchase-radio"></div>
+                            <div class="ph-purchase-body">
+                                <div class="ph-purchase-title">
+                                    <span>{{ text_contents.3040|default:"One-time purchase" }}</span>
+                                </div>
+                                <div class="ph-purchase-sub">{{ text_contents.3042|default:"Ships once. No recurring charges." }}</div>
+                            </div>
+                            <div class="ph-purchase-price">
+                                <strong data-role="onetime-total">{{ page.currency_symbol|default:"$" }}{{ p.price|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="ph-cta" id="ph-add-btn" onclick="phBuyNow()">
+                        <div class="ph-cta-left">
+                            <span class="ph-cta-label">{{ text_contents.3044|default:"Add to cart" }}</span>
+                            <span class="ph-cta-price">
+                                {{ page.currency_symbol|default:"$" }}<span data-role="cta-total">{{ p.price|mul:0.85|floatformat:2 }}</span>
+                            </span>
+                        </div>
+                        <div class="ph-cta-right">
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Visa">
+                                <rect width="40" height="26" rx="3" fill="#fff"/>
+                                <path d="M16.5 17.5h-2.7l1.7-10.2h2.7L16.5 17.5zm7.9-9.9c-.5-.2-1.3-.4-2.3-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.2 2.2 2.7 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1 0-1.6-.2-2.4-.5l-.3-.2-.4 2.3c.6.3 1.7.5 2.9.5 2.7 0 4.4-1.3 4.4-3.3 0-1.1-.7-2-2.2-2.7-.9-.4-1.5-.7-1.5-1.2 0-.4.5-.8 1.5-.8.8 0 1.4.2 1.9.4l.2.1.4-2.2zM30.8 7.3h-2.1c-.6 0-1.1.2-1.4.9l-3.9 9.3h2.8l.5-1.5h3.4l.3 1.5h2.5l-2.1-10.2zm-3.3 6.5l1.1-3 .6 3h-1.7zM11.4 7.3L8.7 14.3l-.3-1.5c-.5-1.6-2.1-3.3-3.9-4.2L6.9 17.5h2.9l4.3-10.2h-2.7z" fill="#1434CB"/>
+                            </svg>
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard">
+                                <rect width="40" height="26" rx="3" fill="#fff"/>
+                                <circle cx="16" cy="13" r="7" fill="#EB001B"/>
+                                <circle cx="24" cy="13" r="7" fill="#F79E1B"/>
+                                <path d="M20 7.5c2.5 1.6 4 4.5 4 7.5s-1.5 5.9-4 7.5c-2.5-1.6-4-4.5-4-7.5s1.5-5.9 4-7.5z" fill="#FF5F00"/>
+                            </svg>
+                            <svg class="ph-pay-logo" viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="American Express">
+                                <rect width="40" height="26" rx="3" fill="#1F72CD"/>
+                                <text x="20" y="17" font-family="Arial, sans-serif" font-size="9" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing="0.5">AMEX</text>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <div class="ph-stock">
+                        <i class="fas fa-bolt"></i>
+                        <span id="section-3047">{{ text_contents.3047|default:"Only a few units left. Ships within 48 hours." }}</span>
+                    </div>
+
+                    <div class="ph-trust">
+                        <div class="ph-trust-item">
+                            <i class="fas fa-truck"></i>
+                            <strong>{{ text_contents.3049|default:"Free shipping" }}</strong>
+                            <span>{{ text_contents.3050|default:"On orders over $100" }}</span>
+                        </div>
+                        <div class="ph-trust-item">
+                            <i class="fas fa-undo"></i>
+                            <strong>{{ text_contents.3052|default:"30-day returns" }}</strong>
+                            <span>{{ text_contents.3053|default:"No questions asked" }}</span>
+                        </div>
+                        <div class="ph-trust-item">
+                            <i class="fas fa-lock"></i>
+                            <strong>{{ text_contents.3055|default:"Secure checkout" }}</strong>
+                            <span>{{ text_contents.3056|default:"256-bit encrypted" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% endwith %}
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var PH = window.PH_HERO = window.PH_HERO || {};
+    if (PH._init) return;
+    PH._init = true;
+
+    function publicRoot() {
+        return document.querySelector('.public-only #ph-product-root')
+            || document.getElementById('ph-product-root');
+    }
+    function scope(selector) {
+        var root = publicRoot();
+        return root ? root.querySelector(selector) : null;
+    }
+    function scopeAll(selector) {
+        var root = publicRoot();
+        return root ? root.querySelectorAll(selector) : [];
+    }
+    function getSymbol() {
+        var r = publicRoot();
+        return (r && r.dataset.currency) ? r.dataset.currency : '$';
+    }
+    function getSubdomain() {
+        var r = publicRoot();
+        return (r && r.dataset.subdomain) ? r.dataset.subdomain : window.location.hostname.split('.')[0];
+    }
+
+    var state = {
+        productId: 0,
+        currentSlide: 0,
+        totalSlides: 0,
+        bundleQty: 1,
+        bundlePrice: 0,
+        bundlePerUnit: 0,
+        purchase: 'subscribe',
+        subscriptionDiscount: 0.15
+    };
+
+    function init() {
+        var root = publicRoot();
+        if (!root) return;
+
+        if (root.dataset.productId) {
+            state.productId = parseInt(root.dataset.productId, 10) || 0;
+        }
+        if (root.dataset.basePrice) {
+            var bp = parseFloat(root.dataset.basePrice);
+            if (!isNaN(bp)) { state.bundlePrice = bp; state.bundlePerUnit = bp; }
+        }
+
+        var b = root.querySelector('.ph-bundle.selected')
+             || root.querySelector('.ph-bundle');
+        if (b) {
+            state.bundleQty = parseInt(b.dataset.qty, 10) || 1;
+            state.bundlePrice = parseFloat(b.dataset.price) || state.bundlePrice;
+            state.bundlePerUnit = parseFloat(b.dataset.perunit) || state.bundlePerUnit;
+            if (!b.classList.contains('selected')) b.classList.add('selected');
+        }
+
+        state.totalSlides = root.querySelectorAll('.ph-slide').length;
+
+        var prev = root.querySelector('#ph-prev');
+        var next = root.querySelector('#ph-next');
+
+        if (prev) {
+            prev.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                goSlide(state.currentSlide - 1);
+            });
+        }
+        if (next) {
+            next.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                goSlide(state.currentSlide + 1);
+            });
+        }
+
+        root.querySelectorAll('.ph-dot').forEach(function (dot) {
+            dot.addEventListener('click', function (e) {
+                e.preventDefault();
+                goSlide(parseInt(dot.dataset.dot, 10) || 0);
+            });
+        });
+
+        root.querySelectorAll('.ph-thumb').forEach(function (t) {
+            t.addEventListener('click', function (e) {
+                e.preventDefault();
+                goSlide(parseInt(t.dataset.thumb, 10) || 0);
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft')  goSlide(state.currentSlide - 1);
+            if (e.key === 'ArrowRight') goSlide(state.currentSlide + 1);
+        });
+
+        updatePrices();
+    }
+
+    function goSlide(idx) {
+        if (state.totalSlides <= 0) return;
+        if (idx < 0) idx = state.totalSlides - 1;
+        if (idx >= state.totalSlides) idx = 0;
+        state.currentSlide = idx;
+
+        scopeAll('.ph-slide').forEach(function (s, i) {
+            s.classList.toggle('active', i === idx);
+        });
+        scopeAll('.ph-dot').forEach(function (d, i) {
+            d.classList.toggle('active', i === idx);
+        });
+        scopeAll('.ph-thumb').forEach(function (t, i) {
+            t.classList.toggle('active', i === idx);
+        });
+    }
+
+    function calcSubscribeTotal() { return state.bundlePrice * (1 - state.subscriptionDiscount); }
+    function calcOnetimeTotal()   { return state.bundlePrice; }
+    function calcActiveTotal()    { return state.purchase === 'subscribe' ? calcSubscribeTotal() : calcOnetimeTotal(); }
+
+    function updatePrices() {
+        var sym = getSymbol();
+        var subEl = scope('[data-role="subscribe-total"]');
+        if (subEl) subEl.textContent = sym + calcSubscribeTotal().toFixed(2);
+        var oneEl = scope('[data-role="onetime-total"]');
+        if (oneEl) oneEl.textContent = sym + calcOnetimeTotal().toFixed(2);
+        var ctaEl = scope('[data-role="cta-total"]');
+        if (ctaEl) ctaEl.textContent = calcActiveTotal().toFixed(2);
+    }
+
+    PH.selectBundle = function (el) {
+        scopeAll('.ph-bundle').forEach(function (b) { b.classList.remove('selected'); });
+        el.classList.add('selected');
+        state.bundleQty = parseInt(el.dataset.qty, 10) || 1;
+        state.bundlePrice = parseFloat(el.dataset.price) || 0;
+        state.bundlePerUnit = parseFloat(el.dataset.perunit) || 0;
+        updatePrices();
+    };
+    window.phSelectBundle = PH.selectBundle;
+
+    PH.selectPurchase = function (el) {
+        scopeAll('.ph-purchase').forEach(function (p) { p.classList.remove('active'); });
+        el.classList.add('active');
+        state.purchase = el.dataset.purchase || 'onetime';
+        updatePrices();
+    };
+    window.phSelectPurchase = PH.selectPurchase;
+
+    PH.buyNow = function () {
+        if (!state.productId) { alert('Demo mode — connect a product.'); return; }
+        var qty = state.bundleQty || 1;
+        var unitPrice = state.purchase === 'subscribe'
+            ? state.bundlePerUnit * (1 - state.subscriptionDiscount)
+            : state.bundlePerUnit;
+        var total = state.purchase === 'subscribe' ? calcSubscribeTotal() : calcOnetimeTotal();
+        var titleEl = scope('.ph-title');
+        var title = titleEl ? titleEl.textContent.trim() : 'Product';
+
+        var params = new URLSearchParams({
+            type: 'instant',
+            product: JSON.stringify({
+                id: state.productId, title: title, description: '',
+                price: unitPrice, quantity: qty, total_price: total,
+                selected_color: '', selected_size: '', cj_vid: '', variant_id: null
+            })
+        });
+        var cart = {
+            items: [{
+                id: state.productId, title: title, description: '',
+                price: unitPrice, quantity: qty, total_price: total
+            }],
+            subtotal: parseFloat(total.toFixed(2)),
+            shipping_amount: 0, tax_amount: 0,
+            total_amount: parseFloat(total.toFixed(2)),
+            is_buy_now: true
+        };
+        params.append('cart_data', JSON.stringify(cart));
+        window.location.href = '/payments/select-payment/' + getSubdomain() + '/?' + params.toString();
+    };
+    window.phBuyNow = PH.buyNow;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

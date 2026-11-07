@@ -561,6 +561,7 @@ class PublishedPage(models.Model):
     
 class ComponentCustomization(models.Model):
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='component_customizations')
+    page_name = models.CharField(max_length=100, default='home', db_index=True)
     component_instance_id = models.CharField(max_length=50)  # Unique ID for this component instance
     component_id = models.CharField(max_length=100)  # Reference to component file
     drop_zone = models.CharField(max_length=20, default='end')
@@ -572,8 +573,11 @@ class ComponentCustomization(models.Model):
     rendered_html = models.TextField(blank=True, null=True, help_text="Final HTML with customizations applied")
     
     class Meta:
-        unique_together = ['page', 'component_instance_id']
+        unique_together = ['page', 'page_name', 'component_instance_id']
         ordering = ['display_order']
+
+    def __str__(self):
+        return f"{self.page.brand_name} - {self.page_name} - {self.component_instance_id}"
 
 # Remove old component models (Template, Component, PageComponent, etc.)
     
@@ -582,16 +586,29 @@ class ComponentCustomization(models.Model):
 class TextContent(models.Model):
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='text_contents')
     element_id = models.CharField(max_length=50)  # e.g., "editable-text-1"
+    page_name = models.CharField(
+        max_length=100,
+        default='home',
+        db_index=True,
+        help_text="Which page/template section this text belongs to. "
+                  "For product-scoped pages use 'product-details:<product_id>'.",
+    )
     content = models.TextField(blank=True)
     
     class Meta:
-        unique_together = ['page', 'element_id']
-    
+        unique_together = ['page', 'page_name', 'element_id']
+
     def __str__(self):
-        return f"{self.page.brand_name} - {self.element_id}"
+        return f'{self.page.brand_name} - {self.page_name} - {self.element_id}'
 
 class StyleCustomization(models.Model):
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='style_customizations')
+    page_name = models.CharField(
+        max_length=100,
+        default='home',
+        db_index=True,
+        help_text="Which page/template section these styles belong to.",
+    )
     element_id = models.CharField(max_length=9999)  # e.g., "editable-section-1"
     background_color = models.CharField(max_length=30, blank=True)  # HEX color
     text_color = models.CharField(max_length=30, blank=True)  # HEX color
@@ -606,11 +623,10 @@ class StyleCustomization(models.Model):
     display = models.CharField(max_length=20, blank=True, null=True, default='', help_text="Display property value, e.g., 'none' to hide, 'block' to show")
     
     class Meta:
-        unique_together = ['page', 'element_id']
-    
+        unique_together = ['page', 'page_name', 'element_id']
+
     def __str__(self):
-        return f"{self.page.brand_name} - {self.element_id}"
-    
+        return f'{self.page.brand_name} - {self.page_name} - {self.element_id}'    
 
 class ImageCustomization(models.Model):
     """Store custom images for editable-image elements"""
@@ -1027,6 +1043,110 @@ class Product(models.Model):
         return self.reviews.filter(is_approved=True).values('rating').annotate(count=Count('id')).order_by('rating')
 
 
+    # ===== FAIL-SAFE PROPERTIES =====
+
+    @property
+    def active_tiers(self):
+        """Active pricing tiers. Empty list if none or on error."""
+        try:
+            return list(self.tiers.filter(is_active=True).order_by('display_order', 'quantity'))
+        except Exception:
+            return []
+
+    @property
+    def safe_variants(self):
+        """Variants list. Empty queryset-like on error."""
+        try:
+            return self.variants.all()
+        except Exception:
+            return []
+
+    @property
+    def safe_images(self):
+        """Product images. Empty queryset-like on error."""
+        try:
+            return self.product_images.all()
+        except Exception:
+            return []
+
+    @property
+    def safe_sizes(self):
+        """Sizes as a list. Never None."""
+        try:
+            if not self.sizes:
+                return []
+            if isinstance(self.sizes, (list, tuple)):
+                return list(self.sizes)
+            return [s.strip() for s in str(self.sizes).split(',') if s.strip()]
+        except Exception:
+            return []
+
+    @property
+    def safe_colors(self):
+        """Colors as a list. Never None."""
+        try:
+            if not self.colors:
+                return []
+            if isinstance(self.colors, (list, tuple)):
+                return list(self.colors)
+            return [c.strip() for c in str(self.colors).split(',') if c.strip()]
+        except Exception:
+            return []
+
+    @property
+    def safe_price(self):
+        """Price as float, defaulting to 0."""
+        try:
+            return float(self.price or 0)
+        except Exception:
+            return 0.0
+
+    @property
+    def safe_title(self):
+        """Title or fallback."""
+        return self.title or "Sample Product"
+
+    @property
+    def safe_description(self):
+        """Description or fallback."""
+        return self.description or "A premium product designed for daily wellness."
+
+    @property
+    def safe_main_image_url(self):
+        """Main image URL or None."""
+        try:
+            if self.main_image:
+                return self.main_image.url
+        except Exception:
+            pass
+        return None
+
+    @property
+    def safe_hero_image_url(self):
+        """Hero image URL with a hardcoded fallback."""
+        url = self.safe_main_image_url
+        if url:
+            return url
+        return "https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=600"
+
+    @property
+    def safe_review_stats(self):
+        """Review stats dict or None."""
+        try:
+            from django.db.models import Avg
+            qs = self.reviews.filter(is_approved=True)
+            total = qs.count()
+            if total == 0:
+                return None
+            avg = qs.aggregate(a=Avg('rating'))['a'] or 0
+            return {
+                'average_rating': round(float(avg), 1),
+                'total_reviews': total,
+            }
+        except Exception:
+            return None
+
+
 
 
 class ProductImages(models.Model):
@@ -1150,8 +1270,43 @@ class ProductReview(models.Model):
     helpful_count = models.IntegerField(default=0)
     author_name = models.CharField(max_length=100)
     author_email = models.EmailField(blank=True)
-    is_verified_purchase = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False)
+    is_verified_purchase = models.BooleanField(default=True)
+    is_approved = models.BooleanField(default=True)
+
+    # NEW: Media
+    profile_picture = models.ImageField(
+        upload_to='reviews/profiles/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage(),
+        help_text="Optional profile picture for the reviewer"
+    )
+    review_image_1 = models.ImageField(
+        upload_to='reviews/images/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage(),
+    )
+    review_image_2 = models.ImageField(
+        upload_to='reviews/images/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage(),
+    )
+    review_image_3 = models.ImageField(
+        upload_to='reviews/images/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage(),
+    )
+    review_video = models.FileField(
+        upload_to='reviews/videos/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage(),
+        help_text="Optional video review (max 50MB)"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -1163,6 +1318,11 @@ class ProductReview(models.Model):
     
     def __str__(self):
         return f"{self.product.title} - {self.rating} stars"
+
+    @property
+    def all_images(self):
+        """Return a list of non-empty review images."""
+        return [img for img in [self.review_image_1, self.review_image_2, self.review_image_3] if img]
 
 
  # ================================================================
@@ -1251,16 +1411,19 @@ class BackgroundImage(models.Model):
 
 class IconCustomization(models.Model):
     page = models.ForeignKey(PublishedPage, on_delete=models.CASCADE, related_name='icon_customizations')
+    page_name = models.CharField(
+        max_length=100, default='home', db_index=True
+    )
     element_id = models.CharField(max_length=50)
     icon_class = models.CharField(max_length=100, blank=True)
     color = models.CharField(max_length=99, blank=True)
     font_size = models.CharField(max_length=20, blank=True)
     
     class Meta:
-        unique_together = ['page', 'element_id']
-    
+            unique_together = ['page', 'page_name', 'element_id']
+
     def __str__(self):
-        return f"{self.page.brand_name} - {self.element_id}"
+        return f"{self.page.brand_name} - {self.page_name} - {self.element_id}"
     
 
 class PageSection(models.Model):
@@ -3264,4 +3427,52 @@ class DomainAvailabilityCache(models.Model):
         return timezone.now() < self.expires_at
 
 
-    
+
+
+# ============================================================
+# LINK CUSTOMIZATION
+# ============================================================
+
+class LinkCustomization(models.Model):
+    """
+    Stores href/target overrides for anchors on both native template
+    elements AND injected components.
+
+    Keying rules:
+      - `data-section` (on the anchor, or on its closest ancestor) is
+        the canonical element_id.
+      - `wrapper_id` is NULL for native template elements and set to the
+        injected section's `data-injected-id` for component anchors.
+      - This means a native `data-section="2"` and an injected
+        `data-section="2"` never collide.
+    """
+    page = models.ForeignKey(
+        PublishedPage,
+        on_delete=models.CASCADE,
+        related_name='link_customizations',
+    )
+    page_name = models.CharField(max_length=100, default='home', db_index=True)
+    element_id = models.CharField(max_length=50, db_index=True)
+    wrapper_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Injected wrapper ID (data-injected-id). NULL for native template elements.",
+    )
+    href = models.CharField(max_length=1000, blank=True)
+    target = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Link Customization"
+        verbose_name_plural = "Link Customizations"
+        unique_together = [('page', 'page_name', 'element_id', 'wrapper_id')]
+        indexes = [
+            models.Index(fields=['page', 'page_name']),
+        ]
+
+    def __str__(self):
+        scope = f"wrapper={self.wrapper_id}" if self.wrapper_id else "native"
+        return f"{self.page.brand_name} - {self.page_name} - #{self.element_id} ({scope})"    

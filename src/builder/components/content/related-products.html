@@ -1,0 +1,758 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+.rp-editor-only { display: none; }
+.rp-public-only { display: block; }
+body.editor-mode .rp-editor-only { display: block; }
+body.editor-mode .rp-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2820 2870 %}
+{% generate_background_images background_images 2820 2870 %}
+
+.rp-root {
+    --rp-ink:        #0B0B0C;
+    --rp-ink-2:      #2A2A2E;
+    --rp-mute:       #8A8A92;
+    --rp-faint:      #C8C8CE;
+    --rp-line:       #ECECEF;
+    --rp-line-2:     #F4F4F6;
+    --rp-paper:      #FFFFFF;
+    --rp-paper-2:    #FAFAFB;
+    --rp-accent:     #C9432A;
+    --rp-accent-bg:  #FBEDE8;
+    --rp-gold:       #E5A00D;
+
+    --rp-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --rp-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --rp-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--rp-font);
+    color: var(--rp-ink);
+    background: var(--rp-paper);
+    line-height: 1.5;
+    padding: 64px 0 56px;
+    overflow: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.rp-root *, .rp-root *::before, .rp-root *::after { box-sizing: border-box; }
+.rp-root img { max-width: 100%; display: block; }
+.rp-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.rp-root a { text-decoration: none; color: inherit; }
+
+/* ============================================================
+   HEADER — sits at the top, centered, with a small rule
+   ============================================================ */
+.rp-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: 1280px;
+    margin: 0 auto 32px;
+    padding: 0 20px;
+    flex-wrap: wrap;
+}
+.rp-head-left { max-width: 480px; }
+.rp-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--rp-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rp-accent);
+    margin-bottom: 12px;
+}
+.rp-kicker::before {
+    content: "";
+    width: 20px;
+    height: 1px;
+    background: var(--rp-accent);
+}
+.rp-title {
+    font-family: var(--rp-serif);
+    font-size: clamp(24px, 3vw, 36px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--rp-ink);
+    margin: 0;
+}
+.rp-title em { font-style: italic; color: var(--rp-accent); }
+
+.rp-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--rp-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rp-ink);
+    padding: 10px 18px;
+    background: var(--rp-paper) !important;
+    border: 1.5px solid var(--rp-line);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.rp-view-all:hover {
+    border-color: var(--rp-ink);
+    background: var(--rp-paper-2) !important;
+}
+.rp-view-all i { font-size: 10px; }
+
+/* ============================================================
+   RAIL — horizontal scroll-snap rail
+   Full-viewport breakout so it works inside narrow product
+   page containers.
+   ============================================================ */
+.rp-rail-wrap {
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    max-width: 100vw;
+}
+
+.rp-rail {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 8px 0 12px;
+}
+.rp-rail::-webkit-scrollbar { display: none; }
+
+.rp-track {
+    display: flex;
+    gap: 20px;
+    width: max-content;
+    padding: 0 max(20px, calc((100vw - 1280px) / 2 + 20px));
+    align-items: stretch;
+}
+
+/* Rail arrows */
+.rp-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--rp-line);
+    color: var(--rp-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    z-index: 5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.rp-rail-wrap:hover .rp-arrow { opacity: 1; pointer-events: auto; }
+.rp-arrow:hover { background: var(--rp-ink); color: var(--rp-paper); }
+.rp-arrow:disabled { opacity: 0.3 !important; pointer-events: none; }
+.rp-arrow.rp-arrow-prev { left: 16px; }
+.rp-arrow.rp-arrow-next { right: 16px; }
+
+/* ============================================================
+   PRODUCT CARD
+   ============================================================ */
+.rp-card {
+    flex: 0 0 260px;
+    width: 260px;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--rp-paper);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+.rp-card:hover {
+    transform: translateY(-3px);
+}
+.rp-card:hover .rp-card-img img {
+    transform: scale(1.06);
+}
+.rp-card:hover .rp-card-wish {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Image */
+.rp-card-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    background: var(--rp-paper-2);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--rp-line);
+}
+.rp-card-img {
+    position: absolute;
+    inset: 0;
+}
+.rp-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.rp-card-img-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--rp-line-2);
+    color: var(--rp-faint);
+    font-size: 28px;
+}
+
+/* Badges */
+.rp-card-badges {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    z-index: 2;
+    pointer-events: none;
+}
+.rp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 4px;
+    font-family: var(--rp-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+}
+.rp-badge-sale {
+    background: var(--rp-accent);
+    color: var(--rp-paper);
+}
+.rp-badge-out {
+    background: var(--rp-mute);
+    color: var(--rp-paper);
+}
+
+/* Wishlist */
+.rp-card-wish {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(6px);
+    color: var(--rp-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 3;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all 0.15s ease;
+}
+.rp-card-wish:hover { background: var(--rp-accent); color: var(--rp-paper); }
+.rp-card-wish.wishlisted {
+    background: var(--rp-accent);
+    color: var(--rp-paper);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Body */
+.rp-card-body {
+    padding: 12px 4px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.rp-card-cat {
+    font-family: var(--rp-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rp-mute);
+    margin-bottom: 2px;
+}
+.rp-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rp-ink);
+    line-height: 1.35;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.rp-card-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+.rp-card-stars {
+    display: inline-flex;
+    gap: 1px;
+    font-size: 9px;
+    color: var(--rp-gold);
+    letter-spacing: 0.5px;
+}
+.rp-card-stars .rp-star-off { color: var(--rp-faint); }
+.rp-card-rating-num {
+    font-family: var(--rp-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--rp-mute);
+}
+.rp-card-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 3px;
+}
+.rp-card-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--rp-ink);
+}
+.rp-card-price-was {
+    font-size: 11px;
+    color: var(--rp-mute);
+    text-decoration: line-through;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 640px) {
+    .rp-root { padding: 44px 0 40px; }
+    .rp-head {
+        padding: 0 16px;
+        margin-bottom: 24px;
+    }
+    .rp-card {
+        flex: 0 0 200px;
+        width: 200px;
+    }
+    .rp-track {
+        gap: 14px;
+        padding: 0 16px;
+    }
+    .rp-arrow { display: none; }
+    .rp-card-body { padding-top: 10px; }
+    .rp-card-title { font-size: 12.5px; }
+    .rp-card-price { font-size: 13px; }
+    .rp-view-all { padding: 9px 14px; font-size: 10px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY — sample related products for preview            -->
+<!-- ============================================================ -->
+<div class="rp-root editable-section" data-section="2820">
+    <div class="rp-editor-only">
+
+        <div class="rp-head">
+            <div class="rp-head-left">
+                <span class="rp-kicker editable-text editable-section no-drop-zone"
+                      data-section="2821" data-text="2821">You may also like</span>
+                <h2 class="rp-title editable-text editable-section no-drop-zone"
+                    data-section="2822" data-text="2822">Complete the <em>collection</em>.</h2>
+            </div>
+            <a href="#products" class="rp-view-all editable-text editable-section no-drop-zone"
+               data-section="2823" data-text="2823">
+                View all <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="rp-rail-wrap">
+            <div class="rp-rail">
+                <div class="rp-track">
+
+                    <!-- Sample product 1 -->
+                    <a class="rp-card">
+                        <div class="rp-card-media">
+                            <div class="rp-card-img">
+                                <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                     alt="Related 1" class="editable-image" data-image="2830">
+                            </div>
+                            <div class="rp-card-badges">
+                                <span class="rp-badge rp-badge-sale">Save 20%</span>
+                            </div>
+                            <button type="button" class="rp-card-wish" aria-label="Add to wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="rp-card-body">
+                            <div class="rp-card-cat editable-text editable-section no-drop-zone"
+                                 data-section="2831" data-text="2831">Bags</div>
+                            <h3 class="rp-card-title editable-text editable-section no-drop-zone"
+                                data-section="2832" data-text="2832">The Weekender Tote</h3>
+                            <div class="rp-card-rating">
+                                <div class="rp-card-stars">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                </div>
+                                <span class="rp-card-rating-num">(89)</span>
+                            </div>
+                            <div class="rp-card-price-row">
+                                <span class="rp-card-price">$312</span>
+                                <span class="rp-card-price-was">$390</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Sample product 2 -->
+                    <a class="rp-card">
+                        <div class="rp-card-media">
+                            <div class="rp-card-img">
+                                <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                     alt="Related 2" class="editable-image" data-image="2833">
+                            </div>
+                            <button type="button" class="rp-card-wish" aria-label="Add to wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="rp-card-body">
+                            <div class="rp-card-cat editable-text editable-section no-drop-zone"
+                                 data-section="2834" data-text="2834">Accessories</div>
+                            <h3 class="rp-card-title editable-text editable-section no-drop-zone"
+                                data-section="2835" data-text="2835">Leather Card Holder</h3>
+                            <div class="rp-card-rating">
+                                <div class="rp-card-stars">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                </div>
+                                <span class="rp-card-rating-num">(156)</span>
+                            </div>
+                            <div class="rp-card-price-row">
+                                <span class="rp-card-price">$72</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Sample product 3 -->
+                    <a class="rp-card">
+                        <div class="rp-card-media">
+                            <div class="rp-card-img">
+                                <img src="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                     alt="Related 3" class="editable-image" data-image="2836">
+                            </div>
+                            <button type="button" class="rp-card-wish" aria-label="Add to wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="rp-card-body">
+                            <div class="rp-card-cat editable-text editable-section no-drop-zone"
+                                 data-section="2837" data-text="2837">Bags</div>
+                            <h3 class="rp-card-title editable-text editable-section no-drop-zone"
+                                data-section="2838" data-text="2838">The Mini Crossbody</h3>
+                            <div class="rp-card-rating">
+                                <div class="rp-card-stars">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star rp-star-off"></i>
+                                </div>
+                                <span class="rp-card-rating-num">(42)</span>
+                            </div>
+                            <div class="rp-card-price-row">
+                                <span class="rp-card-price">$148</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Sample product 4 -->
+                    <a class="rp-card">
+                        <div class="rp-card-media">
+                            <div class="rp-card-img">
+                                <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                     alt="Related 4" class="editable-image" data-image="2839">
+                            </div>
+                            <button type="button" class="rp-card-wish" aria-label="Add to wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="rp-card-body">
+                            <div class="rp-card-cat editable-text editable-section no-drop-zone"
+                                 data-section="2840" data-text="2840">Accessories</div>
+                            <h3 class="rp-card-title editable-text editable-section no-drop-zone"
+                                data-section="2841" data-text="2841">Leather Keychain</h3>
+                            <div class="rp-card-rating">
+                                <div class="rp-card-stars">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                </div>
+                                <span class="rp-card-rating-num">(203)</span>
+                            </div>
+                            <div class="rp-card-price-row">
+                                <span class="rp-card-price">$32</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Sample product 5 -->
+                    <a class="rp-card">
+                        <div class="rp-card-media">
+                            <div class="rp-card-img">
+                                <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=600"
+                                     alt="Related 5" class="editable-image" data-image="2842">
+                            </div>
+                            <div class="rp-card-badges">
+                                <span class="rp-badge rp-badge-out">Sold out</span>
+                            </div>
+                            <button type="button" class="rp-card-wish" aria-label="Add to wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="rp-card-body">
+                            <div class="rp-card-cat editable-text editable-section no-drop-zone"
+                                 data-section="2843" data-text="2843">Bags</div>
+                            <h3 class="rp-card-title editable-text editable-section no-drop-zone"
+                                data-section="2844" data-text="2844">The Document Holder</h3>
+                            <div class="rp-card-rating">
+                                <div class="rp-card-stars">
+                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                </div>
+                                <span class="rp-card-rating-num">(67)</span>
+                            </div>
+                            <div class="rp-card-price-row">
+                                <span class="rp-card-price">$228</span>
+                            </div>
+                        </div>
+                    </a>
+
+                </div>
+            </div>
+
+            <button type="button" class="rp-arrow rp-arrow-prev" aria-label="Previous">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button type="button" class="rp-arrow rp-arrow-next" aria-label="Next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY — renders related_products from context          -->
+    <!-- ============================================================ -->
+    <div class="rp-public-only">
+        <div class="rp-root-inner" id="rp-root" data-subdomain="{{ page.subdomain|default:'' }}">
+
+            <div class="rp-head">
+                <div class="rp-head-left">
+                    <span class="rp-kicker" id="section-2821">{{ text_contents.2821|default:"You may also like" }}</span>
+                    <h2 class="rp-title" id="section-2822">{{ text_contents.2822|default:"Complete the collection." }}</h2>
+                </div>
+                <a href="#products" class="rp-view-all">
+                    {{ text_contents.2823|default:"View all" }} <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+
+            <div class="rp-rail-wrap">
+                <div class="rp-rail" id="rp-rail">
+                    <div class="rp-track" id="rp-track">
+                        {% for rel in related_products %}
+                            <a href="{% url 'product_detail' product_slug=rel.slug %}" class="rp-card">
+                                <div class="rp-card-media">
+                                    <div class="rp-card-img">
+                                        {% if rel.main_image %}
+                                            <img src="{{ rel.main_image.url }}" alt="{{ rel.title }}">
+                                        {% else %}
+                                            <div class="rp-card-img-placeholder">
+                                                <i class="fas fa-image"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="rp-card-badges">
+                                        {% if rel.is_on_sale %}
+                                            <span class="rp-badge rp-badge-sale">Save {{ rel.discount_percentage }}%</span>
+                                        {% endif %}
+                                        {% if not rel.is_in_stock %}
+                                            <span class="rp-badge rp-badge-out">Sold out</span>
+                                        {% endif %}
+                                    </div>
+                                    <button type="button"
+                                            class="rp-card-wish"
+                                            aria-label="Add to wishlist"
+                                            data-product-id="{{ rel.id }}"
+                                            onclick="event.preventDefault(); event.stopPropagation(); rpAddWishlist(this);">
+                                        <i class="far fa-heart"></i>
+                                    </button>
+                                </div>
+                                <div class="rp-card-body">
+                                    {% if rel.category %}
+                                        <div class="rp-card-cat">{{ rel.category.name|default:"Product" }}</div>
+                                    {% endif %}
+                                    <h3 class="rp-card-title">{{ rel.title }}</h3>
+                                    <div class="rp-card-rating">
+                                        <div class="rp-card-stars">
+                                            {% with avg=rel.get_average_rating|default:5 %}
+                                                {% for i in "12345" %}
+                                                    <i class="fas fa-star{% if forloop.counter > avg %} rp-star-off{% endif %}"></i>
+                                                {% endfor %}
+                                            {% endwith %}
+                                        </div>
+                                        <span class="rp-card-rating-num">({{ rel.get_review_count|default:0 }})</span>
+                                    </div>
+                                    <div class="rp-card-price-row">
+                                        <span class="rp-card-price">{{ page.currency_symbol|default:"$" }}{{ rel.price|floatformat:0 }}</span>
+                                        {% if rel.is_on_sale %}
+                                            <span class="rp-card-price-was">{{ page.currency_symbol }}{{ rel.compare_at_price|floatformat:0 }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div style="padding: 40px 20px; text-align: center; color: var(--rp-mute); min-width: 100%;">
+                                <p style="font-size: 14px; margin: 0;">More pieces coming soon.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="button" class="rp-arrow rp-arrow-prev" id="rp-prev" aria-label="Previous">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" class="rp-arrow rp-arrow-next" id="rp-next" aria-label="Next">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var RP = window.RP_RELATED = window.RP_RELATED || {};
+    if (RP._init) return;
+    RP._init = true;
+
+    function root() {
+        return document.querySelector('.rp-public-only #rp-root')
+            || document.getElementById('rp-root');
+    }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) || window.location.hostname.split('.')[0];
+    }
+    function csrf() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+    }
+
+    // ============================================================
+    // WISHLIST
+    // ============================================================
+    RP.addWishlist = function(btn) {
+        var productId = btn.dataset.productId;
+        if (!productId) return;
+        var icon = btn.querySelector('i');
+        btn.disabled = true;
+
+        fetch('/builder/wishlist/add/' + subdomain() + '/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf()
+            },
+            body: JSON.stringify({ product_id: productId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                btn.classList.add('wishlisted');
+                if (icon) icon.className = 'fas fa-heart';
+            }
+            btn.disabled = false;
+        })
+        .catch(function () {
+            btn.disabled = false;
+        });
+    };
+    window.rpAddWishlist = RP.addWishlist;
+
+    // ============================================================
+    // RAIL ARROWS
+    // ============================================================
+    function bindArrows() {
+        var rail = document.getElementById('rp-rail');
+        var prev = document.getElementById('rp-prev');
+        var next = document.getElementById('rp-next');
+        if (!rail) return;
+
+        var step = function () {
+            var first = rail.querySelector('.rp-card');
+            if (!first) return 300;
+            var w = first.getBoundingClientRect().width;
+            return w + 20;
+        };
+
+        if (prev) prev.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            rail.scrollBy({ left: -step(), behavior: 'smooth' });
+        });
+        if (next) next.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            rail.scrollBy({ left: step(), behavior: 'smooth' });
+        });
+
+        var update = function () {
+            var atStart = rail.scrollLeft <= 4;
+            var atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
+            if (prev) prev.disabled = atStart;
+            if (next) next.disabled = atEnd;
+        };
+        rail.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        update();
+    }
+
+    function init() {
+        if (!root()) return;
+        bindArrows();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

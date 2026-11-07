@@ -1,0 +1,1839 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+.rv-editor-only { display: none; }
+.rv-public-only { display: block; }
+body.editor-mode .rv-editor-only { display: block; }
+body.editor-mode .rv-public-only { display: none; }
+
+{% generate_section_styles style_customizations 6000 6500 %}
+{% generate_background_images background_images 6000 6500 %}
+
+/* ============================================================
+   SOCIAL REVIEWS
+   ============================================================ */
+.rv-root {
+    --rv-ink:        #0B0B0C;
+    --rv-ink-2:      #2A2A2E;
+    --rv-mute:       #8A8A92;
+    --rv-faint:      #C8C8CE;
+    --rv-line:       #ECECEF;
+    --rv-line-2:     #F4F4F6;
+    --rv-paper:      #FFFFFF;
+    --rv-paper-2:    #FAFAFB;
+    --rv-accent:     #C9432A;
+    --rv-accent-bg:  #FBEDE8;
+    --rv-gold:       #E5A00D;
+    --rv-gold-bg:    #FFF9E5;
+    --rv-heart:      #E0245E;
+    --rv-heart-bg:   #FDE8EE;
+    --rv-success:    #2F6B4A;
+    --rv-success-bg: #E8F3EC;
+
+    --rv-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --rv-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --rv-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--rv-font);
+    color: var(--rv-ink);
+    background: var(--rv-paper);
+    line-height: 1.55;
+    padding: 40px 16px 60px;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.rv-root *, .rv-root *::before, .rv-root *::after { box-sizing: border-box; }
+.rv-root img { max-width: 100%; display: block; }
+.rv-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.rv-root input, .rv-root textarea, .rv-root select { font-family: inherit; }
+
+.rv-shell { max-width: 720px; margin: 0 auto; }
+
+/* ============================================================
+   SUMMARY
+   ============================================================ */
+.rv-summary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--rv-line);
+    margin-bottom: 28px;
+}
+@media (min-width: 640px) {
+    .rv-summary { grid-template-columns: 220px 1fr; gap: 40px; align-items: center; }
+}
+.rv-score-block {
+    text-align: center;
+    padding: 20px;
+    background: var(--rv-paper-2);
+    border-radius: 10px;
+}
+@media (min-width: 640px) { .rv-score-block { text-align: left; padding: 24px; } }
+
+.rv-score {
+    font-family: var(--rv-serif);
+    font-size: 52px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--rv-ink);
+    margin-bottom: 6px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+}
+.rv-score-out { font-size: 18px; color: var(--rv-mute); font-weight: 400; }
+.rv-score-stars {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: var(--rv-gold);
+    justify-content: center;
+}
+@media (min-width: 640px) { .rv-score-stars { justify-content: flex-start; } }
+.rv-score-stars .rv-star-off { color: var(--rv-faint); }
+.rv-score-count {
+    font-size: 12px;
+    color: var(--rv-mute);
+    font-family: var(--rv-mono);
+    letter-spacing: 0.02em;
+}
+.rv-score-count strong { color: var(--rv-ink); font-weight: 700; }
+
+.rv-bars { display: flex; flex-direction: column; gap: 8px; }
+.rv-bar-row {
+    display: grid;
+    grid-template-columns: 34px 1fr 52px;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+}
+.rv-bar-label {
+    font-family: var(--rv-mono);
+    color: var(--rv-ink-2);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.rv-bar-label i { font-size: 9px; color: var(--rv-gold); }
+.rv-bar-track {
+    height: 6px;
+    background: var(--rv-line);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.rv-bar-fill {
+    height: 100%;
+    background: var(--rv-gold);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.rv-bar-pct {
+    font-family: var(--rv-mono);
+    color: var(--rv-mute);
+    text-align: right;
+    font-size: 11px;
+}
+
+.rv-write-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 11px 18px;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: background 0.2s ease;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.rv-write-btn:hover { background: #C9432A !important; }
+.rv-write-btn i { font-size: 11px; }
+
+/* ============================================================
+   WRITE REVIEW FORM
+   ============================================================ */
+.rv-form-card {
+    background: var(--rv-paper-2);
+    border: 1px solid var(--rv-line);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 28px;
+    display: none;
+}
+.rv-form-card.open { display: block; }
+.rv-form-title {
+    font-family: var(--rv-serif);
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+}
+.rv-form-sub { font-size: 12px; color: var(--rv-mute); margin-bottom: 20px; }
+
+.rv-field { margin-bottom: 16px; }
+.rv-label {
+    display: block;
+    font-size: 10px;
+    font-family: var(--rv-mono);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rv-ink-2);
+    margin-bottom: 8px;
+}
+.rv-label .rv-req { color: var(--rv-accent); }
+
+.rv-input, .rv-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--rv-line);
+    background: var(--rv-paper);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--rv-ink);
+    transition: border-color 0.15s ease;
+    outline: none;
+}
+.rv-input:focus, .rv-textarea:focus { border-color: var(--rv-ink); }
+.rv-textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+
+.rv-star-picker {
+    display: flex;
+    gap: 6px;
+    font-size: 30px;
+    color: var(--rv-faint);
+    user-select: none;
+}
+.rv-star-picker i { cursor: pointer; transition: color 0.15s ease, transform 0.15s ease; }
+.rv-star-picker i:hover { transform: scale(1.15); }
+.rv-star-picker i.rv-active { color: var(--rv-gold); }
+.rv-star-picker-label {
+    font-family: var(--rv-mono);
+    font-size: 11px;
+    color: var(--rv-mute);
+    margin-top: 6px;
+    letter-spacing: 0.04em;
+    min-height: 14px;
+}
+
+.rv-upload-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+.rv-upload-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border: 1.5px dashed var(--rv-faint);
+    border-radius: 8px;
+    background: var(--rv-paper);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    color: var(--rv-mute);
+    font-size: 9px;
+    font-family: var(--rv-mono);
+    text-align: center;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+}
+.rv-upload-tile:hover {
+    border-color: var(--rv-ink);
+    background: var(--rv-paper-2);
+    color: var(--rv-ink);
+}
+.rv-upload-tile i { font-size: 18px; }
+.rv-upload-tile.filled { border-style: solid; border-color: var(--rv-line); }
+.rv-upload-tile.filled img,
+.rv-upload-tile.filled video { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
+.rv-upload-tile .rv-remove {
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 20px; height: 20px;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    z-index: 2;
+    cursor: pointer;
+}
+.rv-upload-tile .rv-remove:hover { background: var(--rv-accent); }
+.rv-upload-tile input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 1;
+}
+
+.rv-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-top: 8px;
+    flex-wrap: wrap;
+}
+.rv-form-hint { font-size: 11px; color: var(--rv-mute); font-family: var(--rv-mono); }
+.rv-form-btns { display: flex; gap: 8px; margin-left: auto; }
+.rv-btn-cancel {
+    padding: 11px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--rv-mute);
+    border: 1px solid var(--rv-line);
+    border-radius: 6px;
+    background: var(--rv-paper) !important;
+}
+.rv-btn-cancel:hover { color: var(--rv-ink); border-color: var(--rv-faint); }
+.rv-btn-submit {
+    padding: 11px 22px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.rv-btn-submit:hover { background: #C9432A !important; }
+.rv-btn-submit:disabled { opacity: 0.5 !important; cursor: not-allowed; }
+
+.rv-form-status {
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+}
+.rv-form-status.show { display: block; }
+.rv-form-status.success {
+    background: var(--rv-success-bg);
+    color: var(--rv-success);
+    border: 1px solid #C7E3D2;
+}
+.rv-form-status.error {
+    background: #FDECEC;
+    color: var(--rv-accent);
+    border: 1px solid #F5C7C7;
+}
+
+/* ============================================================
+   FILTER ROW
+   ============================================================ */
+.rv-filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rv-line);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.rv-filter-title {
+    font-family: var(--rv-serif);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--rv-ink);
+    letter-spacing: -0.01em;
+}
+.rv-filter-select {
+    padding: 8px 12px;
+    border: 1px solid var(--rv-line);
+    background: var(--rv-paper);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--rv-mono);
+    color: var(--rv-ink);
+    cursor: pointer;
+    letter-spacing: 0.02em;
+}
+.rv-filter-select:focus { outline: none; border-color: var(--rv-ink); }
+
+/* ============================================================
+   SOCIAL REVIEW CARD  (matches Instagram / Facebook comments)
+   ============================================================ */
+.rv-feed { display: flex; flex-direction: column; gap: 0; }
+
+.rv-post {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rv-line);
+}
+.rv-post:last-child { border-bottom: none; }
+
+.rv-post-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.rv-avatar {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #0B0B0C;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    border: 2px solid var(--rv-paper);
+    box-shadow: 0 0 0 1px var(--rv-line);
+}
+.rv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.rv-post-meta { flex: 1; min-width: 0; }
+.rv-post-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+.rv-post-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--rv-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rv-post-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--rv-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rv-success);
+    background: var(--rv-success-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+.rv-post-verified i { font-size: 8px; }
+.rv-post-meta-line {
+    font-size: 11px;
+    color: var(--rv-mute);
+    font-family: var(--rv-mono);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.02em;
+}
+.rv-post-meta-line .rv-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--rv-faint); }
+
+/* More options */
+.rv-post-more {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rv-mute);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.rv-post-more:hover { background: var(--rv-paper-2); color: var(--rv-ink); }
+
+/* Stars inline */
+.rv-post-stars {
+    display: inline-flex;
+    gap: 1px;
+    font-size: 11px;
+    color: var(--rv-gold);
+    align-items: center;
+}
+.rv-post-stars .rv-star-off { color: var(--rv-faint); }
+
+/* Body text */
+.rv-post-body {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--rv-ink);
+    margin: 0 0 14px 0;
+    padding-left: 54px;
+    word-wrap: break-word;
+}
+.rv-post-body .rv-post-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* Media grid — Instagram style */
+.rv-post-media {
+    margin-left: 54px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--rv-line);
+    background: var(--rv-paper-2);
+}
+.rv-post-media-grid {
+    display: grid;
+    gap: 2px;
+}
+.rv-post-media-grid[data-count="1"] { grid-template-columns: 1fr; }
+.rv-post-media-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.rv-post-media-grid[data-count="3"] { grid-template-columns: 1fr 1fr 1fr; }
+.rv-post-media-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
+
+.rv-post-media-item {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--rv-line-2);
+    overflow: hidden;
+    cursor: pointer;
+}
+.rv-post-media-grid[data-count="1"] .rv-post-media-item {
+    aspect-ratio: 4 / 3;
+}
+.rv-post-media-item img,
+.rv-post-media-item video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+.rv-post-media-item:hover img { transform: scale(1.03); }
+
+.rv-post-media-badge {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.72);
+    color: #fff;
+    font-size: 9px;
+    font-family: var(--rv-mono);
+    padding: 3px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    backdrop-filter: blur(4px);
+}
+.rv-post-media-badge i { font-size: 8px; }
+
+.rv-post-media-play {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,0.94);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rv-ink);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    pointer-events: none;
+}
+.rv-post-media-play i { font-size: 14px; margin-left: 2px; }
+
+/* Actions row — likes, comment, share */
+.rv-post-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 54px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.rv-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--rv-ink-2);
+    border-radius: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
+    background: transparent !important;
+}
+.rv-action-btn:hover { background: var(--rv-paper-2) !important; color: var(--rv-ink); }
+.rv-action-btn i { font-size: 13px; }
+.rv-action-btn .rv-action-count { font-family: var(--rv-mono); font-size: 11px; font-weight: 600; }
+
+.rv-action-btn.rv-heart-btn:hover { color: var(--rv-heart); background: var(--rv-heart-bg) !important; }
+.rv-action-btn.rv-heart-btn.liked { color: var(--rv-heart); }
+.rv-action-btn.rv-heart-btn.liked i::before { content: "\f004"; font-weight: 900; }
+
+/* Reaction summary line (like "Liked by Sarah and 12 others") */
+.rv-post-reactions {
+    padding-left: 54px;
+    font-size: 12px;
+    color: var(--rv-mute);
+    margin-bottom: 6px;
+    font-family: var(--rv-mono);
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.rv-post-reactions .rv-reaction-heart {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    background: var(--rv-heart);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 8px;
+}
+.rv-post-reactions strong { color: var(--rv-ink); font-weight: 700; }
+
+/* Empty / loading */
+.rv-loading { display: flex; flex-direction: column; gap: 20px; padding: 20px 0; }
+.rv-skeleton {
+    height: 120px;
+    background: linear-gradient(90deg, var(--rv-line-2) 0%, var(--rv-line) 50%, var(--rv-line-2) 100%);
+    background-size: 200% 100%;
+    animation: rv-shimmer 1.4s ease-in-out infinite;
+    border-radius: 8px;
+}
+@keyframes rv-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.rv-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--rv-mute);
+}
+.rv-empty i { font-size: 40px; color: var(--rv-faint); margin-bottom: 16px; display: block; }
+.rv-empty h3 {
+    font-family: var(--rv-serif);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--rv-ink);
+    margin: 0 0 6px 0;
+}
+.rv-empty p { font-size: 13px; margin: 0; }
+
+.rv-load-more { display: flex; justify-content: center; margin-top: 32px; }
+.rv-load-more button {
+    padding: 12px 28px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--rv-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rv-ink);
+    border: 1.5px solid var(--rv-line);
+    border-radius: 8px;
+    background: var(--rv-paper) !important;
+    transition: all 0.2s ease;
+}
+.rv-load-more button:hover {
+    border-color: var(--rv-ink);
+    background: var(--rv-paper-2) !important;
+}
+
+/* Lightbox */
+.rv-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.rv-lightbox.open { display: flex; }
+.rv-lightbox-content { max-width: 90vw; max-height: 90vh; position: relative; }
+.rv-lightbox-content img,
+.rv-lightbox-content video {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+}
+.rv-lightbox-close {
+    position: absolute;
+    top: -44px; right: 0;
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+.rv-lightbox-close:hover { background: rgba(255,255,255,0.3); }
+
+@media (max-width: 480px) {
+    .rv-root { padding: 24px 14px 40px; }
+    .rv-score { font-size: 40px; }
+    .rv-post-body { padding-left: 0; font-size: 13px; }
+    .rv-post-media { margin-left: 0; }
+    .rv-post-actions { padding-left: 0; }
+    .rv-post-reactions { padding-left: 0; }
+    .rv-avatar { width: 36px; height: 36px; font-size: 13px; }
+    .rv-form-card { padding: 16px; }
+    .rv-upload-row { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY — includes three fully-designed sample reviews   -->
+<!-- ============================================================ -->
+<div class="rv-root editable-section" data-section="6000">
+    <div class="rv-editor-only">
+        <div class="rv-shell">
+
+            <!-- SUMMARY -->
+            <div class="rv-summary">
+                <div class="rv-score-block">
+                    <div class="rv-score editable-text editable-section no-drop-zone"
+                         data-section="6001" data-text="6001">4.8<span class="rv-score-out">/5</span></div>
+                    <div class="rv-score-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="rv-score-count editable-text editable-section no-drop-zone"
+                         data-section="6002" data-text="6002">Based on <strong>1,276</strong> verified reviews</div>
+                </div>
+                <div class="rv-bars">
+                    <div class="rv-bar-row">
+                        <div class="rv-bar-label">5 <i class="fas fa-star"></i></div>
+                        <div class="rv-bar-track"><div class="rv-bar-fill" style="width: 78%;"></div></div>
+                        <div class="rv-bar-pct">78%</div>
+                    </div>
+                    <div class="rv-bar-row">
+                        <div class="rv-bar-label">4 <i class="fas fa-star"></i></div>
+                        <div class="rv-bar-track"><div class="rv-bar-fill" style="width: 15%;"></div></div>
+                        <div class="rv-bar-pct">15%</div>
+                    </div>
+                    <div class="rv-bar-row">
+                        <div class="rv-bar-label">3 <i class="fas fa-star"></i></div>
+                        <div class="rv-bar-track"><div class="rv-bar-fill" style="width: 5%;"></div></div>
+                        <div class="rv-bar-pct">5%</div>
+                    </div>
+                    <div class="rv-bar-row">
+                        <div class="rv-bar-label">2 <i class="fas fa-star"></i></div>
+                        <div class="rv-bar-track"><div class="rv-bar-fill" style="width: 1%;"></div></div>
+                        <div class="rv-bar-pct">1%</div>
+                    </div>
+                    <div class="rv-bar-row">
+                        <div class="rv-bar-label">1 <i class="fas fa-star"></i></div>
+                        <div class="rv-bar-track"><div class="rv-bar-fill" style="width: 1%;"></div></div>
+                        <div class="rv-bar-pct">1%</div>
+                    </div>
+                    <button type="button" class="rv-write-btn">
+                        <i class="fas fa-pen"></i> Write a review
+                    </button>
+                </div>
+            </div>
+
+            <!-- FILTER ROW -->
+            <div class="rv-filter-row">
+                <div class="rv-filter-title editable-text editable-section no-drop-zone"
+                     data-section="6010" data-text="6010">Customer reviews</div>
+                <select class="rv-filter-select" style="pointer-events:none;">
+                    <option>Most recent</option>
+                </select>
+            </div>
+
+            <!-- SAMPLE REVIEW 1: 5 stars, 3 photos -->
+            <div class="rv-feed">
+                <div class="rv-post">
+                    <div class="rv-post-head">
+                        <div class="rv-avatar editable-text editable-section no-drop-zone"
+                             data-section="6020" data-text="6020">S</div>
+                        <div class="rv-post-meta">
+                            <div class="rv-post-name-row">
+                                <span class="rv-post-name editable-text editable-section no-drop-zone"
+                                      data-section="6021" data-text="6021">Sarah Mitchell</span>
+                                <span class="rv-post-verified editable-text editable-section no-drop-zone"
+                                      data-section="6022" data-text="6022">
+                                    <i class="fas fa-check-circle"></i> Verified buyer
+                                </span>
+                            </div>
+                            <div class="rv-post-meta-line">
+                                <span class="rv-post-stars">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="rv-dot"></span>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="6023" data-text="6023">3 days ago</span>
+                                <span class="rv-dot"></span>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="6024" data-text="6024">Portland, OR</span>
+                            </div>
+                        </div>
+                        <button type="button" class="rv-post-more"><i class="fas fa-ellipsis-h"></i></button>
+                    </div>
+
+                    <p class="rv-post-body">
+                        <span class="rv-post-title editable-text editable-section no-drop-zone"
+                              data-section="6025" data-text="6025">Absolutely beautiful craftsmanship</span>
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="6026" data-text="6026">I've owned this for about a month now and it just keeps getting better with age. The leather softens up beautifully. Shipping was fast too — arrived in three days. Would buy again in a heartbeat.</span>
+                    </p>
+
+                    <div class="rv-post-media">
+                        <div class="rv-post-media-grid" data-count="3">
+                            <div class="rv-post-media-item">
+                                <img src="https://images.pexels.com/photos/4047186/pexels-photo-4047186.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Review photo 1">
+                            </div>
+                            <div class="rv-post-media-item">
+                                <img src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Review photo 2">
+                            </div>
+                            <div class="rv-post-media-item">
+                                <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Review photo 3">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rv-post-actions">
+                        <button type="button" class="rv-action-btn rv-heart-btn liked">
+                            <i class="fas fa-heart"></i>
+                            <span class="rv-action-count editable-text editable-section no-drop-zone"
+                                  data-section="6027" data-text="6027">34</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="far fa-comment"></i>
+                            <span class="rv-action-count">4</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="fas fa-share"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+
+                    <div class="rv-post-reactions">
+                        <span class="rv-reaction-heart"><i class="fas fa-heart"></i></span>
+                        <span>Liked by <strong>34 people</strong></span>
+                    </div>
+                </div>
+
+
+                <!-- SAMPLE REVIEW 2: 4 stars, 1 video -->
+                <div class="rv-post">
+                    <div class="rv-post-head">
+                        <div class="rv-avatar editable-text editable-section no-drop-zone"
+                             data-section="6030" data-text="6030">M</div>
+                        <div class="rv-post-meta">
+                            <div class="rv-post-name-row">
+                                <span class="rv-post-name editable-text editable-section no-drop-zone"
+                                      data-section="6031" data-text="6031">Marcus Chen</span>
+                                <span class="rv-post-verified editable-text editable-section no-drop-zone"
+                                      data-section="6032" data-text="6032">
+                                    <i class="fas fa-check-circle"></i> Verified buyer
+                                </span>
+                            </div>
+                            <div class="rv-post-meta-line">
+                                <span class="rv-post-stars">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star rv-star-off"></i>
+                                </span>
+                                <span class="rv-dot"></span>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="6033" data-text="6033">1 week ago</span>
+                                <span class="rv-dot"></span>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="6034" data-text="6034">Brooklyn, NY</span>
+                            </div>
+                        </div>
+                        <button type="button" class="rv-post-more"><i class="fas fa-ellipsis-h"></i></button>
+                    </div>
+
+                    <p class="rv-post-body">
+                        <span class="rv-post-title editable-text editable-section no-drop-zone"
+                              data-section="6035" data-text="6035">Great quality, slightly smaller than expected</span>
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="6036" data-text="6036">The leather is stunning and the stitching is flawless. It's a touch smaller than the photos suggest, but holds more than you'd think. Filmed a quick unboxing in case it's helpful for anyone considering it.</span>
+                    </p>
+
+                    <div class="rv-post-media">
+                        <div class="rv-post-media-grid" data-count="1">
+                            <div class="rv-post-media-item">
+                                <video muted playsinline preload="metadata"
+                                       poster="https://images.pexels.com/photos/3737596/pexels-photo-3737596.jpeg?auto=compress&cs=tinysrgb&w=800">
+                                    <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                                </video>
+                                <div class="rv-post-media-play"><i class="fas fa-play"></i></div>
+                                <div class="rv-post-media-badge"><i class="fas fa-video"></i> Video</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rv-post-actions">
+                        <button type="button" class="rv-action-btn rv-heart-btn">
+                            <i class="far fa-heart"></i>
+                            <span class="rv-action-count editable-text editable-section no-drop-zone"
+                                  data-section="6037" data-text="6037">18</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="far fa-comment"></i>
+                            <span class="rv-action-count">2</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="fas fa-share"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+
+                    <div class="rv-post-reactions">
+                        <span class="rv-reaction-heart"><i class="fas fa-heart"></i></span>
+                        <span>Liked by <strong>18 people</strong></span>
+                    </div>
+                </div>
+
+
+                <!-- SAMPLE REVIEW 3: 5 stars, 1 image -->
+                <div class="rv-post">
+                    <div class="rv-post-head">
+                        <div class="rv-avatar editable-text editable-section no-drop-zone"
+                             data-section="6040" data-text="6040">A</div>
+                        <div class="rv-post-meta">
+                            <div class="rv-post-name-row">
+                                <span class="rv-post-name editable-text editable-section no-drop-zone"
+                                      data-section="6041" data-text="6041">Ava Rodriguez</span>
+                                <span class="rv-post-verified editable-text editable-section no-drop-zone"
+                                      data-section="6042" data-text="6042">
+                                    <i class="fas fa-check-circle"></i> Verified buyer
+                                </span>
+                            </div>
+                            <div class="rv-post-meta-line">
+                                <span class="rv-post-stars">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="rv-dot"></span>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="6043" data-text="6043">2 weeks ago</span>
+                            </div>
+                        </div>
+                        <button type="button" class="rv-post-more"><i class="fas fa-ellipsis-h"></i></button>
+                    </div>
+
+                    <p class="rv-post-body">
+                        <span class="rv-post-title editable-text editable-section no-drop-zone"
+                              data-section="6044" data-text="6044">Worth every penny</span>
+                        <span class="editable-text editable-section no-drop-zone"
+                              data-section="6045" data-text="6045">I debated this purchase for weeks. So glad I pulled the trigger — it's the kind of thing that makes every other bag in my closet feel cheap. The attention to detail is on another level.</span>
+                    </p>
+
+                    <div class="rv-post-media">
+                        <div class="rv-post-media-grid" data-count="1">
+                            <div class="rv-post-media-item">
+                                <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Review photo">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rv-post-actions">
+                        <button type="button" class="rv-action-btn rv-heart-btn">
+                            <i class="far fa-heart"></i>
+                            <span class="rv-action-count editable-text editable-section no-drop-zone"
+                                  data-section="6046" data-text="6046">52</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="far fa-comment"></i>
+                            <span class="rv-action-count">8</span>
+                        </button>
+                        <button type="button" class="rv-action-btn">
+                            <i class="fas fa-share"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+
+                    <div class="rv-post-reactions">
+                        <span class="rv-reaction-heart"><i class="fas fa-heart"></i></span>
+                        <span>Liked by <strong>52 people</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="rv-public-only">
+        {% resolve_product as p %}
+        <div class="rv-shell"
+             id="rv-root"
+             data-product-id="{{ p.id|default:0 }}"
+             data-subdomain="{{ page.subdomain|default:'' }}"
+             data-csrf="{{ csrf_token }}">
+
+            <!-- SUMMARY -->
+            <div class="rv-summary">
+                <div class="rv-score-block">
+                    <div class="rv-score" id="section-6001">
+                        {{ p.get_average_rating|default:"0.0"|floatformat:1 }}<span class="rv-score-out">/5</span>
+                    </div>
+                    <div class="rv-score-stars">
+                        {% with avg=p.get_average_rating %}
+                            {% with rating=avg|default:0 %}
+                                {% for i in "12345" %}
+                                    <i class="fas fa-star{% if forloop.counter > rating %} rv-star-off{% endif %}"></i>
+                                {% endfor %}
+                            {% endwith %}
+                        {% endwith %}
+                    </div>
+                    <div class="rv-score-count" id="section-6002">
+                        Based on <strong>{{ p.get_review_count|default:0 }}</strong> verified reviews
+                    </div>
+                </div>
+
+                <div class="rv-bars">
+                    {% for star in "54321" %}
+                        <div class="rv-bar-row">
+                            <div class="rv-bar-label">{{ star }} <i class="fas fa-star"></i></div>
+                            <div class="rv-bar-track">
+                                <div class="rv-bar-fill" data-rv-bar="{{ star }}" style="width: 0%;"></div>
+                            </div>
+                            <div class="rv-bar-pct" data-rv-pct="{{ star }}">0%</div>
+                        </div>
+                    {% endfor %}
+
+                    <button type="button" class="rv-write-btn" id="rv-open-form">
+                        <i class="fas fa-pen"></i> Write a review
+                    </button>
+                </div>
+            </div>
+
+            <!-- FORM -->
+            <div class="rv-form-card" id="rv-form">
+                <h3 class="rv-form-title">Share your experience</h3>
+                <p class="rv-form-sub">Your review helps other customers make better decisions.</p>
+
+                <form id="rv-form-el" onsubmit="return false;">
+                    <div class="rv-field">
+                        <label class="rv-label">Your rating <span class="rv-req">*</span></label>
+                        <div class="rv-star-picker" id="rv-star-picker" data-rating="0">
+                            <i class="far fa-star" data-rv-star="1"></i>
+                            <i class="far fa-star" data-rv-star="2"></i>
+                            <i class="far fa-star" data-rv-star="3"></i>
+                            <i class="far fa-star" data-rv-star="4"></i>
+                            <i class="far fa-star" data-rv-star="5"></i>
+                        </div>
+                        <div class="rv-star-picker-label" id="rv-rating-label">Tap a star to rate</div>
+                    </div>
+
+                    <div class="rv-field">
+                        <label class="rv-label" for="rv-name">Your name <span class="rv-req">*</span></label>
+                        <input type="text" id="rv-name" class="rv-input" placeholder="e.g. Sarah M." required maxlength="80">
+                    </div>
+
+                    <div class="rv-field">
+                        <label class="rv-label" for="rv-title">Review title</label>
+                        <input type="text" id="rv-title" class="rv-input" placeholder="Summarize your experience" maxlength="120">
+                    </div>
+
+                    <div class="rv-field">
+                        <label class="rv-label" for="rv-comment">Your review <span class="rv-req">*</span></label>
+                        <textarea id="rv-comment" class="rv-textarea" placeholder="What did you like? What could be better?" required maxlength="1000"></textarea>
+                    </div>
+
+                    <div class="rv-field">
+                        <label class="rv-label">Add photos <span style="text-transform:none;letter-spacing:0;color:var(--rv-mute);font-weight:400;">(up to 3)</span></label>
+                        <div class="rv-upload-row">
+                            <div class="rv-upload-tile" data-rv-photo="1">
+                                <i class="fas fa-camera"></i>
+                                <span>Add photo</span>
+                                <input type="file" accept="image/*" data-rv-photo-input="1">
+                            </div>
+                            <div class="rv-upload-tile" data-rv-photo="2">
+                                <i class="fas fa-camera"></i>
+                                <span>Add photo</span>
+                                <input type="file" accept="image/*" data-rv-photo-input="2">
+                            </div>
+                            <div class="rv-upload-tile" data-rv-photo="3">
+                                <i class="fas fa-camera"></i>
+                                <span>Add photo</span>
+                                <input type="file" accept="image/*" data-rv-photo-input="3">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rv-field">
+                        <label class="rv-label">Add a video <span style="text-transform:none;letter-spacing:0;color:var(--rv-mute);font-weight:400;">(optional)</span></label>
+                        <div class="rv-upload-row">
+                            <div class="rv-upload-tile" data-rv-video="1">
+                                <i class="fas fa-video"></i>
+                                <span>Add video</span>
+                                <input type="file" accept="video/*" data-rv-video-input="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rv-form-actions">
+                        <div class="rv-form-hint">Your review will appear after moderation</div>
+                        <div class="rv-form-btns">
+                            <button type="button" class="rv-btn-cancel" id="rv-cancel">Cancel</button>
+                            <button type="submit" class="rv-btn-submit" id="rv-submit">Submit review</button>
+                        </div>
+                    </div>
+
+                    <div class="rv-form-status" id="rv-form-status"></div>
+                </form>
+            </div>
+
+            <!-- FILTER -->
+            <div class="rv-filter-row">
+                <div class="rv-filter-title" id="section-6010">Customer reviews</div>
+                <select class="rv-filter-select" id="rv-sort">
+                    <option value="newest">Most recent</option>
+                    <option value="helpful">Most helpful</option>
+                    <option value="highest">Highest rated</option>
+                    <option value="lowest">Lowest rated</option>
+                </select>
+            </div>
+
+            <!-- FEED -->
+            <div class="rv-feed" id="rv-feed">
+                <div class="rv-loading" id="rv-loading">
+                    <div class="rv-skeleton"></div>
+                    <div class="rv-skeleton"></div>
+                    <div class="rv-skeleton"></div>
+                </div>
+            </div>
+
+            <div class="rv-load-more" id="rv-load-more" style="display: none;">
+                <button type="button" id="rv-load-more-btn">Load more reviews</button>
+            </div>
+        </div>
+
+        <!-- LIGHTBOX -->
+        <div class="rv-lightbox" id="rv-lightbox">
+            <div class="rv-lightbox-content" id="rv-lightbox-content"></div>
+            <button type="button" class="rv-lightbox-close" id="rv-lightbox-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var RV = window.RV_REVIEWS = window.RV_REVIEWS || {};
+    if (RV._init) return;
+    RV._init = true;
+
+    function root() {
+        return document.querySelector('.rv-public-only #rv-root')
+            || document.getElementById('rv-root');
+    }
+    function q(sel) { var r = root(); return r ? r.querySelector(sel) : null; }
+    function qa(sel) { var r = root(); return r ? r.querySelectorAll(sel) : []; }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) || window.location.hostname.split('.')[0];
+    }
+    function productId() {
+        var r = root();
+        return r ? (parseInt(r.dataset.productId, 10) || 0) : 0;
+    }
+    function csrf() { var r = root(); return (r && r.dataset.csrf) || ''; }
+
+    var state = {
+        rating: 0,
+        photos: {},
+        video: null,
+        page: 0,
+        sort: 'newest',
+        loading: false,
+        canLoadMore: true
+    };
+
+    // ============================================================
+    // STAR PICKER
+    // ============================================================
+    function bindStarPicker() {
+        var picker = document.getElementById('rv-star-picker');
+        var label  = document.getElementById('rv-rating-label');
+        if (!picker) return;
+        var labels = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
+
+        picker.querySelectorAll('[data-rv-star]').forEach(function (star) {
+            star.addEventListener('click', function () {
+                var n = parseInt(star.dataset.rvStar, 10);
+                state.rating = n;
+                picker.dataset.rating = n;
+                picker.querySelectorAll('[data-rv-star]').forEach(function (s, i) {
+                    s.classList.toggle('fas', i < n);
+                    s.classList.toggle('far', i >= n);
+                    s.classList.toggle('rv-active', i < n);
+                });
+                if (label) label.textContent = labels[n] || ('Rated ' + n + '/5');
+            });
+            star.addEventListener('mouseenter', function () {
+                var n = parseInt(star.dataset.rvStar, 10);
+                picker.querySelectorAll('[data-rv-star]').forEach(function (s, i) {
+                    s.classList.toggle('rv-active', i < n);
+                });
+            });
+        });
+        picker.addEventListener('mouseleave', function () {
+            picker.querySelectorAll('[data-rv-star]').forEach(function (s, i) {
+                s.classList.toggle('rv-active', i < state.rating);
+            });
+        });
+    }
+
+    // ============================================================
+    // UPLOADS
+    // ============================================================
+    function rebuildPhotoTile(idx) {
+        var tile = document.querySelector('[data-rv-photo="' + idx + '"]');
+        if (!tile) return;
+        tile.classList.remove('filled');
+        tile.innerHTML =
+            '<i class="fas fa-camera"></i><span>Add photo</span>' +
+            '<input type="file" accept="image/*" data-rv-photo-input="' + idx + '">';
+        bindPhotoInput(tile.querySelector('input'));
+    }
+    function rebuildVideoTile(idx) {
+        var tile = document.querySelector('[data-rv-video="' + idx + '"]');
+        if (!tile) return;
+        tile.classList.remove('filled');
+        tile.innerHTML =
+            '<i class="fas fa-video"></i><span>Add video</span>' +
+            '<input type="file" accept="video/*" data-rv-video-input="' + idx + '">';
+        bindVideoInput(tile.querySelector('input'));
+    }
+
+    function fillPhotoTile(tile, file, idx) {
+        state.photos[idx] = file;
+        var url = URL.createObjectURL(file);
+        tile.classList.add('filled');
+        tile.innerHTML = '';
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        tile.appendChild(img);
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'rv-remove';
+        rm.innerHTML = '<i class="fas fa-times"></i>';
+        rm.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            delete state.photos[idx];
+            rebuildPhotoTile(idx);
+        });
+        tile.appendChild(rm);
+    }
+
+    function fillVideoTile(tile, file, idx) {
+        state.video = file;
+        var url = URL.createObjectURL(file);
+        tile.classList.add('filled');
+        tile.innerHTML = '';
+        var video = document.createElement('video');
+        video.src = url;
+        video.muted = true;
+        video.playsInline = true;
+        tile.appendChild(video);
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'rv-remove';
+        rm.innerHTML = '<i class="fas fa-times"></i>';
+        rm.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            state.video = null;
+            rebuildVideoTile(idx);
+        });
+        tile.appendChild(rm);
+    }
+
+    function bindPhotoInput(input) {
+        if (!input) return;
+        var idx = input.dataset.rvPhotoInput;
+        input.addEventListener('change', function (e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var tile = document.querySelector('[data-rv-photo="' + idx + '"]');
+            if (tile) fillPhotoTile(tile, file, idx);
+        });
+    }
+    function bindVideoInput(input) {
+        if (!input) return;
+        var idx = input.dataset.rvVideoInput;
+        input.addEventListener('change', function (e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var tile = document.querySelector('[data-rv-video="' + idx + '"]');
+            if (tile) fillVideoTile(tile, file, idx);
+        });
+    }
+
+    // ============================================================
+    // FORM
+    // ============================================================
+    function bindForm() {
+        var btn = document.getElementById('rv-open-form');
+        var card = document.getElementById('rv-form');
+        var cancel = document.getElementById('rv-cancel');
+        if (btn && card) {
+            btn.addEventListener('click', function () {
+                card.classList.add('open');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+        if (cancel && card) {
+            cancel.addEventListener('click', function () {
+                card.classList.remove('open');
+                resetForm();
+            });
+        }
+    }
+
+    function resetForm() {
+        state.rating = 0;
+        state.photos = {};
+        state.video = null;
+
+        var name = document.getElementById('rv-name');
+        var title = document.getElementById('rv-title');
+        var comment = document.getElementById('rv-comment');
+        if (name) name.value = '';
+        if (title) title.value = '';
+        if (comment) comment.value = '';
+
+        var picker = document.getElementById('rv-star-picker');
+        if (picker) {
+            picker.dataset.rating = 0;
+            picker.querySelectorAll('[data-rv-star]').forEach(function (s) {
+                s.classList.remove('fas', 'rv-active');
+                s.classList.add('far');
+            });
+        }
+        var label = document.getElementById('rv-rating-label');
+        if (label) label.textContent = 'Tap a star to rate';
+
+        [1, 2, 3].forEach(rebuildPhotoTile);
+        [1].forEach(rebuildVideoTile);
+
+        var status = document.getElementById('rv-form-status');
+        if (status) { status.className = 'rv-form-status'; status.textContent = ''; }
+    }
+
+    function submitReview() {
+        var status = document.getElementById('rv-form-status');
+        var submitBtn = document.getElementById('rv-submit');
+        var name = (document.getElementById('rv-name') || {}).value || '';
+        var title = (document.getElementById('rv-title') || {}).value || '';
+        var comment = (document.getElementById('rv-comment') || {}).value || '';
+
+        if (!state.rating) {
+            status.className = 'rv-form-status error show';
+            status.textContent = 'Please select a rating';
+            return;
+        }
+        if (!name.trim()) {
+            status.className = 'rv-form-status error show';
+            status.textContent = 'Please enter your name';
+            return;
+        }
+        if (!comment.trim()) {
+            status.className = 'rv-form-status error show';
+            status.textContent = 'Please write a review';
+            return;
+        }
+
+        var fd = new FormData();
+        fd.append('product_id', productId());
+        fd.append('rating', state.rating);
+        fd.append('author_name', name);
+        fd.append('title', title);
+        fd.append('comment', comment);
+
+        Object.keys(state.photos).forEach(function (k, i) {
+            fd.append('review_image_' + (i + 1), state.photos[k]);
+        });
+        if (state.video) fd.append('review_video', state.video);
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting…';
+        }
+
+        fetch('/builder/api/submit-review/' + subdomain() + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf() },
+            body: fd
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                status.className = 'rv-form-status success show';
+                status.textContent = data.message || 'Thank you! Your review has been submitted.';
+                resetForm();
+                setTimeout(function () {
+                    state.page = 0;
+                    state.canLoadMore = true;
+                    loadFeed(true);
+                }, 1200);
+            } else {
+                status.className = 'rv-form-status error show';
+                status.textContent = data.error || 'Could not submit review';
+            }
+        })
+        .catch(function () {
+            status.className = 'rv-form-status error show';
+            status.textContent = 'Network error — please try again';
+        })
+        .finally(function () {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit review';
+            }
+        });
+    }
+
+    // ============================================================
+    // FEED LOADING
+    // ============================================================
+    function loadFeed(reset) {
+        if (state.loading) return;
+        state.loading = true;
+
+        if (reset) {
+            state.page = 0;
+            var feedEl = document.getElementById('rv-feed');
+            if (feedEl) {
+                feedEl.innerHTML =
+                    '<div class="rv-loading">' +
+                    '<div class="rv-skeleton"></div>' +
+                    '<div class="rv-skeleton"></div>' +
+                    '<div class="rv-skeleton"></div>' +
+                    '</div>';
+            }
+        }
+
+        var url = '/builder/reviews/' + subdomain() + '/' + productId() + '/'
+                + '?page=' + state.page
+                + '&sort=' + state.sort;
+
+        fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) throw new Error(data.error || 'Failed to load reviews');
+            renderFeed(data, reset);
+        })
+        .catch(function (err) {
+            var feedEl = document.getElementById('rv-feed');
+            if (feedEl) {
+                feedEl.innerHTML =
+                    '<div class="rv-empty">' +
+                    '<i class="fas fa-exclamation-circle"></i>' +
+                    '<h3>Could not load reviews</h3>' +
+                    '<p>' + err.message + '</p>' +
+                    '</div>';
+            }
+        })
+        .finally(function () { state.loading = false; });
+    }
+
+    function renderFeed(data, reset) {
+        // Update bars
+        if (data.statistics && data.statistics.rating_distribution) {
+            var dist = data.statistics.rating_distribution;
+            var total = data.statistics.total_reviews || 1;
+            var indexMap = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4 };
+            Object.keys(indexMap).forEach(function (star) {
+                var count = dist[indexMap[star]] || 0;
+                var pct = Math.round((count / total) * 100);
+                var bar = q('[data-rv-bar="' + star + '"]');
+                var label = q('[data-rv-pct="' + star + '"]');
+                if (bar) bar.style.width = pct + '%';
+                if (label) label.textContent = pct + '%';
+            });
+        }
+
+        var feedEl = document.getElementById('rv-feed');
+        if (!feedEl) return;
+
+        if (reset) feedEl.innerHTML = '';
+
+        var reviews = data.reviews || [];
+        if (!reviews.length && reset) {
+            feedEl.innerHTML =
+                '<div class="rv-empty">' +
+                '<i class="fas fa-comment-dots"></i>' +
+                '<h3>No reviews yet</h3>' +
+                '<p>Be the first to share your experience.</p>' +
+                '</div>';
+            var lm = document.getElementById('rv-load-more');
+            if (lm) lm.style.display = 'none';
+            return;
+        }
+
+        reviews.forEach(function (review) {
+            feedEl.appendChild(buildReviewCard(review));
+        });
+
+        var moreBtn = document.getElementById('rv-load-more');
+        if (moreBtn) {
+            if (reviews.length >= 10) {
+                moreBtn.style.display = 'flex';
+                state.canLoadMore = true;
+            } else {
+                moreBtn.style.display = 'none';
+                state.canLoadMore = false;
+            }
+        }
+    }
+
+    // ============================================================
+    // REVIEW CARD — matches the editor sample
+    // ============================================================
+    function resolveMediaUrl(u) {
+        if (!u) return '';
+        if (u.startsWith('http') || u.startsWith('//') || u.startsWith('data:')) return u;
+        if (u.startsWith('/')) return u;
+        return '/' + u;
+    }
+
+    function buildReviewCard(review) {
+        var card = document.createElement('div');
+        card.className = 'rv-post';
+
+        // ---- HEAD ----
+        var head = document.createElement('div');
+        head.className = 'rv-post-head';
+
+        var avatar = document.createElement('div');
+        avatar.className = 'rv-avatar';
+        if (review.profile_picture) {
+            var imgA = document.createElement('img');
+            imgA.src = resolveMediaUrl(review.profile_picture);
+            imgA.alt = review.author_name || '';
+            avatar.appendChild(imgA);
+        } else {
+            avatar.textContent = (review.author_name || 'A').charAt(0).toUpperCase();
+        }
+        head.appendChild(avatar);
+
+        var meta = document.createElement('div');
+        meta.className = 'rv-post-meta';
+
+        var nameRow = document.createElement('div');
+        nameRow.className = 'rv-post-name-row';
+        var nameEl = document.createElement('span');
+        nameEl.className = 'rv-post-name';
+        nameEl.textContent = review.author_name || 'Anonymous';
+        nameRow.appendChild(nameEl);
+
+        if (review.is_verified_purchase) {
+            var ver = document.createElement('span');
+            ver.className = 'rv-post-verified';
+            ver.innerHTML = '<i class="fas fa-check-circle"></i> Verified buyer';
+            nameRow.appendChild(ver);
+        }
+        meta.appendChild(nameRow);
+
+        var metaLine = document.createElement('div');
+        metaLine.className = 'rv-post-meta-line';
+        var stars = document.createElement('span');
+        stars.className = 'rv-post-stars';
+        for (var s = 1; s <= 5; s++) {
+            var st = document.createElement('i');
+            st.className = 'fas fa-star' + (s > review.rating ? ' rv-star-off' : '');
+            stars.appendChild(st);
+        }
+        metaLine.appendChild(stars);
+
+        var dot1 = document.createElement('span');
+        dot1.className = 'rv-dot';
+        metaLine.appendChild(dot1);
+
+        var dateEl = document.createElement('span');
+        dateEl.textContent = review.created_at || '';
+        metaLine.appendChild(dateEl);
+
+        meta.appendChild(metaLine);
+        head.appendChild(meta);
+
+        var moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'rv-post-more';
+        moreBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
+        head.appendChild(moreBtn);
+
+        card.appendChild(head);
+
+        // ---- BODY ----
+        var body = document.createElement('p');
+        body.className = 'rv-post-body';
+        if (review.title) {
+            var t = document.createElement('span');
+            t.className = 'rv-post-title';
+            t.textContent = review.title;
+            body.appendChild(t);
+        }
+        var txt = document.createElement('span');
+        txt.textContent = review.comment || '';
+        body.appendChild(txt);
+        card.appendChild(body);
+
+        // ---- MEDIA (fix key names: image_url / video_url) ----
+        var media = collectMedia(review);
+        if (media.length) {
+            card.appendChild(buildMediaBlock(media));
+        }
+
+        // ---- ACTIONS ----
+        var actions = document.createElement('div');
+        actions.className = 'rv-post-actions';
+
+        var heartBtn = document.createElement('button');
+        heartBtn.type = 'button';
+        heartBtn.className = 'rv-action-btn rv-heart-btn';
+        heartBtn.innerHTML =
+            '<i class="far fa-heart"></i>' +
+            '<span class="rv-action-count">' + (review.helpful_count || 0) + '</span>';
+        heartBtn.addEventListener('click', function () {
+            if (heartBtn.classList.contains('liked')) return;
+            fetch('/builder/review/helpful/' + subdomain() + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf()
+                },
+                body: JSON.stringify({ review_id: review.id })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    heartBtn.classList.add('liked');
+                    heartBtn.querySelector('i').className = 'fas fa-heart';
+                    var c = heartBtn.querySelector('.rv-action-count');
+                    if (c) c.textContent = d.helpful_count || c.textContent;
+                    // update reaction line
+                    var reactions = card.querySelector('.rv-post-reactions strong');
+                    if (reactions) reactions.textContent = (d.helpful_count || 0) + ' people';
+                }
+            })
+            .catch(function () {});
+        });
+        actions.appendChild(heartBtn);
+
+        var commentBtn = document.createElement('button');
+        commentBtn.type = 'button';
+        commentBtn.className = 'rv-action-btn';
+        commentBtn.innerHTML = '<i class="far fa-comment"></i><span class="rv-action-count">0</span>';
+        actions.appendChild(commentBtn);
+
+        var shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.className = 'rv-action-btn';
+        shareBtn.innerHTML = '<i class="fas fa-share"></i><span>Share</span>';
+        shareBtn.addEventListener('click', function () {
+            if (navigator.share) {
+                navigator.share({
+                    title: review.title || 'Review',
+                    text: review.comment || ''
+                }).catch(function () {});
+            } else {
+                navigator.clipboard.writeText(review.comment || '')
+                    .then(function () { /* silently copied */ })
+                    .catch(function () {});
+            }
+        });
+        actions.appendChild(shareBtn);
+
+        card.appendChild(actions);
+
+        // ---- REACTIONS LINE ----
+        var reactions = document.createElement('div');
+        reactions.className = 'rv-post-reactions';
+        reactions.innerHTML =
+            '<span class="rv-reaction-heart"><i class="fas fa-heart"></i></span>' +
+            '<span>Liked by <strong>' + (review.helpful_count || 0) + ' people</strong></span>';
+        card.appendChild(reactions);
+
+        return card;
+    }
+
+    function collectMedia(review) {
+        var out = [];
+        // Try every plausible key the backend might use:
+        ['review_image_1', 'review_image_2', 'review_image_3'].forEach(function (k) {
+            if (review[k]) out.push({ type: 'image', url: resolveMediaUrl(review[k]) });
+        });
+        // Some backends return `image_url` singular or an array
+        if (review.image_url) out.push({ type: 'image', url: resolveMediaUrl(review.image_url) });
+        if (Array.isArray(review.images)) {
+            review.images.forEach(function (u) {
+                if (u) out.push({ type: 'image', url: resolveMediaUrl(u) });
+            });
+        }
+        ['review_video', 'video_url'].forEach(function (k) {
+            if (review[k]) out.push({ type: 'video', url: resolveMediaUrl(review[k]) });
+        });
+        return out;
+    }
+
+    function buildMediaBlock(media) {
+        var block = document.createElement('div');
+        block.className = 'rv-post-media';
+        var grid = document.createElement('div');
+        grid.className = 'rv-post-media-grid';
+        grid.dataset.count = String(Math.min(media.length, 4));
+
+        media.forEach(function (m) {
+            var item = document.createElement('div');
+            item.className = 'rv-post-media-item';
+
+            if (m.type === 'video') {
+                var v = document.createElement('video');
+                v.muted = true;
+                v.playsInline = true;
+                v.preload = 'metadata';
+                v.src = m.url;
+                item.appendChild(v);
+
+                var playIcon = document.createElement('div');
+                playIcon.className = 'rv-post-media-play';
+                playIcon.innerHTML = '<i class="fas fa-play"></i>';
+                item.appendChild(playIcon);
+
+                var badge = document.createElement('div');
+                badge.className = 'rv-post-media-badge';
+                badge.innerHTML = '<i class="fas fa-video"></i> Video';
+                item.appendChild(badge);
+
+                item.addEventListener('click', function () { openLightbox(m.url, 'video'); });
+            } else {
+                var img = document.createElement('img');
+                img.src = m.url;
+                img.alt = '';
+                img.loading = 'lazy';
+                item.appendChild(img);
+                item.addEventListener('click', function () { openLightbox(m.url, 'image'); });
+            }
+            grid.appendChild(item);
+        });
+
+        block.appendChild(grid);
+        return block;
+    }
+
+    // ============================================================
+    // LIGHTBOX
+    // ============================================================
+    function openLightbox(url, type) {
+        var lb = document.getElementById('rv-lightbox');
+        var content = document.getElementById('rv-lightbox-content');
+        if (!lb || !content) return;
+        content.innerHTML = '';
+        if (type === 'video') {
+            var v = document.createElement('video');
+            v.src = url;
+            v.controls = true;
+            v.autoplay = true;
+            content.appendChild(v);
+        } else {
+            var img = document.createElement('img');
+            img.src = url;
+            content.appendChild(img);
+        }
+        lb.classList.add('open');
+    }
+    function closeLightbox() {
+        var lb = document.getElementById('rv-lightbox');
+        var content = document.getElementById('rv-lightbox-content');
+        if (lb) lb.classList.remove('open');
+        if (content) content.innerHTML = '';
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    function init() {
+        if (!root()) return;
+        bindStarPicker();
+        [1, 2, 3].forEach(function (i) {
+            var inp = document.querySelector('[data-rv-photo-input="' + i + '"]');
+            if (inp) bindPhotoInput(inp);
+        });
+        var vinp = document.querySelector('[data-rv-video-input="1"]');
+        if (vinp) bindVideoInput(vinp);
+        bindForm();
+
+        var formEl = document.getElementById('rv-form-el');
+        if (formEl) formEl.addEventListener('submit', function (e) { e.preventDefault(); submitReview(); });
+
+        var sort = document.getElementById('rv-sort');
+        if (sort) sort.addEventListener('change', function () {
+            state.sort = sort.value;
+            loadFeed(true);
+        });
+
+        var more = document.getElementById('rv-load-more-btn');
+        if (more) more.addEventListener('click', function () {
+            if (!state.canLoadMore) return;
+            state.page++;
+            loadFeed(false);
+        });
+
+        var lbClose = document.getElementById('rv-lightbox-close');
+        if (lbClose) lbClose.addEventListener('click', closeLightbox);
+        var lb = document.getElementById('rv-lightbox');
+        if (lb) lb.addEventListener('click', function (e) {
+            if (e.target === lb) closeLightbox();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeLightbox();
+        });
+
+        loadFeed(true);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

@@ -1,0 +1,776 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+/* Dual-view component toggle — PUBLIC DEFAULT */
+.editor-only { display: none; }
+.public-only { display: block; }
+body.editor-mode .editor-only { display: block; }
+body.editor-mode .public-only { display: none; }
+
+{% generate_section_styles style_customizations 2030 2070 %}
+{% generate_background_images background_images 2030 2070 %}
+
+/* ============ BEFORE/AFTER SLIDER — SKINCARE ============ */
+.ba-root {
+    --ba-cream: #F6F2EB;
+    --ba-paper: #FBF9F4;
+    --ba-ink: #1B1916;
+    --ba-ink-soft: #57534B;
+    --ba-line: #E5DFD3;
+    --ba-sage: #6B7F5F;
+    --ba-terra: #B85C3E;
+    --ba-gold: #C9A227;
+    --ba-font-display: "Instrument Serif", Georgia, serif;
+    --ba-font-body: "Inter", system-ui, sans-serif;
+    background: var(--ba-cream);
+    color: var(--ba-ink);
+    font-family: var(--ba-font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 64px 24px;
+    /* max-width: 1080px; */
+    margin-inline: auto;
+}
+.ba-root *,
+.ba-root *::before,
+.ba-root *::after { box-sizing: border-box; }
+
+/* Header */
+.ba-root .ba__head {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto 48px;
+}
+.ba-root .ba__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--ba-font-body);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ba-terra);
+    margin-bottom: 16px;
+}
+.ba-root .ba__eyebrow i { font-size: 9px; }
+.ba-root .ba__title {
+    font-family: var(--ba-font-display);
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0 0 16px;
+    color: var(--ba-ink);
+}
+.ba-root .ba__title em {
+    font-style: italic;
+    color: var(--ba-terra);
+}
+.ba-root .ba__sub {
+    font-family: var(--ba-font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ba-ink-soft);
+    margin: 0;
+}
+
+/* Slider grid */
+.ba-root .ba__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 48px;
+}
+
+/* Card */
+.ba-root .ba__card {
+    background: var(--ba-paper);
+    border: 1px solid var(--ba-line);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Slider */
+.ba-root .ba__slider {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: ew-resize;
+    background: var(--ba-line);
+    touch-action: pan-y;
+}
+.ba-root .ba__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    display: block;
+}
+.ba-root .ba__img--before { z-index: 1; }
+.ba-root .ba__img--after {
+    z-index: 2;
+    clip-path: inset(0 50% 0 0);
+    transition: clip-path 0ms;
+}
+.ba-root .ba__handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: var(--ba-paper);
+    z-index: 3;
+    transform: translateX(-50%);
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+.ba-root .ba__handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: var(--ba-paper);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    display: grid;
+    place-items: center;
+}
+.ba-root .ba__handle-arrows {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    color: var(--ba-ink);
+    font-size: 11px;
+    display: flex;
+    gap: 4px;
+    pointer-events: none;
+}
+.ba-root .ba__label {
+    position: absolute;
+    top: 12px;
+    z-index: 4;
+    padding: 5px 10px;
+    background: rgba(251,249,244,0.95);
+    backdrop-filter: blur(4px);
+    font-family: var(--ba-font-body);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ba-ink);
+    border-radius: 2px;
+    pointer-events: none;
+}
+.ba-root .ba__label--before { left: 12px; }
+.ba-root .ba__label--after {
+    right: 12px;
+    background: rgba(107,127,95,0.95);
+    color: var(--ba-cream);
+}
+.ba-root .ba__stamp {
+    position: absolute;
+    bottom: 12px;
+    z-index: 4;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 8.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    letter-spacing: 0.05em;
+    pointer-events: none;
+}
+.ba-root .ba__stamp--before { left: 12px; }
+.ba-root .ba__stamp--after { right: 12px; }
+
+/* Caption */
+.ba-root .ba__caption {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px solid var(--ba-line);
+}
+.ba-root .ba__caption-name {
+    font-family: var(--ba-font-display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ba-ink);
+    margin: 0;
+    line-height: 1.2;
+}
+.ba-root .ba__caption-meta {
+    font-family: var(--ba-font-body);
+    font-size: 11.5px;
+    color: var(--ba-ink-soft);
+    line-height: 1.4;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.ba-root .ba__caption-meta i {
+    color: var(--ba-sage);
+    font-size: 9px;
+}
+.ba-root .ba__caption-meta .dot { opacity: 0.4; }
+.ba-root .ba__caption-concern {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: rgba(184,92,62,0.08);
+    color: var(--ba-terra);
+    font-family: var(--ba-font-body);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    margin-top: 4px;
+    align-self: flex-start;
+}
+
+/* Stats strip */
+.ba-root .ba__stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--ba-line);
+    border: 1px solid var(--ba-line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 32px;
+}
+.ba-root .ba__stat {
+    padding: 24px 20px;
+    background: var(--ba-paper);
+    text-align: center;
+}
+.ba-root .ba__stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(107,127,95,0.12);
+    color: var(--ba-sage);
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    margin: 0 auto 12px;
+}
+.ba-root .ba__stat-value {
+    font-family: var(--ba-font-display);
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ba-ink);
+    margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+}
+.ba-root .ba__stat-value small {
+    font-size: 0.55em;
+    color: var(--ba-ink-soft);
+    margin-left: 1px;
+}
+.ba-root .ba__stat-label {
+    font-family: var(--ba-font-body);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ba-ink-soft);
+}
+.ba-root .ba__stat-label strong {
+    color: var(--ba-ink);
+    font-weight: 600;
+    display: block;
+}
+
+/* Footnote */
+.ba-root .ba__footnote {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px;
+    background: var(--ba-paper);
+    border: 1px solid var(--ba-line);
+    border-radius: 4px;
+    font-family: var(--ba-font-body);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ba-ink-soft);
+}
+.ba-root .ba__footnote i {
+    color: var(--ba-sage);
+    font-size: 14px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+.ba-root .ba__footnote strong {
+    color: var(--ba-ink);
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .ba-root .ba__grid { grid-template-columns: 1fr; }
+    .ba-root .ba__stats { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+    .ba-root .ba__grid { gap: 16px; }
+    .ba-root .ba__title { font-size: 32px; }
+}
+</style>
+
+<!-- ============================================================ -->
+<!-- EDITOR VIEW (.editor-only) — IDs 2030-2070                   -->
+<!-- ============================================================ -->
+<div class="editor-only editable-section" data-section="2030">
+
+  <section class="ba-root" aria-label="Clinical before and after results">
+
+      <div class="ba__head">
+          <span class="ba__eyebrow editable-text" data-text="2031">
+              <i class="fa-solid fa-flask-vial editable-icon" data-icon="2032"></i>
+              Independent clinical study
+          </span>
+          <h2 class="ba__title editable-text" data-text="2033">
+              Real skin, <em>real results</em> — 28 days.
+          </h2>
+          <p class="ba__sub editable-text" data-text="2034">
+              120 participants with medium-to-dry skin. Standardized photography, same lighting, same camera, no filters. Drag each photo to see the change.
+          </p>
+      </div>
+
+      <!-- Three paired sliders -->
+      <div class="ba__grid">
+
+          <!-- Card 1 -->
+          <div class="ba__card">
+              <div class="ba__slider" data-role="slider">
+                  <img class="ba__img ba__img--before editable-image" src="https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=600&q=85&auto=format&fit=crop" alt="Before" data-image="2035">
+                  <img class="ba__img ba__img--after editable-image" src="https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=600&q=85&auto=format&fit=crop" alt="After" data-image="2036">
+                  <span class="ba__label ba__label--before editable-text" data-text="2037">Day 1</span>
+                  <span class="ba__label ba__label--after editable-text" data-text="2038">Day 28</span>
+                  <span class="ba__stamp ba__stamp--before editable-text" data-text="2039">2024.03.02 · 09:14</span>
+                  <span class="ba__stamp ba__stamp--after editable-text" data-text="2040">2024.03.30 · 09:11</span>
+                  <div class="ba__handle"></div>
+                  <div class="ba__handle-arrows">
+                      <i class="fa-solid fa-chevron-left"></i>
+                      <i class="fa-solid fa-chevron-right"></i>
+                  </div>
+              </div>
+              <div class="ba__caption">
+                  <p class="ba__caption-name editable-text" data-text="2041">Sarah · 34</p>
+                  <p class="ba__caption-meta">
+                      <i class="fa-solid fa-check-circle"></i>
+                      <span class="editable-text" data-text="2042">Completed 28-day study</span>
+                      <span class="dot">·</span>
+                      <span class="editable-text" data-text="2043">Combination skin</span>
+                  </p>
+                  <span class="ba__caption-concern editable-text" data-text="2044">
+                      <i class="fa-solid fa-tag editable-icon" data-icon="2045"></i>
+                      Dark spots
+                  </span>
+              </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="ba__card">
+              <div class="ba__slider" data-role="slider">
+                  <img class="ba__img ba__img--before editable-image" src="https://images.unsplash.com/photo-1612817288484-6f916006741a?w=600&q=85&auto=format&fit=crop" alt="Before" data-image="2046">
+                  <img class="ba__img ba__img--after editable-image" src="https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&q=85&auto=format&fit=crop" alt="After" data-image="2047">
+                  <span class="ba__label ba__label--before editable-text" data-text="2048">Day 1</span>
+                  <span class="ba__label ba__label--after editable-text" data-text="2049">Day 28</span>
+                  <span class="ba__stamp ba__stamp--before editable-text" data-text="2050">2024.03.05 · 14:22</span>
+                  <span class="ba__stamp ba__stamp--after editable-text" data-text="2051">2024.04.02 · 14:19</span>
+                  <div class="ba__handle"></div>
+                  <div class="ba__handle-arrows">
+                      <i class="fa-solid fa-chevron-left"></i>
+                      <i class="fa-solid fa-chevron-right"></i>
+                  </div>
+              </div>
+              <div class="ba__caption">
+                  <p class="ba__caption-name editable-text" data-text="2052">Priya · 29</p>
+                  <p class="ba__caption-meta">
+                      <i class="fa-solid fa-check-circle"></i>
+                      <span class="editable-text" data-text="2053">Completed 28-day study</span>
+                      <span class="dot">·</span>
+                      <span class="editable-text" data-text="2054">Dry skin</span>
+                  </p>
+                  <span class="ba__caption-concern editable-text" data-text="2055">
+                      <i class="fa-solid fa-tag editable-icon" data-icon="2056"></i>
+                      Dullness
+                  </span>
+              </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="ba__card">
+              <div class="ba__slider" data-role="slider">
+                  <img class="ba__img ba__img--before editable-image" src="https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&q=85&auto=format&fit=crop" alt="Before" data-image="2057">
+                  <img class="ba__img ba__img--after editable-image" src="https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=600&q=85&auto=format&fit=crop" alt="After" data-image="2058">
+                  <span class="ba__label ba__label--before editable-text" data-text="2059">Day 1</span>
+                  <span class="ba__label ba__label--after editable-text" data-text="2060">Day 28</span>
+                  <span class="ba__stamp ba__stamp--before editable-text" data-text="2061">2024.03.11 · 11:08</span>
+                  <span class="ba__stamp ba__stamp--after editable-text" data-text="2062">2024.04.08 · 11:03</span>
+                  <div class="ba__handle"></div>
+                  <div class="ba__handle-arrows">
+                      <i class="fa-solid fa-chevron-left"></i>
+                      <i class="fa-solid fa-chevron-right"></i>
+                  </div>
+              </div>
+              <div class="ba__caption">
+                  <p class="ba__caption-name editable-text" data-text="2063">Jade · 41</p>
+                  <p class="ba__caption-meta">
+                      <i class="fa-solid fa-check-circle"></i>
+                      <span class="editable-text" data-text="2064">Completed 28-day study</span>
+                      <span class="dot">·</span>
+                      <span class="editable-text" data-text="2065">Sensitive skin</span>
+                  </p>
+                  <span class="ba__caption-concern editable-text" data-text="2066">
+                      <i class="fa-solid fa-tag editable-icon" data-icon="2067"></i>
+                      Fine lines
+                  </span>
+              </div>
+          </div>
+
+      </div>
+
+      <!-- Study stats -->
+      <div class="ba__stats">
+          <div class="ba__stat">
+              <div class="ba__stat-icon">
+                  <i class="fa-solid fa-sun editable-icon" data-icon="2068"></i>
+              </div>
+              <div class="ba__stat-value editable-text" data-text="2069">94<small>%</small></div>
+              <div class="ba__stat-label editable-text" data-text="2070">
+                  <strong>Saw brighter skin</strong>
+                  In 28 days
+              </div>
+          </div>
+          <div class="ba__stat">
+              <div class="ba__stat-icon">
+                  <i class="fa-solid fa-circle-half-stroke editable-icon" data-icon="2071"></i>
+              </div>
+              <div class="ba__stat-value editable-text" data-text="2072">89<small>%</small></div>
+              <div class="ba__stat-label editable-text" data-text="2073">
+                  <strong>Faded dark spots</strong>
+                  Compared to baseline
+              </div>
+          </div>
+          <div class="ba__stat">
+              <div class="ba__stat-icon">
+                  <i class="fa-solid fa-wand-magic-sparkles editable-icon" data-icon="2074"></i>
+              </div>
+              <div class="ba__stat-value editable-text" data-text="2075">91<small>%</small></div>
+              <div class="ba__stat-label editable-text" data-text="2076">
+                  <strong>Improved texture</strong>
+                  Measured clinically
+              </div>
+          </div>
+          <div class="ba__stat">
+              <div class="ba__stat-icon">
+                  <i class="fa-solid fa-heart editable-icon" data-icon="2077"></i>
+              </div>
+              <div class="ba__stat-value editable-text" data-text="2078">97<small>%</small></div>
+              <div class="ba__stat-label editable-text" data-text="2079">
+                  <strong>Would buy again</strong>
+                  Post-study survey
+              </div>
+          </div>
+      </div>
+
+      <!-- Footnote -->
+      <div class="ba__footnote">
+          <i class="fa-solid fa-flask editable-icon" data-icon="2080"></i>
+          <div class="editable-text" data-text="2081">
+              <strong>Study details:</strong> 120 participants, ages 24–52, all skin types. Participants applied Vitamin C Brightening Serum twice daily for 28 days. Results assessed at day 0, 14, and 28 by a board-certified dermatologist using a 5-point clinical grading scale and standardized photography. Full study methodology available on request. Individual results vary.
+          </div>
+      </div>
+
+  </section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- PUBLIC VIEW (.public-only) — IDs 2030-2081                   -->
+<!-- ============================================================ -->
+<div class="public-only">
+
+{% resolve_product as p %}
+
+<section class="ba-root" id="section-2030" aria-label="Clinical before and after results">
+
+  <div class="ba__head">
+      <span class="ba__eyebrow" id="section-2031">
+          {% render_icon icon_customizations "2032" "fa-solid fa-flask-vial" %}
+          {{ text_contents.2031|default:"Independent clinical study" }}
+      </span>
+      <h2 class="ba__title" id="section-2033">
+          {{ text_contents.2033|default:"Real skin, <em>real results</em> — 28 days."|safe }}
+      </h2>
+      <p class="ba__sub" id="section-2034">
+          {{ text_contents.2034|default:"120 participants with medium-to-dry skin. Standardized photography, same lighting, same camera, no filters. Drag each photo to see the change." }}
+      </p>
+  </div>
+
+  <!-- Three paired sliders -->
+  <div class="ba__grid">
+
+      <!-- Card 1 -->
+      <div class="ba__card">
+          <div class="ba__slider" data-role="slider">
+              <img class="ba__img ba__img--before editable-image"
+                   src="https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=600&q=85&auto=format&fit=crop"
+                   alt="Before"
+                   data-image="2035">
+              <img class="ba__img ba__img--after editable-image"
+                   src="https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=600&q=85&auto=format&fit=crop"
+                   alt="After"
+                   data-image="2036">
+              <span class="ba__label ba__label--before" id="section-2037">{{ text_contents.2037|default:"Day 1" }}</span>
+              <span class="ba__label ba__label--after" id="section-2038">{{ text_contents.2038|default:"Day 28" }}</span>
+              <span class="ba__stamp ba__stamp--before" id="section-2039">{{ text_contents.2039|default:"2024.03.02 · 09:14" }}</span>
+              <span class="ba__stamp ba__stamp--after" id="section-2040">{{ text_contents.2040|default:"2024.03.30 · 09:11" }}</span>
+              <div class="ba__handle"></div>
+              <div class="ba__handle-arrows">
+                  <i class="fa-solid fa-chevron-left"></i>
+                  <i class="fa-solid fa-chevron-right"></i>
+              </div>
+          </div>
+          <div class="ba__caption">
+              <p class="ba__caption-name" id="section-2041">{{ text_contents.2041|default:"Sarah · 34" }}</p>
+              <p class="ba__caption-meta">
+                  <i class="fa-solid fa-check-circle"></i>
+                  <span id="section-2042">{{ text_contents.2042|default:"Completed 28-day study" }}</span>
+                  <span class="dot">·</span>
+                  <span id="section-2043">{{ text_contents.2043|default:"Combination skin" }}</span>
+              </p>
+              <span class="ba__caption-concern" id="section-2044">
+                  {% render_icon icon_customizations "2045" "fa-solid fa-tag" %}
+                  {{ text_contents.2044|default:"Dark spots" }}
+              </span>
+          </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="ba__card">
+          <div class="ba__slider" data-role="slider">
+              <img class="ba__img ba__img--before editable-image"
+                   src="https://images.unsplash.com/photo-1612817288484-6f916006741a?w=600&q=85&auto=format&fit=crop"
+                   alt="Before"
+                   data-image="2046">
+              <img class="ba__img ba__img--after editable-image"
+                   src="https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&q=85&auto=format&fit=crop"
+                   alt="After"
+                   data-image="2047">
+              <span class="ba__label ba__label--before" id="section-2048">{{ text_contents.2048|default:"Day 1" }}</span>
+              <span class="ba__label ba__label--after" id="section-2049">{{ text_contents.2049|default:"Day 28" }}</span>
+              <span class="ba__stamp ba__stamp--before" id="section-2050">{{ text_contents.2050|default:"2024.03.05 · 14:22" }}</span>
+              <span class="ba__stamp ba__stamp--after" id="section-2051">{{ text_contents.2051|default:"2024.04.02 · 14:19" }}</span>
+              <div class="ba__handle"></div>
+              <div class="ba__handle-arrows">
+                  <i class="fa-solid fa-chevron-left"></i>
+                  <i class="fa-solid fa-chevron-right"></i>
+              </div>
+          </div>
+          <div class="ba__caption">
+              <p class="ba__caption-name" id="section-2052">{{ text_contents.2052|default:"Priya · 29" }}</p>
+              <p class="ba__caption-meta">
+                  <i class="fa-solid fa-check-circle"></i>
+                  <span id="section-2053">{{ text_contents.2053|default:"Completed 28-day study" }}</span>
+                  <span class="dot">·</span>
+                  <span id="section-2054">{{ text_contents.2054|default:"Dry skin" }}</span>
+              </p>
+              <span class="ba__caption-concern" id="section-2055">
+                  {% render_icon icon_customizations "2056" "fa-solid fa-tag" %}
+                  {{ text_contents.2055|default:"Dullness" }}
+              </span>
+          </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="ba__card">
+          <div class="ba__slider" data-role="slider">
+              <img class="ba__img ba__img--before editable-image"
+                   src="https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&q=85&auto=format&fit=crop"
+                   alt="Before"
+                   data-image="2057">
+              <img class="ba__img ba__img--after editable-image"
+                   src="https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=600&q=85&auto=format&fit=crop"
+                   alt="After"
+                   data-image="2058">
+              <span class="ba__label ba__label--before" id="section-2059">{{ text_contents.2059|default:"Day 1" }}</span>
+              <span class="ba__label ba__label--after" id="section-2060">{{ text_contents.2060|default:"Day 28" }}</span>
+              <span class="ba__stamp ba__stamp--before" id="section-2061">{{ text_contents.2061|default:"2024.03.11 · 11:08" }}</span>
+              <span class="ba__stamp ba__stamp--after" id="section-2062">{{ text_contents.2062|default:"2024.04.08 · 11:03" }}</span>
+              <div class="ba__handle"></div>
+              <div class="ba__handle-arrows">
+                  <i class="fa-solid fa-chevron-left"></i>
+                  <i class="fa-solid fa-chevron-right"></i>
+              </div>
+          </div>
+          <div class="ba__caption">
+              <p class="ba__caption-name" id="section-2063">{{ text_contents.2063|default:"Jade · 41" }}</p>
+              <p class="ba__caption-meta">
+                  <i class="fa-solid fa-check-circle"></i>
+                  <span id="section-2064">{{ text_contents.2064|default:"Completed 28-day study" }}</span>
+                  <span class="dot">·</span>
+                  <span id="section-2065">{{ text_contents.2065|default:"Sensitive skin" }}</span>
+              </p>
+              <span class="ba__caption-concern" id="section-2066">
+                  {% render_icon icon_customizations "2067" "fa-solid fa-tag" %}
+                  {{ text_contents.2066|default:"Fine lines" }}
+              </span>
+          </div>
+      </div>
+
+  </div>
+
+  <!-- Study stats -->
+  <div class="ba__stats">
+      <div class="ba__stat">
+          <div class="ba__stat-icon">
+              {% render_icon icon_customizations "2068" "fa-solid fa-sun" %}
+          </div>
+          <div class="ba__stat-value" id="section-2069">{{ text_contents.2069|default:"94<small>%</small>"|safe }}</div>
+          <div class="ba__stat-label" id="section-2070">{{ text_contents.2070|default:"<strong>Saw brighter skin</strong>In 28 days"|safe }}</div>
+      </div>
+      <div class="ba__stat">
+          <div class="ba__stat-icon">
+              {% render_icon icon_customizations "2071" "fa-solid fa-circle-half-stroke" %}
+          </div>
+          <div class="ba__stat-value" id="section-2072">{{ text_contents.2072|default:"89<small>%</small>"|safe }}</div>
+          <div class="ba__stat-label" id="section-2073">{{ text_contents.2073|default:"<strong>Faded dark spots</strong>Compared to baseline"|safe }}</div>
+      </div>
+      <div class="ba__stat">
+          <div class="ba__stat-icon">
+              {% render_icon icon_customizations "2074" "fa-solid fa-wand-magic-sparkles" %}
+          </div>
+          <div class="ba__stat-value" id="section-2075">{{ text_contents.2075|default:"91<small>%</small>"|safe }}</div>
+          <div class="ba__stat-label" id="section-2076">{{ text_contents.2076|default:"<strong>Improved texture</strong>Measured clinically"|safe }}</div>
+      </div>
+      <div class="ba__stat">
+          <div class="ba__stat-icon">
+              {% render_icon icon_customizations "2077" "fa-solid fa-heart" %}
+          </div>
+          <div class="ba__stat-value" id="section-2078">{{ text_contents.2078|default:"97<small>%</small>"|safe }}</div>
+          <div class="ba__stat-label" id="section-2079">{{ text_contents.2079|default:"<strong>Would buy again</strong>Post-study survey"|safe }}</div>
+      </div>
+  </div>
+
+  <!-- Footnote -->
+  <div class="ba__footnote">
+      {% render_icon icon_customizations "2080" "fa-solid fa-flask" %}
+      <div id="section-2081">
+          {{ text_contents.2081|default:"<strong>Study details:</strong> 120 participants, ages 24–52, all skin types. Participants applied Vitamin C Brightening Serum twice daily for 28 days. Results assessed at day 0, 14, and 28 by a board-certified dermatologist using a 5-point clinical grading scale and standardized photography. Full study methodology available on request. Individual results vary."|safe }}
+      </div>
+  </div>
+
+</section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT — scoped before/after slider, one state per instance   -->
+<!-- ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    var BA = window.BA = window.BA || {};
+    if (BA._initialized) return;
+    BA._initialized = true;
+
+    function initSlider(slider) {
+        if (!slider || slider.dataset.sliderInitialized === '1') return;
+        slider.dataset.sliderInitialized = '1';
+
+        var afterImg = slider.querySelector('.ba__img--after');
+        var handle = slider.querySelector('.ba__handle');
+        if (!afterImg || !handle) return;
+
+        var isDragging = false;
+
+        function update(clientX) {
+            var rect = slider.getBoundingClientRect();
+            var pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+            afterImg.style.clipPath = 'inset(0 ' + (100 - pct) + '% 0 0)';
+            handle.style.left = pct + '%';
+        }
+
+        // Mouse events
+        slider.addEventListener('mousedown', function (e) {
+            isDragging = true;
+            update(e.clientX);
+        });
+        document.addEventListener('mousemove', function (e) {
+            if (isDragging) update(e.clientX);
+        });
+        document.addEventListener('mouseup', function () {
+            isDragging = false;
+        });
+
+        // Touch events
+        slider.addEventListener('touchstart', function (e) {
+            if (e.touches.length) update(e.touches[0].clientX);
+        }, { passive: true });
+        slider.addEventListener('touchmove', function (e) {
+            if (e.touches.length) update(e.touches[0].clientX);
+        }, { passive: true });
+
+        // Keyboard accessibility
+        slider.setAttribute('tabindex', '0');
+        slider.setAttribute('role', 'slider');
+        slider.setAttribute('aria-label', 'Before and after comparison');
+        slider.setAttribute('aria-valuemin', '0');
+        slider.setAttribute('aria-valuemax', '100');
+        slider.addEventListener('keydown', function (e) {
+            var current = parseFloat(handle.style.left) || 50;
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                var newPct = Math.max(0, current - 5);
+                afterImg.style.clipPath = 'inset(0 ' + (100 - newPct) + '% 0 0)';
+                handle.style.left = newPct + '%';
+                slider.setAttribute('aria-valuenow', String(newPct));
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                var newPct2 = Math.min(100, current + 5);
+                afterImg.style.clipPath = 'inset(0 ' + (100 - newPct2) + '% 0 0)';
+                handle.style.left = newPct2 + '%';
+                slider.setAttribute('aria-valuenow', String(newPct2));
+            }
+        });
+    }
+
+    function initAll() {
+        document.querySelectorAll('.ba-root .ba__slider[data-role="slider"]').forEach(function (el) {
+            if (el.offsetParent === null) return;
+            initSlider(el);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
+</script>

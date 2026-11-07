@@ -1,0 +1,575 @@
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
+
+<style>
+    /* Dual-view component toggle — PUBLIC DEFAULT */
+    .editor-only { display: none; }
+    .public-only { display: block; }
+    body.editor-mode .editor-only { display: block; }
+    body.editor-mode .public-only { display: none; }
+
+    /* Dynamic Section Styles — Range 1400-1453 */
+    {% generate_section_styles style_customizations 1400 1453 %}
+
+    /* Dynamic Background Images — Range 1400-1453 */
+    {% generate_background_images background_images 1400 1453 %}
+
+    /* ============ GALLERY — MOSAIC (COFFEE) ============ */
+    .mosaic-gallery {
+        /* max-width: 1200px; */
+        margin-inline: auto;
+        background: #F4EFE4;
+        color: #2B2416;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        padding: 64px 24px;
+    }
+    .mosaic-gallery *,
+    .mosaic-gallery *::before,
+    .mosaic-gallery *::after {
+        box-sizing: border-box;
+    }
+
+    /* Header */
+    .mosaic-gallery .gallery__head {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 40px;
+        align-items: end;
+        padding-bottom: 24px;
+        border-bottom: 2px solid #2B2416;
+        margin-bottom: 40px;
+    }
+    .mosaic-gallery .gallery__eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .mosaic-gallery .gallery__eyebrow-line {
+        width: 32px;
+        height: 1px;
+        background: #A84424;
+    }
+    .mosaic-gallery .gallery__eyebrow-text {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #A84424;
+    }
+    .mosaic-gallery .gallery__title {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(34px, 5vw, 52px);
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        line-height: 1.05;
+        margin: 0 0 12px;
+        color: #2B2416;
+        max-width: 22ch;
+    }
+    .mosaic-gallery .gallery__title em {
+        font-style: italic;
+        color: #3D4A5C;
+    }
+    .mosaic-gallery .gallery__sub {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 16px;
+        font-style: italic;
+        line-height: 1.6;
+        color: #6B5F4F;
+        margin: 0;
+        max-width: 48ch;
+    }
+    .mosaic-gallery .gallery__meta {
+        text-align: right;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #6B5F4F;
+        padding-bottom: 6px;
+        flex-shrink: 0;
+    }
+    .mosaic-gallery .gallery__meta strong {
+        display: block;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 22px;
+        font-weight: 500;
+        color: #2B2416;
+        letter-spacing: -0.01em;
+        text-transform: none;
+        margin-bottom: 4px;
+        line-height: 1;
+    }
+
+    /* Mosaic grid */
+    .mosaic-gallery .gallery__mosaic {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: 200px 200px 200px;
+        gap: 12px;
+    }
+
+    /* Photo tiles */
+    .mosaic-gallery .tile {
+        position: relative;
+        overflow: hidden;
+        background: #E0D9C8;
+        border-radius: 2px;
+    }
+    .mosaic-gallery .tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 500ms ease;
+    }
+    .mosaic-gallery .tile:hover img {
+        transform: scale(1.04);
+    }
+
+    /* Grid layout — 7 tiles */
+    .mosaic-gallery .tile--bag     { grid-column: 1 / span 3; grid-row: 1 / span 2; }
+    .mosaic-gallery .tile--beans   { grid-column: 4 / span 2; grid-row: 1 / span 1; }
+    .mosaic-gallery .tile--roast   { grid-column: 6 / span 1; grid-row: 1 / span 2; }
+    .mosaic-gallery .tile--grind   { grid-column: 4 / span 1; grid-row: 2 / span 1; }
+    .mosaic-gallery .tile--pour    { grid-column: 5 / span 1; grid-row: 2 / span 1; }
+    .mosaic-gallery .tile--cup     { grid-column: 1 / span 2; grid-row: 3 / span 1; }
+    .mosaic-gallery .tile--context { grid-column: 3 / span 4; grid-row: 3 / span 1; }
+
+    /* Caption on tile */
+    .mosaic-gallery .tile__num {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 2;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 12px;
+        font-style: italic;
+        color: #FBF8F0;
+        background: rgba(43,36,22,0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        padding: 4px 10px;
+        border-radius: 100px;
+        line-height: 1.2;
+    }
+
+    .mosaic-gallery .tile__caption {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        z-index: 2;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 10.5px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        color: #FBF8F0;
+        line-height: 1.35;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.65);
+    }
+    .mosaic-gallery .tile__caption strong {
+        display: block;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 15px;
+        font-style: italic;
+        font-weight: 500;
+        letter-spacing: 0;
+        margin-bottom: 2px;
+    }
+
+    /* Wide context tile — narrative block with dark overlay */
+    .mosaic-gallery .tile--context::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            to top,
+            rgba(43,36,22,0.85) 0%,
+            rgba(43,36,22,0.5) 40%,
+            transparent 100%
+        );
+        z-index: 1;
+    }
+    .mosaic-gallery .tile--context .tile__caption {
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        font-size: 12px;
+        max-width: 400px;
+    }
+    .mosaic-gallery .tile--context .tile__caption strong {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+
+    /* Legend strip */
+    .mosaic-gallery .gallery__legend {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        margin-top: 40px;
+        padding-top: 32px;
+        border-top: 1px solid #E0D9C8;
+    }
+    .mosaic-gallery .legend-item {
+        display: flex;
+        gap: 12px;
+    }
+    .mosaic-gallery .legend-num {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 28px;
+        font-style: italic;
+        font-weight: 400;
+        color: #B8935A;
+        line-height: 1;
+        flex-shrink: 0;
+        padding-top: 2px;
+    }
+    .mosaic-gallery .legend-body {
+        min-width: 0;
+    }
+    .mosaic-gallery .legend-title {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #2B2416;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+    .mosaic-gallery .legend-text {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: #6B5F4F;
+        margin: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .mosaic-gallery .gallery__mosaic {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: 160px 160px 160px 160px;
+        }
+        .mosaic-gallery .tile--bag     { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+        .mosaic-gallery .tile--beans   { grid-column: 3 / span 2; grid-row: 1 / span 1; }
+        .mosaic-gallery .tile--roast   { grid-column: 3 / span 2; grid-row: 2 / span 1; }
+        .mosaic-gallery .tile--grind   { grid-column: 1 / span 1; grid-row: 3 / span 1; }
+        .mosaic-gallery .tile--pour    { grid-column: 2 / span 1; grid-row: 3 / span 1; }
+        .mosaic-gallery .tile--cup     { grid-column: 3 / span 2; grid-row: 3 / span 1; }
+        .mosaic-gallery .tile--context { grid-column: 1 / span 4; grid-row: 4 / span 1; }
+        .mosaic-gallery .gallery__legend { grid-template-columns: 1fr 1fr; }
+        .mosaic-gallery .gallery__head { grid-template-columns: 1fr; gap: 16px; }
+        .mosaic-gallery .gallery__meta { text-align: left; }
+    }
+    @media (max-width: 560px) {
+        .mosaic-gallery .gallery__mosaic {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 140px 140px 140px 140px;
+        }
+        .mosaic-gallery .tile--bag     { grid-column: 1 / span 2; grid-row: 1 / span 1; }
+        .mosaic-gallery .tile--beans   { grid-column: 1 / span 1; grid-row: 2 / span 1; }
+        .mosaic-gallery .tile--roast   { grid-column: 2 / span 1; grid-row: 2 / span 1; }
+        .mosaic-gallery .tile--grind   { grid-column: 1 / span 1; grid-row: 3 / span 1; }
+        .mosaic-gallery .tile--pour    { grid-column: 2 / span 1; grid-row: 3 / span 1; }
+        .mosaic-gallery .tile--cup     { grid-column: 1 / span 2; grid-row: 4 / span 1; }
+        .mosaic-gallery .tile--context { display: none; }
+        .mosaic-gallery .gallery__legend { grid-template-columns: 1fr; }
+        .mosaic-gallery .tile__caption { font-size: 9px; }
+        .mosaic-gallery .tile__caption strong { font-size: 12px; }
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- EDITOR VIEW (.editor-only) — IDs 1400-1453                   -->
+<!-- ============================================================ -->
+<div class="editor-only">
+
+  <section class="mosaic-gallery editable-section" data-section="1400" aria-label="Roast to cup gallery">
+
+      <!-- HEADER -->
+      <div class="gallery__head editable-section" data-section="1401">
+          <div>
+              <div class="gallery__eyebrow editable-section" data-section="1402">
+                  <span class="gallery__eyebrow-line"></span>
+                  <span class="gallery__eyebrow-text editable-text editable-section" data-text="1403" data-section="1403">Roast to cup · Ethiopia Konga</span>
+              </div>
+              <h2 class="gallery__title editable-section" data-section="1404">
+                  <span class="editable-text editable-section" data-text="1404" data-section="1404">From the bag to <em class="editable-text editable-section" data-text="1405" data-section="1405">the last sip</em>.</span>
+              </h2>
+              <p class="gallery__sub editable-text editable-section" data-text="1406" data-section="1406">
+                  Seven frames from this week's roast — no styling, no props. What the coffee actually looks like at every stage.
+              </p>
+          </div>
+          <div class="gallery__meta editable-section" data-section="1407">
+              <strong class="editable-text editable-section" data-text="1407" data-section="1407">7 frames</strong>
+              <span class="editable-text editable-section" data-text="1408" data-section="1408">Roasted this<br>Tuesday, 3/12</span>
+          </div>
+      </div>
+
+      <!-- MOSAIC -->
+      <div class="gallery__mosaic">
+
+          <div class="tile tile--bag editable-section" data-section="1409">
+              <span class="tile__num editable-text editable-section" data-text="1410" data-section="1410">01</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&q=85&auto=format&fit=crop" alt="Bag" data-image="1411" data-section="1411">
+              <div class="tile__caption editable-section" data-section="1412">
+                  <strong class="editable-text editable-section" data-text="1412" data-section="1412">The bag</strong>
+                  <span class="editable-text editable-section" data-text="1413" data-section="1413">12oz kraft paper bag, matte finish, printed roast date</span>
+              </div>
+          </div>
+
+          <div class="tile tile--beans editable-section" data-section="1414">
+              <span class="tile__num editable-text editable-section" data-text="1415" data-section="1415">02</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?w=500&q=85&auto=format&fit=crop" alt="Beans" data-image="1416" data-section="1416">
+              <div class="tile__caption editable-section" data-section="1417">
+                  <strong class="editable-text editable-section" data-text="1417" data-section="1417">Whole beans</strong>
+                  <span class="editable-text editable-section" data-text="1418" data-section="1418">Heirloom landrace</span>
+              </div>
+          </div>
+
+          <div class="tile tile--roast editable-section" data-section="1419">
+              <span class="tile__num editable-text editable-section" data-text="1420" data-section="1420">03</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?w=400&q=85&auto=format&fit=crop" alt="Roast" data-image="1421" data-section="1421">
+              <div class="tile__caption editable-section" data-section="1422">
+                  <strong class="editable-text editable-section" data-text="1422" data-section="1422">Light roast</strong>
+              </div>
+          </div>
+
+          <div class="tile tile--grind editable-section" data-section="1423">
+              <span class="tile__num editable-text editable-section" data-text="1424" data-section="1424">04</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1521302080334-4bebac2763a6?w=400&q=85&auto=format&fit=crop" alt="Grind" data-image="1425" data-section="1425">
+              <div class="tile__caption editable-section" data-section="1426">
+                  <strong class="editable-text editable-section" data-text="1426" data-section="1426">Ground</strong>
+                  <span class="editable-text editable-section" data-text="1427" data-section="1427">To your brew method</span>
+              </div>
+          </div>
+
+          <div class="tile tile--pour editable-section" data-section="1428">
+              <span class="tile__num editable-text editable-section" data-text="1429" data-section="1429">05</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=85&auto=format&fit=crop" alt="Pour" data-image="1430" data-section="1430">
+              <div class="tile__caption editable-section" data-section="1431">
+                  <strong class="editable-text editable-section" data-text="1431" data-section="1431">The pour</strong>
+              </div>
+          </div>
+
+          <div class="tile tile--cup editable-section" data-section="1432">
+              <span class="tile__num editable-text editable-section" data-text="1433" data-section="1433">06</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=85&auto=format&fit=crop" alt="Cup" data-image="1434" data-section="1434">
+              <div class="tile__caption editable-section" data-section="1435">
+                  <strong class="editable-text editable-section" data-text="1435" data-section="1435">In the cup</strong>
+                  <span class="editable-text editable-section" data-text="1436" data-section="1436">Bergamot, jasmine, honey</span>
+              </div>
+          </div>
+
+          <div class="tile tile--context editable-section" data-section="1437">
+              <span class="tile__num editable-text editable-section" data-text="1438" data-section="1438">07</span>
+              <img class="editable-image editable-section" src="https://images.unsplash.com/photo-1518057111178-44a106bad636?w=1200&q=85&auto=format&fit=crop" alt="Context" data-image="1439" data-section="1439">
+              <div class="tile__caption editable-section" data-section="1440">
+                  <strong class="editable-text editable-section" data-text="1440" data-section="1440">Monday morning, Portland</strong>
+                  <span class="editable-text editable-section" data-text="1441" data-section="1441">The whole thing takes about 4 minutes from bag to cup. That's it. That's the ritual.</span>
+              </div>
+          </div>
+
+      </div>
+
+      <!-- LEGEND -->
+      <div class="gallery__legend">
+          <div class="legend-item editable-section" data-section="1442">
+              <div class="legend-num editable-text editable-section" data-text="1442" data-section="1442">01–02</div>
+              <div class="legend-body">
+                  <div class="legend-title editable-text editable-section" data-text="1443" data-section="1443">The bag & the beans</div>
+                  <p class="legend-text editable-text editable-section" data-text="1444" data-section="1444">Kraft paper, amber interior, printed roast date. Whole heirloom beans, not pre-ground.</p>
+              </div>
+          </div>
+          <div class="legend-item editable-section" data-section="1445">
+              <div class="legend-num editable-text editable-section" data-text="1445" data-section="1445">03</div>
+              <div class="legend-body">
+                  <div class="legend-title editable-text editable-section" data-text="1446" data-section="1446">The roast</div>
+                  <p class="legend-text editable-text editable-section" data-text="1447" data-section="1447">Light — 12 minutes to first crack, 90 seconds development, dropped at 415°F.</p>
+              </div>
+          </div>
+          <div class="legend-item editable-section" data-section="1448">
+              <div class="legend-num editable-text editable-section" data-text="1448" data-section="1448">04–05</div>
+              <div class="legend-body">
+                  <div class="legend-title editable-text editable-section" data-text="1449" data-section="1449">The grind & the pour</div>
+                  <p class="legend-text editable-text editable-section" data-text="1450" data-section="1450">Ground to order for your method. 1:16 ratio, 30-second bloom, 3-minute pour.</p>
+              </div>
+          </div>
+          <div class="legend-item editable-section" data-section="1451">
+              <div class="legend-num editable-text editable-section" data-text="1451" data-section="1451">06–07</div>
+              <div class="legend-body">
+                  <div class="legend-title editable-text editable-section" data-text="1452" data-section="1452">The cup</div>
+                  <p class="legend-text editable-text editable-section" data-text="1453" data-section="1453">Bright and floral, a little citrus, honey on the finish. Best within 4 weeks of roast.</p>
+              </div>
+          </div>
+      </div>
+
+  </section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- PUBLIC VIEW (.public-only) — IDs 1400-1453                   -->
+<!-- ============================================================ -->
+<div class="public-only">
+
+  <section class="mosaic-gallery" id="section-1400" aria-label="Roast to cup gallery">
+
+      <!-- HEADER -->
+      <div class="gallery__head" id="section-1401">
+          <div>
+              <div class="gallery__eyebrow" id="section-1402">
+                  <span class="gallery__eyebrow-line"></span>
+                  <span class="gallery__eyebrow-text" id="section-1403">{{ text_contents.1403|default:"Roast to cup · Ethiopia Konga" }}</span>
+              </div>
+              <h2 class="gallery__title" id="section-1404">
+                  <span id="section-1404">{{ text_contents.1404|default:"From the bag to <em id='section-1405'>the last sip</em>."|safe }}</span>
+              </h2>
+              <p class="gallery__sub" id="section-1406">{{ text_contents.1406|default:"Seven frames from this week's roast — no styling, no props. What the coffee actually looks like at every stage." }}</p>
+          </div>
+          <div class="gallery__meta" id="section-1407">
+              <strong id="section-1407">{{ text_contents.1407|default:"7 frames" }}</strong>
+              <span id="section-1408">{{ text_contents.1408|default:"Roasted this<br>Tuesday, 3/12"|safe }}</span>
+          </div>
+      </div>
+
+      <!-- MOSAIC -->
+      <div class="gallery__mosaic">
+
+          <div class="tile tile--bag" id="section-1409">
+              <span class="tile__num" id="section-1410">{{ text_contents.1410|default:"01" }}</span>
+              {% if image_customizations.1411 %}
+                  <img class="editable-image" src="{{ image_customizations.1411.image_url }}" alt="{{ image_customizations.1411.alt_text|default:'Bag' }}" data-image="1411">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&q=85&auto=format&fit=crop" alt="Bag" data-image="1411">
+              {% endif %}
+              <div class="tile__caption" id="section-1412">
+                  <strong id="section-1412">{{ text_contents.1412|default:"The bag" }}</strong>
+                  <span id="section-1413">{{ text_contents.1413|default:"12oz kraft paper bag, matte finish, printed roast date" }}</span>
+              </div>
+          </div>
+
+          <div class="tile tile--beans" id="section-1414">
+              <span class="tile__num" id="section-1415">{{ text_contents.1415|default:"02" }}</span>
+              {% if image_customizations.1416 %}
+                  <img class="editable-image" src="{{ image_customizations.1416.image_url }}" alt="{{ image_customizations.1416.alt_text|default:'Beans' }}" data-image="1416">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?w=500&q=85&auto=format&fit=crop" alt="Beans" data-image="1416">
+              {% endif %}
+              <div class="tile__caption" id="section-1417">
+                  <strong id="section-1417">{{ text_contents.1417|default:"Whole beans" }}</strong>
+                  <span id="section-1418">{{ text_contents.1418|default:"Heirloom landrace" }}</span>
+              </div>
+          </div>
+
+          <div class="tile tile--roast" id="section-1419">
+              <span class="tile__num" id="section-1420">{{ text_contents.1420|default:"03" }}</span>
+              {% if image_customizations.1421 %}
+                  <img class="editable-image" src="{{ image_customizations.1421.image_url }}" alt="{{ image_customizations.1421.alt_text|default:'Roast' }}" data-image="1421">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?w=400&q=85&auto=format&fit=crop" alt="Roast" data-image="1421">
+              {% endif %}
+              <div class="tile__caption" id="section-1422">
+                  <strong id="section-1422">{{ text_contents.1422|default:"Light roast" }}</strong>
+              </div>
+          </div>
+
+          <div class="tile tile--grind" id="section-1423">
+              <span class="tile__num" id="section-1424">{{ text_contents.1424|default:"04" }}</span>
+              {% if image_customizations.1425 %}
+                  <img class="editable-image" src="{{ image_customizations.1425.image_url }}" alt="{{ image_customizations.1425.alt_text|default:'Grind' }}" data-image="1425">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1521302080334-4bebac2763a6?w=400&q=85&auto=format&fit=crop" alt="Grind" data-image="1425">
+              {% endif %}
+              <div class="tile__caption" id="section-1426">
+                  <strong id="section-1426">{{ text_contents.1426|default:"Ground" }}</strong>
+                  <span id="section-1427">{{ text_contents.1427|default:"To your brew method" }}</span>
+              </div>
+          </div>
+
+          <div class="tile tile--pour" id="section-1428">
+              <span class="tile__num" id="section-1429">{{ text_contents.1429|default:"05" }}</span>
+              {% if image_customizations.1430 %}
+                  <img class="editable-image" src="{{ image_customizations.1430.image_url }}" alt="{{ image_customizations.1430.alt_text|default:'Pour' }}" data-image="1430">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=85&auto=format&fit=crop" alt="Pour" data-image="1430">
+              {% endif %}
+              <div class="tile__caption" id="section-1431">
+                  <strong id="section-1431">{{ text_contents.1431|default:"The pour" }}</strong>
+              </div>
+          </div>
+
+          <div class="tile tile--cup" id="section-1432">
+              <span class="tile__num" id="section-1433">{{ text_contents.1433|default:"06" }}</span>
+              {% if image_customizations.1434 %}
+                  <img class="editable-image" src="{{ image_customizations.1434.image_url }}" alt="{{ image_customizations.1434.alt_text|default:'Cup' }}" data-image="1434">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=85&auto=format&fit=crop" alt="Cup" data-image="1434">
+              {% endif %}
+              <div class="tile__caption" id="section-1435">
+                  <strong id="section-1435">{{ text_contents.1435|default:"In the cup" }}</strong>
+                  <span id="section-1436">{{ text_contents.1436|default:"Bergamot, jasmine, honey" }}</span>
+              </div>
+          </div>
+
+          <div class="tile tile--context" id="section-1437">
+              <span class="tile__num" id="section-1438">{{ text_contents.1438|default:"07" }}</span>
+              {% if image_customizations.1439 %}
+                  <img class="editable-image" src="{{ image_customizations.1439.image_url }}" alt="{{ image_customizations.1439.alt_text|default:'Context' }}" data-image="1439">
+              {% else %}
+                  <img class="editable-image" src="https://images.unsplash.com/photo-1518057111178-44a106bad636?w=1200&q=85&auto=format&fit=crop" alt="Context" data-image="1439">
+              {% endif %}
+              <div class="tile__caption" id="section-1440">
+                  <strong id="section-1440">{{ text_contents.1440|default:"Monday morning, Portland" }}</strong>
+                  <span id="section-1441">{{ text_contents.1441|default:"The whole thing takes about 4 minutes from bag to cup. That's it. That's the ritual." }}</span>
+              </div>
+          </div>
+
+      </div>
+
+      <!-- LEGEND -->
+      <div class="gallery__legend">
+          <div class="legend-item" id="section-1442">
+              <div class="legend-num" id="section-1442">{{ text_contents.1442|default:"01–02" }}</div>
+              <div class="legend-body">
+                  <div class="legend-title" id="section-1443">{{ text_contents.1443|default:"The bag & the beans" }}</div>
+                  <p class="legend-text" id="section-1444">{{ text_contents.1444|default:"Kraft paper, amber interior, printed roast date. Whole heirloom beans, not pre-ground." }}</p>
+              </div>
+          </div>
+          <div class="legend-item" id="section-1445">
+              <div class="legend-num" id="section-1445">{{ text_contents.1445|default:"03" }}</div>
+              <div class="legend-body">
+                  <div class="legend-title" id="section-1446">{{ text_contents.1446|default:"The roast" }}</div>
+                  <p class="legend-text" id="section-1447">{{ text_contents.1447|default:"Light — 12 minutes to first crack, 90 seconds development, dropped at 415°F." }}</p>
+              </div>
+          </div>
+          <div class="legend-item" id="section-1448">
+              <div class="legend-num" id="section-1448">{{ text_contents.1448|default:"04–05" }}</div>
+              <div class="legend-body">
+                  <div class="legend-title" id="section-1449">{{ text_contents.1449|default:"The grind & the pour" }}</div>
+                  <p class="legend-text" id="section-1450">{{ text_contents.1450|default:"Ground to order for your method. 1:16 ratio, 30-second bloom, 3-minute pour." }}</p>
+              </div>
+          </div>
+          <div class="legend-item" id="section-1451">
+              <div class="legend-num" id="section-1451">{{ text_contents.1451|default:"06–07" }}</div>
+              <div class="legend-body">
+                  <div class="legend-title" id="section-1452">{{ text_contents.1452|default:"The cup" }}</div>
+                  <p class="legend-text" id="section-1453">{{ text_contents.1453|default:"Bright and floral, a little citrus, honey on the finish. Best within 4 weeks of roast." }}</p>
+              </div>
+          </div>
+      </div>
+
+  </section>
+
+</div>

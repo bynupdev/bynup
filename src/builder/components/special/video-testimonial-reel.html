@@ -1,0 +1,972 @@
+{% load static %}
+{% load style_filters %}
+{% load icon_filters %}
+
+<style>
+.vtr-editor-only { display: none; }
+.vtr-public-only { display: block; }
+body.editor-mode .vtr-editor-only { display: block; }
+body.editor-mode .vtr-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2530 2650 %}
+{% generate_background_images background_images 2530 2650 %}
+
+.vtr-root {
+    --vtr-ink:        #0B0B0C;
+    --vtr-ink-2:      #2A2A2E;
+    --vtr-mute:       #8A8A92;
+    --vtr-faint:      #C8C8CE;
+    --vtr-line:       #ECECEF;
+    --vtr-paper:      #FFFFFF;
+    --vtr-paper-2:    #FAFAFB;
+    --vtr-accent:     #C9432A;
+    --vtr-accent-bg:  #FBEDE8;
+    --vtr-gold:       #E5A00D;
+
+    --vtr-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --vtr-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --vtr-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--vtr-font);
+    color: var(--vtr-ink);
+    background: var(--vtr-paper);
+    line-height: 1.55;
+    padding: 64px 0 56px;
+    overflow: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.vtr-root *, .vtr-root *::before, .vtr-root *::after { box-sizing: border-box; }
+.vtr-root img { max-width: 100%; display: block; }
+.vtr-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+/* HEADER */
+.vtr-head {
+    max-width: 720px;
+    margin: 0 auto 36px;
+    padding: 0 20px;
+    text-align: center;
+}
+.vtr-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--vtr-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--vtr-accent);
+    margin-bottom: 14px;
+}
+.vtr-kicker::before,
+.vtr-kicker::after {
+    content: "";
+    width: 20px;
+    height: 1px;
+    background: var(--vtr-accent);
+}
+.vtr-title {
+    font-family: var(--vtr-serif);
+    font-size: clamp(26px, 3.4vw, 40px);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--vtr-ink);
+    margin: 0 0 12px 0;
+}
+.vtr-title em { font-style: italic; color: var(--vtr-accent); }
+.vtr-sub {
+    font-size: 14px;
+    color: var(--vtr-mute);
+    margin: 0;
+    max-width: 52ch;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* RAIL */
+.vtr-rail {
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 16px 0 24px;
+}
+.vtr-rail::-webkit-scrollbar { display: none; }
+
+.vtr-track {
+    display: flex;
+    gap: 20px;
+    width: max-content;
+    padding: 0 max(20px, calc((100vw - 1200px) / 2 + 20px));
+    align-items: flex-start;
+}
+
+/* ARROWS */
+.vtr-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--vtr-line);
+    color: var(--vtr-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    z-index: 5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+}
+.vtr-rail:hover .vtr-arrow { opacity: 1; pointer-events: auto; }
+.vtr-arrow:hover {
+    background: var(--vtr-ink);
+    color: var(--vtr-paper);
+}
+.vtr-arrow:active { transform: translateY(-50%) scale(0.94); }
+.vtr-arrow.vtr-arrow-prev { left: 16px; }
+.vtr-arrow.vtr-arrow-next { right: 16px; }
+.vtr-arrow:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+/* CARD */
+.vtr-card {
+    flex: 0 0 260px;
+    width: 260px;
+    scroll-snap-align: start;
+    background: var(--vtr-paper);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--vtr-line);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: box-shadow 0.25s ease, transform 0.25s ease,
+                border-color 0.25s ease, flex-basis 0.35s ease,
+                width 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+}
+.vtr-card:hover {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
+    transform: translateY(-3px);
+    border-color: #DCDCE0;
+}
+
+/* Expanded state — card grows to a wider layout IN PLACE */
+.vtr-card.vtr-expanded {
+    flex: 0 0 500px;
+    width: 500px;
+    transform: none;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
+    border-color: var(--vtr-ink);
+    cursor: default;
+}
+
+/* POSTER (also the slot where the video swaps in) */
+.vtr-poster {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    background: #111;
+    overflow: hidden;
+    transition: aspect-ratio 0.35s ease;
+}
+.vtr-card.vtr-expanded .vtr-poster {
+    aspect-ratio: 16 / 9;
+}
+.vtr-poster img,
+.vtr-poster video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.vtr-poster::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0) 40%,
+        rgba(0, 0, 0, 0.55) 100%
+    );
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+.vtr-card.vtr-expanded .vtr-poster::after { opacity: 0; }
+
+/* Play button + badges: hide when the card is expanded */
+.vtr-play,
+.vtr-stars-badge,
+.vtr-duration {
+    transition: opacity 0.2s ease;
+}
+.vtr-card.vtr-expanded .vtr-play,
+.vtr-card.vtr-expanded .vtr-stars-badge,
+.vtr-card.vtr-expanded .vtr-duration {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.vtr-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--vtr-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    z-index: 2;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    pointer-events: none;
+}
+.vtr-card:hover:not(.vtr-expanded) .vtr-play {
+    transform: translate(-50%, -50%) scale(1.08);
+    background: var(--vtr-accent);
+    color: var(--vtr-paper);
+}
+.vtr-play i { margin-left: 3px; }
+
+.vtr-duration {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #FFFFFF;
+    font-family: var(--vtr-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    z-index: 2;
+    backdrop-filter: blur(4px);
+}
+
+.vtr-stars-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(4px);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--vtr-gold);
+    letter-spacing: 1px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Close button for expanded state */
+.vtr-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #FFFFFF;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 3;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background 0.15s ease;
+}
+.vtr-close-btn:hover { background: rgba(0, 0, 0, 0.85); }
+.vtr-card.vtr-expanded .vtr-close-btn { display: flex; }
+
+/* Video that replaces the poster */
+.vtr-inline-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    z-index: 2;
+}
+
+/* BODY */
+.vtr-body {
+    padding: 18px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    transition: padding 0.35s ease;
+}
+.vtr-card.vtr-expanded .vtr-body {
+    padding: 16px 20px 18px;
+}
+.vtr-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.vtr-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--vtr-ink);
+    line-height: 1.2;
+}
+.vtr-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--vtr-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #2F6B4A;
+    background: #E8F3EC;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.vtr-verified i { font-size: 8px; }
+.vtr-quote {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--vtr-ink-2);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: -webkit-line-clamp 0.35s ease;
+}
+.vtr-card.vtr-expanded .vtr-quote {
+    -webkit-line-clamp: unset;
+    display: block;
+    overflow: visible;
+}
+.vtr-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--vtr-mono);
+    font-size: 10px;
+    color: var(--vtr-mute);
+    letter-spacing: 0.02em;
+    margin-top: auto;
+    padding-top: 4px;
+}
+.vtr-meta-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--vtr-faint);
+}
+
+@media (max-width: 640px) {
+    .vtr-root { padding: 44px 0 40px; }
+    .vtr-card { flex: 0 0 220px; width: 220px; }
+    .vtr-card.vtr-expanded {
+        flex: 0 0 calc(100vw - 40px);
+        width: calc(100vw - 40px);
+    }
+    .vtr-track { gap: 14px; padding: 0 16px; }
+    .vtr-arrow { display: none; }
+    .vtr-play { width: 48px; height: 48px; font-size: 16px; }
+    .vtr-body { padding: 14px; }
+    .vtr-card.vtr-expanded .vtr-body { padding: 14px 16px 16px; }
+    .vtr-name { font-size: 13px; }
+    .vtr-quote { font-size: 12.5px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY                                                  -->
+<!-- Poster IDs: 2542 · 2552 · 2562 · 2572 · 2582                 -->
+<!-- ============================================================ -->
+<div class="vtr-root editable-section" data-section="2530">
+    <div class="vtr-editor-only">
+
+        <div class="vtr-head">
+            <span class="vtr-kicker editable-text editable-section no-drop-zone"
+                  data-section="2531" data-text="2531">Real customers</span>
+            <h2 class="vtr-title editable-text editable-section no-drop-zone"
+                data-section="2532" data-text="2532">See what they're <em>saying</em>.</h2>
+            <p class="vtr-sub editable-text editable-section no-drop-zone"
+               data-section="2533" data-text="2533">Short, unedited videos from real customers. Tap any card to watch.</p>
+        </div>
+
+        <div class="vtr-rail">
+            <div class="vtr-track">
+
+                <div class="vtr-card editable-section no-drop-zone" data-section="2540">
+                    <div class="vtr-poster editable-section no-drop-zone" data-section="2541">
+                        <img src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=500"
+                             alt="Sarah Mitchell" class="editable-image" data-image="2542">
+                        <div class="vtr-stars-badge">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="vtr-play"><i class="fas fa-play"></i></div>
+                        <div class="vtr-duration editable-text editable-section no-drop-zone"
+                             data-section="2543" data-text="2543">0:32</div>
+                    </div>
+                    <div class="vtr-body">
+                        <div class="vtr-name-row">
+                            <span class="vtr-name editable-text editable-section no-drop-zone"
+                                  data-section="2544" data-text="2544">Sarah Mitchell</span>
+                            <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                        </div>
+                        <p class="vtr-quote editable-text editable-section no-drop-zone"
+                           data-section="2545" data-text="2545">The craftsmanship is incredible. Worth every penny.</p>
+                        <div class="vtr-meta">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2546" data-text="2546">Portland, OR</span>
+                            <span class="vtr-meta-dot"></span>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2547" data-text="2547">2 weeks ago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vtr-card editable-section no-drop-zone" data-section="2550">
+                    <div class="vtr-poster editable-section no-drop-zone" data-section="2551">
+                        <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=500"
+                             alt="Marcus Chen" class="editable-image" data-image="2552">
+                        <div class="vtr-stars-badge">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="vtr-play"><i class="fas fa-play"></i></div>
+                        <div class="vtr-duration editable-text editable-section no-drop-zone"
+                             data-section="2553" data-text="2553">0:47</div>
+                    </div>
+                    <div class="vtr-body">
+                        <div class="vtr-name-row">
+                            <span class="vtr-name editable-text editable-section no-drop-zone"
+                                  data-section="2554" data-text="2554">Marcus Chen</span>
+                            <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                        </div>
+                        <p class="vtr-quote editable-text editable-section no-drop-zone"
+                           data-section="2555" data-text="2555">Ordered on a Monday, got it by Thursday. Quality exceeded my expectations.</p>
+                        <div class="vtr-meta">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2556" data-text="2556">Brooklyn, NY</span>
+                            <span class="vtr-meta-dot"></span>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2557" data-text="2557">1 month ago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vtr-card editable-section no-drop-zone" data-section="2560">
+                    <div class="vtr-poster editable-section no-drop-zone" data-section="2561">
+                        <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=500"
+                             alt="Ava Rodriguez" class="editable-image" data-image="2562">
+                        <div class="vtr-stars-badge">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="vtr-play"><i class="fas fa-play"></i></div>
+                        <div class="vtr-duration editable-text editable-section no-drop-zone"
+                             data-section="2563" data-text="2563">1:12</div>
+                    </div>
+                    <div class="vtr-body">
+                        <div class="vtr-name-row">
+                            <span class="vtr-name editable-text editable-section no-drop-zone"
+                                  data-section="2564" data-text="2564">Ava Rodriguez</span>
+                            <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                        </div>
+                        <p class="vtr-quote editable-text editable-section no-drop-zone"
+                           data-section="2565" data-text="2565">Third time buying — this one's my favorite yet. The detail is unreal.</p>
+                        <div class="vtr-meta">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2566" data-text="2566">Austin, TX</span>
+                            <span class="vtr-meta-dot"></span>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2567" data-text="2567">1 month ago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vtr-card editable-section no-drop-zone" data-section="2570">
+                    <div class="vtr-poster editable-section no-drop-zone" data-section="2571">
+                        <img src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=500"
+                             alt="Priya Shah" class="editable-image" data-image="2572">
+                        <div class="vtr-stars-badge">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="vtr-play"><i class="fas fa-play"></i></div>
+                        <div class="vtr-duration editable-text editable-section no-drop-zone"
+                             data-section="2573" data-text="2573">0:28</div>
+                    </div>
+                    <div class="vtr-body">
+                        <div class="vtr-name-row">
+                            <span class="vtr-name editable-text editable-section no-drop-zone"
+                                  data-section="2574" data-text="2574">Priya Shah</span>
+                            <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                        </div>
+                        <p class="vtr-quote editable-text editable-section no-drop-zone"
+                           data-section="2575" data-text="2575">Packaging alone was a gift. The bag itself is the best I have ever owned.</p>
+                        <div class="vtr-meta">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2576" data-text="2576">London, UK</span>
+                            <span class="vtr-meta-dot"></span>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2577" data-text="2577">3 weeks ago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vtr-card editable-section no-drop-zone" data-section="2580">
+                    <div class="vtr-poster editable-section no-drop-zone" data-section="2581">
+                        <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=500"
+                             alt="Emma Laurent" class="editable-image" data-image="2582">
+                        <div class="vtr-stars-badge">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="vtr-play"><i class="fas fa-play"></i></div>
+                        <div class="vtr-duration editable-text editable-section no-drop-zone"
+                             data-section="2583" data-text="2583">0:39</div>
+                    </div>
+                    <div class="vtr-body">
+                        <div class="vtr-name-row">
+                            <span class="vtr-name editable-text editable-section no-drop-zone"
+                                  data-section="2584" data-text="2584">Emma Laurent</span>
+                            <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                        </div>
+                        <p class="vtr-quote editable-text editable-section no-drop-zone"
+                           data-section="2585" data-text="2585">I debated for weeks. So glad I finally pulled the trigger.</p>
+                        <div class="vtr-meta">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2586" data-text="2586">Paris, FR</span>
+                            <span class="vtr-meta-dot"></span>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2587" data-text="2587">2 months ago</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="vtr-arrow vtr-arrow-prev" aria-label="Previous">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="vtr-arrow vtr-arrow-next" aria-label="Next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- Cards expand in place. The poster <div> is replaced by a     -->
+    <!-- <video> element inside the card. No fixed overlay, no        -->
+    <!-- page-shift. Click again (or press the X) to collapse.        -->
+    <!-- ============================================================ -->
+    <div class="vtr-public-only">
+        <div id="vtr-root">
+
+            <div class="vtr-head">
+                <span class="vtr-kicker" id="section-2531">{{ text_contents.2531|default:"Real customers" }}</span>
+                <h2 class="vtr-title" id="section-2532">{{ text_contents.2532|default:"See what they're saying." }}</h2>
+                <p class="vtr-sub" id="section-2533">{{ text_contents.2533|default:"Short, unedited videos from real customers. Tap any card to watch." }}</p>
+            </div>
+
+            <div class="vtr-rail" id="vtr-rail">
+                <div class="vtr-track" id="vtr-track">
+
+                    <div class="vtr-card" data-media="{% if image_customizations.2542 %}{{ image_customizations.2542.image_url }}{% else %}https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}" onclick="vtrToggleCard(this)">
+                        <div class="vtr-poster">
+                            {% if image_customizations.2542 %}
+                                {% with media_url=image_customizations.2542.image_url %}
+                                    {% if '.mp4' in media_url or '.webm' in media_url or '.mov' in media_url or '.ogg' in media_url %}
+                                        <video muted playsinline preload="metadata" src="{{ media_url }}"></video>
+                                    {% else %}
+                                        <img src="{{ media_url }}" alt="{{ text_contents.2544|default:'Sarah Mitchell' }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=500" alt="{{ text_contents.2544|default:'Sarah Mitchell' }}">
+                            {% endif %}
+                            <div class="vtr-stars-badge">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <div class="vtr-play"><i class="fas fa-play"></i></div>
+                            <button type="button" class="vtr-close-btn" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="vtr-duration">{{ text_contents.2543|default:"0:32" }}</div>
+                        </div>
+                        <div class="vtr-body">
+                            <div class="vtr-name-row">
+                                <span class="vtr-name">{{ text_contents.2544|default:"Sarah Mitchell" }}</span>
+                                <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                            </div>
+                            <p class="vtr-quote">{{ text_contents.2545|default:"The craftsmanship is incredible. Worth every penny." }}</p>
+                            <div class="vtr-meta">
+                                <span>{{ text_contents.2546|default:"Portland, OR" }}</span>
+                                <span class="vtr-meta-dot"></span>
+                                <span>{{ text_contents.2547|default:"2 weeks ago" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vtr-card" data-media="{% if image_customizations.2552 %}{{ image_customizations.2552.image_url }}{% else %}https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}" onclick="vtrToggleCard(this)">
+                        <div class="vtr-poster">
+                            {% if image_customizations.2552 %}
+                                {% with media_url=image_customizations.2552.image_url %}
+                                    {% if '.mp4' in media_url or '.webm' in media_url or '.mov' in media_url or '.ogg' in media_url %}
+                                        <video muted playsinline preload="metadata" src="{{ media_url }}"></video>
+                                    {% else %}
+                                        <img src="{{ media_url }}" alt="{{ text_contents.2554|default:'Marcus Chen' }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=500" alt="{{ text_contents.2554|default:'Marcus Chen' }}">
+                            {% endif %}
+                            <div class="vtr-stars-badge">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <div class="vtr-play"><i class="fas fa-play"></i></div>
+                            <button type="button" class="vtr-close-btn" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="vtr-duration">{{ text_contents.2553|default:"0:47" }}</div>
+                        </div>
+                        <div class="vtr-body">
+                            <div class="vtr-name-row">
+                                <span class="vtr-name">{{ text_contents.2554|default:"Marcus Chen" }}</span>
+                                <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                            </div>
+                            <p class="vtr-quote">{{ text_contents.2555|default:"Ordered on a Monday, got it by Thursday. Quality exceeded my expectations." }}</p>
+                            <div class="vtr-meta">
+                                <span>{{ text_contents.2556|default:"Brooklyn, NY" }}</span>
+                                <span class="vtr-meta-dot"></span>
+                                <span>{{ text_contents.2557|default:"1 month ago" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vtr-card" data-media="{% if image_customizations.2562 %}{{ image_customizations.2562.image_url }}{% else %}https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}" onclick="vtrToggleCard(this)">
+                        <div class="vtr-poster">
+                            {% if image_customizations.2562 %}
+                                {% with media_url=image_customizations.2562.image_url %}
+                                    {% if '.mp4' in media_url or '.webm' in media_url or '.mov' in media_url or '.ogg' in media_url %}
+                                        <video muted playsinline preload="metadata" src="{{ media_url }}"></video>
+                                    {% else %}
+                                        <img src="{{ media_url }}" alt="{{ text_contents.2564|default:'Ava Rodriguez' }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=500" alt="{{ text_contents.2564|default:'Ava Rodriguez' }}">
+                            {% endif %}
+                            <div class="vtr-stars-badge">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <div class="vtr-play"><i class="fas fa-play"></i></div>
+                            <button type="button" class="vtr-close-btn" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="vtr-duration">{{ text_contents.2563|default:"1:12" }}</div>
+                        </div>
+                        <div class="vtr-body">
+                            <div class="vtr-name-row">
+                                <span class="vtr-name">{{ text_contents.2564|default:"Ava Rodriguez" }}</span>
+                                <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                            </div>
+                            <p class="vtr-quote">{{ text_contents.2565|default:"Third time buying - this one's my favourite yet. The detail is unreal." }}</p>
+                            <div class="vtr-meta">
+                                <span>{{ text_contents.2566|default:"Austin, TX" }}</span>
+                                <span class="vtr-meta-dot"></span>
+                                <span>{{ text_contents.2567|default:"1 month ago" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vtr-card" data-media="{% if image_customizations.2572 %}{{ image_customizations.2572.image_url }}{% else %}https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}" onclick="vtrToggleCard(this)">
+                        <div class="vtr-poster">
+                            {% if image_customizations.2572 %}
+                                {% with media_url=image_customizations.2572.image_url %}
+                                    {% if '.mp4' in media_url or '.webm' in media_url or '.mov' in media_url or '.ogg' in media_url %}
+                                        <video muted playsinline preload="metadata" src="{{ media_url }}"></video>
+                                    {% else %}
+                                        <img src="{{ media_url }}" alt="{{ text_contents.2574|default:'Priya Shah' }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=500" alt="{{ text_contents.2574|default:'Priya Shah' }}">
+                            {% endif %}
+                            <div class="vtr-stars-badge">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <div class="vtr-play"><i class="fas fa-play"></i></div>
+                            <button type="button" class="vtr-close-btn" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="vtr-duration">{{ text_contents.2573|default:"0:28" }}</div>
+                        </div>
+                        <div class="vtr-body">
+                            <div class="vtr-name-row">
+                                <span class="vtr-name">{{ text_contents.2574|default:"Priya Shah" }}</span>
+                                <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                            </div>
+                            <p class="vtr-quote">{{ text_contents.2575|default:"Packaging alone was a gift. The bag itself is the best I've ever owned." }}</p>
+                            <div class="vtr-meta">
+                                <span>{{ text_contents.2576|default:"London, UK" }}</span>
+                                <span class="vtr-meta-dot"></span>
+                                <span>{{ text_contents.2577|default:"3 weeks ago" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vtr-card" data-media="{% if image_customizations.2582 %}{{ image_customizations.2582.image_url }}{% else %}https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=500{% endif %}" onclick="vtrToggleCard(this)">
+                        <div class="vtr-poster">
+                            {% if image_customizations.2582 %}
+                                {% with media_url=image_customizations.2582.image_url %}
+                                    {% if '.mp4' in media_url or '.webm' in media_url or '.mov' in media_url or '.ogg' in media_url %}
+                                        <video muted playsinline preload="metadata" src="{{ media_url }}"></video>
+                                    {% else %}
+                                        <img src="{{ media_url }}" alt="{{ text_contents.2584|default:'Emma Laurent' }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <img src="https://images.pexels.com/photos/1002740/pexels-photo-1002740.jpeg?auto=compress&cs=tinysrgb&w=500" alt="{{ text_contents.2584|default:'Emma Laurent' }}">
+                            {% endif %}
+                            <div class="vtr-stars-badge">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <div class="vtr-play"><i class="fas fa-play"></i></div>
+                            <button type="button" class="vtr-close-btn" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="vtr-duration">{{ text_contents.2583|default:"0:39" }}</div>
+                        </div>
+                        <div class="vtr-body">
+                            <div class="vtr-name-row">
+                                <span class="vtr-name">{{ text_contents.2584|default:"Emma Laurent" }}</span>
+                                <span class="vtr-verified"><i class="fas fa-check"></i> Verified</span>
+                            </div>
+                            <p class="vtr-quote">{{ text_contents.2585|default:"I debated for weeks. So glad I finally pulled the trigger." }}</p>
+                            <div class="vtr-meta">
+                                <span>{{ text_contents.2586|default:"Paris, FR" }}</span>
+                                <span class="vtr-meta-dot"></span>
+                                <span>{{ text_contents.2587|default:"2 months ago" }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <button type="button" class="vtr-arrow vtr-arrow-prev" id="vtr-prev" aria-label="Previous">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" class="vtr-arrow vtr-arrow-next" id="vtr-next" aria-label="Next">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var VTR = window.VTR_REEL = window.VTR_REEL || {};
+    if (VTR._init) return;
+    VTR._init = true;
+
+    function isVideoUrl(url) {
+        if (!url) return false;
+        var lower = String(url).toLowerCase().split('?')[0].split('#')[0];
+        return /\.(mp4|webm|mov|ogg|m4v)$/.test(lower);
+    }
+
+    // Expand / collapse a card in place.
+    VTR.toggleCard = function(card) {
+        if (!card) return;
+
+        var isExpanded = card.classList.contains('vtr-expanded');
+
+        // Collapse any OTHER expanded cards first — only one plays at a time
+        document.querySelectorAll('.vtr-card.vtr-expanded').forEach(function (other) {
+            if (other !== card) VTR._collapse(other);
+        });
+
+        if (isExpanded) {
+            VTR._collapse(card);
+        } else {
+            VTR._expand(card);
+        }
+    };
+    window.vtrToggleCard = VTR.toggleCard;
+
+    VTR._expand = function(card) {
+        var mediaUrl = card.dataset.media || '';
+        if (!mediaUrl) return;
+
+        var poster = card.querySelector('.vtr-poster');
+        if (!poster) return;
+
+        // Remember what to restore on collapse
+        card._vtrRestoreHTML = poster.innerHTML;
+
+        // Build the media element
+        var mediaEl;
+        if (isVideoUrl(mediaUrl)) {
+            mediaEl = document.createElement('video');
+            mediaEl.src = mediaUrl;
+            mediaEl.controls = true;
+            mediaEl.playsInline = true;
+            mediaEl.preload = 'metadata';
+            mediaEl.className = 'vtr-inline-video';
+            // Attempt playback
+            setTimeout(function () {
+                var p = mediaEl.play();
+                if (p && typeof p.catch === 'function') p.catch(function () {});
+            }, 80);
+        } else {
+            mediaEl = document.createElement('img');
+            mediaEl.src = mediaUrl;
+            mediaEl.className = 'vtr-inline-video';
+            mediaEl.style.objectFit = 'cover';
+        }
+
+        // Replace poster content with the media
+        poster.innerHTML = '';
+        poster.appendChild(mediaEl);
+
+        // Add close button so the user can collapse
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'vtr-close-btn';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.style.display = 'flex';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            VTR._collapse(card);
+        });
+        poster.appendChild(closeBtn);
+
+        // Expand the card
+        card.classList.add('vtr-expanded');
+
+        // Stop the parent onclick from firing again while the video is playing
+        mediaEl.addEventListener('click', function (e) { e.stopPropagation(); });
+    };
+
+    VTR._collapse = function(card) {
+        if (!card || !card.classList.contains('vtr-expanded')) return;
+
+        var poster = card.querySelector('.vtr-poster');
+        if (poster) {
+            // Pause and clean up any playing video
+            var existingVideo = poster.querySelector('video');
+            if (existingVideo) {
+                try { existingVideo.pause(); } catch (e) {}
+            }
+            if (card._vtrRestoreHTML) {
+                poster.innerHTML = card._vtrRestoreHTML;
+                delete card._vtrRestoreHTML;
+            }
+        }
+
+        card.classList.remove('vtr-expanded');
+    };
+
+    // Rail arrows
+    function bindArrows() {
+        var rail = document.getElementById('vtr-rail');
+        var prev = document.getElementById('vtr-prev');
+        var next = document.getElementById('vtr-next');
+        if (!rail) return;
+
+        var step = function () {
+            var first = rail.querySelector('.vtr-card');
+            if (!first) return 300;
+            var w = first.getBoundingClientRect().width;
+            return w + 20;
+        };
+
+        if (prev) prev.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            rail.scrollBy({ left: -step(), behavior: 'smooth' });
+        });
+        if (next) next.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            rail.scrollBy({ left: step(), behavior: 'smooth' });
+        });
+
+        var update = function () {
+            var atStart = rail.scrollLeft <= 4;
+            var atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4;
+            if (prev) prev.disabled = atStart;
+            if (next) next.disabled = atEnd;
+        };
+        rail.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        update();
+    }
+
+    function init() {
+        var rail = document.getElementById('vtr-rail');
+        if (!rail) return;
+        bindArrows();
+
+        // Escape collapses any expanded card
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.vtr-card.vtr-expanded').forEach(function (c) {
+                    VTR._collapse(c);
+                });
+            }
+        });
+
+        // Clicking outside any expanded card collapses it
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.vtr-card')) {
+                document.querySelectorAll('.vtr-card.vtr-expanded').forEach(function (c) {
+                    VTR._collapse(c);
+                });
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
