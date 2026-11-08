@@ -91,35 +91,96 @@ def _class_ends_with(el, suffix):
     return any(c == suffix or c.endswith('-' + suffix) for c in el.get('class'))
 
 
+# ============================================================
+# MEDIA REPLACEMENT HELPERS — video-in-place-of-image
+# ============================================================
+
+def _build_media_style_attr(entry):
+    """Build the inline style for a media-replacement node from the entry's layout."""
+    layout = entry.get('layout') or {}
+    parts = []
+    for k, v in layout.items():
+        if not v or v in ('auto', 'none', 'normal'):
+            continue
+        css_prop = ''.join(
+            ('-' + c.lower() if c.isupper() else c) for c in k
+        )
+        parts.append(f'{css_prop}: {v}')
+    return '; '.join(parts)
+
+
+def _class_ends_with(el, suffix):
+    """True if any class on this BeautifulSoup tag ends with `-<suffix>` or == `<suffix>`."""
+    if not el or not el.get('class'):
+        return False
+    return any(c == suffix or c.endswith('-' + suffix) for c in el.get('class'))
+
+
 def _apply_one_media_replacement_soup(soup, entry, request=None):
     """
     Apply ONE media_replacement entry to a BeautifulSoup tree.
 
-    If the target <img> lives inside a `*-editor-only` subtree, this
-    retargets to the sibling `*-public-only` subtree so the video shows
-    on the public page. See earlier conversation for the full logic.
-    """
-    selector     = entry.get('target_image_selector')
-    wrapper_id   = entry.get('target_wrapper_id')
-    image_id     = entry.get('target_image_id')
+    Handles:
+      - Native template images (image directly in the rendered HTML)
+      - Images inside injected components (scoped via data-injected-id)
+      - Images inside `.editor-only` blocks → retargets to the sibling
+        `.public-only` subtree so the video shows on the public page.
 
-    # ---- Find the image ----
+    Fails loudly with a printed reason instead of silently doing nothing,
+    so you can diagnose template-specific mismatches.
+    """
+    selector   = entry.get('target_image_selector')
+    wrapper_id = entry.get('target_wrapper_id')
+    image_id   = entry.get('target_image_id')
+    entry_id   = entry.get('id', '?')
+
+    print(f"\n[MEDIA] ============================================")
+    print(f"[MEDIA] entry.id            = {entry_id!r}")
+    print(f"[MEDIA] media_kind          = {entry.get('media_kind')!r}")
+    print(f"[MEDIA] src                 = {entry.get('src')!r}")
+    print(f"[MEDIA] target_image_id     = {image_id!r}")
+    print(f"[MEDIA] target_wrapper_id   = {wrapper_id!r}")
+    print(f"[MEDIA] target_selector     = {selector!r}")
+
+    # ------------------------------------------------------------
+    # 1. Find the anchor <img>
+    # ------------------------------------------------------------
     img = None
+    match_reason = None
+
     if selector:
         try:
             img = soup.select_one(selector)
-        except Exception:
+            if img is not None:
+                match_reason = 'selector'
+        except Exception as e:
+            print(f"[MEDIA] selector raised: {e}")
             img = None
+
     if img is None and wrapper_id and image_id:
         wrapper = soup.find(attrs={'data-injected-id': wrapper_id})
         if wrapper:
             img = wrapper.find(attrs={'data-image': str(image_id)})
+            if img is not None:
+                match_reason = 'wrapper+image_id'
+
     if img is None and image_id:
         img = soup.find(attrs={'data-image': str(image_id)})
+        if img is not None:
+            match_reason = 'image_id only'
+
     if img is None:
+        print(f"[MEDIA] ❌ NO IMAGE FOUND — SKIPPING")
+        print(f"[MEDIA] ============================================\n")
         return
 
-    # ---- Retarget away from *-editor-only ----
+    print(f"[MEDIA] image found via {match_reason}: <{img.name}> classes={img.get('class')}")
+    if img.parent is not None:
+        print(f"[MEDIA] image parent: <{img.parent.name}> classes={img.parent.get('class')}")
+
+    # ------------------------------------------------------------
+    # 2. Retarget away from *.editor-only → its *.public-only sibling
+    # ------------------------------------------------------------
     editor_only_ancestor = None
     p = img.parent
     while p is not None:
@@ -127,6 +188,8 @@ def _apply_one_media_replacement_soup(soup, entry, request=None):
             editor_only_ancestor = p
             break
         p = p.parent
+
+    print(f"[MEDIA] inside editor-only: {editor_only_ancestor is not None}")
 
     if editor_only_ancestor is not None:
         public_only = None
@@ -138,11 +201,22 @@ def _apply_one_media_replacement_soup(soup, entry, request=None):
                 if _class_ends_with(sib, 'public-only'):
                     public_only = sib
                     break
+
+        print(f"[MEDIA] public-only sibling found: {public_only is not None}")
+
         if public_only is None:
-            return  # no public copy → skip
+            print(f"[MEDIA] ❌ editor-only with no public-only sibling — SKIPPING")
+            print(f"[MEDIA] ============================================\n")
+            return
+
+        # Strategy A: match by data-image id
         public_img = None
         if image_id:
             public_img = public_only.find(attrs={'data-image': str(image_id)})
+            if public_img is not None:
+                print(f"[MEDIA] retarget matched by data-image id")
+
+        # Strategy B: match by ordinal position within each subtree
         if public_img is None:
             editor_imgs = editor_only_ancestor.find_all('img')
             try:
@@ -153,29 +227,48 @@ def _apply_one_media_replacement_soup(soup, entry, request=None):
                 pub_imgs = public_only.find_all('img')
                 if ordinal < len(pub_imgs):
                     public_img = pub_imgs[ordinal]
+                    print(f"[MEDIA] retarget matched by ordinal: editor#{ordinal} → public#{ordinal}")
+
+        # Strategy C: brute force — first <img> in public-only subtree
         if public_img is None:
             public_img = public_only.find('img')
+            if public_img is not None:
+                print(f"[MEDIA] retarget matched by first-img fallback")
+
         if public_img is None:
+            print(f"[MEDIA] ❌ no <img> in public-only subtree — SKIPPING")
+            print(f"[MEDIA] ============================================\n")
             return
+
         img = public_img
+        print(f"[MEDIA] ✅ retargeted to public-only img")
 
-    # ---- Hide the (public) image ----
+    # ------------------------------------------------------------
+    # 3. Hide the original image
+    # ------------------------------------------------------------
     existing = img.get('style') or ''
-    img['style'] = (existing.rstrip(';') + ';' if existing else '') + 'display:none !important;'
+    img['style'] = (
+        (existing.rstrip(';') + ';' if existing else '')
+        + 'display:none !important;'
+    )
     img['aria-hidden'] = 'true'
-    img['data-hidden-by-media'] = str(entry.get('id') or '')
+    img['data-hidden-by-media'] = str(entry_id)
 
-    # ---- Build the media node ----
+    # ------------------------------------------------------------
+    # 4. Build & insert the media node
+    # ------------------------------------------------------------
     layout_style = _build_media_style_attr(entry)
     media_kind   = entry.get('media_kind') or 'video'
     src          = entry.get('src') or ''
+
+    # Absolutize relative src so the browser can fetch it
     if request is not None and src and not src.startswith(('http://', 'https://', '//', 'data:')):
         src = request.build_absolute_uri(src if src.startswith('/') else '/' + src)
 
     if media_kind == 'embed':
         wrapper_el = soup.new_tag('div')
         wrapper_el['class'] = 'injected-media injected-media-embed'
-        wrapper_el['data-injected-id'] = str(entry.get('id') or '')
+        wrapper_el['data-injected-id'] = str(entry_id)
         wrapper_el['data-media-kind'] = 'embed'
         wrapper_el['data-image-replaced'] = str(image_id or '')
         wrapper_el['style'] = (
@@ -184,28 +277,39 @@ def _apply_one_media_replacement_soup(soup, entry, request=None):
         )
         if not layout_style:
             wrapper_el['style'] += '; aspect-ratio: 16/9;'
+
         iframe = soup.new_tag('iframe')
         iframe['frameborder'] = '0'
         iframe['allowfullscreen'] = ''
-        iframe['allow'] = ('accelerometer; autoplay; clipboard-write; '
-                           'encrypted-media; gyroscope; picture-in-picture')
-        iframe['style'] = 'position:absolute; inset:0; width:100%; height:100%; border:0;'
+        iframe['allow'] = (
+            'accelerometer; autoplay; clipboard-write; '
+            'encrypted-media; gyroscope; picture-in-picture'
+        )
+        iframe['style'] = (
+            'position:absolute; inset:0; width:100%; height:100%; border:0;'
+        )
         if src:
             iframe['src'] = src
         wrapper_el.append(iframe)
+
         img.insert_after(wrapper_el)
+        print(f"[MEDIA] ✅ inserted iframe embed (src={src!r})")
     else:
         video = soup.new_tag('video')
         video['class'] = 'injected-media injected-media-video'
-        video['data-injected-id'] = str(entry.get('id') or '')
+        video['data-injected-id'] = str(entry_id)
         video['data-media-kind'] = 'video'
         video['data-image-replaced'] = str(image_id or '')
         video['playsinline'] = ''
         video['preload'] = 'metadata'
-        if entry.get('autoplay'):    video['autoplay'] = ''
-        if entry.get('loop'):        video['loop'] = ''
-        if entry.get('muted', True): video['muted'] = ''
-        if entry.get('controls', True): video['controls'] = ''
+        if entry.get('autoplay'):
+            video['autoplay'] = ''
+        if entry.get('loop'):
+            video['loop'] = ''
+        if entry.get('muted', True):
+            video['muted'] = ''
+        if entry.get('controls', True):
+            video['controls'] = ''
         video['style'] = (
             'display:block !important; object-fit:cover; background:#000; '
             f'min-height:200px; width:100%; {layout_style}'
@@ -214,7 +318,13 @@ def _apply_one_media_replacement_soup(soup, entry, request=None):
             video['src'] = src
         if entry.get('poster_url'):
             video['poster'] = entry['poster_url']
+
         img.insert_after(video)
+        print(f"[MEDIA] ✅ inserted video (src={src!r})")
+
+    print(f"[MEDIA] ============================================\n")
+
+
 
 
 def _apply_one_media_replacement_regex(html, entry, request=None):
@@ -1217,7 +1327,7 @@ def editor_for_product(request, template_name, subdomain, product_id):
     mutable_get['page'] = scoped_page_name
     request.GET = mutable_get
     return editor(request, resolved_template, subdomain=subdomain)
-    
+
 @login_required
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2825,6 +2935,7 @@ def public_page(request):
                 'average_rating': float(avg_rating or 0),
                 'total_reviews': total_reviews
             }
+        
     # anonymouse user check end
     context = {
         'is_editor': False,
@@ -2915,8 +3026,26 @@ def public_page(request):
     # and real data is used. Each injected section is rendered with
     # its OWN scoped context so duplicate IDs never interfere.
     # ============================================================
+        # ============================================================
+    # Re-render injected components via Django template engine.
+    #
+    # Component files live in builder/components/ and are resolved
+    # via component_manifest.json — NOT in Django's TEMPLATES dirs.
+    # So render_to_string('gallery/foo.html') always raises
+    # TemplateDoesNotExist. We instead:
+    #   1. Load the raw file via load_component_from_file()
+    #   2. Compile it as a django.template.Template
+    #   3. Render with per-entry context (entry overrides page)
+    #   4. Store back on entry['html'] so the inject step splices
+    #      the fully-rendered component, not raw Django syntax.
+    # ============================================================
+    from django.template import Template as _DjangoTemplate, Context as _DjangoCtx
     from django.template.loader import render_to_string as _rts
-    from django.template import TemplateDoesNotExist
+    def _merge_bucket(entry_bucket, page_bucket):
+        merged = dict(page_bucket or {})
+        merged.update(dict(entry_bucket or {}))
+        return merged
+
     print(f"\n🔍 [re-render] Starting loop over {len(injected_sections)} entries")
 
     for entry in injected_sections:
@@ -2928,51 +3057,29 @@ def public_page(request):
         if not component_id:
             continue
 
-        # ✅ ADD THESE PRINTS
-        print(f"[inject-loop] processing entry: "
-            f"id={entry.get('id')} component_id={component_id} "
-            f"type={entry.get('type')} html_len={len(entry.get('html') or '')}")
-    
-        # Start from page-level context so globals are still available
+        comp = load_component_from_file(component_id)
+        if not comp or not comp.get('html_content'):
+            print(f"[public_page] ❌ component file missing: {component_id!r}")
+            continue
+
         entry_context = dict(context)
-        entry_context['text_contents']        = entry.get('text_contents', {}) or {}
-        entry_context['icon_customizations']  = entry.get('icon_customizations', {}) or {}
-        entry_context['image_customizations'] = entry.get('image_customizations', {}) or {}
-        entry_context['background_images']    = entry.get('background_images', {}) or {}
-        entry_context['style_customizations'] = entry.get('style_customizations', {}) or {}
-        entry_context['link_customizations']  = entry.get('link_customizations', {}) or {}
+        entry_context['text_contents']        = _merge_bucket(entry.get('text_contents'),        text_contents)
+        entry_context['style_customizations'] = _merge_bucket(entry.get('style_customizations'), style_customizations)
+        entry_context['icon_customizations']  = _merge_bucket(entry.get('icon_customizations'),  icon_customizations)
+        entry_context['image_customizations'] = _merge_bucket(entry.get('image_customizations'), image_customizations)
+        entry_context['background_images']    = _merge_bucket(entry.get('background_images'),    background_images)
+        entry_context['link_customizations']  = _merge_bucket(entry.get('link_customizations'),  link_customizations)
 
-        candidates = [
-            f'{component_id}.html',
-            f'products/{component_id}.html',
-            f'gallery/{component_id}.html',
-            f'SpecsTable/{component_id}.html',
-            f'ComparisonTable/{component_id}.html',
-            f'BeforeAfter/{component_id}.html',
-            f'FAQ/{component_id}.html',
-            f'Reviews/{component_id}.html',
-            f'content/{component_id}.html',
-            f'layout/{component_id}.html',
-            f'headers/{component_id}.html',
-            f'footers/{component_id}.html',
-            f'special/{component_id}.html',
-        ]
-        rendered = None
-        for candidate in candidates:
-            try:
-                rendered = _rts(candidate, entry_context, request=request)
-                break
-            except TemplateDoesNotExist:
-                continue
-            except Exception as exc:
-                print(f"⚠️ Render error for '{candidate}': {type(exc).__name__}: {exc}")
-                break
-
-        if rendered is not None:
-                entry['html'] = rendered        
-        else:
-            print(f"❌ Could not find template for {component_id}")
-     # ============================================================
+        try:
+            tpl = _DjangoTemplate(comp['html_content'])
+            rendered = tpl.render(_DjangoCtx(entry_context, autoescape=True))
+            entry['html'] = rendered
+            print(f"[public_page] ✅ re-rendered {component_id} ({len(rendered)} chars)")
+        except Exception as exc:
+            print(f"[public_page] ❌ render failed for {component_id!r}: "
+                  f"{type(exc).__name__}: {exc}")
+            
+   
     # 1. Render the main page template to a string
     # ============================================================
     try:
@@ -3070,14 +3177,16 @@ def public_page(request):
         )
 
     # ============================================================
-    # 3. NEW: Apply image → video/embed replacements
+    # 3. Apply image → video/embed replacements
     #    (hides original <img>, inserts <video>/<iframe> in same slot)
     # ============================================================
-    # html = apply_media_replacements(html, injected_sections)
-    # html = inject_public_css(html)
+    if injected_sections:
+        html = _apply_media_replacements_to_html(
+            html, injected_sections, request=request
+        )
+
     from builder.utils.media_replacements import inject_public_css
     html = inject_public_css(html)
-    print("🎬 entries:", [e for e in injected_sections if isinstance(e, dict) and e.get('type')=='media_replacement'])
     # ============================================================
     # Emit class-based CSS rules for style customizations that
     # carry a `_class` field. This lets a style applied to one
@@ -7502,6 +7611,19 @@ def mark_review_helpful(request, subdomain):
 
 from django.db.models import Avg, Count  # Import Avg and Count
 
+def _media_url(field, request):
+        if not field:
+            return None
+        try:
+            url = field.url
+        except Exception:
+            return None
+        # If it's a relative path, absolutize so the JS resolveMediaUrl
+        # call on the frontend stays happy either way.
+        if url.startswith('/'):
+            return request.build_absolute_uri(url)
+        return url
+
 def get_product_reviews(request, subdomain, product_id):
     """Get reviews for a product"""
     try:
@@ -7567,6 +7689,12 @@ def get_product_reviews(request, subdomain, product_id):
                 'helpful_count': review.helpful_count,
                 'created_at': review.created_at.strftime('%B %d, %Y'),
                 'is_verified': review.is_verified_purchase,
+                # ---- MEDIA ----
+                'profile_picture': _media_url(review.profile_picture, request),
+                'review_image_1':  _media_url(review.review_image_1,  request),
+                'review_image_2':  _media_url(review.review_image_2,  request),
+                'review_image_3':  _media_url(review.review_image_3,  request),
+                'review_video':    _media_url(review.review_video,    request),
             })
         
         return JsonResponse({
@@ -7978,6 +8106,80 @@ def get_product_reviews(request, subdomain, product_id):
 #                 # Fallback: generic product detail template
 #                 return render(request, 'builder/product_detail.html', context)
 
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def check_domain_availability_api(request):
+    """
+    Check availability of a REAL domain (e.g. acme.store).
+    Uses RDAP lookup + DNS fallback. This is separate from the
+    subdomain DB check because it queries the real registry.
+    """
+    from builder.utils.rdap import check_domain_availability
+    import re
+    
+    domain = request.GET.get('domain', '').strip().lower()
+    
+    if not domain:
+        return JsonResponse({
+            'success': False,
+            'error': 'Domain is required',
+            'is_available': False,
+        }, status=400)
+    
+    # Validate format — must have a dot and valid TLD
+    if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.[a-z]{2,}$', domain):
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid domain format',
+            'is_available': False,
+        }, status=400)
+    
+    # First, check if someone on bynUp has already requested this domain
+    from builder.models import DomainRequest
+    already_requested = DomainRequest.objects.filter(
+        domain_name=domain,
+    ).exclude(
+        status__in=DomainRequest.TERMINAL_STATUSES
+    ).exists()
+    
+    if already_requested:
+        return JsonResponse({
+            'success': True,
+            'domain': domain,
+            'is_available': False,
+            'available': False,
+            'reason': 'Already requested on bynUp',
+        })
+    
+    # Also check if it's already an active custom domain on any page
+    from builder.models import PublishedPage
+    if PublishedPage.objects.filter(custom_domain=domain, is_custom_domain_active=True).exists():
+        return JsonResponse({
+            'success': True,
+            'domain': domain,
+            'is_available': False,
+            'available': False,
+            'reason': 'In use on bynUp',
+        })
+    
+    # Check the real registry
+    try:
+        result = check_domain_availability(domain)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Lookup failed: {str(e)}',
+            'is_available': False,
+        }, status=500)
+    
+    return JsonResponse({
+        'success': True,
+        'domain': domain,
+        'is_available': result.get('available') is True,
+        'available': result.get('available') is True,
+        'reason': result.get('reason', ''),
+    })
 
 
 def product_detail_page(request, product_slug):
@@ -8566,9 +8768,21 @@ def product_detail_page(request, product_slug):
         )
         
     # 14c. Apply media replacements (video-in-place-of-image, etc.)
+        # ============================================================
+    # 14c. Apply media replacements (video-in-place-of-image, etc.)
+    #
+    # CRITICAL: Must run AFTER `_inject_components_into_html` so that
+    # media_replacement entries targeting images INSIDE injected
+    # components can find their anchor in the DOM.
+    # ============================================================
+    if injected_sections:
+        html = _apply_media_replacements_to_html(
+            html, injected_sections, request=request
+        )
+
+    # Then cosmetic CSS injection
     from builder.utils.media_replacements import inject_public_css
     html = inject_public_css(html)
-
     # ============================================================
     # 14d. Emit class-scoped CSS for style customizations that
     # carry a `_class` field. Matches public_page() exactly.

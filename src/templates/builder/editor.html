@@ -15904,6 +15904,7 @@ _restoreImageFromVideo(elementId) {
  * injected <video> or <iframe> right next to it, hiding the image.
  * Persists by writing a new entry into pageData[currentPage].injected_sections.
  */
+// in editor.html, find and replace the whole injectVideoForImage method
 async injectVideoForImage(source, file, mediaKind) {
     const img = this.currentSelectedElement;
     if (!img || img.tagName !== 'IMG' || !img.dataset.image) {
@@ -15912,10 +15913,6 @@ async injectVideoForImage(source, file, mediaKind) {
     }
 
     const elementId = img.dataset.image;
-
-    // ✅ FIX: detect if this <img> is inside an injected component,
-    // and scope the selector to that wrapper so the server targets
-    // the correct image.
     const wrapper = img.closest('[data-injected-id]');
     const wrapperId = wrapper ? wrapper.dataset.injectedId : null;
     const targetSelector = wrapperId
@@ -15925,7 +15922,6 @@ async injectVideoForImage(source, file, mediaKind) {
     const page = this.pageData[this.currentPage] || (this.pageData[this.currentPage] = {});
     const injected = page.injected_sections || (page.injected_sections = []);
 
-    // ---- Snapshot the image's computed box ----
     const win = this.getTemplateWindow();
     const cs = win.getComputedStyle(img);
     const layout = {
@@ -15939,52 +15935,44 @@ async injectVideoForImage(source, file, mediaKind) {
         boxShadow:    cs.boxShadow,
     };
 
-    // ---- Build the entry ----
-    const entry = {
-        id: 'media_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        type: 'media_replacement',
-        target_image_id: String(elementId),
-        target_image_selector: targetSelector,      // ✅ was `[data-image="${elementId}"]`
-        target_wrapper_id: wrapperId,                  media_kind: mediaKind,                       // 'video' | 'embed'
+    // --- NEW: Use _getCustomizationNamespace to handle scoping ---
+    const ns = this._getCustomizationNamespace(img);
+
+    const mediaData = {
+        id: 'media_' + Date.now(), // Keep a unique ID for the media entry itself
+        kind: mediaKind,
         src: file ? null : source,
         autoplay: document.getElementById('videoAutoPlay')?.checked ?? false,
         loop:     document.getElementById('videoLoopChk')?.checked ?? false,
         muted:    document.getElementById('videoMutedChk')?.checked ?? true,
         controls: document.getElementById('videoControlsChk')?.checked ?? true,
         layout,
-        display_order: injected.filter(x =>
-            x.type === 'media_replacement' && x.target_image_id === String(elementId)
-        ).length,
     };
 
-    // ✅ DEBUG — check the browser console after adding a video replacement
-console.log('[injectVideoForImage] entry =', JSON.parse(JSON.stringify(entry)));
-console.log('[injectVideoForImage] wrapper found =', wrapper);
-console.log('[injectVideoForImage] wrapperId =', wrapperId);
-console.log('[injectVideoForImage] targetSelector =', targetSelector);
+    // This is the entry we will save into pageData.injected_sections
+    const entry = {
+        type: 'media_replacement',
+        target_image_id: String(elementId),
+        target_image_selector: targetSelector,
+        target_wrapper_id: wrapperId,
+        ...mediaData
+    };
 
-    // ---- Hide the image + insert the new node ----
+    // Hide the image and insert the placeholder node
     this._applyMediaReplacement(entry);
 
-    // ---- Upload the file if needed ----
     if (file) {
         await this._uploadReplacementVideo(file, entry);
     }
 
-    // ---- Persist ----
-    // ---- Persist ----
+    // Save the entry to the main `injected_sections` array for persistence
     injected.push(entry);
-
-    // Delete the ImageCustomization row — the image is no longer the source
     this._deleteImageCustomization(elementId, this.currentPage);
-
     this.rebindIframeListeners();
     this.preview.scheduleAutoResize();
     this.showAutoSaveIndicator();
     this.showNotification('Video added in place of image', 'success');
 }
-
-
 /**
  * Delete the ImageCustomization row for a given image element_id.
  * Called when the image is replaced by a video, or when the user
@@ -16046,31 +16034,76 @@ async _deleteVideoCustomization(elementId, pageName) {
  * Apply a single media-replacement entry to the live DOM.
  * Idempotent — safe to call repeatedly.
  */
-_applyMediaReplacement(entry) {
+// editor.html — REPLACE the existing _applyMediaReplacement with this
+_applyMediaReplacement(entry, _retryCount = 0) {
     const body = this.getTemplateContainer();
     if (!body) return;
 
-    const img = body.querySelector(entry.target_image_selector);
-    if (!img) return;
+    // ----- Idempotent: already mounted? -----
+    if (body.querySelector(`[data-injected-id="${entry.id}"]`)) {
+        return;
+    }
 
-    // Idempotent
-    if (body.querySelector(`[data-injected-id="${entry.id}"]`)) return;
+    // ----- Locate the target <img> -----
+    let img = null;
 
-    // Hide the image
+    // Try the saved selector first
+    if (entry.target_image_selector) {
+        try {
+            img = body.querySelector(entry.target_image_selector);
+        } catch (e) { img = null; }
+    }
+
+    // Fallback 1: scoped to wrapper by data-injected-id
+    if (!img && entry.target_wrapper_id && entry.target_image_id) {
+        const wrapper = body.querySelector(`[data-injected-id="${entry.target_wrapper_id}"]`);
+        if (wrapper) {
+            img = wrapper.querySelector(`[data-image="${entry.target_image_id}"]`);
+        }
+    }
+
+    // Fallback 2: bare data-image anywhere (native images)
+    if (!img && entry.target_image_id) {
+        // Prefer a non-hidden image
+        const candidates = body.querySelectorAll(`[data-image="${entry.target_image_id}"]`);
+        for (const c of candidates) {
+            if (c.style.display !== 'none' && c.tagName === 'IMG') {
+                img = c;
+                break;
+            }
+        }
+        if (!img && candidates.length) img = candidates[0];
+    }
+
+    // ----- Deferred retry if the anchor isn't mounted yet -----
+    if (!img) {
+        if (_retryCount < 6) {
+            console.log(`[media] deferring ${entry.id} (retry ${_retryCount + 1}/6) — anchor not in DOM yet`);
+            setTimeout(() => {
+                this._applyMediaReplacement(entry, _retryCount + 1);
+            }, 250);
+        } else {
+            console.warn(`[media] gave up on ${entry.id} — anchor never appeared`);
+        }
+        return;
+    }
+
+    // ----- Hide the original image -----
     img.dataset.hiddenByMedia = entry.id;
     img.style.display = 'none';
     img.setAttribute('aria-hidden', 'true');
 
-    // Build the replacement — even if src is null, build a placeholder
+    // ----- Build and insert the replacement node -----
     const el = this._buildMediaNode(entry);
     if (!el) {
         console.warn('[media] _buildMediaNode returned null for', entry);
         return;
     }
-
-    // Insert right after the image
     img.parentNode.insertBefore(el, img.nextSibling);
+
+    console.log(`[media] ✅ mounted ${entry.id} next to`, img);
 }
+
 _buildMediaNode(entry) {
     const layout = entry.layout || {};
     const styleFromLayout = Object.entries(layout)
@@ -18705,67 +18738,82 @@ ${prefix}${selector} {
 }
     
     
-    applyImageCustomizationsToTemplate() {
-        if (!Object.keys(this.imageCustomizations || {}).length) return;
-        const body = this.getTemplateContainer();
-        Object.entries(this.imageCustomizations).forEach(([id, data]) => {
-            if (!data || !data.image_url) return;
-            if (data.page_name && data.page_name !== this.currentPage) return;
-            body.querySelectorAll(`[data-image="${id}"]`).forEach(el => {
-                let url = data.image_url;
-                if (url.startsWith('/media/')) url = window.location.origin + url;
-                el.src = url;
-                if (data.alt_text) el.alt = data.alt_text;
-            });
+// editor.html — REPLACE applyImageCustomizationsToTemplate with this
+// editor.html — REPLACE applyImageCustomizationsToTemplate with this
+applyImageCustomizationsToTemplate() {
+    const body = this.getTemplateContainer();
+    if (!body) return;
+
+    // 1) Regular image URL replacements (unchanged)
+    Object.entries(this.imageCustomizations || {}).forEach(([id, data]) => {
+        if (!data || !data.image_url) return;
+        if (data.page_name && data.page_name !== this.currentPage) return;
+        body.querySelectorAll(`[data-image="${id}"]`).forEach(el => {
+            let url = data.image_url;
+            if (url.startsWith('/media/')) url = window.location.origin + url;
+            el.src = url;
+            if (data.alt_text) el.alt = data.alt_text;
         });
-        // Apply any media (video/embed) swaps
-        Object.entries(this.mediaCustomizations || {}).forEach(([id, data]) => {
-            if (!data || !data.src) return;
-            if (data.page_name && data.page_name !== this.currentPage) return;
+    });
 
-            const img = body.querySelector(`img[data-image="${id}"]`);
-            if (!img) return; // already swapped
+    // 2) Re-apply media replacements from injected_sections
+    const pageData = this.pageData[this.currentPage] || {};
+    const injections = pageData.injected_sections || [];
 
-            // Build the same node type
-            const isEmbed = data.kind === 'embed';
-            let el;
-            if (isEmbed) {
-                el = document.createElement('iframe');
-                el.src = data.src;
-                el.setAttribute('frameborder', '0');
-                el.setAttribute('allowfullscreen', '');
-            } else {
-                el = document.createElement('video');
-                el.src = data.src;
-                el.controls = data.controls ?? true;
-                el.autoplay = data.autoplay ?? false;
-                el.loop     = data.loop ?? false;
-                el.muted    = data.muted ?? true;
-                el.playsInline = true;
-            }
+    const mediaEntries = injections.filter(
+        e => e && e.type === 'media_replacement' && e.src
+    );
 
-            // Copy classes + attrs
-            Array.from(img.classList).forEach(c => {
-                if (c !== 'editable-image' && c !== 'selected') el.classList.add(c);
-            });
-            el.classList.add('editable-media');
-            el.classList.add(isEmbed ? 'editable-media-embed' : 'editable-media-video');
-            el.dataset.image = id;
-            el.dataset.mediaKind = data.kind;
+    console.log(`[media] re-applying ${mediaEntries.length} media replacement(s) for ${this.currentPage}`);
 
-            // Re-apply stored layout
-            if (data.layout) {
-                Object.entries(data.layout).forEach(([k, v]) => {
-                    if (v && v !== 'auto' && v !== 'none' && v !== 'normal') el.style[k] = v;
-                });
-            }
-            if (!data.layout?.objectFit || data.layout.objectFit === 'fill') {
-                el.style.objectFit = 'cover';
-            }
+    mediaEntries.forEach(entry => {
+        this._applyMediaReplacement(entry);
+    });
+}
+_applyMediaReplacementNode(img, id, data, wrapperId = null) {
+    if (!img || !data || !data.src) return;
 
-            img.parentNode.replaceChild(el, img);
+    const isEmbed = data.kind === 'embed';
+    let el;
+
+    if (isEmbed) {
+        el = document.createElement('iframe');
+        el.src = data.src;
+        el.setAttribute('frameborder', '0');
+        el.setAttribute('allowfullscreen', '');
+    } else {
+        el = document.createElement('video');
+        el.src = data.src;
+        el.controls = data.controls ?? true;
+        el.autoplay = data.autoplay ?? false;
+        el.loop = data.loop ?? false;
+        el.muted = data.muted ?? true;
+        el.playsInline = true;
+    }
+
+    // Copy classes and data attributes
+    Array.from(img.classList).forEach(c => {
+        if (c !== 'editable-image' && c !== 'selected') el.classList.add(c);
+    });
+    el.classList.add('editable-media');
+    el.classList.add(isEmbed ? 'editable-media-embed' : 'editable-media-video');
+    el.dataset.image = id;
+    el.dataset.mediaKind = data.kind;
+
+    // Apply stored layout
+    if (data.layout) {
+        Object.entries(data.layout).forEach(([k, v]) => {
+            if (v && v !== 'auto' && v !== 'none' && v !== 'normal') el.style[k] = v;
         });
     }
+    if (!data.layout?.objectFit || data.layout.objectFit === 'fill') {
+        el.style.objectFit = 'cover';
+    }
+
+    img.parentNode.replaceChild(el, img);
+}
+
+
 
     applyIconCustomizationsToTemplate() {
         if (!Object.keys(this.iconCustomizations || {}).length) return;

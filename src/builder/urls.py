@@ -159,7 +159,7 @@ path('api/delete-video-customization/<str:subdomain>/',
     path('cj-sync-product/<str:subdomain>/<str:cj_product_id>/', views.cj_sync_product, name='cj_sync_product'),
     path('cj-bulk-sync/<str:subdomain>/', views.cj_bulk_sync, name='cj_bulk_sync'),
     path('cj/validate-api-key/', views.validate_cj_api_key, name='validate_cj_api_key'),
-    
+    path('api/check-domain/', views.check_domain_availability_api, name='check_domain'),
     # Order Management
     path('cj-create-order/<str:subdomain>/', views.cj_create_order, name='cj_create_order'),
     path('cj-orders/<str:subdomain>/', views.cj_orders_list, name='cj_orders'),
