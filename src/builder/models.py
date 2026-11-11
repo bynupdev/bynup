@@ -955,7 +955,9 @@ class Product(models.Model):
     meta_description = models.TextField(blank=True)
     slug = models.SlugField(max_length=200, blank=True)
     # Media
-    main_image = models.ImageField(upload_to='products/main/',storage=MediaCloudinaryStorage(), blank=True, null=True)
+    # main_image = models.ImageField(upload_to='products/main/',storage=MediaCloudinaryStorage(), blank=True, null=True)
+    main_image = models.ImageField(upload_to='products/main/', blank=True, null=True)
+
     image_gallery = models.JSONField(default=list, blank=True, help_text="List of additional image URLs")
     is_active = models.BooleanField(default=True)  # Add this field
 
@@ -1151,7 +1153,7 @@ class Product(models.Model):
 
 class ProductImages(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_images')
-    image = models.ImageField(upload_to='product-images/',storage=MediaCloudinaryStorage(), blank=True, null=True)
+    image = models.ImageField(upload_to='product-images/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.product.title}"
@@ -1278,33 +1280,39 @@ class ProductReview(models.Model):
         upload_to='reviews/profiles/',
         blank=True,
         null=True,
-        storage=MediaCloudinaryStorage(),
+        # storage=MediaCloudinaryStorage(),
         help_text="Optional profile picture for the reviewer"
     )
     review_image_1 = models.ImageField(
         upload_to='reviews/images/',
         blank=True,
         null=True,
-        storage=MediaCloudinaryStorage(),
+        # storage=MediaCloudinaryStorage(),
     )
     review_image_2 = models.ImageField(
         upload_to='reviews/images/',
         blank=True,
         null=True,
-        storage=MediaCloudinaryStorage(),
+        # storage=MediaCloudinaryStorage(),
     )
     review_image_3 = models.ImageField(
         upload_to='reviews/images/',
         blank=True,
         null=True,
-        storage=MediaCloudinaryStorage(),
+        # storage=MediaCloudinaryStorage(),
     )
     review_video = models.FileField(
         upload_to='reviews/videos/',
         blank=True,
         null=True,
-        storage=MediaCloudinaryStorage(),
+        # storage=MediaCloudinaryStorage(),
+       
         help_text="Optional video review (max 50MB)"
+    )
+
+    is_staff_added = models.BooleanField(
+        default=False,
+        help_text="True when an admin created this review on behalf of a customer"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1312,8 +1320,9 @@ class ProductReview(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = [
-            ['product', 'user', 'session_key']
+        indexes = [
+            models.Index(fields=['product', 'is_approved']),
+            models.Index(fields=['product', 'created_at']),
         ]
     
     def __str__(self):

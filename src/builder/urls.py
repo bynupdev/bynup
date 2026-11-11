@@ -318,6 +318,22 @@ path('api/delete-video-customization/<str:subdomain>/',
 
      path('staff/<str:subdomain>/', views.manage_website, name='manage_website'),
 
+     path(
+     'owner-reviews/<str:subdomain>/<int:product_id>/',
+     views.owner_product_reviews, name='owner_product_reviews'
+     ),
+     path(
+     'owner-reviews/<str:subdomain>/<int:product_id>/add/',
+     views.owner_add_review, name='owner_add_review'
+     ),
+     path(
+     'owner-reviews/<str:subdomain>/<int:product_id>/<int:review_id>/delete/',
+     views.owner_delete_review, name='owner_delete_review'
+     ),
+     path(
+     'owner-reviews/<str:subdomain>/<int:product_id>/bulk/',
+     views.owner_bulk_review_action, name='owner_bulk_review_action'
+     ),
 
     path('', views.public_page, name='public_page'),
 ]

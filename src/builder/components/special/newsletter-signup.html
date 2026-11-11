@@ -1,4 +1,710 @@
-<div class="test-component">
-    <h1 class="editable-text" data-text="title">Default Title</h1>
-    <p class="editable-text" data-text="description">Default Description</p>
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+
+<style>
+.nl-editor-only { display: none; }
+.nl-public-only { display: block; }
+body.editor-mode .nl-editor-only { display: block; }
+body.editor-mode .nl-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2300 2400 %}
+{% generate_background_images background_images 2300 2400 %}
+
+/* ============================================================
+   NEWSLETTER SIGNUP
+   ============================================================ */
+.nl-root {
+    --nl-ink:        #0B0B0C;
+    --nl-ink-2:      #2A2A2E;
+    --nl-mute:       #8A8A92;
+    --nl-faint:      #C8C8CE;
+    --nl-line:       #ECECEF;
+    --nl-line-2:     #F4F4F6;
+    --nl-paper:      #FFFFFF;
+    --nl-paper-2:    #FAFAFB;
+    --nl-accent:     #C9432A;
+    --nl-accent-bg:  #FBEDE8;
+    --nl-success:    #2F6B4A;
+    --nl-success-bg: #E8F3EC;
+    --nl-error:      #C9432A;
+    --nl-error-bg:   #FDECEC;
+
+    --nl-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --nl-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --nl-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--nl-font);
+    color: var(--nl-ink);
+    line-height: 1.55;
+    padding: 64px 20px;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.nl-root *, .nl-root *::before, .nl-root *::after { box-sizing: border-box; }
+.nl-root img { max-width: 100%; display: block; }
+.nl-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.nl-root input { font-family: inherit; }
+
+.nl-shell { max-width: 980px; margin: 0 auto; }
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.nl-card {
+    position: relative;
+    background: var(--nl-paper-2);
+    border: 1px solid var(--nl-line);
+    border-radius: 20px;
+    padding: 56px;
+    overflow: hidden;
+}
+.nl-card::before {
+    content: "";
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: var(--nl-accent-bg);
+    opacity: 0.6;
+    pointer-events: none;
+}
+.nl-card::after {
+    content: "";
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: var(--nl-line);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.nl-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    align-items: center;
+}
+@media (min-width: 900px) {
+    .nl-inner {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+        gap: 64px;
+    }
+}
+
+/* ============================================================
+   LEFT: ICON + HEADING
+   ============================================================ */
+.nl-copy {}
+
+.nl-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--nl-paper);
+    color: var(--nl-accent);
+    font-size: 22px;
+    border: 1px solid var(--nl-line);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    margin-bottom: 24px;
+}
+
+.nl-kicker {
+    display: inline-block;
+    font-family: var(--nl-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--nl-accent);
+    background: var(--nl-accent-bg);
+    padding: 4px 10px;
+    border-radius: 3px;
+    margin-bottom: 16px;
+}
+
+.nl-title {
+    font-family: var(--nl-serif);
+    font-size: clamp(28px, 3.4vw, 40px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--nl-ink);
+    margin: 0 0 14px 0;
+}
+.nl-title em { font-style: italic; color: var(--nl-accent); }
+
+.nl-desc {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--nl-ink-2);
+    margin: 0 0 20px 0;
+    max-width: 40ch;
+}
+
+/* Perks list */
+.nl-perks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.nl-perk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--nl-ink-2);
+}
+.nl-perk i {
+    flex-shrink: 0;
+    color: var(--nl-success);
+    font-size: 11px;
+    background: var(--nl-success-bg);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   RIGHT: FORM
+   ============================================================ */
+.nl-form-wrap {
+    background: var(--nl-paper);
+    border: 1px solid var(--nl-line);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+.nl-form-label {
+    font-family: var(--nl-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--nl-ink-2);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.nl-form-label .nl-optional {
+    font-family: var(--nl-font);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--nl-mute);
+}
+
+.nl-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+@media (min-width: 560px) {
+    .nl-input-row {
+        flex-direction: row;
+        gap: 0;
+        border: 1.5px solid var(--nl-line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--nl-paper);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .nl-input-row:focus-within {
+        border-color: var(--nl-ink);
+        box-shadow: 0 0 0 3px rgba(11, 11, 12, 0.06);
+    }
+    .nl-input-row.error {
+        border-color: var(--nl-error);
+        box-shadow: 0 0 0 3px rgba(201, 67, 42, 0.08);
+    }
+}
+
+.nl-input {
+    flex: 1;
+    width: 100%;
+    padding: 15px 18px;
+    border: 1.5px solid var(--nl-line);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--nl-ink);
+    background: var(--nl-paper);
+    outline: none;
+    transition: border-color 0.15s ease;
+    min-width: 0;
+}
+@media (min-width: 560px) {
+    .nl-input {
+        border: none;
+        border-radius: 0;
+        padding: 15px 18px;
+    }
+    .nl-input:focus { border: none; }
+}
+.nl-input::placeholder { color: var(--nl-faint); }
+.nl-input.error { border-color: var(--nl-error); }
+
+.nl-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 24px;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background 0.2s ease, transform 0.1s ease;
+    opacity: 1 !important;
+    visibility: visible !important;
+    flex-shrink: 0;
+}
+@media (min-width: 560px) {
+    .nl-submit {
+        border-radius: 0;
+        padding: 15px 28px;
+    }
+}
+.nl-submit:hover:not(:disabled) { background: #C9432A !important; }
+.nl-submit:active:not(:disabled) { transform: translateY(1px); }
+.nl-submit:disabled {
+    background: var(--nl-ink-2) !important;
+    cursor: not-allowed;
+    opacity: 0.7 !important;
+}
+.nl-submit i { font-size: 12px; }
+.nl-submit .nl-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #FFFFFF;
+    border-radius: 50%;
+    animation: nl-spin 0.7s linear infinite;
+    display: none;
+}
+.nl-submit.loading .nl-spinner { display: inline-block; }
+.nl-submit.loading i { display: none; }
+@keyframes nl-spin { to { transform: rotate(360deg); } }
+
+/* Consent + note */
+.nl-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--nl-mute);
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+.nl-consent input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--nl-ink);
+    cursor: pointer;
+}
+.nl-consent a {
+    color: var(--nl-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* Errors */
+.nl-error-msg {
+    display: none;
+    font-size: 12px;
+    color: var(--nl-error);
+    margin-top: 6px;
+    font-family: var(--nl-mono);
+    letter-spacing: 0.02em;
+}
+.nl-error-msg.show { display: block; }
+
+/* Status */
+.nl-status {
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 14px;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+}
+.nl-status.show { display: flex; }
+.nl-status i { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+.nl-status.success {
+    background: var(--nl-success-bg);
+    color: var(--nl-success);
+    border: 1px solid #C7E3D2;
+}
+.nl-status.error {
+    background: var(--nl-error-bg);
+    color: var(--nl-error);
+    border: 1px solid #F5C7C7;
+}
+
+/* Footer note (privacy reassurance) */
+.nl-footer-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--nl-mute);
+    margin-top: 16px;
+    font-family: var(--nl-mono);
+    letter-spacing: 0.02em;
+}
+.nl-footer-note i { color: var(--nl-success); font-size: 11px; }
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 899px) {
+    .nl-root { padding: 40px 16px; }
+    .nl-card {
+        padding: 32px 20px;
+        border-radius: 16px;
+    }
+    .nl-card::before,
+    .nl-card::after { display: none; }
+    .nl-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+    .nl-form-wrap { padding: 20px; }
+    .nl-input,
+    .nl-submit { font-size: 15px; padding: 14px 16px; }
+    .nl-submit { font-size: 12px; }
+}
+</style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY                                                  -->
+<!-- ============================================================ -->
+<div class="nl-root editable-section" data-section="2300">
+    <div class="nl-editor-only">
+        <div class="nl-shell">
+            <div class="nl-card">
+                <div class="nl-inner">
+
+                    <div class="nl-copy">
+                        <div class="nl-icon"><i class="fas fa-envelope-open-text"></i></div>
+
+                        <span class="nl-kicker editable-text editable-section no-drop-zone"
+                              data-section="2301" data-text="2301">Join the list</span>
+
+                        <h2 class="nl-title editable-text editable-section no-drop-zone"
+                            data-section="2302" data-text="2302">Get <em>10% off</em> your first order.</h2>
+
+                        <p class="nl-desc editable-text editable-section no-drop-zone"
+                           data-section="2303" data-text="2303">Be the first to know about new drops, restocks, and members-only offers. No spam — just the good stuff.</p>
+
+                        <ul class="nl-perks">
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="2304" data-text="2304">Exclusive early access to new releases</span>
+                            </li>
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="2305" data-text="2305">10% welcome discount on your first order</span>
+                            </li>
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span class="editable-text editable-section no-drop-zone"
+                                      data-section="2306" data-text="2306">Unsubscribe anytime — no hard feelings</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="nl-form-wrap">
+                        <div class="nl-form-label">
+                            <span>Email address</span>
+                            <span class="nl-optional">we'll never share it</span>
+                        </div>
+
+                        <div class="nl-input-row">
+                            <input type="email" class="nl-input" placeholder="jane@example.com">
+                            <button type="button" class="nl-submit">
+                                <i class="fas fa-arrow-right"></i>
+                                <span>Subscribe</span>
+                            </button>
+                        </div>
+
+                        <label class="nl-consent">
+                            <input type="checkbox" checked>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2307" data-text="2307">I agree to receive marketing emails and accept the privacy policy.</span>
+                        </label>
+
+                        <div class="nl-footer-note">
+                            <i class="fas fa-lock"></i>
+                            <span>We respect your privacy. Unsubscribe at any time.</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="nl-public-only">
+        <div class="nl-shell" id="nl-root"
+             data-subdomain="{{ page.subdomain|default:'' }}"
+             data-csrf="{{ csrf_token }}">
+
+            <div class="nl-card">
+                <div class="nl-inner">
+
+                    <!-- LEFT -->
+                    <div class="nl-copy">
+                        <div class="nl-icon"><i class="fas fa-envelope-open-text"></i></div>
+
+                        <span class="nl-kicker" id="section-2301">{{ text_contents.2301|default:"Join the list" }}</span>
+
+                        <h2 class="nl-title" id="section-2302">{{ text_contents.2302|default:"Get 10% off your first order." }}</h2>
+
+                        <p class="nl-desc" id="section-2303">{{ text_contents.2303|default:"Be the first to know about new drops, restocks, and members-only offers. No spam — just the good stuff." }}</p>
+
+                        <ul class="nl-perks">
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span>{{ text_contents.2304|default:"Exclusive early access to new releases" }}</span>
+                            </li>
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span>{{ text_contents.2305|default:"10% welcome discount on your first order" }}</span>
+                            </li>
+                            <li class="nl-perk">
+                                <i class="fas fa-check"></i>
+                                <span>{{ text_contents.2306|default:"Unsubscribe anytime — no hard feelings" }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- RIGHT: FORM -->
+                    <div class="nl-form-wrap">
+                        <div class="nl-form-label">
+                            <span>Email address</span>
+                            <span class="nl-optional">we'll never share it</span>
+                        </div>
+
+                        <form id="nl-form" onsubmit="return false;" novalidate>
+                            <input type="hidden" name="form_name" value="newsletter">
+                            <input type="text" name="nl_hp" tabindex="-1" autocomplete="off"
+                                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+
+                            <div class="nl-input-row" id="nl-input-row">
+                                <input type="email" id="nl-email" name="email" class="nl-input"
+                                       placeholder="jane@example.com" required maxlength="120"
+                                       autocomplete="email">
+                                <button type="submit" class="nl-submit" id="nl-submit">
+                                    <span class="nl-spinner"></span>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span data-nl-submit-text>{{ text_contents.2308|default:"Subscribe" }}</span>
+                                </button>
+                            </div>
+                            <div class="nl-error-msg" data-nl-err="email">Please enter a valid email address</div>
+
+                            <label class="nl-consent">
+                                <input type="checkbox" id="nl-consent" name="consent" required>
+                                <span>{{ text_contents.2307|default:"I agree to receive marketing emails and accept the privacy policy." }}</span>
+                            </label>
+                            <div class="nl-error-msg" data-nl-err="consent" style="margin-top:-6px;margin-bottom:12px;">
+                                Please accept the terms to continue
+                            </div>
+
+                            <div class="nl-footer-note">
+                                <i class="fas fa-lock"></i>
+                                <span>We respect your privacy. Unsubscribe at any time.</span>
+                            </div>
+
+                            <div class="nl-status" id="nl-status">
+                                <i class="fas fa-check-circle"></i>
+                                <span data-nl-status-text></span>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+
+<script>
+(function(){
+    'use strict';
+    var NL = window.NL_NEWSLETTER = window.NL_NEWSLETTER || {};
+    if (NL._init) return;
+    NL._init = true;
+
+    function root() {
+        return document.querySelector('.nl-public-only #nl-root')
+            || document.getElementById('nl-root');
+    }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) || window.location.hostname.split('.')[0];
+    }
+    function csrf() {
+        var r = root();
+        return (r && r.dataset.csrf) || '';
+    }
+
+    function showError(name, show) {
+        var el = document.querySelector('[data-nl-err="' + name + '"]');
+        if (el) el.classList.toggle('show', !!show);
+        if (name === 'email') {
+            var row = document.getElementById('nl-input-row');
+            if (row) row.classList.toggle('error', !!show);
+        }
+    }
+
+    function showStatus(kind, message) {
+        var status = document.getElementById('nl-status');
+        var textEl = status ? status.querySelector('[data-nl-status-text]') : null;
+        if (!status || !textEl) return;
+        status.className = 'nl-status show ' + kind;
+        textEl.textContent = message;
+        var icon = status.querySelector('i');
+        if (icon) {
+            icon.className = kind === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+        }
+    }
+
+    function clearStatus() {
+        var status = document.getElementById('nl-status');
+        if (status) status.className = 'nl-status';
+    }
+
+    function submitNewsletter() {
+        clearStatus();
+        showError('email', false);
+        showError('consent', false);
+
+        var emailEl = document.getElementById('nl-email');
+        var consentEl = document.getElementById('nl-consent');
+
+        var emailVal = emailEl.value.trim();
+        var emailOk = emailVal && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+        if (!emailOk) {
+            showError('email', true);
+            emailEl.focus();
+            return;
+        }
+        if (!consentEl.checked) {
+            showError('consent', true);
+            return;
+        }
+
+        var submitBtn = document.getElementById('nl-submit');
+        var submitText = submitBtn ? submitBtn.querySelector('[data-nl-submit-text]') : null;
+        var originalText = submitText ? submitText.textContent : 'Subscribe';
+
+        if (submitBtn) {
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+        }
+        if (submitText) submitText.textContent = 'Subscribing…';
+
+        var fd = new FormData();
+        fd.append('form_name', 'newsletter');
+        fd.append('email', emailVal);
+        fd.append('consent', 'on');
+        fd.append('message', 'Newsletter subscription');
+
+        fetch('/builder/submit-form/' + subdomain() + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf() },
+            body: fd
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                showStatus('success', 'You\'re in! Check your inbox for a welcome email.');
+                emailEl.value = '';
+                consentEl.checked = false;
+            } else {
+                showStatus('error', data.error || 'Something went wrong. Please try again.');
+            }
+        })
+        .catch(function () {
+            showStatus('error', 'Network error — please try again in a moment.');
+        })
+        .finally(function () {
+            if (submitBtn) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+            if (submitText) submitText.textContent = originalText;
+        });
+    }
+
+    function init() {
+        if (!root()) return;
+        var form = document.getElementById('nl-form');
+        if (!form) return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            submitNewsletter();
+        });
+
+        var emailEl = document.getElementById('nl-email');
+        if (emailEl) {
+            emailEl.addEventListener('input', function () {
+                showError('email', false);
+            });
+        }
+        var consentEl = document.getElementById('nl-consent');
+        if (consentEl) {
+            consentEl.addEventListener('change', function () {
+                showError('consent', false);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

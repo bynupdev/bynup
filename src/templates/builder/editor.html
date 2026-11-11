@@ -8299,6 +8299,7 @@ _stripDjangoFromComponent(html) {
             this.loadSidebarPreference();
             this.setupTopMenu();
             this.setupBreadcrumbs();
+            this.setupInsertMenu(); 
             this.setupPublish();
             this.setupInspectorSubtabs();
             this.loadSidebarPosition();
@@ -11341,41 +11342,39 @@ _buildLayersTree(root) {
     const collected = new Set();
 
     const MATCH_SELECTOR =
-        '.editable-section, .page-component, .injected-section, .injected-element, ' +
-        'header, footer, nav, section';
+      '.editable-section, .page-component, .injected-section, .injected-element, ' +
+      'header, footer, nav, section';
 
-    // Gather every potential node in the entire subtree
+    // 1. Gather all potential nodes in document order.
+    //    querySelectorAll DOES include descendants, but not root itself.
+    //    root is body, so its children are already in this list.
     const allNodes = Array.from(root.querySelectorAll(MATCH_SELECTOR));
 
-    // Also include direct children of root that match (querySelectorAll
-    // skips root.children themselves when root IS the container — no,
-    // it doesn't; querySelectorAll searches descendants only. So we
-    // explicitly prepend root's own matching children.)
-    Array.from(root.children).forEach(c => {
-        if (c.matches && c.matches(MATCH_SELECTOR)) allNodes.unshift(c);
-    });
-
-    // Deduplicate
-    const seen = new Set();
+    // 2. Deduplicate (though querySelectorAll should not return duplicates)
     const candidates = [];
+    const seen = new Set();
     allNodes.forEach(el => {
         if (seen.has(el)) return;
         seen.add(el);
         candidates.push(el);
     });
 
-    // Only keep nodes whose nearest matching ancestor is NOT already
-    // a candidate — this produces top-of-branch nodes.
+    // 3. Filter to only keep TOP-LEVEL candidates.
+    //    A top-level candidate is one whose parent chain
+    //    does NOT contain another candidate.
     const candidateSet = new Set(candidates);
     const topLevel = candidates.filter(el => {
         let p = el.parentElement;
         while (p && p !== root) {
-            if (candidateSet.has(p)) return false;
+            if (candidateSet.has(p)) {
+                return false; // This is nested, skip it for top-level.
+            }
             p = p.parentElement;
         }
-        return true;
+        return true; // No parent was a candidate, so this is top-level.
     });
 
+    // 4. Build the tree from the top-level nodes, preserving order.
     topLevel.forEach(el => {
         const node = this._buildLayerNode(el, collected, 0);
         if (node) tree.push(node);
@@ -12267,6 +12266,48 @@ const startId = this.computeNextInjectedId();
   this.setupDropZones();
   this._bumpChanges('replace component');
 }
+
+setupInsertMenu() {
+    const menu = document.getElementById('insertMenu');
+    if (!menu) return;
+
+    // Close button
+    document.getElementById('insertMenuClose')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        menu.classList.remove('visible');
+    });
+
+    // Search filter
+    document.getElementById('insertMenuSearch')?.addEventListener('input', (e) => {
+        this._filterInsertMenu(e.target.value);
+    });
+
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+        if (!menu.classList.contains('visible')) return;
+        if (menu.contains(e.target)) return;
+        // Don't close if the click was on the insert handle itself
+        // (the handle's own handler opens the menu)
+        if (e.target.closest('.insert-handle')) return;
+        menu.classList.remove('visible');
+    });
+
+    // Esc to close
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menu.classList.contains('visible')) {
+            menu.classList.remove('visible');
+        }
+    });
+}
+
+closeInsertMenu() {
+    const menu = document.getElementById('insertMenu');
+    if (menu) menu.classList.remove('visible');
+    this._insertPosition = null;
+    this._insertTargetSection = null;
+}
+
 
 // async _replaceNative(kind, oldId, oldLayer, payloadId) {
 //     const def = this._findElementDef(payloadId);
@@ -17194,7 +17235,7 @@ async _insertElement(elementId) {
         return;
     }
 
-    document.getElementById('insertMenu').classList.remove('visible');
+    this.closeInsertMenu();
 
     try {
         // Rewrite IDs

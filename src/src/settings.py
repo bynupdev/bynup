@@ -59,7 +59,8 @@ OPENROUTER_MODELS = [
     'mistralai/mistral-small-3.1-24b-instruct',
     'meta-llama/llama-3.1-70b-instruct',
 ]
-
+AGENTAOS_API_KEY = os.environ.get('AGENTAOS_API_KEY')
+AGENTAOS_WEBHOOK_SECRET = os.environ.get('AGENTAOS_WEBHOOK_SECRET') 
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False

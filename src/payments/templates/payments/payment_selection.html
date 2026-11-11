@@ -1152,22 +1152,22 @@ textarea.form-control { resize: vertical; min-height: 60px; line-height: 1.5; }
         <!-- ===== Header ===== -->
         <header class="checkout-header">
             <h1 class="checkout-title">Checkout</h1>
-            <p class="checkout-sub">Complete your order in three simple steps</p>
-
+            <p class="checkout-sub" id="checkoutSub">Complete your order in three simple steps</p>
             <div class="progress-steps">
-                <div class="step active">
+                <div class="step active" id="stepInfo">
                     <div class="step-number">1</div>
                     <div class="step-label">Your information</div>
                 </div>
-                <div class="step">
+                <div class="step" id="stepShipping">
                     <div class="step-number">2</div>
                     <div class="step-label">Shipping</div>
                 </div>
-                <div class="step">
+                <div class="step" id="stepPayment">
                     <div class="step-number">3</div>
                     <div class="step-label">Payment</div>
                 </div>
             </div>
+        
         </header>
 
         <!-- ===== Grid ===== -->
@@ -3328,6 +3328,148 @@ const { error, paymentIntent } = await stripeInstance.confirmCardPayment(
             }
         });
     });
+
+    /* ============================================================
+   NO-TAX MODE — collapse step 3 → 2 when tax is zero
+   Decides immediately on page load using the tax amount already
+   present in the checkout URL (cart_data.tax_amount / product).
+   Falls back to watching the tax DOM only if the URL has no hint.
+   ============================================================ */
+(function watchForZeroTax() {
+    const stepShipping = document.getElementById('stepShipping');
+    const stepPayment  = document.getElementById('stepPayment');
+    const taxTotalRow  = document.getElementById('taxTotalRow');
+    const taxSection   = document.getElementById('taxSection');
+    const continueBtn  = document.getElementById('continueToShippingBtn');
+    const shippingCard = document.getElementById('shippingOptionsCard');
+    const paymentCard  = document.getElementById('paymentMethodsCard');
+
+    if (!stepShipping || !stepPayment) return;
+
+    let collapsed = false;
+
+    function collapseToTwoSteps() {
+        if (collapsed) return;
+        collapsed = true;
+
+        // Hide the middle step
+        stepShipping.style.display = 'none';
+
+        // Renumber payment → 2
+        const numEl = stepPayment.querySelector('.step-number');
+        if (numEl) numEl.textContent = '2';
+
+        // Hide the tax row and section
+        if (taxTotalRow) taxTotalRow.style.display = 'none';
+        if (taxSection)  taxSection.style.display  = 'none';
+
+        // Rename CTA
+        if (continueBtn) {
+            const label = continueBtn.querySelector('.btn-text');
+            if (label) label.textContent = 'Continue to payment';
+            continueBtn.dataset.skipShipping = 'true';
+        }
+
+        // ⬇️ NEW — update the subtitle text
+        const sub = document.getElementById('checkoutSub');
+        if (sub) sub.textContent = 'Complete your order in two simple steps';
+    }
+
+    /* ---------- Decide immediately from the URL ---------- */
+    function detectZeroTaxFromUrl() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const type = params.get('type') || 'instant';
+            const cartRaw = params.get('cart_data');
+            const productRaw = params.get('product');
+
+            // Instant mode: single product. If the flow set no tax on it,
+            // the effective tax is zero.
+            if (type === 'instant' && productRaw) {
+                const product = JSON.parse(decodeURIComponent(productRaw));
+                // Instant products don't carry a tax field. Fall through
+                // to the tax DOM observation, unless cart_data also says 0.
+            }
+
+            if (cartRaw) {
+                const cart = JSON.parse(decodeURIComponent(cartRaw));
+                const cartTax = parseFloat(cart.tax_amount || 0);
+                if (cartTax === 0) {
+                    // Look at the shipping amount too — if both are zero,
+                    // this is a pure "no tax / no shipping" order.
+                    const shipAmt = parseFloat(cart.shipping_amount || 0);
+                    // If tax is zero, collapse. Shipping can still be
+                    // computed separately; the collapse is only about
+                    // the *tax* step being a no-op.
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn('[no-tax] URL parse failed:', e);
+        }
+        return false;
+    }
+
+    const zeroTaxFromUrl = detectZeroTaxFromUrl();
+    if (zeroTaxFromUrl) {
+        // Decide right now, before the user types anything
+        collapseToTwoSteps();
+    }
+
+    /* ---------- Capture-phase patch on the Continue button ---------- */
+    if (continueBtn && !continueBtn._noTaxPatched) {
+        continueBtn._noTaxPatched = true;
+        continueBtn.addEventListener('click', function () {
+            if (continueBtn.dataset.skipShipping !== 'true') return;
+
+            // Let the original handler run (validates form, opens shipping
+            // card, calls loadShippingRates), then override its result:
+            setTimeout(() => {
+                if (shippingCard) shippingCard.style.display = 'none';
+                if (paymentCard)  paymentCard.style.display  = 'block';
+
+                document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+                stepPayment.classList.add('active');
+
+                if (paymentCard) paymentCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
+        }, true);
+    }
+
+    /* ---------- Fallback: only watch the tax DOM if we didn't
+                 already collapse from the URL ---------- */
+    if (!zeroTaxFromUrl) {
+        const taxBreakdown = document.getElementById('taxBreakdown');
+        const taxExempt    = document.getElementById('taxExemptNotice');
+
+        function checkCurrentTax() {
+            if (collapsed) return;
+            if (!taxSection || taxSection.style.display === 'none') return;
+
+            if (taxExempt && taxExempt.style.display !== 'none') {
+                collapseToTwoSteps();
+                return;
+            }
+
+            const text = (taxBreakdown ? taxBreakdown.textContent : '').trim().toLowerCase();
+            if (!text || text.includes('no tax') || text.includes('enter shipping address')) {
+                const country = document.getElementById('customerCountry');
+                if (country && country.value) collapseToTwoSteps();
+            }
+        }
+
+        if (taxBreakdown && window.MutationObserver) {
+            new MutationObserver(checkCurrentTax).observe(taxBreakdown, {
+                childList: true, subtree: true, characterData: true,
+            });
+        }
+        if (taxExempt && window.MutationObserver) {
+            new MutationObserver(checkCurrentTax).observe(taxExempt, {
+                attributes: true, attributeFilter: ['style'],
+            });
+        }
+    }
+})();
 });
 </script>
 {% endblock %}

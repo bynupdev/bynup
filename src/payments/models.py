@@ -1516,7 +1516,7 @@ class PaymentTransaction(models.Model):
     
     transaction_id = models.CharField(max_length=100, unique=True)
     gateway_type = models.CharField(max_length=50, default='cryptomus')
-    gateway_transaction_id = models.CharField(max_length=200, blank=True)
+    gateway_transaction_id = models.CharField(max_length=200, blank=True, null=True)
     
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')

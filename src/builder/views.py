@@ -7469,8 +7469,16 @@ def submit_review(request, subdomain):
 def submit_review_v2(request, subdomain):
     """
     Submit a review with optional media.
+
     Accepts: product_id, rating, author_name, comment,
-             profile_picture, review_image_1, review_image_2, review_image_3, review_video
+             profile_picture, review_image_1, review_image_2,
+             review_image_3, review_video
+
+    Uniqueness rule:
+      - Regular customers: one review per product
+        (matches the old unique_together behavior, enforced in code)
+      - Store owner (request.user == page.user): unlimited
+      - Anonymous / guests: one per (product, session_key)
     """
     try:
         page = get_object_or_404(PublishedPage, subdomain=subdomain)
@@ -7486,9 +7494,9 @@ def submit_review_v2(request, subdomain):
     except Product.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Product not found'}, status=404)
 
+    # ---- Parse fields ----
     author_name = (request.POST.get('author_name') or '').strip()
-    comment     = (request.POST.get('comment')     or '').strip()
-
+    comment = (request.POST.get('comment') or '').strip()
     try:
         rating = int(request.POST.get('rating', 0))
     except (TypeError, ValueError):
@@ -7501,22 +7509,41 @@ def submit_review_v2(request, subdomain):
     if not (1 <= rating <= 5):
         return JsonResponse({'success': False, 'error': 'Rating must be 1–5'}, status=400)
 
+    # ---- Ensure session ----
     if not request.session.session_key:
         request.session.create()
     session_key = request.session.session_key
 
-    existing_qs = ProductReview.objects.filter(product=product)
-    if request.user.is_authenticated:
-        existing_qs = existing_qs.filter(user=request.user)
-    else:
-        existing_qs = existing_qs.filter(user__isnull=True, session_key=session_key)
-    if existing_qs.exists():
-        return JsonResponse(
-            {'success': False, 'error': 'You have already reviewed this product'},
-            status=400
-        )
+    # ============================================================
+    # UNIQUENESS CHECK
+    # The store owner is exempt — they can add unlimited reviews.
+    # Everyone else: one review per product.
+    # ============================================================
+    is_owner = (
+        request.user.is_authenticated
+        and page.user_id == request.user.id
+    )
 
-    # --- Media validation ---
+    if not is_owner:
+        if request.user.is_authenticated:
+            already = ProductReview.objects.filter(
+                product=product,
+                user=request.user,
+            ).exists()
+        else:
+            already = ProductReview.objects.filter(
+                product=product,
+                user__isnull=True,
+                session_key=session_key,
+            ).exists()
+
+        if already:
+            return JsonResponse(
+                {'success': False, 'error': 'You have already reviewed this product'},
+                status=400,
+            )
+
+    # ---- Media validation ----
     max_video_mb = 50
     max_image_mb = 5
 
@@ -7525,7 +7552,10 @@ def submit_review_v2(request, subdomain):
         if not video_file.content_type.startswith('video/'):
             return JsonResponse({'success': False, 'error': 'Video file must be a video'}, status=400)
         if video_file.size > max_video_mb * 1024 * 1024:
-            return JsonResponse({'success': False, 'error': f'Video must be under {max_video_mb}MB'}, status=400)
+            return JsonResponse(
+                {'success': False, 'error': f'Video must be under {max_video_mb}MB'},
+                status=400,
+            )
 
     for key in ('profile_picture', 'review_image_1', 'review_image_2', 'review_image_3'):
         f = request.FILES.get(key)
@@ -7533,8 +7563,12 @@ def submit_review_v2(request, subdomain):
             if not f.content_type.startswith('image/'):
                 return JsonResponse({'success': False, 'error': 'Images must be image files'}, status=400)
             if f.size > max_image_mb * 1024 * 1024:
-                return JsonResponse({'success': False, 'error': f'Each image must be under {max_image_mb}MB'}, status=400)
+                return JsonResponse(
+                    {'success': False, 'error': f'Each image must be under {max_image_mb}MB'},
+                    status=400,
+                )
 
+    # ---- Create the review ----
     review = ProductReview.objects.create(
         product=product,
         user=request.user if request.user.is_authenticated else None,
@@ -7547,7 +7581,7 @@ def submit_review_v2(request, subdomain):
         review_image_2=request.FILES.get('review_image_2'),
         review_image_3=request.FILES.get('review_image_3'),
         review_video=request.FILES.get('review_video'),
-        is_approved=True,        # moderation on by default
+        is_approved=True,
         is_verified_purchase=True,
     )
 
@@ -7557,6 +7591,7 @@ def submit_review_v2(request, subdomain):
         'message': 'Thanks! Your review will appear after moderation.',
     })
 
+    
 @csrf_exempt
 @require_POST
 def mark_review_helpful(request, subdomain):
@@ -17016,3 +17051,249 @@ def update_palette_color(request, subdomain):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+
+# ============================================================
+# STORE-OWNER REVIEW MANAGEMENT
+# (The "staff" here = the user who created the store,
+#  i.e. request.user == page.user. Not Django is_staff.)
+# ============================================================
+
+def _is_store_owner(user, page):
+    return user.is_authenticated and page.user_id == user.id
+
+
+def _as_bool(val, default=False):
+    if val is None or str(val).strip() == '':
+        return default
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'on', 'y', 't')
+
+
+@login_required
+def owner_product_reviews(request, subdomain, product_id):
+    """
+    List every review for a product + button to add new ones.
+    Only the store owner can reach this.
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    if not _is_store_owner(request.user, page):
+        raise Http404()
+
+    product = get_object_or_404(Product, id=product_id, page=page)
+
+    qs = ProductReview.objects.filter(product=product).select_related('user').order_by('-created_at')
+
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'approved':
+        qs = qs.filter(is_approved=True)
+    elif status_filter == 'pending':
+        qs = qs.filter(is_approved=False)
+    elif status_filter == 'owner_added':
+        qs = qs.filter(is_staff_added=True)
+
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        qs = qs.filter(
+            Q(author_name__icontains=search) |
+            Q(comment__icontains=search) |
+            Q(title__icontains=search) |
+            Q(author_email__icontains=search)
+        )
+
+    stats = {
+        'total': ProductReview.objects.filter(product=product).count(),
+        'approved': ProductReview.objects.filter(product=product, is_approved=True).count(),
+        'pending': ProductReview.objects.filter(product=product, is_approved=False).count(),
+        'owner_added': ProductReview.objects.filter(product=product, is_staff_added=True).count(),
+    }
+
+    paginator = Paginator(qs, 30)
+    reviews_page = paginator.get_page(request.GET.get('page_num', 1))
+
+    return render(request, 'builder/owner/product_reviews.html', {
+        'page': page,
+        'product': product,
+        'reviews': reviews_page,
+        'stats': stats,
+        'filters': {'status': status_filter, 'q': search},
+        'active_menu': 'products',
+    })
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def owner_add_review(request, subdomain, product_id):
+    """
+    GET  -> render add-review form
+    POST -> create review (multipart or JSON)
+    Owner-only. Multiple reviews per product allowed.
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    if not _is_store_owner(request.user, page):
+        raise Http404()
+
+    product = get_object_or_404(Product, id=product_id, page=page)
+
+    if request.method == 'GET':
+        return render(request, 'builder/owner/add_review.html', {
+            'page': page,
+            'product': product,
+            'active_menu': 'products',
+        })
+
+    # ---- POST ----
+    files = request.FILES
+    if request.content_type and 'application/json' in request.content_type:
+        data = json.loads(request.body or '{}')
+    else:
+        data = request.POST
+
+    def get(key, default=None):
+        return (data.get(key, default) or default)
+
+    try:
+        rating = int(get('rating', 0))
+    except (ValueError, TypeError):
+        rating = 0
+    if not (1 <= rating <= 5):
+        return JsonResponse({'success': False, 'error': 'Rating must be 1–5'}, status=400)
+
+    author_name = (get('author_name') or '').strip()
+    if not author_name:
+        return JsonResponse({'success': False, 'error': 'Author name is required'}, status=400)
+
+    comment = (get('comment') or '').strip()
+    if not comment:
+        return JsonResponse({'success': False, 'error': 'Comment is required'}, status=400)
+
+    try:
+        review = ProductReview(
+            product=product,
+            rating=rating,
+            title=(get('title') or '')[:200],
+            comment=comment,
+            author_name=author_name[:100],
+            author_email=(get('author_email') or '')[:254],
+            helpful_count=int(get('helpful_count') or 0),
+            is_verified_purchase=_as_bool(get('is_verified_purchase'), False),
+            is_approved=_as_bool(get('is_approved'), True),
+            is_staff_added=True,
+            user=None,
+            session_key=None,
+        )
+
+        if files:
+            if 'profile_picture' in files:
+                review.profile_picture = files['profile_picture']
+            if 'review_image_1' in files:
+                review.review_image_1 = files['review_image_1']
+            if 'review_image_2' in files:
+                review.review_image_2 = files['review_image_2']
+            if 'review_image_3' in files:
+                review.review_image_3 = files['review_image_3']
+            if 'review_video' in files:
+                review.review_video = files['review_video']
+
+        review.save()
+
+        # Optional backdating
+        created_at_str = (get('created_at') or '').strip()
+        if created_at_str:
+            from datetime import datetime
+            for fmt in ('%Y-%m-%d', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M'):
+                try:
+                    review.created_at = datetime.strptime(created_at_str, fmt)
+                    ProductReview.objects.filter(id=review.id).update(created_at=review.created_at)
+                    break
+                except ValueError:
+                    continue
+
+        return JsonResponse({
+            'success': True,
+            'review': {
+                'id': review.id,
+                'author_name': review.author_name,
+                'rating': review.rating,
+                'is_approved': review.is_approved,
+                'is_staff_added': review.is_staff_added,
+            }
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def owner_delete_review(request, subdomain, product_id, review_id):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    if not _is_store_owner(request.user, page):
+        raise Http404()
+
+    product = get_object_or_404(Product, id=product_id, page=page)
+    review = get_object_or_404(ProductReview, id=review_id, product=product)
+
+    # Delete Cloudinary files too
+    for f in ('profile_picture', 'review_image_1', 'review_image_2',
+              'review_image_3', 'review_video'):
+        field = getattr(review, f, None)
+        try:
+            if field:
+                field.delete(save=False)
+        except Exception:
+            pass
+
+    review.delete()
+    return JsonResponse({'success': True})
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def owner_bulk_review_action(request, subdomain, product_id):
+    """
+    Body: { "action": "approve" | "unapprove" | "delete", "ids": [1,2,3] }
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain)
+    if not _is_store_owner(request.user, page):
+        raise Http404()
+
+    product = get_object_or_404(Product, id=product_id, page=page)
+
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    ids = body.get('ids') or []
+    action = body.get('action')
+    if not ids or not action:
+        return JsonResponse({'success': False, 'error': 'Missing ids or action'}, status=400)
+
+    qs = ProductReview.objects.filter(id__in=ids, product=product)
+
+    if action == 'approve':
+        n = qs.update(is_approved=True)
+    elif action == 'unapprove':
+        n = qs.update(is_approved=False)
+    elif action == 'delete':
+        for r in qs:
+            for f in ('profile_picture', 'review_image_1', 'review_image_2',
+                      'review_image_3', 'review_video'):
+                field = getattr(r, f, None)
+                try:
+                    if field:
+                        field.delete(save=False)
+                except Exception:
+                    pass
+        n = qs.count()
+        qs.delete()
+    else:
+        return JsonResponse({'success': False, 'error': f'Unknown action: {action}'}, status=400)
+
+    return JsonResponse({'success': True, 'affected': n})
+
+

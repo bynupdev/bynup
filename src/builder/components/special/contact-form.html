@@ -1,55 +1,873 @@
-<!-- 
-COMPONENT: Contact Form
-TYPE: form
-EDITABLE: true
--->
-<section class="component-contact-form editable-section" data-section="contact-form" 
-         style="padding: 80px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-  <div class="container">
-    <div style="max-width: 600px; margin: 0 auto;">
-      <h2 class="editable-text" data-text="contact-title"
-          style="text-align: center; margin-bottom: 1rem;">
-        Get In Touch
-      </h2>
-      <p class="editable-text" data-text="contact-subtitle"
-         style="text-align: center; margin-bottom: 3rem; opacity: 0.9;">
-        Have questions? We'd love to hear from you.
-      </p>
-      
-      <form class="editable-section" data-section="contact-form-element"
-            style="background: white; padding: 2rem; border-radius: 8px; color: #333;">
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Name</label>
-          <input type="text" class="editable-text" data-text="name-placeholder"
-                 style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;"
-                 placeholder="Your Name">
-        </div>
-        
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Email</label>
-          <input type="email" class="editable-text" data-text="email-placeholder"
-                 style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;"
-                 placeholder="your@email.com">
-        </div>
-        
-        <div style="margin-bottom: 1.5rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Message</label>
-          <textarea class="editable-text" data-text="message-placeholder"
-                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; height: 120px;"
-                    placeholder="Your message..."></textarea>
-        </div>
-        
-        <button type="submit" class="editable-text" data-text="submit-text"
-                style="background: #007bff; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; width: 100%; font-size: 1.1rem;">
-          Send Message
-        </button>
-      </form>
-    </div>
-  </div>
-</section>
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
 
 <style>
-  input{
+.cf-editor-only { display: none; }
+.cf-public-only { display: block; }
+body.editor-mode .cf-editor-only { display: block; }
+body.editor-mode .cf-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2200 2300 %}
+{% generate_background_images background_images 2200 2300 %}
+
+/* ============================================================
+   CONTACT FORM
+   ============================================================ */
+.cf-root {
+    --cf-ink:        #0B0B0C;
+    --cf-ink-2:      #2A2A2E;
+    --cf-mute:       #8A8A92;
+    --cf-faint:      #C8C8CE;
+    --cf-line:       #ECECEF;
+    --cf-line-2:     #F4F4F6;
+    --cf-paper:      #FFFFFF;
+    --cf-paper-2:    #FAFAFB;
+    --cf-accent:     #C9432A;
+    --cf-accent-bg:  #FBEDE8;
+    --cf-success:    #2F6B4A;
+    --cf-success-bg: #E8F3EC;
+    --cf-error:      #C9432A;
+    --cf-error-bg:   #FDECEC;
+
+    --cf-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --cf-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+    --cf-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    font-family: var(--cf-font);
+    color: var(--cf-ink);
+    background: var(--cf-paper);
+    line-height: 1.55;
+    padding: 80px 20px;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+}
+.cf-root *, .cf-root *::before, .cf-root *::after { box-sizing: border-box; }
+.cf-root img { max-width: 100%; display: block; }
+.cf-root button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.cf-root input, .cf-root textarea, .cf-root select { font-family: inherit; }
+
+.cf-shell { max-width: 1120px; margin: 0 auto; }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.cf-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 48px;
+    align-items: start;
+}
+@media (min-width: 900px) {
+    .cf-split {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 96px;
+    }
+}
+
+/* ============================================================
+   LEFT COLUMN — heading, details, contact points
+   ============================================================ */
+.cf-info { max-width: 420px; }
+
+.cf-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--cf-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cf-accent);
+    margin-bottom: 20px;
+}
+.cf-kicker::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--cf-accent);
+}
+
+.cf-title {
+    font-family: var(--cf-serif);
+    font-size: clamp(32px, 4.5vw, 48px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--cf-ink);
+    margin: 0 0 20px 0;
+}
+.cf-title em { font-style: italic; color: var(--cf-accent); }
+
+.cf-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--cf-ink-2);
+    margin: 0 0 32px 0;
+}
+
+/* Contact points */
+.cf-points {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 32px;
+    border-top: 1px solid var(--cf-line);
+}
+.cf-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--cf-line);
+}
+.cf-point-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--cf-paper-2);
+    color: var(--cf-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 1px solid var(--cf-line);
+}
+.cf-point-body { flex: 1; padding-top: 2px; }
+.cf-point-label {
+    font-family: var(--cf-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cf-mute);
+    margin-bottom: 4px;
+}
+.cf-point-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cf-ink);
+    line-height: 1.4;
+}
+.cf-point-value a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.cf-point-value a:hover { color: var(--cf-accent); }
+
+/* Social proof */
+.cf-social {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: var(--cf-paper-2);
+    border-radius: 8px;
+    border: 1px solid var(--cf-line);
+}
+.cf-social-avatars { display: flex; flex-shrink: 0; }
+.cf-social-avatars img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--cf-paper);
+    margin-left: -8px;
+    object-fit: cover;
+}
+.cf-social-avatars img:first-child { margin-left: 0; }
+.cf-social-text {
+    font-size: 12px;
+    color: var(--cf-ink-2);
+    line-height: 1.4;
+}
+.cf-social-text strong {
+    color: var(--cf-ink);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 1px;
+}
+
+/* ============================================================
+   RIGHT COLUMN — form
+   ============================================================ */
+.cf-form-wrap {
+    background: var(--cf-paper);
+    border: 1px solid var(--cf-line);
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+@media (max-width: 640px) {
+    .cf-form-wrap { padding: 24px; }
+}
+
+.cf-form-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--cf-line);
+}
+.cf-form-title {
+    font-family: var(--cf-serif);
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--cf-ink);
+    margin: 0 0 6px 0;
+}
+.cf-form-sub {
+    font-size: 13px;
+    color: var(--cf-mute);
+    margin: 0;
+}
+
+.cf-field {
+    margin-bottom: 20px;
+}
+.cf-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: var(--cf-mono);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cf-ink-2);
+    margin-bottom: 8px;
+}
+.cf-label .cf-req { color: var(--cf-accent); }
+.cf-label .cf-optional {
+    font-family: var(--cf-font);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--cf-mute);
+}
+
+.cf-input,
+.cf-textarea,
+.cf-select {
     width: 100%;
-  }
+    padding: 14px 16px;
+    border: 1.5px solid var(--cf-line);
+    background: var(--cf-paper);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--cf-ink);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+    line-height: 1.5;
+}
+.cf-input::placeholder,
+.cf-textarea::placeholder {
+    color: var(--cf-faint);
+}
+.cf-input:focus,
+.cf-textarea:focus,
+.cf-select:focus {
+    border-color: var(--cf-ink);
+    box-shadow: 0 0 0 3px rgba(11, 11, 12, 0.06);
+}
+.cf-input.error,
+.cf-textarea.error,
+.cf-select.error {
+    border-color: var(--cf-error);
+    box-shadow: 0 0 0 3px rgba(201, 67, 42, 0.08);
+}
+
+.cf-textarea {
+    min-height: 140px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+/* Two-column row */
+.cf-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 500px) {
+    .cf-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* Error message */
+.cf-error-msg {
+    display: none;
+    font-size: 12px;
+    color: var(--cf-error);
+    margin-top: 6px;
+    font-family: var(--cf-mono);
+    letter-spacing: 0.02em;
+}
+.cf-error-msg.show { display: block; }
+
+/* Checkbox / consent */
+.cf-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 24px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--cf-mute);
+}
+.cf-consent input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--cf-ink);
+    cursor: pointer;
+}
+.cf-consent label {
+    cursor: pointer;
+}
+.cf-consent a {
+    color: var(--cf-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* Submit button */
+.cf-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px 24px;
+    background: #0B0B0C !important;
+    color: #FFFFFF !important;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: background 0.2s ease, transform 0.1s ease;
+    opacity: 1 !important;
+    visibility: visible !important;
+    min-height: 52px;
+}
+.cf-submit:hover:not(:disabled) {
+    background: #C9432A !important;
+    transform: translateY(-1px);
+}
+.cf-submit:active:not(:disabled) { transform: translateY(0); }
+.cf-submit:disabled {
+    background: var(--cf-ink-2) !important;
+    cursor: not-allowed;
+    opacity: 0.7 !important;
+}
+.cf-submit i { font-size: 12px; }
+.cf-submit .cf-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #FFFFFF;
+    border-radius: 50%;
+    animation: cf-spin 0.7s linear infinite;
+    display: none;
+}
+.cf-submit.loading .cf-spinner { display: inline-block; }
+.cf-submit.loading i { display: none; }
+@keyframes cf-spin { to { transform: rotate(360deg); } }
+
+/* Status */
+.cf-status {
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 16px;
+    display: none;
+}
+.cf-status.show { display: flex; align-items: flex-start; gap: 10px; }
+.cf-status i { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+.cf-status.success {
+    background: var(--cf-success-bg);
+    color: var(--cf-success);
+    border: 1px solid #C7E3D2;
+}
+.cf-status.error {
+    background: var(--cf-error-bg);
+    color: var(--cf-error);
+    border: 1px solid #F5C7C7;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 899px) {
+    .cf-root { padding: 40px 16px; }
+    .cf-info { max-width: 100%; }
+    .cf-form-wrap { padding: 24px; }
+    .cf-point { padding: 16px 0; }
+    .cf-social { padding: 16px; }
+    .cf-input,
+    .cf-textarea,
+    .cf-select { padding: 12px 14px; font-size: 15px; }
+    .cf-submit { font-size: 12px; padding: 14px 20px; min-height: 48px; }
+}
 </style>
+
+
+<!-- ============================================================ -->
+<!-- EDITOR-ONLY                                                  -->
+<!-- ============================================================ -->
+<div class="cf-root editable-section" data-section="2200">
+    <div class="cf-editor-only">
+        <div class="cf-shell">
+            <div class="cf-split">
+
+                <!-- Left: info -->
+                <div class="cf-info">
+                    <div class="cf-kicker editable-text editable-section no-drop-zone"
+                         data-section="2201" data-text="2201">Contact us</div>
+
+                    <h2 class="cf-title editable-text editable-section no-drop-zone"
+                        data-section="2202" data-text="2202">Let's talk about <em>your next</em> project.</h2>
+
+                    <p class="cf-desc editable-text editable-section no-drop-zone"
+                       data-section="2203" data-text="2203">We'd love to hear from you. Fill out the form and our team will get back to you within one business day.</p>
+
+                    <div class="cf-points">
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label editable-text editable-section no-drop-zone"
+                                     data-section="2204" data-text="2204">Email us</div>
+                                <div class="cf-point-value editable-text editable-section no-drop-zone"
+                                     data-section="2205" data-text="2205">
+                                    <a href="mailto:hello@example.com">hello@example.com</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-phone"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label editable-text editable-section no-drop-zone"
+                                     data-section="2206" data-text="2206">Call us</div>
+                                <div class="cf-point-value editable-text editable-section no-drop-zone"
+                                     data-section="2207" data-text="2207">
+                                    <a href="tel:+11234567890">+1 (123) 456-7890</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label editable-text editable-section no-drop-zone"
+                                     data-section="2208" data-text="2208">Visit us</div>
+                                <div class="cf-point-value editable-text editable-section no-drop-zone"
+                                     data-section="2209" data-text="2209">14 Rue de la Paix, 75002 Paris</div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="far fa-clock"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label editable-text editable-section no-drop-zone"
+                                     data-section="2210" data-text="2210">Hours</div>
+                                <div class="cf-point-value editable-text editable-section no-drop-zone"
+                                     data-section="2211" data-text="2211">Mon–Fri · 9am–6pm CET</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cf-social">
+                        <div class="cf-social-avatars">
+                            <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                            <img src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                            <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                        </div>
+                        <div class="cf-social-text">
+                            <strong class="editable-text editable-section no-drop-zone"
+                                    data-section="2212" data-text="2212">Trusted by 12,000+ customers</strong>
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2213" data-text="2213">Average response time: 2 hours</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: form -->
+                <div class="cf-form-wrap">
+                    <div class="cf-form-header">
+                        <h3 class="cf-form-title editable-text editable-section no-drop-zone"
+                            data-section="2220" data-text="2220">Send us a message</h3>
+                        <p class="cf-form-sub editable-text editable-section no-drop-zone"
+                           data-section="2221" data-text="2221">Fill out the form and we'll get back to you promptly.</p>
+                    </div>
+
+                    <div class="cf-field">
+                        <div class="cf-row">
+                            <div>
+                                <div class="cf-label">First name <span class="cf-req">*</span></div>
+                                <input type="text" class="cf-input" placeholder="Jane">
+                            </div>
+                            <div>
+                                <div class="cf-label">Last name <span class="cf-req">*</span></div>
+                                <input type="text" class="cf-input" placeholder="Doe">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cf-field">
+                        <div class="cf-label">Email address <span class="cf-req">*</span></div>
+                        <input type="email" class="cf-input" placeholder="jane@example.com">
+                    </div>
+
+                    <div class="cf-field">
+                        <div class="cf-label">Subject</div>
+                        <select class="cf-select">
+                            <option>General inquiry</option>
+                            <option>Order support</option>
+                            <option>Wholesale</option>
+                            <option>Press</option>
+                        </select>
+                    </div>
+
+                    <div class="cf-field">
+                        <div class="cf-label">Message <span class="cf-req">*</span></div>
+                        <textarea class="cf-textarea" placeholder="Tell us a bit about what you're looking for…"></textarea>
+                    </div>
+
+                    <div class="cf-consent">
+                        <input type="checkbox" id="cf-consent-editor">
+                        <label for="cf-consent-editor">
+                            <span class="editable-text editable-section no-drop-zone"
+                                  data-section="2222" data-text="2222">I agree to the privacy policy and terms of service.</span>
+                        </label>
+                    </div>
+
+                    <button type="button" class="cf-submit">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Send message</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PUBLIC-ONLY                                                  -->
+    <!-- ============================================================ -->
+    <div class="cf-public-only">
+        <div class="cf-shell" id="cf-root"
+             data-subdomain="{{ page.subdomain|default:'' }}"
+             data-csrf="{{ csrf_token }}">
+
+            <div class="cf-split">
+
+                <!-- LEFT -->
+                <div class="cf-info">
+                    <div class="cf-kicker" id="section-2201">{{ text_contents.2201|default:"Contact us" }}</div>
+
+                    <h2 class="cf-title" id="section-2202">{{ text_contents.2202|default:"Let's talk about your next project." }}</h2>
+
+                    <p class="cf-desc" id="section-2203">{{ text_contents.2203|default:"We'd love to hear from you. Fill out the form and our team will get back to you within one business day." }}</p>
+
+                    <div class="cf-points">
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label" id="section-2204">{{ text_contents.2204|default:"Email us" }}</div>
+                                <div class="cf-point-value" id="section-2205">
+                                    <a href="mailto:{{ text_contents.2205|default:'hello@example.com' }}">
+                                        {{ text_contents.2205|default:"hello@example.com" }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-phone"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label" id="section-2206">{{ text_contents.2206|default:"Call us" }}</div>
+                                <div class="cf-point-value" id="section-2207">
+                                    <a href="tel:{{ text_contents.2207|default:'+1 (123) 456-7890' }}">
+                                        {{ text_contents.2207|default:"+1 (123) 456-7890" }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label" id="section-2208">{{ text_contents.2208|default:"Visit us" }}</div>
+                                <div class="cf-point-value" id="section-2209">{{ text_contents.2209|default:"14 Rue de la Paix, 75002 Paris" }}</div>
+                            </div>
+                        </div>
+                        <div class="cf-point">
+                            <div class="cf-point-icon"><i class="far fa-clock"></i></div>
+                            <div class="cf-point-body">
+                                <div class="cf-point-label" id="section-2210">{{ text_contents.2210|default:"Hours" }}</div>
+                                <div class="cf-point-value" id="section-2211">{{ text_contents.2211|default:"Mon–Fri · 9am–6pm CET" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cf-social">
+                        <div class="cf-social-avatars">
+                            <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                            <img src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                            <img src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100" alt="">
+                        </div>
+                        <div class="cf-social-text">
+                            <strong>{{ text_contents.2212|default:"Trusted by 12,000+ customers" }}</strong>
+                            <span>{{ text_contents.2213|default:"Average response time: 2 hours" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: FORM -->
+                <div class="cf-form-wrap">
+                    <div class="cf-form-header">
+                        <h3 class="cf-form-title">{{ text_contents.2220|default:"Send us a message" }}</h3>
+                        <p class="cf-form-sub">{{ text_contents.2221|default:"Fill out the form and we'll get back to you promptly." }}</p>
+                    </div>
+
+                    <form id="cf-form" onsubmit="return false;" novalidate>
+                        <!-- Honeypot (hidden from humans, catches bots) -->
+                        <input type="text" name="cf_hp" tabindex="-1" autocomplete="off"
+                               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+                        <input type="hidden" name="form_name" value="contact">
+
+                        <div class="cf-field">
+                            <div class="cf-row">
+                                <div>
+                                    <label class="cf-label" for="cf-first">First name <span class="cf-req">*</span></label>
+                                    <input type="text" id="cf-first" name="first_name" class="cf-input"
+                                           placeholder="Jane" required maxlength="80" autocomplete="given-name">
+                                    <div class="cf-error-msg" data-cf-err="first_name">Please enter your first name</div>
+                                </div>
+                                <div>
+                                    <label class="cf-label" for="cf-last">Last name <span class="cf-req">*</span></label>
+                                    <input type="text" id="cf-last" name="last_name" class="cf-input"
+                                           placeholder="Doe" required maxlength="80" autocomplete="family-name">
+                                    <div class="cf-error-msg" data-cf-err="last_name">Please enter your last name</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cf-field">
+                            <label class="cf-label" for="cf-email">Email address <span class="cf-req">*</span></label>
+                            <input type="email" id="cf-email" name="email" class="cf-input"
+                                   placeholder="jane@example.com" required maxlength="120" autocomplete="email">
+                            <div class="cf-error-msg" data-cf-err="email">Please enter a valid email address</div>
+                        </div>
+
+                        <div class="cf-field">
+                            <label class="cf-label" for="cf-subject">
+                                Subject
+                                <span class="cf-optional">optional</span>
+                            </label>
+                            <select id="cf-subject" name="subject" class="cf-select">
+                                <option value="general">General inquiry</option>
+                                <option value="order">Order support</option>
+                                <option value="wholesale">Wholesale</option>
+                                <option value="press">Press</option>
+                            </select>
+                        </div>
+
+                        <div class="cf-field">
+                            <label class="cf-label" for="cf-message">Message <span class="cf-req">*</span></label>
+                            <textarea id="cf-message" name="message" class="cf-textarea"
+                                      placeholder="Tell us a bit about what you're looking for…"
+                                      required maxlength="2000"></textarea>
+                            <div class="cf-error-msg" data-cf-err="message">Please enter a message</div>
+                        </div>
+
+                        <div class="cf-consent">
+                            <input type="checkbox" id="cf-consent" name="consent" required>
+                            <label for="cf-consent">
+                                {{ text_contents.2222|default:"I agree to the privacy policy and terms of service." }}
+                            </label>
+                        </div>
+                        <div class="cf-error-msg" data-cf-err="consent" style="margin-top:-16px;margin-bottom:16px;">
+                            Please accept the terms to continue
+                        </div>
+
+                        <button type="submit" class="cf-submit" id="cf-submit">
+                            <span class="cf-spinner"></span>
+                            <i class="fas fa-paper-plane"></i>
+                            <span data-cf-submit-text>{{ text_contents.2223|default:"Send message" }}</span>
+                        </button>
+
+                        <div class="cf-status" id="cf-status">
+                            <i class="fas fa-check-circle"></i>
+                            <span data-cf-status-text></span>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function(){
+    'use strict';
+    var CF = window.CF_CONTACT = window.CF_CONTACT || {};
+    if (CF._init) return;
+    CF._init = true;
+
+    function root() {
+        return document.querySelector('.cf-public-only #cf-root')
+            || document.getElementById('cf-root');
+    }
+    function subdomain() {
+        var r = root();
+        return (r && r.dataset.subdomain) || window.location.hostname.split('.')[0];
+    }
+    function csrf() {
+        var r = root();
+        return (r && r.dataset.csrf) || '';
+    }
+
+    function showError(name, show) {
+        var el = document.querySelector('[data-cf-err="' + name + '"]');
+        if (el) el.classList.toggle('show', !!show);
+        var input = document.querySelector('[name="' + name + '"]');
+        if (input) input.classList.toggle('error', !!show);
+    }
+
+    function clearErrors() {
+        document.querySelectorAll('[data-cf-err]').forEach(function (el) {
+            el.classList.remove('show');
+        });
+        document.querySelectorAll('.cf-input, .cf-textarea, .cf-select').forEach(function (el) {
+            el.classList.remove('error');
+        });
+    }
+
+    function showStatus(kind, message) {
+        var status = document.getElementById('cf-status');
+        var textEl = status ? status.querySelector('[data-cf-status-text]') : null;
+        if (!status || !textEl) return;
+        status.className = 'cf-status show ' + kind;
+        textEl.textContent = message;
+        var icon = status.querySelector('i');
+        if (icon) {
+            icon.className = kind === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+        }
+    }
+
+    function clearStatus() {
+        var status = document.getElementById('cf-status');
+        if (status) status.className = 'cf-status';
+    }
+
+    function validate() {
+        var ok = true;
+        var first = document.getElementById('cf-first');
+        var last = document.getElementById('cf-last');
+        var email = document.getElementById('cf-email');
+        var message = document.getElementById('cf-message');
+        var consent = document.getElementById('cf-consent');
+
+        if (!first.value.trim()) { showError('first_name', true); ok = false; }
+        if (!last.value.trim()) { showError('last_name', true); ok = false; }
+
+        var emailVal = email.value.trim();
+        var emailOk = emailVal && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+        if (!emailOk) { showError('email', true); ok = false; }
+
+        if (!message.value.trim()) { showError('message', true); ok = false; }
+        if (!consent.checked) { showError('consent', true); ok = false; }
+
+        return ok;
+    }
+
+    function submitForm() {
+        clearStatus();
+        clearErrors();
+
+        if (!validate()) {
+            showStatus('error', 'Please fix the highlighted fields.');
+            return;
+        }
+
+        var form = document.getElementById('cf-form');
+        var submitBtn = document.getElementById('cf-submit');
+        var submitText = submitBtn.querySelector('[data-cf-submit-text]');
+        var originalText = submitText ? submitText.textContent : 'Send message';
+
+        if (submitBtn) {
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+        }
+        if (submitText) submitText.textContent = 'Sending…';
+
+        var fd = new FormData(form);
+        // Compose a nice title for the backend
+        var subjectSel = document.getElementById('cf-subject');
+        var subjectLabel = subjectSel ? subjectSel.options[subjectSel.selectedIndex].text : 'Contact';
+
+        fetch('/builder/submit-form/' + subdomain() + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf() },
+            body: fd
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                showStatus('success', 'Thank you! Your message has been sent. We\'ll be in touch shortly.');
+                form.reset();
+            } else {
+                showStatus('error', data.error || 'Something went wrong. Please try again.');
+            }
+        })
+        .catch(function () {
+            showStatus('error', 'Network error — please check your connection and try again.');
+        })
+        .finally(function () {
+            if (submitBtn) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+            if (submitText) submitText.textContent = originalText;
+        });
+    }
+
+    function init() {
+        if (!root()) return;
+
+        var form = document.getElementById('cf-form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                submitForm();
+            });
+
+            // Clear error on input
+            form.querySelectorAll('input, textarea, select').forEach(function (el) {
+                el.addEventListener('input', function () {
+                    var name = el.getAttribute('name');
+                    if (!name) return;
+                    showError(name, false);
+                });
+                el.addEventListener('change', function () {
+                    var name = el.getAttribute('name');
+                    if (!name) return;
+                    showError(name, false);
+                });
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

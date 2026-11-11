@@ -1,33 +1,419 @@
-<!-- /builder/components/headers/hero-banner-1.html -->
-<section class="component-hero-banner-1 editable-section" data-section="100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 100px 0; color: white;">
-    <div class="container">
-        <h1 class="editable-text editable-section no-drop-zone" data-text="101" data-section="101"
-            style="font-size: 3rem; font-weight: bold; text-align: center; margin-bottom: 1rem; color: inherit;">
-            Your Amazing Headline Here
-        </h1>
+{% load static %}
+{% load style_filters %}
+{% load currency_filters %}
+{% load icon_filters %}
+{% load product_filters %}
 
-        <p class="editable-text editable-section no-drop-zone" data-text="102" data-section="102"
-            style="font-size: 1.2rem; text-align: center; max-width: 600px; margin: 0 auto 2rem; color: inherit;">
-            This is a customizable subtitle that explains your value proposition
-        </p>
-
-        <div style="text-align: center;">
-            <button class="editable-text editable-section no-drop-zone" data-text="103" data-section="103"
-                style="background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 1.1rem;">
-                Get Started Now
-            </button>
-        </div>
-    </div>
-</section>
 
 <style>
-.component-hero-banner-1 .btn,
-.component-hero-banner-1 button {
-    transition: all 0.3s ease;
-    cursor: pointer;
+.cf-editor-only { display: none; }
+.cf-public-only { display: block; }
+body.editor-mode .cf-editor-only { display: block; }
+body.editor-mode .cf-public-only { display: none; }
+
+{% generate_section_styles style_customizations 2300 2400 %}
+{% generate_background_images background_images 2300 2400 %}
+
+.ch-root {
+    --ch-ink:    #2A1E1E;
+    --ch-cream:  #FDF6F0;
+    --ch-blush:  #F4D6CC;
+    --ch-rose:   #B76E5E;
+
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ch-ink);
+    line-height: 1.55;
+    position: relative;
+    min-height: 720px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    isolation: isolate;
 }
-.component-hero-banner-1 button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+.ch-root *, .ch-root *::before, .ch-root *::after { box-sizing: border-box; }
+.ch-root img { display: block; max-width: 100%; }
+.ch-root a { color: var(--ch-cream); text-decoration: none; }
+
+/* ---------- Background slideshow ---------- */
+.ch-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.ch-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(1);
+    transition: opacity 1.2s ease-in-out;
+    will-change: opacity, transform;
+}
+.ch-slide.is-active {
+    opacity: 1;
+    animation: ch-kenburns 12s ease-in-out infinite alternate;
+}
+.ch-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 30%;
+}
+
+@keyframes ch-kenburns {
+    0%   { transform: scale(1)    translate(0, 0); }
+    100% { transform: scale(1.08) translate(-1%, -1%); }
+}
+
+/* Warm cream veil so text stays legible across all slides */
+.ch-bg-veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+        100deg,
+        rgba(253, 246, 240, 0.94) 0%,
+        rgba(253, 246, 240, 0.82) 32%,
+        rgba(244, 214, 204, 0.35) 60%,
+        rgba(244, 214, 204, 0.05) 100%
+    );
+}
+
+/* ---------- Slide indicators ---------- */
+.ch-dots {
+    position: absolute;
+    z-index: 3;
+    bottom: 32px;
+    right: 40px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.ch-dot {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(42, 30, 30, 0.18);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.3s ease, width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.ch-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--ch-ink);
+    transform: scaleX(0);
+    transform-origin: left;
+    border-radius: 2px;
+}
+.ch-dot.is-active {
+    background: rgba(42, 30, 30, 0.12);
+}
+.ch-dot.is-active::after {
+    animation: ch-dot-progress 2s linear forwards;
+}
+.ch-dot:hover { background: rgba(42, 30, 30, 0.35); }
+
+@keyframes ch-dot-progress {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* Pause the dot animation when the page is not the active slide
+   (this is set by JS when users manually navigate) */
+.ch-dots.is-paused .ch-dot.is-active::after {
+    animation: none;
+    transform: scaleX(1);
+}
+
+/* ---------- Content ---------- */
+.ch-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1180px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 96px 40px 80px;
+}
+
+.ch-copy { max-width: 460px; }
+
+.ch-eyebrow {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ch-rose);
+    margin-bottom: 20px;
+}
+
+.ch-headline {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(46px, 6vw, 78px);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    margin: 0 0 26px 0;
+    color: var(--ch-ink);
+}
+.ch-headline em {
+    font-style: italic;
+    color: var(--ch-rose);
+}
+
+.ch-sub {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4A3A34;
+    margin: 0 0 40px 0;
+    max-width: 400px;
+}
+
+/* ---------- CTA ---------- */
+.ch-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 30px;
+    background: var(--ch-ink);
+    color: var(--ch-cream);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    transition: background 0.25s ease, gap 0.25s ease;
+}
+.ch-cta:hover {
+    background: var(--ch-rose);
+    gap: 14px;
+}
+.ch-cta i { font-size: 11px; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 720px) {
+    .ch-root { min-height: 660px; }
+    .ch-inner { padding: 56px 24px 80px; }
+    .ch-bg-veil {
+        background: linear-gradient(
+            180deg,
+            rgba(253, 246, 240, 0.35) 0%,
+            rgba(253, 246, 240, 0.9) 55%,
+            rgba(253, 246, 240, 0.98) 100%
+        );
+    }
+    .ch-copy { max-width: 100%; }
+    .ch-sub { max-width: 100%; }
+    .ch-dots {
+        bottom: 24px;
+        right: 24px;
+        left: 24px;
+        justify-content: center;
+    }
+}
+
+/* Respect reduced motion — freeze slideshow to a single image */
+@media (prefers-reduced-motion: reduce) {
+    .ch-slide {
+        transition: none !important;
+        animation: none !important;
+    }
+    .ch-dot.is-active::after { animation: none !important; transform: scaleX(1); }
+    .ch-dots { display: none !important; }
 }
 </style>
+
+
+<!-- ============================================================
+     EDITOR
+     ============================================================ -->
+<div class="ch-root editable-section" data-section="2300">
+
+    <div class="cf-editor-only">
+
+        <div class="ch-bg editable-section no-drop-zone" data-section="2310">
+            <div class="ch-slide is-active">
+                <img class="editable-image"
+                     data-section="2311"
+                     data-image="2311"
+                     src="https://images.pexels.com/photos/3373716/pexels-photo-3373716.jpeg?auto=compress&cs=tinysrgb&w=1600"
+                     alt="Woman with glowing skin">
+            </div>
+            <div class="ch-bg-veil"></div>
+        </div>
+
+        <div class="ch-inner">
+            <div class="ch-copy">
+                <div class="ch-eyebrow editable-text editable-section no-drop-zone"
+                     data-section="2301" data-text="2301">
+                    Made with care, worn with grace.
+                </div>
+
+                <h1 class="ch-headline editable-text editable-section no-drop-zone"
+                    data-section="2302" data-text="2302">
+                    For skin that<br>feels <em>like you.</em>
+                </h1>
+
+                <p class="ch-sub editable-text editable-section no-drop-zone"
+                   data-section="2303" data-text="2303">
+                    Gentle botanicals, pressed slowly and blended with intention. Everyday skincare that lets your natural glow do the talking.
+                </p>
+
+                <a href="#" class="ch-cta editable-text editable-section no-drop-zone"
+                   data-section="2304" data-text="2304">
+                    Discover the ritual
+                    <i class="fas fa-arrow-right editable-icon"
+                       data-icon="2305"
+                       data-default-class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="ch-dots">
+            <button class="ch-dot is-active" type="button" aria-label="Slide 1"></button>
+            <button class="ch-dot" type="button" aria-label="Slide 2"></button>
+            <button class="ch-dot" type="button" aria-label="Slide 3"></button>
+        </div>
+    </div>
+
+
+    <!-- ============================================================
+         PUBLIC
+         ============================================================ -->
+    <div class="cf-public-only">
+
+        <div class="ch-bg" id="ch-bg">
+            <div class="ch-slide is-active">
+                <img src="https://images.pexels.com/photos/3373716/pexels-photo-3373716.jpeg?auto=compress&cs=tinysrgb&w=1600"
+                     alt="Woman with glowing skin">
+            </div>
+            <div class="ch-slide">
+                <img src="https://images.pexels.com/photos/3764014/pexels-photo-3764014.jpeg?auto=compress&cs=tinysrgb&w=1600"
+                     alt="Skincare product">
+            </div>
+            <div class="ch-slide">
+                <img src="https://images.pexels.com/photos/4046316/pexels-photo-4046316.jpeg?auto=compress&cs=tinysrgb&w=1600"
+                     alt="Skincare ritual">
+            </div>
+            <div class="ch-bg-veil"></div>
+        </div>
+
+        <div class="ch-inner">
+            <div class="ch-copy">
+                <div class="ch-eyebrow">
+                    {{ text_contents.2301|default:"Made with care, worn with grace." }}
+                </div>
+
+                <h1 class="ch-headline">
+                    {{ text_contents.2302|default:"For skin that feels like you." }}
+                </h1>
+
+                <p class="ch-sub">
+                    {{ text_contents.2303|default:"Gentle botanicals, pressed slowly and blended with intention. Everyday skincare that lets your natural glow do the talking." }}
+                </p>
+
+                <a href="#" class="ch-cta">
+                    {{ text_contents.2304|default:"Discover the ritual" }}
+                    {% render_icon icon_customizations "2305" "fas fa-arrow-right" %}
+                </a>
+            </div>
+        </div>
+
+        <div class="ch-dots" id="ch-dots">
+            <button class="ch-dot is-active" type="button" aria-label="Slide 1"></button>
+            <button class="ch-dot" type="button" aria-label="Slide 2"></button>
+            <button class="ch-dot" type="button" aria-label="Slide 3"></button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+(function () {
+    'use strict';
+
+    // Only run on the public side. Editor mode leaves the first slide static.
+    if (document.body.classList.contains('editor-mode')) return;
+
+    var rootEl = document.getElementById('ch-bg');
+    if (!rootEl) return;
+
+    var slides = rootEl.querySelectorAll('.ch-slide');
+    var dots   = document.querySelectorAll('#ch-dots .ch-dot');
+    if (slides.length < 2) return;
+
+    var INTERVAL = 4000;      // 4 seconds per slide
+    var current = 0;
+    var timer = null;
+    var paused = false;
+
+    function goTo(index) {
+        if (index === current) return;
+
+        slides[current].classList.remove('is-active');
+        if (dots[current]) dots[current].classList.remove('is-active');
+
+        current = index;
+
+        slides[current].classList.add('is-active');
+        if (dots[current]) {
+            // Reset the dot's progress animation so it restarts cleanly
+            var dot = dots[current];
+            dot.classList.remove('is-active');
+            void dot.offsetWidth; // force reflow
+            dot.classList.add('is-active');
+        }
+    }
+
+    function next() {
+        if (paused) return;
+        goTo((current + 1) % slides.length);
+    }
+
+    function start() {
+        stop();
+        timer = setInterval(next, INTERVAL);
+    }
+
+    function stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    // Click a dot to jump
+    dots.forEach(function (dot, i) {
+        dot.addEventListener('click', function () {
+            goTo(i);
+            start(); // restart the timer so the next change is a full interval away
+        });
+    });
+
+    // Pause on hover (desktop) — feels less frantic, more premium
+    var hero = document.querySelector('.cf-public-only .ch-root') || rootEl.closest('.ch-root');
+    if (hero) {
+        hero.addEventListener('mouseenter', function () { paused = true; });
+        hero.addEventListener('mouseleave', function () { paused = false; });
+    }
+
+    // Pause when the tab is hidden to save battery / avoid visual jump on return
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stop();
+        } else {
+            start();
+        }
+    });
+
+    // Respect reduced-motion: don't auto-cycle at all
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    start();
+})();
+</script>

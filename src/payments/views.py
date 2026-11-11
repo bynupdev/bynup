@@ -6041,4 +6041,233 @@ def create_chat_order(request, subdomain):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
-    
+
+# payments/views.py
+
+from .services.agentaos_service import AgentaOSService
+from django.conf import settings
+from django.http import JsonResponse
+from django.core.exceptions import ValidationError
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@login_required
+def agentaos_checkout(request, tier, billing_period='monthly'):
+    """
+    Create AgentaOS subscription payment.
+    - For AJAX requests (from the embedded checkout button): return JSON {success, checkoutUrl}
+    - For non-AJAX (direct link/fallback): redirect to AgentaOS hosted checkout
+    """
+    from payments.models import Plan, PaymentTransaction
+
+    plan = get_object_or_404(Plan, tier=tier, is_active=True)
+    amount = plan.price_monthly if billing_period == 'monthly' else plan.price_yearly
+    order_id = f"SUB-AGENTA-{request.user.id}-{uuid.uuid4().hex[:8].upper()}"
+
+    # Build absolute URLs (must be public HTTPS in production)
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    success_url = f"{site_url}/payments/success/"
+    cancel_url = f"{site_url}/payments/pricing/"
+    webhook_url = f"{site_url}/payments/webhook/agentaos/"
+
+    # Create a pending transaction record.
+    # gateway_transaction_id is set to order_id as a placeholder because the field
+    # is NOT NULL. It is overwritten with the real sessionId after the API call.
+    transaction = PaymentTransaction.objects.create(
+        user=request.user,
+        plan=plan,
+        transaction_id=order_id,
+        gateway_transaction_id=order_id,
+        amount=amount,
+        currency='USD',
+        billing_period=billing_period,
+        status='pending',
+        gateway_type='agentaos',
+        metadata={
+            'target_plan_tier': tier,
+            'billing_period': billing_period,
+            'user_id': request.user.id,
+        }
+    )
+
+    service = AgentaOSService()
+
+    try:
+        checkout = service.create_subscription_checkout(
+            plan=plan,
+            user=request.user,
+            billing_period=billing_period,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            webhook_url=webhook_url,
+        )
+
+        checkout_url = checkout.get('checkoutUrl')
+        session_id = checkout.get('sessionId')
+
+        if not checkout_url:
+            raise ValidationError("AgentaOS did not return a checkout URL")
+
+        # Persist real session ID + response
+        transaction.gateway_transaction_id = session_id or order_id
+        transaction.status = 'processing'
+        transaction.gateway_response = checkout
+        transaction.save()
+
+        # Return JSON for AJAX (embedded checkout) — otherwise redirect
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.headers.get('Accept', '').startswith('application/json')
+        )
+
+        if is_ajax:
+            return JsonResponse({
+                'success': True,
+                'checkoutUrl': checkout_url,
+                'sessionId': session_id,
+            })
+
+        # Non-AJAX fallback: standard redirect to hosted checkout
+        return redirect(checkout_url)
+
+    except ValidationError as e:
+        transaction.status = 'failed'
+        transaction.error_message = str(e)
+        transaction.save()
+
+        logger.error(f"AgentaOS checkout failed for user {request.user.id}: {e}")
+
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.headers.get('Accept', '').startswith('application/json')
+        )
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+        messages.error(request, f"Payment creation failed: {str(e)}")
+        return redirect('payments:pricing')
+
+    except Exception as e:
+        transaction.status = 'failed'
+        transaction.error_message = str(e)
+        transaction.save()
+
+        logger.exception(f"Unexpected AgentaOS error for user {request.user.id}")
+
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.headers.get('Accept', '').startswith('application/json')
+        )
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Unexpected error. Please try again.'}, status=500)
+
+        messages.error(request, "Unexpected error. Please try again.")
+        return redirect('payments:pricing')
+
+
+import hmac
+import hashlib
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+from django.conf import settings
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def agentaos_webhook(request):
+    """Handle AgentaOS webhooks."""
+    try:
+        # 1. Verify Signature
+        signature_header = request.headers.get('X-AgentaOS-Signature')
+        if not signature_header:
+            return JsonResponse({'status': 'error', 'message': 'Missing signature'}, status=400)
+        
+        # Parse signature parts (t=timestamp,v1=signature)
+        parts = dict(p.split('=', 1) for p in signature_header.split(','))
+        timestamp = int(parts['t'])
+        signature = parts['v1']
+        
+        # Verify timestamp (within 5 minutes)
+        import time
+        if abs(time.time() - timestamp) > 300:
+            return JsonResponse({'status': 'error', 'message': 'Timestamp too old'}, status=400)
+        
+        # Verify HMAC-SHA256
+        expected = hmac.new(
+            settings.AGENTAOS_WEBHOOK_SECRET.encode(),
+            f"{timestamp}.{request.body.decode()}".encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(expected, signature):
+            return JsonResponse({'status': 'error', 'message': 'Invalid signature'}, status=400)
+        
+        # 2. Process Event
+        payload = json.loads(request.body)
+        event_type = payload.get('type')
+        
+        if event_type == 'checkout.session.completed':
+            data = payload.get('data', {})
+            session_id = data.get('sessionId')
+            metadata = data.get('metadata', {}) or {}
+            
+            # Find the transaction using the session ID
+            from payments.models import PaymentTransaction, Subscription, Plan
+            from django.utils import timezone
+            
+            try:
+                transaction = PaymentTransaction.objects.get(
+                    gateway_transaction_id=session_id,
+                    gateway_type='agentaos'
+                )
+            except PaymentTransaction.DoesNotExist:
+                # Fallback: try to find by metadata user_id and order_id if session_id wasn't saved
+                return JsonResponse({'status': 'error', 'message': 'Transaction not found'}, status=404)
+            
+            if transaction.status == 'completed':
+                return JsonResponse({'status': 'OK'})  # Idempotent
+            
+            # Mark transaction as completed
+            transaction.status = 'completed'
+            transaction.completed_at = timezone.now()
+            transaction.gateway_response = payload
+            transaction.save()
+            
+            # Activate Subscription
+            user = transaction.user
+            target_tier = transaction.metadata.get('target_plan_tier')
+            billing_period = transaction.metadata.get('billing_period', 'monthly')
+            
+            subscription, _ = Subscription.objects.get_or_create(user=user)
+            plan = Plan.objects.get(tier=target_tier)
+            
+            subscription.plan = plan
+            subscription.status = 'active'
+            subscription.billing_period = billing_period
+            subscription.start_date = timezone.now()
+            subscription.end_date = timezone.now() + timezone.timedelta(
+                days=30 if billing_period == 'monthly' else 365
+            )
+            subscription.verified_at = timezone.now()
+            subscription.amount_paid = transaction.amount
+            subscription.payment_method = 'AgentaOS (Card)'
+            subscription.payment_reference = data.get('sessionId')
+            subscription.save()
+            
+            # Link transaction to subscription
+            transaction.subscription = subscription
+            transaction.save()
+            
+            return JsonResponse({'status': 'OK'})
+        
+        return JsonResponse({'status': 'OK'})
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"AgentaOS webhook error: {e}", exc_info=True)
+        return JsonResponse({'status': 'error'}, status=500)
