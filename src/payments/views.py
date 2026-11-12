@@ -5365,24 +5365,28 @@ def pricing_page(request):
     return render(request, 'subscriptions/pricing.html', {'current_tier': current_tier})
 
 @login_required
-@login_required
 def upgrade_to_plan(request, tier):
-    """Upgrade to selected plan"""
+    """Upgrade to selected plan. Reads ?period=monthly|yearly."""
     if tier not in PLANS:
         messages.error(request, "Invalid plan selected.")
         return redirect('payments:pricing')
-    
+
     plan = PLANS[tier]
+
+    # Honor ?period= from the query string
     billing_period = request.GET.get('period', 'monthly')
+    if billing_period not in ('monthly', 'yearly'):
+        billing_period = 'monthly'
+
     amount = plan['monthly'] if billing_period == 'monthly' else plan['yearly']
-    
+
     # Check if user already on this plan
     from payments.decorators import get_user_subscription
     subscription = get_user_subscription(request.user)
     if subscription.plan and subscription.plan.tier == tier and subscription.is_active:
         messages.info(request, f"You're already on the {plan['name']} plan!")
         return redirect('payments:pricing')
-    
+
     context = {
         'plan_name': plan['name'],
         'plan_tier': tier,
@@ -5392,7 +5396,6 @@ def upgrade_to_plan(request, tier):
         'user_name': request.user.get_full_name() or request.user.username,
         'user_email': request.user.email,
     }
-    
     return render(request, 'subscriptions/upgrade.html', context)
 
 # payments/views.py - Find submit_payment and fix it
@@ -5898,16 +5901,21 @@ from django.views.decorators.http import require_http_methods
 def cryptomus_checkout(request, tier, billing_period='monthly'):
     """
     Create Cryptomus payment and redirect user.
+    Supports both monthly and yearly via ?period=.
     Does NOT change current subscription until payment is confirmed.
     """
     from payments.models import Plan, PaymentTransaction
-    import uuid
-    
+
+    # Honor ?period=yearly from the query string
+    period_from_query = request.GET.get('period')
+    if period_from_query in ('monthly', 'yearly'):
+        billing_period = period_from_query
+
     plan = get_object_or_404(Plan, tier=tier, is_active=True)
     amount = plan.price_monthly if billing_period == 'monthly' else plan.price_yearly
     order_id = f"SUB-{request.user.id}-{uuid.uuid4().hex[:8].upper()}"
-    
-    # Create payment transaction ONLY - don't touch subscription
+
+    # Create payment transaction ONLY — don't touch subscription
     transaction = PaymentTransaction.objects.create(
         user=request.user,
         plan=plan,
@@ -5923,7 +5931,7 @@ def cryptomus_checkout(request, tier, billing_period='monthly'):
             'user_id': request.user.id,
         }
     )
-    
+
     # Create Cryptomus payment
     cryptomus = CryptomusService()
     result = cryptomus.create_payment(
@@ -5933,7 +5941,7 @@ def cryptomus_checkout(request, tier, billing_period='monthly'):
         success_url=f"{settings.SITE_URL}/payments/success/",
         cancel_url=f"{settings.SITE_URL}/payments/pricing/",
     )
-    
+
     if result.get('success'):
         transaction.status = 'processing'
         transaction.gateway_transaction_id = result['payment_uuid']
@@ -5946,7 +5954,6 @@ def cryptomus_checkout(request, tier, billing_period='monthly'):
         transaction.save()
         messages.error(request, f"Payment creation failed: {result.get('error')}")
         return redirect('payments:pricing')
-
 # payments/views.py
 
 @csrf_exempt
@@ -6058,10 +6065,16 @@ logger = logging.getLogger(__name__)
 def agentaos_checkout(request, tier, billing_period='monthly'):
     """
     Create AgentaOS subscription payment.
-    - For AJAX requests (from the embedded checkout button): return JSON {success, checkoutUrl}
-    - For non-AJAX (direct link/fallback): redirect to AgentaOS hosted checkout
+    - AJAX (embedded checkout button): returns JSON {success, checkoutUrl}
+    - Non-AJAX (direct link / fallback): redirects to hosted checkout
+    Supports both monthly and yearly via ?period=.
     """
     from payments.models import Plan, PaymentTransaction
+
+    # Honor ?period=yearly from the query string (JS passes it)
+    period_from_query = request.GET.get('period')
+    if period_from_query in ('monthly', 'yearly'):
+        billing_period = period_from_query
 
     plan = get_object_or_404(Plan, tier=tier, is_active=True)
     amount = plan.price_monthly if billing_period == 'monthly' else plan.price_yearly
@@ -6073,9 +6086,9 @@ def agentaos_checkout(request, tier, billing_period='monthly'):
     cancel_url = f"{site_url}/payments/pricing/"
     webhook_url = f"{site_url}/payments/webhook/agentaos/"
 
-    # Create a pending transaction record.
-    # gateway_transaction_id is set to order_id as a placeholder because the field
-    # is NOT NULL. It is overwritten with the real sessionId after the API call.
+    # Create pending transaction.
+    # gateway_transaction_id is set to order_id as a placeholder because the
+    # field is NOT NULL. Overwritten with real sessionId after API call.
     transaction = PaymentTransaction.objects.create(
         user=request.user,
         plan=plan,
@@ -6094,6 +6107,10 @@ def agentaos_checkout(request, tier, billing_period='monthly'):
     )
 
     service = AgentaOSService()
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.headers.get('Accept', '').startswith('application/json')
+    )
 
     try:
         checkout = service.create_subscription_checkout(
@@ -6111,42 +6128,29 @@ def agentaos_checkout(request, tier, billing_period='monthly'):
         if not checkout_url:
             raise ValidationError("AgentaOS did not return a checkout URL")
 
-        # Persist real session ID + response
         transaction.gateway_transaction_id = session_id or order_id
         transaction.status = 'processing'
         transaction.gateway_response = checkout
         transaction.save()
-
-        # Return JSON for AJAX (embedded checkout) — otherwise redirect
-        is_ajax = (
-            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            or request.headers.get('Accept', '').startswith('application/json')
-        )
 
         if is_ajax:
             return JsonResponse({
                 'success': True,
                 'checkoutUrl': checkout_url,
                 'sessionId': session_id,
+                'billingPeriod': billing_period,
             })
 
-        # Non-AJAX fallback: standard redirect to hosted checkout
         return redirect(checkout_url)
 
     except ValidationError as e:
         transaction.status = 'failed'
         transaction.error_message = str(e)
         transaction.save()
-
         logger.error(f"AgentaOS checkout failed for user {request.user.id}: {e}")
 
-        is_ajax = (
-            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            or request.headers.get('Accept', '').startswith('application/json')
-        )
         if is_ajax:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
-
         messages.error(request, f"Payment creation failed: {str(e)}")
         return redirect('payments:pricing')
 
@@ -6154,16 +6158,13 @@ def agentaos_checkout(request, tier, billing_period='monthly'):
         transaction.status = 'failed'
         transaction.error_message = str(e)
         transaction.save()
-
         logger.exception(f"Unexpected AgentaOS error for user {request.user.id}")
 
-        is_ajax = (
-            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            or request.headers.get('Accept', '').startswith('application/json')
-        )
         if is_ajax:
-            return JsonResponse({'success': False, 'error': 'Unexpected error. Please try again.'}, status=500)
-
+            return JsonResponse(
+                {'success': False, 'error': 'Unexpected error. Please try again.'},
+                status=500
+            )
         messages.error(request, "Unexpected error. Please try again.")
         return redirect('payments:pricing')
 

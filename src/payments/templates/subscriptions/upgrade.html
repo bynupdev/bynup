@@ -585,7 +585,6 @@
     margin-top: 1px;
 }
 
-/* Payment error / loading states */
 .payment-error {
     display: none;
     margin: 0 1.125rem 1.125rem;
@@ -742,7 +741,7 @@
 
                 <div class="payment-options">
 
-                    <!-- Card / AgentaOS — now a button that opens embedded checkout -->
+                    <!-- Card / AgentaOS — button that opens embedded checkout -->
                     <button type="button"
                             id="card-pay-btn"
                             class="payment-option card"
@@ -769,8 +768,8 @@
                         </span>
                     </button>
 
-                    <!-- Crypto / Cryptomus — normal link -->
-                    <a href="{% url 'payments:cryptomus_checkout' plan_tier %}"
+                    <!-- Crypto / Cryptomus — carries billing period -->
+                    <a href="{% url 'payments:cryptomus_checkout' plan_tier %}?period={{ billing_period }}"
                        class="payment-option crypto">
                         <span class="payment-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
@@ -872,6 +871,7 @@
 
         const tier = cardBtn.dataset.tier;
         const period = cardBtn.dataset.period || 'monthly';
+        // Pass the period through so the view knows monthly vs yearly
         const url = `/payments/checkout/agentaos/${encodeURIComponent(tier)}/?period=${encodeURIComponent(period)}`;
 
         try {
@@ -892,12 +892,10 @@
             }
 
             // If AgentaOS SDK is available, embed the checkout.
-            // Otherwise, fall back to a redirect (works in production too).
+            // Otherwise, fall back to a full redirect.
             if (window.AgentaOS && window.AgentaOS.checkout && typeof window.AgentaOS.checkout.open === 'function') {
                 try {
-                    window.AgentaOS.checkout.open({
-                        link: data.checkoutUrl,
-                    });
+                    window.AgentaOS.checkout.open({ link: data.checkoutUrl });
                     setLoading(false);
                     return;
                 } catch (sdkErr) {
@@ -905,7 +903,6 @@
                 }
             }
 
-            // Fallback: full-page redirect to hosted checkout
             window.location.href = data.checkoutUrl;
 
         } catch (err) {
