@@ -2553,96 +2553,168 @@ def add_order_note(request, subdomain, order_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-# Dashboard View
+
+
+
 @login_required
 def order_dashboard(request, subdomain):
     """Order dashboard with analytics"""
     page_obj = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    
-    # Date range for analytics (last 30 days)
+
+    # ---- Date range (default 30 days, driven by ?range=7|30|90) ----
+    try:
+        period_days = int(request.GET.get('range', 30))
+    except (TypeError, ValueError):
+        period_days = 30
+    if period_days not in (7, 30, 90):
+        period_days = 30
+
     end_date = timezone.now()
-    start_date = end_date - timedelta(days=30)
-    
-    # Get recent orders
+    start_date = end_date - timedelta(days=period_days)
+
+    # Previous period of the same length (for delta comparison)
+    prev_end_date = start_date
+    prev_start_date = prev_end_date - timedelta(days=period_days)
+
+    # ---- Recent orders ----
     recent_orders = page_obj.orders.all().order_by('-created_at')[:10]
-    
-    # Get statistics
+
+    # ---- Totals ----
     total_orders = page_obj.orders.count()
     total_revenue = page_obj.orders.filter(status='completed').aggregate(
         total=Sum('total_amount')
     )['total'] or 0
-    
-    # Daily revenue for chart
-    daily_revenue = page_obj.orders.filter(
-        status='completed',
-        created_at__date__gte=start_date.date()
-    ).annotate(
-        day=TruncDay('created_at')
-    ).values('day').annotate(
-        revenue=Sum('total_amount'),
-        orders=Count('id')
-    ).order_by('day')
-    
-    # Monthly revenue
-    monthly_revenue = page_obj.orders.filter(
-        status='completed'
-    ).annotate(
-        month=TruncMonth('created_at')
-    ).values('month').annotate(
-        revenue=Sum('total_amount'),
-        orders=Count('id')
-    ).order_by('-month')[:12]
-    
-    # Top products
-    top_products = OrderItem.objects.filter(
-        order__page=page_obj,
-        order__status='completed'
-    ).values(
-        'product_title'
-    ).annotate(
-        quantity=Sum('quantity'),
-        revenue=Sum('total_price')
-    ).order_by('-quantity')[:10]
-    
-    print("Total orders:", total_orders)
-  
-    # Status distribution
-    # status_distribution = page_obj.orders.values('status').annotate(
-    #     count=Count('id'),
-    #     percentage=Count('id') * 100.0 / total_orders if total_orders > 0 else 0
-    # ).order_by('status')
-    
-    # Get total orders count
-    total_orders = page_obj.orders.count()
 
-    # Annotate status distribution without percentage calculation
-    status_distribution = page_obj.orders.values('status').annotate(
-        count=Count('id')
-    ).order_by('status')
+    # ---- Daily revenue for the current period (zero-filled) ----
+    daily_qs = (
+        page_obj.orders
+        .filter(
+            status='completed',
+            created_at__date__gte=start_date.date(),
+            created_at__date__lte=end_date.date(),
+        )
+        .annotate(day=TruncDay('created_at'))
+        .values('day')
+        .annotate(
+            revenue=Sum('total_amount'),
+            orders=Count('id'),
+        )
+        .order_by('day')
+    )
 
-    # Calculate percentage after annotation
+    _rev_by_date = {
+        row['day'].date(): {
+            'revenue': float(row['revenue'] or 0),
+            'orders': row['orders'],
+        }
+        for row in daily_qs
+    }
+
+    daily_revenue = []
+    _cursor = start_date.date()
+    _end = end_date.date()
+    while _cursor <= _end:
+        row = _rev_by_date.get(_cursor, {'revenue': 0.0, 'orders': 0})
+        daily_revenue.append({
+            'day': _cursor,
+            'revenue': row['revenue'],
+            'orders': row['orders'],
+        })
+        _cursor += timedelta(days=1)
+
+    # ---- Current period revenue (matches the chart) ----
+    current_period_revenue = (
+        page_obj.orders
+        .filter(
+            status='completed',
+            created_at__date__gte=start_date.date(),
+            created_at__date__lte=end_date.date(),
+        )
+        .aggregate(total=Sum('total_amount'))['total'] or 0
+    )
+
+    # ---- Previous period revenue (for the delta) ----
+    previous_period_revenue = (
+        page_obj.orders
+        .filter(
+            status='completed',
+            created_at__date__gte=prev_start_date.date(),
+            created_at__date__lt=prev_end_date.date(),
+        )
+        .aggregate(total=Sum('total_amount'))['total'] or 0
+    )
+
+    # ---- Delta % vs previous period ----
+    if previous_period_revenue > 0:
+        revenue_delta_percent = float(
+            (current_period_revenue - previous_period_revenue)
+            / previous_period_revenue
+            * 100
+        )
+    else:
+        revenue_delta_percent = None
+
+    # ---- Monthly revenue ----
+    monthly_revenue = list(
+        page_obj.orders
+        .filter(status='completed')
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(
+            revenue=Sum('total_amount'),
+            orders=Count('id'),
+        )
+        .order_by('-month')[:12]
+    )
+
+    # ---- Top products ----
+    top_products = list(
+        OrderItem.objects
+        .filter(
+            order__page=page_obj,
+            order__status='completed',
+        )
+        .values('product_title')
+        .annotate(
+            quantity=Sum('quantity'),
+            revenue=Sum('total_price'),
+        )
+        .order_by('-quantity')[:10]
+    )
+
+    # ---- Status distribution ----
+    status_distribution = list(
+        page_obj.orders
+        .values('status')
+        .annotate(count=Count('id'))
+        .order_by('status')
+    )
+
     if total_orders > 0:
         for entry in status_distribution:
             entry['percentage'] = (entry['count'] * 100.0) / total_orders
     else:
         for entry in status_distribution:
-            entry['percentage'] = 0  # or handle it as needed
-
-# Now status_distribution will contain count and percentage
+            entry['percentage'] = 0
 
     context = {
         'page': page_obj,
         'recent_orders': recent_orders,
         'total_orders': total_orders,
         'total_revenue': total_revenue,
-        'daily_revenue': list(daily_revenue),
-        'monthly_revenue': list(monthly_revenue),
-        'top_products': list(top_products),
-        'status_distribution': list(status_distribution),
+        'daily_revenue': daily_revenue,
+        'monthly_revenue': monthly_revenue,
+        'top_products': top_products,
+        'status_distribution': status_distribution,
         'start_date': start_date.date(),
         'end_date': end_date.date(),
+
+        # Revenue panel
+        'current_period_revenue': current_period_revenue,
+        'revenue_delta_percent': revenue_delta_percent,
+        'period_days': period_days,
     }
-    
+
     return render(request, 'payments/order_dashboard.html', context)
 
 # Export Orders View

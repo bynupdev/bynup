@@ -156,14 +156,7 @@
     color: white;
 }
 
-.btn-icon {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    justify-content: center;
-}
-
-/* ===== Range selector (inline with title) ===== */
+/* ===== Range selector ===== */
 .range-tabs {
     display: inline-flex;
     padding: 2px;
@@ -246,17 +239,10 @@
     font-weight: 500;
 }
 
-/* ===== Layout: main + side ===== */
+/* ===== Layout ===== */
 .dash-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.dash-grid-even {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 1rem;
     margin-bottom: 1rem;
 }
@@ -316,10 +302,52 @@
     flex: 1;
 }
 
-/* ===== Chart container ===== */
+/* ===== Revenue chart — Shopify style ===== */
+.revenue-headline {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+}
+
+.revenue-total {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+.revenue-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.revenue-delta.up   { color: var(--success); background: #f0fdf4; }
+.revenue-delta.down { color: var(--danger);  background: #fef2f2; }
+.revenue-delta.flat { color: var(--text-muted); background: var(--n-100); }
+
+.revenue-delta svg { flex-shrink: 0; }
+
+/* CRITICAL: the chart needs a fixed height for Chart.js to size itself */
 .chart-wrap {
-    height: 260px;
     position: relative;
+    width: 100%;
+    height: 260px;
+    margin-top: 0.75rem;
+}
+
+.chart-wrap canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .chart-wrap-empty {
@@ -446,7 +474,7 @@
     white-space: nowrap;
 }
 
-/* Status dot - shared */
+/* Status dot */
 .status-dot {
     display: inline-flex;
     align-items: center;
@@ -678,10 +706,7 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 1000px) {
-    .dash-grid,
-    .dash-grid-even {
-        grid-template-columns: 1fr;
-    }
+    .dash-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 900px) {
@@ -755,9 +780,9 @@
             </div>
             <div class="catalog-actions">
                 <div class="range-tabs">
-                    <a href="?range=7" class="range-tab">7d</a>
-                    <a href="?range=30" class="range-tab active">30d</a>
-                    <a href="?range=90" class="range-tab">90d</a>
+                    <a href="?range=7" class="range-tab {% if period_days == 7 %}active{% endif %}">7d</a>
+                    <a href="?range=30" class="range-tab {% if period_days == 30 %}active{% endif %}">30d</a>
+                    <a href="?range=90" class="range-tab {% if period_days == 90 %}active{% endif %}">90d</a>
                 </div>
                 <a href="{% url 'payments:export_orders' page.subdomain %}" class="btn btn-ghost">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -814,26 +839,57 @@
 
             <!-- Revenue chart -->
             <div class="panel">
-                <div class="panel-head">
-                    <div>
-                        <h2 class="panel-title">Revenue</h2>
-                        <p class="panel-sub">Last 30 days</p>
-                    </div>
-                </div>
                 <div class="panel-body">
+
                     {% if daily_revenue %}
+                        <div class="revenue-headline">
+                            <span class="revenue-total">
+                                {{ current_period_revenue|currency:page }}
+                            </span>
+                            {% if revenue_delta_percent is not None %}
+                                {% if revenue_delta_percent > 0 %}
+                                    <span class="revenue-delta up">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 19V5M5 12l7-7 7 7"/>
+                                        </svg>
+                                        {{ revenue_delta_percent|floatformat:1 }}%
+                                    </span>
+                                {% elif revenue_delta_percent < 0 %}
+                                    <span class="revenue-delta down">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 5v14M19 12l-7 7-7-7"/>
+                                        </svg>
+                                        {{ revenue_delta_percent|floatformat:1|slice:"1:" }}%
+                                    </span>
+                                {% else %}
+                                    <span class="revenue-delta flat">0%</span>
+                                {% endif %}
+                                <span style="font-size:0.6875rem; color: var(--text-muted);">
+                                    vs previous {{ period_days }} days
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="panel-sub" style="margin-bottom: 0;">
+                            Revenue over the last {{ period_days }} days
+                        </p>
+
                         <div class="chart-wrap">
                             <canvas id="revenueChart"></canvas>
                         </div>
                     {% else %}
+                        <div class="revenue-headline">
+                            <span class="revenue-total">{{ 0|currency:page }}</span>
+                        </div>
+                        <p class="panel-sub" style="margin-bottom: 0;">Revenue over the last {{ period_days }} days</p>
                         <div class="chart-wrap-empty">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 3v18h18"/>
                                 <path d="m19 9-5 5-4-4-3 3"/>
                             </svg>
-                            <p>No revenue data for the last 30 days</p>
+                            <p>No revenue data for the last {{ period_days }} days</p>
                         </div>
                     {% endif %}
+
                 </div>
             </div>
 
@@ -1065,46 +1121,101 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // Shared chart defaults for a monochrome look
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = '#71717a';
 
     const currencySymbol = document.getElementById('currency-symbol').value;
 
-    /* ============ REVENUE CHART ============ */
+    /* ============================================================
+       REVENUE CHART — Wavy, zero-filled
+       ============================================================ */
     const revenueCanvas = document.getElementById('revenueChart');
     if (revenueCanvas) {
         const labels = [
-            {% for day in daily_revenue %}"{{ day.day|date:'M d' }}"{% if not forloop.last %},{% endif %}{% endfor %}
+            {% for day in daily_revenue %}"{{ day.day|date:'M j' }}"{% if not forloop.last %},{% endif %}{% endfor %}
         ];
         const values = [
             {% for day in daily_revenue %}{{ day.revenue|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
 
-        const ctx = revenueCanvas.getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-        gradient.addColorStop(0, 'rgba(24, 24, 27, 0.12)');
-        gradient.addColorStop(1, 'rgba(24, 24, 27, 0.0)');
+        console.log('[revenue chart] labels:', labels.length, 'values:', values);
 
-        new Chart(revenueCanvas, {
+        const ctx = revenueCanvas.getContext('2d');
+        const chartHeight = 260;
+        const gradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
+        gradient.addColorStop(0, 'rgba(24, 24, 27, 0.13)');
+        gradient.addColorStop(1, 'rgba(24, 24, 27, 0.00)');
+
+        const maxValue = Math.max.apply(null, values.concat([0])) || 1;
+
+        // Show points when there are very few data points
+        const showPoints = values.length <= 3;
+
+        // External tooltip
+        const tooltipEl = document.createElement('div');
+        tooltipEl.id = 'revenue-tooltip';
+        tooltipEl.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            background: #18181b;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.35;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.12s ease;
+            z-index: 9999;
+            transform: translate(-50%, -130%);
+            white-space: nowrap;
+        `;
+        document.body.appendChild(tooltipEl);
+
+        // Baseline plugin
+        const baselinePlugin = {
+            id: 'revenueBaseline',
+            afterDatasetsDraw: function (chart) {
+                const yScale = chart.scales.y;
+                if (!yScale) return;
+                const y = yScale.getPixelForValue(0);
+                const area = chart.chartArea;
+                if (!area) return;
+                const c = chart.ctx;
+                c.save();
+                c.beginPath();
+                c.moveTo(area.left, y);
+                c.lineTo(area.right, y);
+                c.strokeStyle = 'rgba(24, 24, 27, 0.08)';
+                c.lineWidth = 1;
+                c.stroke();
+                c.restore();
+            }
+        };
+
+        const chart = new Chart(revenueCanvas, {
             type: 'line',
             data: {
-                labels: labels.length ? labels : ['No data'],
+                labels: labels.length ? labels : [''],
                 datasets: [{
-                    label: 'Revenue',
                     data: values.length ? values : [0],
                     borderColor: '#18181b',
+                    borderWidth: 1.75,
                     backgroundColor: gradient,
-                    borderWidth: 1.5,
                     fill: true,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    pointHoverRadius: 4,
+                    tension: showPoints ? 0 : 0.4,
+                    cubicInterpolationMode: 'monotone',
+                    pointRadius: showPoints ? 3 : 0,
+                    pointBackgroundColor: '#18181b',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 1.5,
+                    pointHoverRadius: 5,
                     pointHoverBackgroundColor: '#18181b',
                     pointHoverBorderColor: '#ffffff',
                     pointHoverBorderWidth: 2,
@@ -1113,42 +1224,91 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                layout: {
+                    padding: { top: 12, right: 4, bottom: 0, left: 0 }
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#18181b',
-                        padding: 10,
-                        cornerRadius: 6,
-                        titleFont: { size: 11, weight: '600' },
-                        bodyFont: { size: 11 },
-                        displayColors: false,
-                        callbacks: {
-                            label: (ctx) => currencySymbol + ctx.parsed.y.toLocaleString()
+                        enabled: false,
+                        external: function (context) {
+                            const { chart, tooltip } = context;
+
+                            if (tooltip.opacity === 0) {
+                                tooltipEl.style.opacity = '0';
+                                return;
+                            }
+
+                            const dataIndex = tooltip.dataPoints && tooltip.dataPoints[0]
+                                ? tooltip.dataPoints[0].dataIndex
+                                : null;
+                            if (dataIndex === null) return;
+
+                            const value = values[dataIndex] || 0;
+                            const label = labels[dataIndex] || '';
+
+                            tooltipEl.innerHTML =
+                                '<div style="font-size:10px;color:rgba(255,255,255,0.6);' +
+                                'text-transform:uppercase;letter-spacing:0.06em;' +
+                                'margin-bottom:2px;">' +
+                                label +
+                                '</div>' +
+                                '<div style="font-size:13px;font-weight:600;">' +
+                                currencySymbol +
+                                value.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                }) +
+                                '</div>';
+
+                            const rect = chart.canvas.getBoundingClientRect();
+                            const x = rect.left + tooltip.caretX;
+                            const y = rect.top + tooltip.caretY;
+
+                            tooltipEl.style.left = x + 'px';
+                            tooltipEl.style.top = y + 'px';
+                            tooltipEl.style.opacity = '1';
                         }
                     }
                 },
                 scales: {
                     x: {
+                        display: false,
+                        offset: true,
                         grid: { display: false },
                         border: { display: false },
-                        ticks: { maxRotation: 0, autoSkipPadding: 20 }
+                        ticks: { display: false }
                     },
                     y: {
+                        display: false,
                         beginAtZero: true,
-                        grid: { color: '#f4f4f5', drawBorder: false },
+                        suggestedMax: maxValue * 1.15,
+                        grid: { display: false },
                         border: { display: false },
-                        ticks: {
-                            callback: (v) => currencySymbol + v.toLocaleString(),
-                            maxTicksLimit: 5
-                        }
+                        ticks: { display: false }
                     }
                 }
-            }
+            },
+            plugins: [baselinePlugin]
+        });
+
+        // Force resize for browsers that measure before layout completes
+        requestAnimationFrame(function () {
+            chart.resize();
+        });
+
+        revenueCanvas.addEventListener('mouseleave', function () {
+            tooltipEl.style.opacity = '0';
         });
     }
 
-    /* ============ STATUS PIE CHART ============ */
+    /* ============================================================
+       STATUS DOUGHNUT
+       ============================================================ */
     const statusCanvas = document.getElementById('statusPieChart');
     if (statusCanvas) {
         const labels = [
@@ -1158,8 +1318,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {% for status in status_distribution %}{{ status.count }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
 
-        // Map status → muted color, matching the legend
-        const statusColor = (label) => {
+        const statusColor = function (label) {
             const l = label.toLowerCase();
             if (l === 'completed') return '#15803d';
             if (l === 'pending')   return '#a16207';
@@ -1169,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return '#a1a1aa';
         };
 
-        if (data.length && data.some(v => v > 0)) {
+        if (data.length && data.some(function (v) { return v > 0; })) {
             new Chart(statusCanvas, {
                 type: 'doughnut',
                 data: {
@@ -1195,7 +1354,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             bodyFont: { size: 11 },
                             displayColors: false,
                             callbacks: {
-                                label: (ctx) => `${ctx.parsed} order${ctx.parsed === 1 ? '' : 's'}`
+                                label: function (ctx) {
+                                    return ctx.parsed +
+                                        ' order' +
+                                        (ctx.parsed === 1 ? '' : 's');
+                                }
                             }
                         }
                     }
@@ -1206,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="chart-wrap-empty" style="height: 180px;"><p>No orders yet</p></div>';
         }
     }
+
 });
 </script>
 {% endblock %}
