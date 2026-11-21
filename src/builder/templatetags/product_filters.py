@@ -308,3 +308,47 @@ def variant_label(variant):
         return sku
     return "Option"
 
+@register.filter
+def dict_get(d, key):
+    """Return d[key] if d is a dict and key exists, else ''."""
+    if not isinstance(d, dict):
+        return ''
+    return d.get(key, '')
+
+@register.filter
+def unique_by_url(images):
+    """
+    De-duplicate a list of images (dicts, model instances, or dicts with
+    .image or ['image']) by their resolved URL. Preserves first-seen order.
+    """
+    seen = set()
+    out = []
+    for img in images:
+        # Resolve the URL for the image
+        url = None
+        if hasattr(img, 'url'):
+            try:
+                url = img.url
+            except Exception:
+                url = None
+        elif isinstance(img, dict):
+            # {'image_url': '...'} or {'image': <FieldFile>}
+            if img.get('image_url'):
+                url = img['image_url']
+            elif img.get('image'):
+                try:
+                    url = img['image'].url
+                except Exception:
+                    url = None
+        elif hasattr(img, 'image') and img.image:
+            try:
+                url = img.image.url
+            except Exception:
+                url = None
+
+        if url and url not in seen:
+            seen.add(url)
+            out.append(img)
+
+    return out
+

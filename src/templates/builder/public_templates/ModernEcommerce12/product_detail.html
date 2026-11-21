@@ -2,6 +2,7 @@
 {% load style_filters %}
 {% load color_filters %}
 {% load currency_filters %}
+{%load product_filters%}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -957,7 +958,7 @@
                             </div>
                         {% endif %}
                         
-                        {% for image in product_images %}
+                        {% for image in product_images|unique_by_url %}
                             <div class="thumbnail" data-image="{{ image.image.url }}">
                                 <img src="{{ image.image.url }}" alt="{{ product.title }} - Image {{ forloop.counter }}">
                             </div>
@@ -1329,39 +1330,7 @@
             console.log('📸 Gallery images loaded:', productGalleryImages.length);
         }
 
-        function addVariantImageToGallery(imageUrl) {
-            if (!imageUrl) return;
-            
-            var exists = false;
-            document.querySelectorAll('.thumbnail').forEach(function(thumb) {
-                var imgSrc = thumb.getAttribute('data-image') || thumb.querySelector('img')?.src;
-                if (imgSrc === imageUrl) {
-                    exists = true;
-                }
-            });
-            
-            if (!exists) {
-                var container = document.getElementById('thumbnailContainer');
-                if (container) {
-                    var thumb = document.createElement('div');
-                    thumb.className = 'thumbnail';
-                    thumb.setAttribute('data-image', imageUrl);
-                    
-                    var img = document.createElement('img');
-                    img.src = imageUrl;
-                    img.alt = 'Variant Image';
-                    
-                    thumb.appendChild(img);
-                    thumb.addEventListener('click', function() {
-                        changeImage(this, imageUrl);
-                    });
-                    container.appendChild(thumb);
-                    productGalleryImages.push(imageUrl);
-                    console.log('📸 Added variant image to gallery:', imageUrl);
-                }
-            }
-        }
-
+        
         function changeImage(thumbnail, imageUrl) {
             var mainImage = document.getElementById('currentImage');
             if (mainImage) mainImage.src = imageUrl;
@@ -1661,10 +1630,7 @@
                 mainImage.src = imageUrl;
             }
             
-            // Add variant image to gallery
-            if (variant && variant.image) {
-                addVariantImageToGallery(variant.image);
-            }
+            
             
             // Update active thumbnail
             if (imageUrl) {
@@ -2447,12 +2413,6 @@
         });
     </script>
     
-    {% for component in components %}
-        {% if component.drop_zone == 'end' %}
-            <section class="dynamic-component" data-instance-id="{{ component.instance_id }}">
-                {{ component.html_content|safe }}
-            </section>
-        {% endif %}
-    {% endfor %}
+   
 </body>
 </html>

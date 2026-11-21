@@ -1,701 +1,413 @@
-<!-- builder/templates/builder/variants_simple.html -->
 {% extends 'builder/base.html' %}
 {% load static %}
+{% load product_filters %}
 
 {% block title %}Variants · {{ product.title }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    :root {
-        --n-0: #ffffff;
-        --n-50: #fafafa;
-        --n-100: #f4f4f5;
-        --n-200: #e4e4e7;
-        --n-300: #d4d4d8;
-        --n-400: #a1a1aa;
-        --n-500: #71717a;
-        --n-600: #52525b;
-        --n-700: #3f3f46;
-        --n-800: #27272a;
-        --n-900: #18181b;
+:root {
+    --n-0: #ffffff; --n-50: #fafafa; --n-100: #f4f4f5; --n-200: #e4e4e7;
+    --n-300: #d4d4d8; --n-400: #a1a1aa; --n-500: #71717a; --n-600: #52525b;
+    --n-700: #3f3f46; --n-800: #27272a; --n-900: #18181b;
+    --accent: var(--primary-color, #111827);
+    --accent-hover: #000000;
+    --success: #15803d; --warning: #a16207; --danger: #b91c1c;
+    --border: var(--n-200); --border-strong: var(--n-300);
+    --text: var(--n-900); --text-muted: var(--n-500); --text-subtle: var(--n-400);
+    --radius-sm: 4px; --radius: 6px; --radius-lg: 10px;
+    --page-bg: #f6f7f9;
+    --surface-shadow: 0 1px 2px rgba(24,24,27,0.04), 0 1px 1px rgba(24,24,27,0.03);
+    --surface-shadow-hover: 0 4px 12px rgba(24,24,27,0.06), 0 1px 2px rgba(24,24,27,0.04);
+}
 
-        --accent: var(--primary-color, #111827);
-        --accent-hover: #000000;
+.management-layout {
+    display: flex;
+    min-height: calc(100vh - 120px);
+    background: var(--page-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 13px;
+    color: var(--text);
+}
+.management-content {
+    flex: 1;
+    min-width: 0;
+    padding: 2rem 2rem 4rem;
+}
+.variant-page { max-width: 1180px; margin: 0 auto; }
 
-        --success: #15803d;
-        --warning: #a16207;
-        --danger:  #b91c1c;
+/* Breadcrumb */
+.catalog-context {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 12px; color: var(--text-muted);
+    margin-bottom: 1rem; flex-wrap: wrap;
+}
+.context-back {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    color: var(--text-muted); text-decoration: none;
+}
+.context-back:hover { color: var(--text); }
+.context-back svg { width: 12px; height: 12px; }
+.context-sep { color: var(--n-300); }
+.context-current { color: var(--text); font-weight: 500; }
 
-        --border: var(--n-200);
-        --border-strong: var(--n-300);
-        --text: var(--n-900);
-        --text-muted: var(--n-500);
-        --text-subtle: var(--n-400);
+/* Title row */
+.catalog-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;
+}
+.catalog-title-block { min-width: 0; flex: 1; }
+.catalog-title {
+    font-size: 26px; font-weight: 600; letter-spacing: -0.025em;
+    margin: 0; color: var(--text);
+}
+.catalog-sub { color: var(--text-muted); font-size: 13px; margin: 0.375rem 0 0; }
+.catalog-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
 
-        --radius-sm: 4px;
-        --radius: 6px;
-        --radius-lg: 10px;
+/* Buttons */
+.btn {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.4375rem 0.875rem; font-size: 13px; font-weight: 500;
+    line-height: 1; border-radius: var(--radius); border: 1px solid transparent;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+    font-family: inherit; white-space: nowrap;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost {
+    background: var(--n-0); border-color: var(--border);
+    color: var(--n-700); box-shadow: 0 1px 2px rgba(24,24,27,0.04);
+}
+.btn-ghost:hover {
+    background: var(--n-0); border-color: var(--border-strong);
+    color: var(--text); box-shadow: var(--surface-shadow);
+}
+.btn-accent {
+    background: var(--accent); color: var(--n-0); border-color: var(--accent);
+    box-shadow: 0 1px 2px rgba(24,24,27,0.16);
+}
+.btn-accent:hover {
+    background: var(--accent-hover); border-color: var(--accent-hover);
+    box-shadow: 0 4px 12px rgba(24,24,27,0.18);
+}
+.btn-danger-ghost {
+    background: var(--n-0); border-color: var(--border); color: var(--n-700);
+}
+.btn-danger-ghost:hover {
+    border-color: var(--danger); color: var(--danger); background: #fef2f2;
+}
+.btn-icon {
+    width: 30px; height: 30px; padding: 0; justify-content: center;
+    border-radius: var(--radius-sm);
+}
+.btn-icon svg { width: 14px; height: 14px; }
 
-        --page-bg: #f6f7f9;
-        --surface-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 1px rgba(24, 24, 27, 0.03);
-        --surface-shadow-hover: 0 4px 12px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
-    }
+/* Panels */
+.panel {
+    background: var(--n-0); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); margin-bottom: 1.5rem;
+    box-shadow: var(--surface-shadow); transition: box-shadow 0.18s ease;
+}
+.panel:hover { box-shadow: var(--surface-shadow-hover); }
+.panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--border);
+    gap: 1rem; background: linear-gradient(to bottom, #ffffff, #fcfcfd);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.panel-title { font-size: 13px; font-weight: 600; margin: 0; color: var(--text); }
+.panel-sub { font-size: 11px; color: var(--text-muted); margin: 0.125rem 0 0; }
+.panel-body { padding: 1.125rem; }
+.panel-body-flush { padding: 0; }
 
-    /* ===== Layout (with sidebar) ===== */
-    .management-layout {
-        display: flex;
-        min-height: calc(100vh - 120px);
-        background: var(--page-bg);
-        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        font-size: 13px;
-        color: var(--text);
-    }
+/* ===== Options section ===== */
+.options-grid {
+    display: flex; flex-direction: column; gap: 0.75rem;
+}
+.option-card {
+    background: var(--n-50); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.875rem 1rem;
+}
+.option-card-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 0.75rem; margin-bottom: 0.625rem;
+}
+.option-name-input {
+    font-size: 13px; font-weight: 600; background: transparent;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 4px 8px; color: var(--text); flex: 1;
+    font-family: inherit;
+}
+.option-name-input:hover { border-color: var(--border); background: var(--n-0); }
+.option-name-input:focus {
+    outline: none; border-color: var(--accent); background: var(--n-0);
+    box-shadow: 0 0 0 3px rgba(17,24,39,0.06);
+}
+.option-values {
+    display: flex; flex-wrap: wrap; gap: 0.375rem; align-items: center;
+}
+.value-chip {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 4px 10px; background: var(--n-0); border: 1px solid var(--border);
+    border-radius: 999px; font-size: 12px; color: var(--text);
+    transition: border-color 0.12s;
+}
+.value-chip:hover { border-color: var(--border-strong); }
+.value-chip .chip-remove {
+    background: none; border: none; color: var(--n-400); cursor: pointer;
+    padding: 0; line-height: 1; display: inline-flex;
+}
+.value-chip .chip-remove:hover { color: var(--danger); }
+.value-chip .chip-remove svg { width: 10px; height: 10px; }
+.add-value-form {
+    display: inline-flex; gap: 0.25rem; align-items: center;
+}
+.add-value-input {
+    padding: 4px 10px; border: 1px dashed var(--border-strong);
+    border-radius: 999px; font-size: 12px; width: 100px;
+    background: transparent; font-family: inherit;
+}
+.add-value-input:focus {
+    outline: none; border-style: solid; border-color: var(--accent);
+    background: var(--n-0);
+}
+.add-value-btn {
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 999px; background: var(--n-0); font-size: 12px;
+    cursor: pointer; color: var(--n-700); font-family: inherit;
+}
+.add-value-btn:hover { border-color: var(--border-strong); color: var(--text); }
 
-    .management-content {
-        flex: 1;
-        min-width: 0;
-        padding: 2rem 2rem 4rem;
-    }
+.add-option-row {
+    display: flex; gap: 0.5rem; align-items: center;
+    padding: 0.875rem 1rem; background: var(--n-50);
+    border: 1px dashed var(--border-strong); border-radius: var(--radius);
+}
+.add-option-row input {
+    flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px; font-family: inherit;
+}
+.add-option-row input:focus { outline: none; border-color: var(--accent); }
 
-    .variant-page {
-        max-width: 1080px;
-        margin: 0 auto;
-    }
+/* ===== Variants table ===== */
+.variants-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.variants-table thead th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.06em; font-weight: 600; color: var(--text-muted);
+    padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--border);
+    background: var(--n-50); white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
+}
+.variants-table tbody td {
+    padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.variants-table tbody tr:last-child td { border-bottom: none; }
+.variants-table tbody tr:hover { background: var(--n-50); }
 
-    /* ====== BREADCRUMB ====== */
-    .catalog-context {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
-    }
-    .context-back {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        color: var(--text-muted);
-        text-decoration: none;
-    }
-    .context-back:hover { color: var(--text); }
-    .context-back svg { width: 12px; height: 12px; }
-    .context-sep { color: var(--n-300); }
-    .context-current { color: var(--text); font-weight: 500; }
+.variant-thumb-cell {
+    position: relative; width: 52px;
+}
+.variant-thumb-btn {
+    width: 44px; height: 44px; border-radius: var(--radius);
+    background: var(--n-100); border: 1px solid var(--border);
+    cursor: pointer; padding: 0; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--n-400);
+    transition: border-color 0.12s;
+}
+.variant-thumb-btn:hover { border-color: var(--n-500); }
+.variant-thumb-btn img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.variant-thumb-btn svg { width: 16px; height: 16px; }
+.variant-thumb-btn.has-img { background: var(--n-0); }
 
-    /* ====== TITLE ROW ====== */
-    .catalog-title-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-    }
-    .catalog-title-block { min-width: 0; flex: 1; }
-    .catalog-title {
-        font-size: 26px;
-        font-weight: 600;
-        letter-spacing: -0.025em;
-        margin: 0;
-        color: var(--text);
-    }
-    .catalog-sub {
-        color: var(--text-muted);
-        font-size: 13px;
-        margin: 0.375rem 0 0;
-    }
-    .catalog-actions {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-        flex-shrink: 0;
-    }
+.variant-option-cell {
+    font-weight: 500; color: var(--text);
+}
+.variant-option-cell small {
+    color: var(--text-muted); font-weight: 400; margin-right: 4px;
+}
 
-    /* ====== BUTTONS ====== */
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.4375rem 0.875rem;
-        font-size: 13px;
-        font-weight: 500;
-        line-height: 1;
-        border-radius: var(--radius);
-        border: 1px solid transparent;
-        cursor: pointer;
-        text-decoration: none;
-        transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
-        font-family: inherit;
-        white-space: nowrap;
-    }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.variant-input {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 12.5px; font-family: inherit;
+    color: var(--text); background: var(--n-0);
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.variant-input:hover { border-color: var(--border-strong); }
+.variant-input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(17,24,39,0.06);
+}
+.variant-input.num {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+}
+.variant-row-delete {
+    background: none; border: 1px solid transparent;
+    width: 28px; height: 28px; border-radius: var(--radius-sm);
+    color: var(--n-400); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.variant-row-delete:hover {
+    background: #fef2f2; color: var(--danger); border-color: var(--danger);
+}
+.variant-row-delete svg { width: 12px; height: 12px; }
 
-    .btn-ghost {
-        background: var(--n-0);
-        border-color: var(--border);
-        color: var(--n-700);
-        box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04);
-    }
-    .btn-ghost:hover {
-        background: var(--n-0);
-        border-color: var(--border-strong);
-        color: var(--text);
-        box-shadow: var(--surface-shadow);
-    }
+/* ===== Image picker modal ===== */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(24,24,27,0.5); backdrop-filter: blur(4px);
+    z-index: 1000; align-items: center; justify-content: center;
+    padding: 1rem;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+    background: var(--n-0); border-radius: var(--radius-lg);
+    max-width: 720px; width: 100%; max-height: 85vh;
+    overflow-y: auto; box-shadow: 0 20px 40px -12px rgba(24,24,27,0.2);
+    border: 1px solid var(--border);
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, #ffffff, #fcfcfd);
+    position: sticky; top: 0; z-index: 1;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.modal-header h2 {
+    font-size: 14px; font-weight: 600; margin: 0; color: var(--text);
+}
+.modal-close {
+    background: none; border: none; color: var(--n-500); cursor: pointer;
+    padding: 4px; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: var(--n-100); color: var(--text); }
+.modal-close svg { width: 14px; height: 14px; }
+.modal-body { padding: 1.25rem; }
 
-    .btn-accent {
-        background: var(--accent);
-        color: var(--n-0);
-        border-color: var(--accent);
-        box-shadow: 0 1px 2px rgba(24, 24, 27, 0.16);
-    }
-    .btn-accent:hover {
-        background: var(--accent-hover);
-        border-color: var(--accent-hover);
-        box-shadow: 0 4px 12px rgba(24, 24, 27, 0.18);
-    }
+.image-gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+.image-tile {
+    position: relative; aspect-ratio: 1; border-radius: var(--radius);
+    background: var(--n-100); border: 2px solid transparent;
+    cursor: pointer; overflow: hidden;
+    transition: border-color 0.12s, transform 0.12s;
+}
+.image-tile:hover {
+    border-color: var(--n-400); transform: scale(1.02);
+}
+.image-tile.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(17,24,39,0.1);
+}
+.image-tile img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.image-tile .image-tile-check {
+    position: absolute; top: 6px; right: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: var(--n-0);
+    display: none; align-items: center; justify-content: center;
+}
+.image-tile.selected .image-tile-check { display: flex; }
+.image-tile .image-tile-check svg { width: 10px; height: 10px; }
 
-    .btn-danger-ghost {
-        background: var(--n-0);
-        border-color: var(--border);
-        color: var(--n-700);
-    }
-    .btn-danger-ghost:hover {
-        border-color: var(--danger);
-        color: var(--danger);
-        background: #fef2f2;
-    }
+.no-images-state {
+    text-align: center; padding: 2rem 1rem; color: var(--text-muted);
+    font-size: 13px;
+}
 
-    .btn-icon {
-        width: 30px;
-        height: 30px;
-        padding: 0;
-        justify-content: center;
-        border-radius: var(--radius-sm);
-    }
-    .btn-icon svg { width: 14px; height: 14px; }
+.modal-footer {
+    display: flex; justify-content: flex-end; gap: 0.5rem;
+    padding: 0.875rem 1.25rem; background: var(--n-50);
+    border-top: 1px solid var(--border); position: sticky; bottom: 0;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
 
-    /* ====== PANELS ====== */
-    .panel {
-        background: var(--n-0);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        margin-bottom: 1.5rem;
-        box-shadow: var(--surface-shadow);
-        transition: box-shadow 0.18s ease;
-    }
-    .panel:hover {
-        box-shadow: var(--surface-shadow-hover);
-    }
-    .panel-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.875rem 1.125rem;
+/* Empty state */
+.empty-state {
+    text-align: center; padding: 4rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--n-0); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--surface-shadow);
+}
+.empty-state-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #f4f4f5, #e9e9eb);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--n-500); margin-bottom: 1.25rem;
+}
+.empty-state-icon svg { width: 22px; height: 22px; }
+.empty-state h3 {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    margin: 0 0 0.4375rem; letter-spacing: -0.015em;
+}
+.empty-state p {
+    font-size: 13px; color: var(--text-muted);
+    max-width: 380px; margin: 0 0 1.5rem; line-height: 1.55;
+}
+
+/* Toasts */
+.toast-stack {
+    position: fixed; top: 1rem; right: 1rem; z-index: 2000;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    pointer-events: none;
+}
+.toast {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1rem; border-radius: var(--radius);
+    font-size: 12.5px; font-weight: 500;
+    color: var(--n-0); background: var(--n-900);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    pointer-events: auto;
+    animation: toastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 220px; max-width: 380px;
+}
+.toast svg { width: 14px; height: 14px; flex-shrink: 0; }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--n-700); }
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .management-content { padding: 1.5rem 1rem 3rem; }
+    .catalog-title-row { flex-direction: column; align-items: stretch; }
+    .catalog-actions { width: 100%; }
+    .catalog-actions .btn { flex: 1; justify-content: center; }
+    .variants-table { font-size: 12px; }
+    .variants-table th, .variants-table td { padding: 0.5rem; }
+}
+@media (max-width: 640px) {
+    .variants-table thead { display: none; }
+    .variants-table tbody tr {
+        display: block; padding: 0.75rem;
         border-bottom: 1px solid var(--border);
-        gap: 1rem;
-        background: linear-gradient(to bottom, #ffffff, #fcfcfd);
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     }
-    .panel-title {
-        font-size: 13px;
-        font-weight: 600;
-        margin: 0;
-        color: var(--text);
+    .variants-table tbody td {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.375rem 0; border: none;
     }
-    .panel-sub {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin: 0.125rem 0 0;
+    .variants-table tbody td::before {
+        content: attr(data-label);
+        font-size: 11px; text-transform: uppercase;
+        color: var(--text-muted); font-weight: 600;
+        margin-right: 1rem;
     }
-    .panel-body { padding: 1.125rem; }
-    .panel-body-flush { padding: 0; }
-
-    /* ====== COLLAPSIBLE ADD FORM ====== */
-    .add-head {
-        cursor: pointer;
-        user-select: none;
-    }
-    .add-head .chevron {
-        color: var(--text-subtle);
-        transition: transform 0.2s ease;
-        display: inline-flex;
-    }
-    .panel.collapsed .add-head .chevron { transform: rotate(-90deg); }
-    .panel.collapsed .add-body { display: none; }
-
-    /* ====== FORM ====== */
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-    .form-row.three-col { grid-template-columns: 1fr 1fr 1fr; }
-    .form-row:last-child { margin-bottom: 0; }
-
-    .field { display: flex; flex-direction: column; gap: 0.375rem; }
-    .field-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--n-700);
-    }
-    .field-label .optional {
-        color: var(--text-subtle);
-        font-weight: 400;
-        margin-left: 0.25rem;
-    }
-    .field-help {
-        font-size: 11px;
-        color: var(--text-muted);
-        line-height: 1.4;
-    }
-    .field-help code {
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        font-size: 10.5px;
-        background: var(--n-100);
-        padding: 1px 4px;
-        border-radius: var(--radius-sm);
-        color: var(--n-700);
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        font-size: 13px;
-        font-family: inherit;
-        color: var(--text);
-        background: var(--n-0);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        transition: border-color 0.12s ease, box-shadow 0.12s ease;
-        box-sizing: border-box;
-    }
-    .form-control::placeholder { color: var(--n-400); }
-    .form-control:hover { border-color: var(--border-strong); }
-    .form-control:focus {
-        outline: none;
-        border-color: var(--accent);
-        box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.06);
-    }
-    .form-control[type="number"] {
-        font-variant-numeric: tabular-nums;
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        font-size: 12.5px;
-    }
-
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        margin-top: 1.25rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border);
-    }
-
-    /* ====== IMAGE UPLOAD ====== */
-    .image-upload-area {
-        border: 1px dashed var(--border-strong);
-        border-radius: var(--radius);
-        padding: 0.875rem;
-        text-align: center;
-        cursor: pointer;
-        background: linear-gradient(to bottom, #fbfbfc, #f6f7f9);
-        position: relative;
-        min-height: 96px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.12s ease, background 0.12s ease;
-    }
-    .image-upload-area:hover {
-        border-color: var(--n-400);
-        background: linear-gradient(to bottom, #f8f9fb, #f1f2f5);
-    }
-    .image-upload-area.has-image {
-        border-style: solid;
-        border-color: var(--border);
-        background: var(--n-0);
-        padding: 0.5rem;
-        box-shadow: var(--surface-shadow);
-    }
-    .image-upload-area img {
-        max-width: 100%;
-        max-height: 96px;
-        border-radius: var(--radius-sm);
-        display: block;
-    }
-    .image-upload-area .placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.375rem;
-        color: var(--text-muted);
-        font-size: 12px;
-    }
-    .image-upload-area .placeholder svg {
-        width: 18px;
-        height: 18px;
-        color: var(--n-400);
-    }
-    .image-upload-area .placeholder .hint {
-        font-size: 11px;
-        color: var(--text-subtle);
-    }
-    .image-upload-area input[type="file"] { display: none; }
-    .image-upload-area .remove-image {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        background: var(--n-0);
-        color: var(--n-600);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        width: 24px;
-        height: 24px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 0;
-        box-shadow: var(--surface-shadow);
-    }
-    .image-upload-area .remove-image:hover {
-        color: var(--danger);
-        border-color: var(--danger);
-        background: #fef2f2;
-    }
-    .image-upload-area .remove-image svg { width: 12px; height: 12px; }
-    .image-upload-area.has-image .remove-image { display: flex; }
-
-    /* ====== VARIANT LIST ====== */
-    .variant-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.625rem;
-    }
-    .variant-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem 1.125rem;
-        background: var(--n-0);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--surface-shadow);
-        transition: box-shadow 0.18s ease, border-color 0.18s ease;
-        position: relative;
-    }
-    .variant-card:hover {
-        border-color: var(--border-strong);
-        box-shadow: var(--surface-shadow-hover);
-    }
-    .variant-card::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 12px;
-        bottom: 12px;
-        width: 3px;
-        border-radius: 0 3px 3px 0;
-        background: var(--n-300);
-    }
-    .variant-card.stock-in::before { background: var(--success); }
-    .variant-card.stock-low::before { background: var(--warning); }
-    .variant-card.stock-out::before { background: var(--danger); }
-
-    .variant-image {
-        width: 56px;
-        height: 56px;
-        border-radius: var(--radius);
-        background: linear-gradient(135deg, #f9fafb, #f2f3f5);
-        flex-shrink: 0;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid var(--border);
-    }
-    .variant-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    .variant-image .no-image {
-        color: var(--n-400);
-        display: inline-flex;
-    }
-    .variant-image .no-image svg { width: 20px; height: 20px; }
-
-    .variant-info { flex: 1; min-width: 0; }
-
-    .variant-options {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.375rem;
-        margin-bottom: 0.4375rem;
-    }
-    .option-tag {
-        font-size: 11.5px;
-        color: var(--n-600);
-        background: var(--n-100);
-        padding: 3px 9px;
-        border-radius: var(--radius-sm);
-        font-weight: 500;
-        border: 1px solid var(--border);
-    }
-    .option-tag strong {
-        color: var(--n-800);
-        font-weight: 600;
-    }
-
-    .variant-details {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-    .variant-details .price {
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text);
-        font-variant-numeric: tabular-nums;
-    }
-    .variant-details .compare {
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        font-size: 12px;
-        text-decoration: line-through;
-        color: var(--text-subtle);
-    }
-    .variant-details .sku {
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        font-size: 11px;
-        color: var(--text-subtle);
-        background: var(--n-100);
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
-    }
-
-    /* Status dot for stock */
-    .status-dot {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        font-size: 12px;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
-    .status-dot::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--n-400);
-        flex-shrink: 0;
-        transition: box-shadow 0.18s ease;
-    }
-    .status-dot.in-stock::before {
-        background: var(--success);
-        box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.15);
-    }
-    .status-dot.low::before {
-        background: var(--warning);
-        box-shadow: 0 0 0 2px rgba(161, 98, 7, 0.15);
-    }
-    .status-dot.out::before {
-        background: var(--danger);
-        box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
-    }
-    .status-dot.out { color: var(--danger); }
-    .status-dot.low { color: var(--warning); }
-
-    .variant-actions {
-        display: flex;
-        gap: 0.375rem;
-        flex-shrink: 0;
-    }
-
-    /* Tooltip */
-    .variant-actions [data-tip] {
-        position: relative;
-    }
-    .variant-actions [data-tip]:hover::after {
-        content: attr(data-tip);
-        position: absolute;
-        bottom: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--n-900);
-        color: white;
-        padding: 4px 9px;
-        border-radius: var(--radius-sm);
-        font-size: 11px;
-        white-space: nowrap;
-        font-weight: 500;
-        z-index: 10;
-        pointer-events: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    }
-
-    /* ====== EMPTY STATE ====== */
-    .empty-state {
-        text-align: center;
-        padding: 4rem 1.5rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background: var(--n-0);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--surface-shadow);
-    }
-    .empty-state-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #f4f4f5, #e9e9eb);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--n-500);
-        margin-bottom: 1.25rem;
-    }
-    .empty-state-icon svg { width: 22px; height: 22px; }
-    .empty-state h3 {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text);
-        margin: 0 0 0.4375rem;
-        letter-spacing: -0.015em;
-    }
-    .empty-state p {
-        font-size: 13px;
-        color: var(--text-muted);
-        max-width: 380px;
-        margin: 0 0 1.5rem;
-        line-height: 1.55;
-    }
-
-    /* ====== MODAL ====== */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(24, 24, 27, 0.4);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-    .modal-overlay.active { display: flex; }
-
-    .modal-content {
-        background: var(--n-0);
-        border-radius: var(--radius-lg);
-        max-width: 520px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 40px -12px rgba(24, 24, 27, 0.18), 0 4px 12px rgba(24, 24, 27, 0.08);
-        border: 1px solid var(--border);
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border);
-        background: linear-gradient(to bottom, #ffffff, #fcfcfd);
-    }
-    .modal-header h2 {
-        font-size: 14px;
-        font-weight: 600;
-        margin: 0;
-        color: var(--text);
-    }
-    .modal-close {
-        background: none;
-        border: none;
-        color: var(--n-500);
-        cursor: pointer;
-        padding: 4px;
-        border-radius: var(--radius-sm);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-close:hover { background: var(--n-100); color: var(--text); }
-    .modal-close svg { width: 14px; height: 14px; }
-
-    .modal-body { padding: 1.25rem; }
-
-    .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        padding: 0.875rem 1.25rem;
-        background: var(--n-50);
-        border-top: 1px solid var(--border);
-    }
-
-    /* ====== TOASTS ====== */
-    .toast-stack {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 2000;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        pointer-events: none;
-    }
-    .toast {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius);
-        font-size: 12.5px;
-        font-weight: 500;
-        color: var(--n-0);
-        background: var(--n-900);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
-        pointer-events: auto;
-        animation: toastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-        min-width: 220px;
-        max-width: 380px;
-    }
-    .toast svg { width: 14px; height: 14px; flex-shrink: 0; }
-    .toast.error { background: var(--danger); }
-    .toast.info { background: var(--n-700); }
-
-    @keyframes toastIn {
-        from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    /* ====== RESPONSIVE ====== */
-    @media (max-width: 900px) {
-        .management-content { padding: 1.5rem 1rem 3rem; }
-        .catalog-title-row { flex-direction: column; align-items: stretch; }
-        .catalog-actions { width: 100%; }
-        .catalog-actions .btn { flex: 1; justify-content: center; }
-        .form-row, .form-row.three-col { grid-template-columns: 1fr; }
-        .variant-card {
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-        .variant-actions { margin-left: auto; }
-    }
+}
 </style>
 {% endblock %}
 
@@ -708,8 +420,9 @@
 
             <input type="hidden" id="page-subdomain" value="{{ page.subdomain }}">
             <input type="hidden" id="product-id" value="{{ product.id }}">
+            <input type="hidden" id="product-price" value="{{ product.price|default:0 }}">
 
-            <!-- ====== BREADCRUMB ====== -->
+            <!-- Breadcrumb -->
             <div class="catalog-context">
                 <a href="{% url 'dashboard' %}" class="context-back">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12L6 8l4-4"/></svg>
@@ -723,14 +436,13 @@
                 <span class="context-current">Variants</span>
             </div>
 
-            <!-- ====== TITLE ROW ====== -->
+            <!-- Title -->
             <div class="catalog-title-row">
                 <div class="catalog-title-block">
                     <h1 class="catalog-title">Variants</h1>
                     <p class="catalog-sub">
-                        <strong>{{ variants.count }}</strong> variant{{ variants.count|pluralize }} for
+                        <strong>{{ variants|length }}</strong> variant{{ variants|length|pluralize }} for
                         <strong>{{ product.title }}</strong>
-                        {% if variants.count == 0 %}· none created yet{% endif %}
                     </p>
                 </div>
                 <div class="catalog-actions">
@@ -741,545 +453,221 @@
                 </div>
             </div>
 
-            <!-- ====== ADD VARIANT ====== -->
-            <div class="panel" id="addVariantCard">
-                <div class="panel-head add-head" onclick="toggleAddVariant()">
+            <!-- ===== Options ===== -->
+            <div class="panel">
+                <div class="panel-head">
                     <div>
-                        <h2 class="panel-title" id="addVariantTitle">Add new variant</h2>
-                        <p class="panel-sub" id="addVariantSub">Define options, pricing, and stock</p>
+                        <h2 class="panel-title">Options</h2>
+                        <p class="panel-sub">Define the choices your customers pick from — Size, Color, Material…</p>
                     </div>
-                    <span class="chevron">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M4 6l4 4 4-4"/></svg>
-                    </span>
                 </div>
-
-                <div class="panel-body add-body" id="addVariantForm">
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label" for="opt1Name">Option 1 name</label>
-                            <input type="text" class="form-control" id="opt1Name" placeholder="Size" value="Size">
-                            <span class="field-help">e.g. Size, Color, Material</span>
-                        </div>
-                        <div class="field">
-                            <label class="field-label" for="opt1Value">Option 1 value</label>
-                            <input type="text" class="form-control" id="opt1Value" placeholder="Large" value="Large">
-                            <span class="field-help">e.g. Large, Red, Cotton</span>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label" for="opt2Name">Option 2 name <span class="optional">optional</span></label>
-                            <input type="text" class="form-control" id="opt2Name" placeholder="Color">
-                            <span class="field-help">Leave blank for single-option variants</span>
-                        </div>
-                        <div class="field">
-                            <label class="field-label" for="opt2Value">Option 2 value <span class="optional">optional</span></label>
-                            <input type="text" class="form-control" id="opt2Value" placeholder="Red">
-                        </div>
-                    </div>
-
-                    <div class="form-row three-col">
-                        <div class="field">
-                            <label class="field-label" for="variantPrice">Price</label>
-                            <input type="number" class="form-control" id="variantPrice" placeholder="99.99" step="0.01" min="0">
-                        </div>
-                        <div class="field">
-                            <label class="field-label" for="variantCompare">Compare at <span class="optional">sale</span></label>
-                            <input type="number" class="form-control" id="variantCompare" placeholder="129.99" step="0.01" min="0">
-                            <span class="field-help">Original price shown struck through</span>
-                        </div>
-                        <div class="field">
-                            <label class="field-label" for="variantQuantity">Stock quantity</label>
-                            <input type="number" class="form-control" id="variantQuantity" placeholder="10" min="0" value="10">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label" for="variantSku">SKU <span class="optional">optional</span></label>
-                            <input type="text" class="form-control" id="variantSku" placeholder="Auto-generated if blank">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Variant image <span class="optional">optional</span></label>
-                            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageInput').click()">
-                                <div class="placeholder" id="imagePlaceholder">
-                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5"/><path d="M17 13l-4-4-5 5-3-3-2 2"/></svg>
-                                    <span>Click to upload</span>
-                                    <span class="hint">PNG, JPG up to 5MB</span>
+                <div class="panel-body">
+                    <div class="options-grid" id="optionsGrid">
+                        {% for opt in options %}
+                            <div class="option-card" data-option-id="{{ opt.id }}">
+                                <div class="option-card-head">
+                                    <input type="text" class="option-name-input" value="{{ opt.name }}" data-original="{{ opt.name }}">
+                                    <button type="button" class="btn btn-danger-ghost btn-icon" title="Delete option"
+                                            onclick="deleteOption({{ opt.id }})">
+                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9"/></svg>
+                                    </button>
                                 </div>
-                                <img id="imagePreview" style="display:none;" alt="Variant image preview">
-                                <button type="button" class="remove-image" id="removeImageBtn" onclick="event.stopPropagation(); removeImage();" aria-label="Remove image">
-                                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-                                </button>
-                                <input type="file" id="imageInput" accept="image/*">
+                                <div class="option-values">
+                                    {% for v in opt.values.all %}
+                                        <span class="value-chip" data-value="{{ v.value }}">
+                                            {{ v.value }}
+                                            <button type="button" class="chip-remove" title="Remove" onclick="removeValue(this, {{ opt.id }}, '{{ v.value|escapejs }}')">
+                                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                                            </button>
+                                        </span>
+                                    {% endfor %}
+                                    <form class="add-value-form" onsubmit="event.preventDefault(); addValue(this, {{ opt.id }});">
+                                        <input type="text" class="add-value-input" placeholder="Add value">
+                                        <button type="submit" class="add-value-btn">+</button>
+                                    </form>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        {% endfor %}
 
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-ghost" onclick="resetForm()">Clear</button>
-                        <button type="button" class="btn btn-accent" id="addVariantBtn" onclick="addVariant()">
-                            <span class="btn-text">Add variant</span>
-                        </button>
+                        <form class="add-option-row" onsubmit="event.preventDefault(); addOption(this);" id="addOptionForm">
+                            <input type="text" id="newOptionName" placeholder="New option name (e.g. Size)" maxlength="50">
+                            <input type="text" id="newOptionValues" placeholder="Values, comma separated (e.g. S, M, L)" maxlength="200">
+                            <button type="submit" class="btn btn-accent">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M8 3v10M3 8h10"/></svg>
+                                Add option
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
 
-            <!-- ====== VARIANT LIST ====== -->
-            <div class="variant-list" id="variantList">
-                {% if variants %}
-                    {% for variant in variants %}
-                    <div class="variant-card {% if variant.quantity <= 0 %}stock-out{% elif variant.quantity <= 5 %}stock-low{% else %}stock-in{% endif %}" id="variant-{{ variant.id }}">
-                        <div class="variant-image">
-                            {% if variant.image %}
-                                <img src="{{ variant.image.url }}" alt="Variant image">
+            <!-- ===== Variants table ===== -->
+            <div class="panel">
+                <div class="panel-head">
+                    <div>
+                        <h2 class="panel-title">Variant combinations</h2>
+                        <p class="panel-sub">
+                            {% if variants %}
+                                {{ variants|length }} generated from your options — edit inline, then Save
                             {% else %}
-                                <span class="no-image">
-                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4z"/><path d="M3 6l7 4 7-4M10 10v8"/></svg>
-                                </span>
+                                Add at least one option to generate variants
                             {% endif %}
-                        </div>
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-accent" id="saveAllBtn" onclick="saveAllVariants()">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M3 8l3 3 7-7"/></svg>
+                        Save all
+                    </button>
+                </div>
 
-                        <div class="variant-info">
-                            <div class="variant-options">
-                                {% for key, value in variant.options.items %}
-                                    <span class="option-tag"><strong>{{ key }}:</strong> {{ value }}</span>
+                {% if variants|length %}
+                <div class="panel-body-flush" style="overflow-x: auto;">
+                    <table class="variants-table" id="variantsTable">
+                        <thead>
+                            <tr>
+                                <th style="width:56px;"></th>
+                                {% for name in option_names %}
+                                    <th>{{ name }}</th>
                                 {% endfor %}
-                            </div>
-                            <div class="variant-details">
-                                <span class="price">${{ variant.price|default:'0.00' }}</span>
-                                {% if variant.compare_at_price %}
-                                    <span class="compare">${{ variant.compare_at_price }}</span>
-                                {% endif %}
-                                <span class="status-dot {% if variant.quantity <= 0 %}out{% elif variant.quantity <= 5 %}low{% else %}in-stock{% endif %}">
-                                    {{ variant.quantity }} in stock
-                                </span>
-                                {% if variant.sku %}
-                                    <span class="sku">{{ variant.sku }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="variant-actions">
-                            <button type="button" class="btn btn-ghost btn-icon" data-tip="Edit" onclick="editVariant({{ variant.id }})" aria-label="Edit variant">
-                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg>
-                            </button>
-                            <button type="button" class="btn btn-danger-ghost btn-icon" data-tip="Delete" onclick="deleteVariant({{ variant.id }})" aria-label="Delete variant">
-                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
+                                <th style="width:110px;">Price</th>
+                                <th style="width:110px;">Compare</th>
+                                <th style="width:90px;">Stock</th>
+                                <th style="width:140px;">SKU</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in variant_rows %}
+                            <tr data-variant-id="{{ row.id }}">
+                                <td class="variant-thumb-cell" data-label="Image">
+                                    <button type="button"
+                                            class="variant-thumb-btn {% if row.image %}has-img{% endif %}"
+                                            onclick="openImagePicker({{ row.id }})"
+                                            title="Pick image from gallery">
+                                        {% if row.image %}
+                                            <img src="{{ row.image.url }}" alt="">
+                                        {% else %}
+                                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5"/><path d="M17 13l-4-4-5 5-3-3-2 2"/></svg>
+                                        {% endif %}
+                                    </button>
+                                </td>
+                                {% for name in option_names %}
+                                    <td class="variant-option-cell" data-label="{{ name }}">
+                                        {{ row.options|dict_get:name }}
+                                    </td>
+                                {% endfor %}
+                                <td data-label="Price">
+                                    <input type="number" step="0.01" min="0"
+                                           class="variant-input num"
+                                           value="{{ row.price|default:'' }}"
+                                           data-field="price"
+                                           data-original="{{ row.price|default:'' }}">
+                                </td>
+                                <td data-label="Compare">
+                                    <input type="number" step="0.01" min="0"
+                                           class="variant-input num"
+                                           value="{{ row.compare_at_price|default:'' }}"
+                                           data-field="compare_at_price"
+                                           data-original="{{ row.compare_at_price|default:'' }}">
+                                </td>
+                                <td data-label="Stock">
+                                    <input type="number" min="0"
+                                           class="variant-input num"
+                                           value="{{ row.quantity|default:0 }}"
+                                           data-field="quantity"
+                                           data-original="{{ row.quantity|default:0 }}">
+                                </td>
+                                <td data-label="SKU">
+                                    <input type="text"
+                                           class="variant-input"
+                                           value="{{ row.sku }}"
+                                           placeholder="auto"
+                                           data-field="sku"
+                                           data-original="{{ row.sku }}">
+                                </td>
+                                <td>
+                                    <button type="button" class="variant-row-delete" title="Delete variant"
+                                            onclick="deleteVariant({{ row.id }})">
+                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9"/></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                    <div class="empty-state">
-                        <div class="empty-state-icon">
-                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4z"/><path d="M3 6l7 4 7-4M10 10v8"/></svg>
-                        </div>
-                        <h3>No variants yet</h3>
-                        <p>Variants let you offer different sizes, colors, or configurations of this product. Add your first one to get started.</p>
-                        <button type="button" class="btn btn-accent" onclick="document.getElementById('addVariantCard').scrollIntoView({behavior:'smooth'}); if(document.getElementById('addVariantCard').classList.contains('collapsed')) toggleAddVariant();">
-                            <span class="btn-text">Add first variant</span>
-                        </button>
+                <div class="empty-state" style="margin:1.125rem;">
+                    <div class="empty-state-icon">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4z"/><path d="M3 6l7 4 7-4M10 10v8"/></svg>
                     </div>
+                    <h3>No variants yet</h3>
+                    <p>Add your first option above — variants are created automatically for every combination.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<!-- ====== EDIT MODAL ====== -->
-<div class="modal-overlay" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+<!-- Image picker modal -->
+<div class="modal-overlay" id="imagePickerModal" role="dialog" aria-modal="true">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="editModalTitle">Edit variant</h2>
-            <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close">
+            <h2>Pick image from gallery</h2>
+            <button type="button" class="modal-close" onclick="closeImagePicker()" aria-label="Close">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
             </button>
         </div>
-        <div id="editFormContent"></div>
+        <div class="modal-body">
+            {% if product_images %}
+                <div class="image-gallery" id="imageGallery">
+                    {% for img in product_images %}
+                        <div class="image-tile" data-image-id="{{ img.id }}" onclick="selectImage(this)">
+                            <img src="{{ img.image.url }}" alt="">
+                            <span class="image-tile-check">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3 3 7-7"/></svg>
+                            </span>
+                        </div>
+                    {% endfor %}
+                    <!-- Clear option -->
+                    <div class="image-tile" data-image-id="0" onclick="selectImage(this)" title="No image">
+                        <div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#f4f4f5,#e9e9eb);color:#a1a1aa;">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width:22px;height:22px;"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                        </div>
+                        <span class="image-tile-check">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3 3 7-7"/></svg>
+                        </span>
+                    </div>
+                </div>
+            {% else %}
+                <div class="no-images-state">
+                    <p>This product has no images in its gallery yet.</p>
+                    <p style="margin-top:0.5rem;">
+                        <a href="{% url 'product_editor' subdomain=page.subdomain product_id=product.id %}" class="btn btn-ghost">
+                            Add product images first
+                        </a>
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeImagePicker()">Cancel</button>
+            <button type="button" class="btn btn-accent" onclick="confirmImageSelection()">Use image</button>
+        </div>
     </div>
 </div>
 
-<!-- ====== TOASTS ====== -->
+<!-- Toasts -->
 <div class="toast-stack" id="toastStack"></div>
 
 <script>
 // ================================================================
 // STATE
 // ================================================================
-let currentEditVariantId = null;
-let tempImageFile = null;
-let pendingDeleteId = null;
-
-// ================================================================
-// TOASTS
-// ================================================================
-function toast(message, type = 'success') {
-    const stack = document.getElementById('toastStack');
-    const el = document.createElement('div');
-    el.className = `toast ${type}`;
-
-    const icon = type === 'error'
-        ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11h.01"/></svg>'
-        : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3 3 7-7"/></svg>';
-
-    el.innerHTML = `${icon}<span>${message}</span>`;
-    stack.appendChild(el);
-
-    setTimeout(() => {
-        el.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(-8px)';
-        setTimeout(() => el.remove(), 200);
-    }, 3000);
-}
-
-// ================================================================
-// TOGGLE ADD FORM
-// ================================================================
-function toggleAddVariant() {
-    document.getElementById('addVariantCard').classList.toggle('collapsed');
-}
-
-// ================================================================
-// IMAGE UPLOAD (ADD)
-// ================================================================
-document.getElementById('imageInput').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    tempImageFile = file;
-    const reader = new FileReader();
-    reader.onload = function (event) {
-        const preview = document.getElementById('imagePreview');
-        const placeholder = document.getElementById('imagePlaceholder');
-        const area = document.getElementById('imageUploadArea');
-        preview.src = event.target.result;
-        preview.style.display = 'block';
-        placeholder.style.display = 'none';
-        area.classList.add('has-image');
-    };
-    reader.readAsDataURL(file);
-});
-
-function removeImage() {
-    tempImageFile = null;
-    const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('imagePlaceholder');
-    const area = document.getElementById('imageUploadArea');
-    document.getElementById('imageInput').value = '';
-    preview.src = '';
-    preview.style.display = 'none';
-    placeholder.style.display = 'flex';
-    area.classList.remove('has-image');
-}
-
-// ================================================================
-// ADD VARIANT
-// ================================================================
-function addVariant() {
-    const btn = document.getElementById('addVariantBtn');
-    const btnText = btn.querySelector('.btn-text');
-    const originalText = btnText.textContent;
-    btn.disabled = true;
-    btnText.textContent = 'Adding…';
-
-    const subdomain = document.getElementById('page-subdomain').value;
-    const productId = document.getElementById('product-id').value;
-
-    const opt1Name = document.getElementById('opt1Name').value.trim();
-    const opt1Value = document.getElementById('opt1Value').value.trim();
-    const opt2Name = document.getElementById('opt2Name').value.trim();
-    const opt2Value = document.getElementById('opt2Value').value.trim();
-    const price = document.getElementById('variantPrice').value;
-    const compare = document.getElementById('variantCompare').value;
-    const quantity = document.getElementById('variantQuantity').value;
-    const sku = document.getElementById('variantSku').value.trim();
-
-    if (!opt1Name || !opt1Value) {
-        toast('Fill in Option 1 name and value', 'error');
-        btn.disabled = false;
-        btnText.textContent = originalText;
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('option1_name', opt1Name);
-    formData.append('option1_value', opt1Value);
-    formData.append('option2_name', opt2Name);
-    formData.append('option2_value', opt2Value);
-    formData.append('price', price);
-    formData.append('compare_price', compare);
-    formData.append('quantity', quantity);
-    formData.append('sku', sku);
-    if (tempImageFile) formData.append('image', tempImageFile);
-
-    fetch(`/builder/api/add-variant-simple/${subdomain}/${productId}/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCsrfToken() },
-        body: formData,
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            toast('Variant added');
-            setTimeout(() => location.reload(), 400);
-        } else {
-            toast(data.error || 'Failed to add variant', 'error');
-            btn.disabled = false;
-            btnText.textContent = originalText;
-        }
-    })
-    .catch(err => {
-        toast('Network error', 'error');
-        btn.disabled = false;
-        btnText.textContent = originalText;
-    });
-}
-
-// ================================================================
-// EDIT VARIANT
-// ================================================================
-function editVariant(variantId) {
-    currentEditVariantId = variantId;
-    const card = document.getElementById(`variant-${variantId}`);
-    if (!card) return;
-
-    const options = [];
-    card.querySelectorAll('.option-tag').forEach(tag => {
-        const text = tag.textContent.trim();
-        const idx = text.indexOf(':');
-        if (idx > -1) {
-            options.push({ name: text.slice(0, idx).trim(), value: text.slice(idx + 1).trim() });
-        }
-    });
-
-    const details = card.querySelector('.variant-details');
-    const priceEl = details.querySelector('.price');
-    const compareEl = details.querySelector('.compare');
-    const skuEl = details.querySelector('.sku');
-
-    const price = priceEl ? priceEl.textContent.replace('$', '').trim() : '';
-    const compare = compareEl ? compareEl.textContent.replace('$', '').trim() : '';
-    const sku = skuEl ? skuEl.textContent.trim() : '';
-
-    const stockMatch = details.querySelector('.status-dot')?.textContent.match(/\d+/);
-    const stock = stockMatch ? stockMatch[0] : '0';
-
-    const img = card.querySelector('.variant-image img');
-    const hasImage = img && img.src;
-
-    document.getElementById('editFormContent').innerHTML = `
-        <div class="modal-body">
-            <div class="field" style="margin-bottom:1rem;">
-                <label class="field-label">Options</label>
-                <div style="display:flex; flex-wrap:wrap; gap:0.375rem; padding:0.25rem 0;">
-                    ${options.map(o => `<span class="option-tag"><strong>${escapeHtml(o.name)}:</strong> ${escapeHtml(o.value)}</span>`).join('')}
-                </div>
-                <span class="field-help">To change options, delete this variant and add a new one.</span>
-            </div>
-
-            <div class="form-row">
-                <div class="field">
-                    <label class="field-label" for="editPrice">Price</label>
-                    <input type="number" class="form-control" id="editPrice" value="${escapeAttr(price)}" step="0.01" min="0">
-                </div>
-                <div class="field">
-                    <label class="field-label" for="editCompare">Compare at</label>
-                    <input type="number" class="form-control" id="editCompare" value="${escapeAttr(compare)}" step="0.01" min="0">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="field">
-                    <label class="field-label" for="editQuantity">Stock quantity</label>
-                    <input type="number" class="form-control" id="editQuantity" value="${escapeAttr(stock)}" min="0">
-                </div>
-                <div class="field">
-                    <label class="field-label" for="editSku">SKU</label>
-                    <input type="text" class="form-control" id="editSku" value="${escapeAttr(sku)}">
-                </div>
-            </div>
-
-            <div class="field" style="margin-top:1rem;">
-                <label class="field-label">Variant image</label>
-                <div class="image-upload-area ${hasImage ? 'has-image' : ''}" id="editImageArea" onclick="document.getElementById('editImageInput').click()">
-                    ${hasImage
-                        ? `<img src="${img.src}" alt="Variant image">`
-                        : `<div class="placeholder">
-                               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5"/><path d="M17 13l-4-4-5 5-3-3-2 2"/></svg>
-                               <span>Click to upload</span>
-                           </div>`}
-                    <button type="button" class="remove-image" onclick="event.stopPropagation(); removeEditImage();" aria-label="Remove image">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-                    </button>
-                    <input type="file" id="editImageInput" accept="image/*">
-                </div>
-            </div>
-        </div>
-
-        <div class="modal-footer">
-            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-            <button type="button" class="btn btn-accent" id="saveEditBtn" onclick="saveEdit()">
-                <span class="btn-text">Save changes</span>
-            </button>
-        </div>
-    `;
-
-    document.getElementById('editImageInput').addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (event) {
-            const area = document.getElementById('editImageArea');
-            let existingImg = area.querySelector('img');
-            if (existingImg) {
-                existingImg.src = event.target.result;
-            } else {
-                const newImg = document.createElement('img');
-                newImg.src = event.target.result;
-                newImg.alt = 'Variant image';
-                area.querySelector('.placeholder')?.remove();
-                area.insertBefore(newImg, area.firstChild);
-                area.classList.add('has-image');
-            }
-        };
-        reader.readAsDataURL(file);
-    });
-
-    document.getElementById('editModal').classList.add('active');
-}
-
-function removeEditImage() {
-    const area = document.getElementById('editImageArea');
-    area.querySelector('img')?.remove();
-    area.classList.remove('has-image');
-    area.insertAdjacentHTML('afterbegin', `
-        <div class="placeholder">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5"/><path d="M17 13l-4-4-5 5-3-3-2 2"/></svg>
-            <span>Click to upload</span>
-        </div>
-    `);
-}
-
-function saveEdit() {
-    const btn = document.getElementById('saveEditBtn');
-    const btnText = btn.querySelector('.btn-text');
-    btn.disabled = true;
-    btnText.textContent = 'Saving…';
-
-    const subdomain = document.getElementById('page-subdomain').value;
-    const variantId = currentEditVariantId;
-
-    const price = document.getElementById('editPrice').value;
-    const compare = document.getElementById('editCompare').value;
-    const quantity = document.getElementById('editQuantity').value;
-    const sku = document.getElementById('editSku').value.trim();
-
-    fetch(`/builder/api/quick-edit-variant/${subdomain}/${variantId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            price: price,
-            compare_at_price: compare,
-            quantity: quantity,
-            sku: sku,
-            track_quantity: true,
-        }),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (!data.success) throw new Error(data.error || 'Update failed');
-        const fileInput = document.getElementById('editImageInput');
-        if (fileInput && fileInput.files.length > 0) {
-            const imageFormData = new FormData();
-            imageFormData.append('image', fileInput.files[0]);
-            return fetch(`/builder/api/upload-variant-image/${subdomain}/${variantId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCsrfToken() },
-                body: imageFormData,
-            }).then(r => r.json());
-        }
-        return { success: true };
-    })
-    .then(result => {
-        if (result.success === false) throw new Error(result.error || 'Image upload failed');
-        toast('Variant updated');
-        closeModal();
-        setTimeout(() => location.reload(), 400);
-    })
-    .catch(err => {
-        toast(err.message || 'Update failed', 'error');
-        btn.disabled = false;
-        btnText.textContent = 'Save changes';
-    });
-}
-
-// ================================================================
-// DELETE VARIANT
-// ================================================================
-function deleteVariant(variantId) {
-    if (!confirm('Delete this variant? This cannot be undone.')) return;
-    const subdomain = document.getElementById('page-subdomain').value;
-
-    fetch(`/builder/api/delete-variant/${subdomain}/${variantId}/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCsrfToken() },
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            toast('Variant deleted', 'info');
-            document.getElementById(`variant-${variantId}`)?.remove();
-            if (!document.querySelectorAll('.variant-card').length) location.reload();
-        } else {
-            toast(data.error || 'Delete failed', 'error');
-        }
-    })
-    .catch(() => toast('Network error', 'error'));
-}
-
-// ================================================================
-// MODAL
-// ================================================================
-function closeModal() {
-    document.getElementById('editModal').classList.remove('active');
-    currentEditVariantId = null;
-    document.getElementById('editFormContent').innerHTML = '';
-}
-
-document.getElementById('editModal').addEventListener('click', function (e) {
-    if (e.target === this) closeModal();
-});
-
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
-    if (e.ctrlKey && e.key === 'Enter') {
-        const form = document.getElementById('addVariantForm');
-        if (form && !document.getElementById('addVariantCard').classList.contains('collapsed')) {
-            e.preventDefault();
-            addVariant();
-        }
-    }
-});
-
-// ================================================================
-// RESET
-// ================================================================
-function resetForm() {
-    document.getElementById('opt1Name').value = 'Size';
-    document.getElementById('opt1Value').value = 'Large';
-    document.getElementById('opt2Name').value = '';
-    document.getElementById('opt2Value').value = '';
-    document.getElementById('variantPrice').value = '';
-    document.getElementById('variantCompare').value = '';
-    document.getElementById('variantQuantity').value = '10';
-    document.getElementById('variantSku').value = '';
-    removeImage();
-}
+let pickingForVariantId = null;
+let selectedImageId = null;
+let originalImageId = null;
 
 // ================================================================
 // HELPERS
@@ -1289,11 +677,290 @@ function getCsrfToken() {
            document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 }
 
-function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
+function toast(message, type = 'success') {
+    const stack = document.getElementById('toastStack');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    const icon = type === 'error'
+        ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11h.01"/></svg>'
+        : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3 3 7-7"/></svg>';
+    el.innerHTML = `${icon}<span>${message}</span>`;
+    stack.appendChild(el);
+    setTimeout(() => {
+        el.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-8px)';
+        setTimeout(() => el.remove(), 200);
+    }, 3000);
 }
-function escapeAttr(str) { return escapeHtml(str); }
+
+// ================================================================
+// OPTIONS
+// ================================================================
+function addOption(form) {
+    const name = document.getElementById('newOptionName').value.trim();
+    const rawValues = document.getElementById('newOptionValues').value;
+    const values = rawValues.split(',').map(s => s.trim()).filter(Boolean);
+
+    if (!name) { toast('Option name is required', 'error'); return; }
+    if (!values.length) { toast('Add at least one value', 'error'); return; }
+
+    const subdomain = document.getElementById('page-subdomain').value;
+    const productId = document.getElementById('product-id').value;
+
+    fetch(`/builder/api/product-options/${subdomain}/${productId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ name, values }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            toast('Option added — variants generated');
+            setTimeout(() => location.reload(), 400);
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+function addValue(form, optionId) {
+    const input = form.querySelector('.add-value-input');
+    const value = input.value.trim();
+    if (!value) return;
+
+    // Get existing values from DOM
+    const card = form.closest('.option-card');
+    const existing = Array.from(card.querySelectorAll('.value-chip')).map(c => c.dataset.value);
+    if (existing.includes(value)) { toast('Value already exists', 'error'); return; }
+    existing.push(value);
+
+    const subdomain = document.getElementById('page-subdomain').value;
+    const productId = document.getElementById('product-id').value;
+    const name = card.querySelector('.option-name-input').value.trim();
+
+    fetch(`/builder/api/product-options/${subdomain}/${productId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ name, values: existing }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            toast('Value added');
+            setTimeout(() => location.reload(), 400);
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+function removeValue(btn, optionId, value) {
+    const card = btn.closest('.option-card');
+    const existing = Array.from(card.querySelectorAll('.value-chip'))
+        .map(c => c.dataset.value)
+        .filter(v => v !== value);
+
+    if (!existing.length) {
+        toast('An option needs at least one value', 'error');
+        return;
+    }
+
+    const subdomain = document.getElementById('page-subdomain').value;
+    const productId = document.getElementById('product-id').value;
+    const name = card.querySelector('.option-name-input').value.trim();
+
+    fetch(`/builder/api/product-options/${subdomain}/${productId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ name, values: existing }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            toast('Value removed');
+            setTimeout(() => location.reload(), 400);
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+function deleteOption(optionId) {
+    if (!confirm('Delete this option and all its variants?')) return;
+    const subdomain = document.getElementById('page-subdomain').value;
+
+    fetch(`/builder/api/delete-option/${subdomain}/${optionId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            toast('Option deleted');
+            setTimeout(() => location.reload(), 400);
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+// ================================================================
+// INLINE VARIANT EDITING
+// ================================================================
+function saveAllVariants() {
+    const btn = document.getElementById('saveAllBtn');
+    const rows = document.querySelectorAll('#variantsTable tbody tr');
+    if (!rows.length) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width:12px;height:12px;animation:spin 0.8s linear infinite;"><path d="M14 8a6 6 0 11-3-5.2"/></svg> Saving…';
+
+    const subdomain = document.getElementById('page-subdomain').value;
+    const promises = [];
+
+    rows.forEach(row => {
+        const variantId = row.dataset.variantId;
+        const payload = {};
+
+        row.querySelectorAll('.variant-input').forEach(input => {
+            const field = input.dataset.field;
+            const current = input.value;
+            const original = input.dataset.original;
+            if (current !== original) {
+                payload[field] = current;
+            }
+        });
+
+        if (Object.keys(payload).length === 0) return;
+
+        promises.push(
+            fetch(`/builder/api/update-variant-row/${subdomain}/${variantId}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify(payload),
+            })
+            .then(r => r.json())
+            .then(data => ({ variantId, ok: data.success, error: data.error }))
+            .catch(() => ({ variantId, ok: false, error: 'Network error' }))
+        );
+    });
+
+    if (!promises.length) {
+        toast('No changes to save', 'info');
+        btn.disabled = false;
+        btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M3 8l3 3 7-7"/></svg> Save all';
+        return;
+    }
+
+    Promise.all(promises).then(results => {
+        const failed = results.filter(r => !r.ok);
+        if (failed.length) {
+            toast(`${failed.length} variant(s) failed to save`, 'error');
+        } else {
+            toast(`Saved ${results.length} variant(s)`);
+            // Reset "original" so we can save again
+            rows.forEach(row => {
+                row.querySelectorAll('.variant-input').forEach(input => {
+                    input.dataset.original = input.value;
+                });
+            });
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M3 8l3 3 7-7"/></svg> Save all';
+    });
+}
+
+function deleteVariant(variantId) {
+    if (!confirm('Delete this variant?')) return;
+    const subdomain = document.getElementById('page-subdomain').value;
+
+    fetch(`/builder/api/delete-variant/${subdomain}/${variantId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector(`tr[data-variant-id="${variantId}"]`)?.remove();
+            toast('Variant deleted', 'info');
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+// ================================================================
+// IMAGE PICKER
+// ================================================================
+function openImagePicker(variantId) {
+    pickingForVariantId = variantId;
+    selectedImageId = null;
+    originalImageId = null;
+
+    // Highlight current image if any
+    const btn = document.querySelector(`tr[data-variant-id="${variantId}"] .variant-thumb-btn`);
+    const currentSrc = btn?.querySelector('img')?.src;
+    if (currentSrc) {
+        document.querySelectorAll('#imageGallery .image-tile').forEach(tile => {
+            const img = tile.querySelector('img');
+            if (img && img.src === currentSrc) {
+                tile.classList.add('selected');
+                selectedImageId = tile.dataset.imageId;
+                originalImageId = tile.dataset.imageId;
+            }
+        });
+    }
+
+    document.getElementById('imagePickerModal').classList.add('active');
+}
+
+function selectImage(tile) {
+    document.querySelectorAll('#imageGallery .image-tile').forEach(t => t.classList.remove('selected'));
+    tile.classList.add('selected');
+    selectedImageId = tile.dataset.imageId;
+}
+
+function confirmImageSelection() {
+    if (!pickingForVariantId) return;
+
+    const subdomain = document.getElementById('page-subdomain').value;
+
+    fetch(`/builder/api/update-variant-row/${subdomain}/${pickingForVariantId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ image_id: selectedImageId || '0' }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            toast('Image updated');
+            closeImagePicker();
+            setTimeout(() => location.reload(), 300);
+        } else {
+            toast(data.error || 'Failed', 'error');
+        }
+    })
+    .catch(() => toast('Network error', 'error'));
+}
+
+function closeImagePicker() {
+    document.getElementById('imagePickerModal').classList.remove('active');
+    pickingForVariantId = null;
+    selectedImageId = null;
+    originalImageId = null;
+}
+
+document.getElementById('imagePickerModal')?.addEventListener('click', function (e) {
+    if (e.target === this) closeImagePicker();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeImagePicker();
+});
 </script>
 {% endblock %}

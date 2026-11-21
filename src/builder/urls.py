@@ -112,7 +112,15 @@ urlpatterns = [
     path('api/add-variant-simple/<str:subdomain>/<int:product_id>/', views.add_variant_simple, name='add_variant_simple'),
     path('api/upload-variant-image/<str:subdomain>/<int:variant_id>/', views.upload_variant_image, name='upload_variant_image'),
 
+
     path('variants/<str:subdomain>/<int:product_id>/', views.manage_variants, name='manage_variants'),
+     path('api/product-options/<str:subdomain>/<int:product_id>/',
+     views.product_options_api, name='product_options_api'),
+     path('api/delete-option/<str:subdomain>/<int:option_id>/',
+          views.delete_product_option, name='delete_product_option'),
+     path('api/update-variant-row/<str:subdomain>/<int:variant_id>/',
+          views.update_variant_row, name='update_variant_row'),
+
     path('api/create-option/<str:subdomain>/', views.create_product_option, name='create_product_option'),
     path('api/bulk-update-variants/<str:subdomain>/<int:product_id>/', views.bulk_update_variants, name='bulk_update_variants'),
     path('api/delete-option/<str:subdomain>/<int:option_id>/', views.delete_option, name='delete_option'),
@@ -308,6 +316,14 @@ path('api/delete-video-customization/<str:subdomain>/',
     path('api/onboarding/check-domain/', views.onboarding_search_domain, name='onboarding_check_domain'),
     path('domains/request/<str:subdomain>/', views.request_domain, name='request_domain'),
     path('domains/list/<str:subdomain>/', views.list_domain_requests, name='list_domain_requests'),
+    path(
+     'domains/create-payment/<str:subdomain>/',
+     views.create_domain_payment, name='create_domain_payment'
+     ),
+     path(
+          'domains/payment-status/<str:subdomain>/<str:transaction_id>/',
+          views.domain_payment_status, name='domain_payment_status'
+          ),
      
          # Staff-only admin dashboard for domain fulfillment
      # Staff-only dashboard for domain fulfillment (uses /staff/ to avoid Django admin collision)

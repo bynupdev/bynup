@@ -22,6 +22,9 @@ from payments.decorators import (
 )
 from payments.decorators import get_user_subscription
 from payments.models import Subscription
+from decimal import Decimal
+import uuid
+from payments.models import PaymentTransaction
 from payments.decorators import check_storage_before_upload
 from payments.storage import get_user_storage_usage, format_bytes, get_storage_limit
 from django.db.models import Avg
@@ -1423,6 +1426,196 @@ def domains_page(request, subdomain):
         'domain_limits': limits['domains'],
         'SITE_DOMAIN': getattr(settings, 'SITE_DOMAIN', 'bynup.store'),
     })
+
+# ============================================================
+# DOMAIN PAYMENT FLOW
+# ============================================================
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def create_domain_payment(request, subdomain):
+    """
+    Start a paid-domain checkout (card via AgentaOS, or crypto via Cryptomus).
+    POST body: { domain_name, tld, payment_method }
+    Response:  { success, checkout_url, transaction_id }
+    """
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    domain_name = (data.get('domain_name') or '').strip().lower()
+    tld = (data.get('tld') or '').strip().lower()
+    payment_method = (data.get('payment_method') or 'card').strip().lower()
+
+    if not domain_name or not tld:
+        return JsonResponse({'success': False, 'error': 'domain_name and tld are required'}, status=400)
+    if tld not in ('store', 'shop', 'com'):
+        return JsonResponse({'success': False, 'error': 'Unsupported TLD'}, status=400)
+    if payment_method not in ('card', 'crypto'):
+        return JsonResponse({'success': False, 'error': 'Invalid payment method'}, status=400)
+
+    profile = getattr(request.user, 'profile', None)
+    has_claimed_free = bool(profile and getattr(profile, 'has_received_free_domain', False))
+    price = get_domain_price(tld, has_claimed_free)
+
+    if price is None:
+        return JsonResponse({'success': False, 'error': 'Unsupported TLD'}, status=400)
+    if price <= 0:
+        return JsonResponse({
+            'success': False,
+            'error': 'This domain is free on your plan — use Add free domain.',
+        }, status=400)
+
+    existing = DomainRequest.objects.filter(
+        user=request.user,
+        domain_name=domain_name,
+    ).exclude(status__in=DomainRequest.TERMINAL_STATUSES).first()
+    if existing:
+        return JsonResponse({
+            'success': False,
+            'error': f'You already have a pending request for {domain_name}.',
+        }, status=400)
+
+    order_id = f"DOM-{uuid.uuid4().hex[:12].upper()}"
+
+    transaction = PaymentTransaction.objects.create(
+        user=request.user,
+        transaction_id=order_id,
+        amount=Decimal(str(price)),
+        currency='USD',
+        status='pending',
+        gateway_type='agentaos' if payment_method == 'card' else 'cryptomus',
+    )
+    transaction.metadata = {
+        'kind': 'domain_purchase',
+        'domain_name': domain_name,
+        'tld': tld,
+        'page_subdomain': subdomain,
+    }
+    transaction.save(update_fields=['metadata'])
+
+    try:
+        if payment_method == 'card':
+            checkout_url, session_id = _create_agentaos_domain_checkout(
+                user=request.user,
+                amount=price,
+                order_id=order_id,
+                domain_name=domain_name,
+                subdomain=subdomain,
+            )
+            transaction.gateway_transaction_id = session_id or order_id
+            transaction.status = 'processing'
+            transaction.save()
+        else:
+            from payments.services.cryptomus import CryptomusService
+            crypto = CryptomusService()
+            result = crypto.create_payment(
+                amount=float(price),
+                order_id=order_id,
+                currency='USDT',
+                success_url=f"{settings.SITE_URL}/domains/{subdomain}/?domain_paid={domain_name}",
+                cancel_url=f"{settings.SITE_URL}/domains/{subdomain}/?payment_cancelled=1",
+            )
+            if not result.get('success'):
+                raise Exception(result.get('error') or 'Crypto payment failed')
+            checkout_url = result['payment_url']
+            transaction.gateway_transaction_id = result.get('payment_uuid', '')
+            transaction.status = 'processing'
+            transaction.gateway_response = result
+            transaction.save()
+
+    except Exception as e:
+        transaction.status = 'failed'
+        transaction.error_message = str(e)
+        transaction.save()
+        return JsonResponse({'success': False, 'error': f'Payment setup failed: {e}'}, status=500)
+
+    return JsonResponse({
+        'success': True,
+        'checkout_url': checkout_url,
+        'transaction_id': transaction.transaction_id,
+    })
+
+
+def _create_agentaos_domain_checkout(user, amount, order_id, domain_name, subdomain):
+    """
+    Create an AgentaOS checkout session for a domain purchase.
+    Returns (checkout_url, session_id).
+    """
+    import requests
+    from django.conf import settings
+
+    api_key = getattr(settings, 'AGENTAOS_API_KEY', None)
+    if not api_key:
+        raise Exception("AgentaOS API key not configured")
+
+    payload = {
+        'amount': float(amount),
+        'currency': 'USD',
+        'description': f'Domain registration: {domain_name} (1 year)',
+        'successUrl': f"{settings.SITE_URL}/domains/{subdomain}/?domain_paid={domain_name}",
+        'cancelUrl': f"{settings.SITE_URL}/domains/{subdomain}/?payment_cancelled=1",
+        'webhookUrl': f"{settings.SITE_URL}/payments/webhook/agentaos/",
+        'buyerEmail': user.email,
+        'metadata': {
+            'kind': 'domain_purchase',
+            'order_id': order_id,
+            'domain_name': domain_name,
+            'subdomain': subdomain,
+            'user_id': user.id,
+        },
+    }
+
+    resp = requests.post(
+        "https://api.agentaos.ai/api/v1/gateway/sessions",
+        json=payload,
+        headers={
+            'x-api-key': api_key,
+            'Content-Type': 'application/json',
+        },
+        timeout=30,
+    )
+
+    if resp.status_code not in (200, 201):
+        raise Exception(f"AgentaOS error: {resp.text}")
+
+    result = resp.json()
+    url = result.get('checkoutUrl')
+    session_id = result.get('sessionId')
+
+    if not url:
+        raise Exception(f"AgentaOS returned no checkout URL: {result}")
+
+    return url, session_id
+
+
+@login_required
+@require_http_methods(["GET"])
+def domain_payment_status(request, subdomain, transaction_id):
+    """Poll payment status after the user returns from checkout."""
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    tx = get_object_or_404(PaymentTransaction, transaction_id=transaction_id, user=request.user)
+
+    payload = {
+        'success': True,
+        'transaction_id': tx.transaction_id,
+        'status': tx.status,
+        'amount': str(tx.amount),
+        'currency': tx.currency,
+    }
+    dr = tx.domain_requests.first()
+    if dr:
+        payload['domain_request'] = {
+            'id': dr.id,
+            'domain_name': dr.domain_name,
+            'status': dr.status,
+            'status_display': dr.get_status_display(),
+        }
+    return JsonResponse(payload)
 
 
 @login_required
@@ -8251,7 +8444,26 @@ def product_detail_page(request, product_slug):
     # ------------------------------------------------------------
     colors = [c.strip() for c in product.colors.split(',')] if product.colors else ''
     sizes = [s.strip() for s in product.sizes.split(',')] if product.sizes else ''
-    images = product.product_images.all()[:4]
+    from collections import OrderedDict
+
+    # Build a URL-keyed map of gallery images so each URL appears exactly once.
+    # Variant images are still included, but they get merged into the same list
+    # when they match an existing product image URL.
+    gallery_by_url = OrderedDict()
+
+    # 1. Product gallery images first
+    for img in product.product_images.all():
+        if img.image and img.image.name:
+            gallery_by_url[img.image.url] = img
+
+    # 2. Variant images — only added if the URL isn't already in the gallery
+    for v in product.variants.all():
+        if v.image and v.image.name:
+            url = v.image.url
+            if url not in gallery_by_url:
+                gallery_by_url[url] = v
+
+    images = list(gallery_by_url.values())[:4]
 
     # ------------------------------------------------------------
     # 4. Track "recently viewed"
@@ -13937,6 +14149,208 @@ def demo_page(request):
     })
 
 
+from builder.models import ProductOption, ProductOptionValue, ProductVariant, ProductImages
+from decimal import Decimal, InvalidOperation
+import json, hashlib
+from django.db import transaction
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def product_options_api(request, subdomain, product_id):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    product = get_object_or_404(Product, id=product_id, page=page)
+
+    if request.method == "GET":
+        options = []
+        for opt in product_options_qs(product):
+            options.append({
+                "id": opt.id,
+                "name": opt.name,
+                "position": opt.display_order,
+                "values": [
+                    {"id": v.id, "value": v.value, "position": v.display_order}
+                    for v in opt.values.filter(is_active=True).order_by("display_order")
+                ],
+            })
+        return JsonResponse({"success": True, "options": options})
+
+    # POST — create or replace an option
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+    name = (data.get("name") or "").strip()
+    values = [str(v).strip() for v in (data.get("values") or []) if str(v).strip()]
+    if not name or not values:
+        return JsonResponse({"success": False, "error": "Name and at least one value required"}, status=400)
+
+    with transaction.atomic():
+        opt, _ = ProductOption.objects.get_or_create(
+            page=page, name=name, defaults={"option_type": "text", "display_order": product.options.count() if hasattr(product, "options") else 0}
+        )
+        opt.is_active = True
+        opt.save()
+
+        # sync values
+        existing = {v.value.lower(): v for v in opt.values.all()}
+        for i, value in enumerate(values):
+            if value.lower() not in existing:
+                ProductOptionValue.objects.create(option=opt, value=value, display_order=i)
+            else:
+                existing[value.lower()].display_order = i
+                existing[value.lower()].is_active = True
+                existing[value.lower()].save()
+        # remove values that were dropped
+        for low, v in existing.items():
+            if low not in [val.lower() for val in values]:
+                v.delete()
+
+    # regenerate combinations
+    regenerate_variants(product)
+
+    return JsonResponse({"success": True})
+
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_product_option(request, subdomain, option_id):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    opt = get_object_or_404(ProductOption, id=option_id, page=page)
+
+    with transaction.atomic():
+        opt.delete()
+        product = opt_page_product(opt, page)  # fallback lookup
+        if product:
+            regenerate_variants(product)
+
+    return JsonResponse({"success": True})
+
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_variant_row(request, subdomain, variant_id):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+    variant = get_object_or_404(ProductVariant, id=variant_id, product__page=page)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+    if "price" in data:
+        try:
+            variant.price = Decimal(str(data["price"])) if data["price"] not in ("", None) else None
+        except (InvalidOperation, ValueError):
+            return JsonResponse({"success": False, "error": "Invalid price"}, status=400)
+    if "compare_at_price" in data:
+        try:
+            variant.compare_at_price = Decimal(str(data["compare_at_price"])) if data["compare_at_price"] not in ("", None) else None
+        except (InvalidOperation, ValueError):
+            return JsonResponse({"success": False, "error": "Invalid compare price"}, status=400)
+    if "quantity" in data:
+        try:
+            variant.quantity = int(data["quantity"])
+        except (ValueError, TypeError):
+            return JsonResponse({"success": False, "error": "Invalid quantity"}, status=400)
+    if "sku" in data:
+        variant.sku = str(data["sku"]).strip()
+    if "image_id" in data:
+        try:
+            if data["image_id"] in (None, "", "0"):
+                variant.image = None
+            else:
+                img = ProductImages.objects.get(id=int(data["image_id"]), product=variant.product)
+                variant.image = img.image
+        except (ProductImages.DoesNotExist, ValueError):
+            return JsonResponse({"success": False, "error": "Image not found"}, status=400)
+
+    variant.save()
+    return JsonResponse({"success": True})
+
+
+import itertools
+
+
+def regenerate_variants(product):
+    """
+    Given the product's current options, rebuild ProductVariant rows so that
+    every combination exists exactly once. Preserves existing price / stock /
+    SKU / image where a variant with that exact combination already exists.
+    """
+    page = product.page
+    options = list(
+        ProductOption.objects.filter(page=page, is_active=True).order_by("display_order", "id")
+    )
+    if not options:
+        return
+
+    value_lists = []
+    option_names = []
+    for opt in options:
+        vals = list(opt.values.filter(is_active=True).order_by("display_order"))
+        if not vals:
+            return
+        option_names.append(opt.name)
+        value_lists.append([v.value for v in vals])
+
+    # Existing variants, keyed by their sorted (name, value) tuple
+    existing = {}
+    for v in product.variants.all():
+        key = tuple(sorted((v.options or {}).items()))
+        existing[key] = v
+
+    wanted_keys = set()
+    for combo in itertools.product(*value_lists):
+        options_dict = dict(zip(option_names, combo))
+        key = tuple(sorted(options_dict.items()))
+        wanted_keys.add(key)
+
+        if key in existing:
+            # keep it; make sure display order is sane
+            continue
+
+        # Create the missing combination
+        ProductVariant.objects.create(
+            product=product,
+            options=options_dict,
+            option1=combo[0] if len(combo) > 0 else "",
+            option2=combo[1] if len(combo) > 1 else "",
+            option3=combo[2] if len(combo) > 2 else "",
+            price=product.price,
+            compare_at_price=product.compare_at_price,
+            quantity=0,
+            track_quantity=True,
+            low_stock_threshold=5,
+        )
+
+    # Delete variants whose combination no longer exists
+    for key, v in existing.items():
+        if key not in wanted_keys:
+            v.delete()
+
+    product.has_variants = True
+    product.save(update_fields=["has_variants"])
+
+
+
+def product_options_qs(product):
+    return ProductOption.objects.filter(page=product.page, is_active=True).order_by("display_order", "id")
+
+
+def opt_page_product(opt, page):
+    # A ProductOption doesn't have a direct FK to Product. Find it via
+    # the variants that share its page.
+    variant = ProductVariant.objects.filter(product__page=page).first()
+    return variant.product if variant else None
+
+
 # Add these imports at the top if not present
 import hashlib
 from itertools import product as cartesian_product
@@ -13946,62 +14360,49 @@ from decimal import Decimal
 
 @login_required
 def manage_variants(request, subdomain, product_id):
-    """Main variant management interface"""
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
     product = get_object_or_404(Product, id=product_id, page=page)
-    
-    options = ProductOption.objects.filter(page=page, is_active=True)
-    variants = product.variants.all()
-    
-    # Generate variant matrix (all possible combinations)
-    variant_matrix = {'rows': [], 'headers': []}
-    
-    if options.exists():
-        option_values = {}
-        for option in options:
-            values = list(option.values.filter(is_active=True).values_list('value', flat=True))
-            if values:
-                option_values[option.name] = values
-                variant_matrix['headers'].append({'name': option.name, 'values': values})
-        
-        if option_values:
-            # Generate all combinations
-            combinations = list(cartesian_product(*option_values.values()))
-            option_names = list(option_values.keys())
-            
-            for combo in combinations:
-                combo_dict = dict(zip(option_names, combo))
-                existing_variant = product.variants.filter(options=combo_dict).first()
-                
-                row = {
-                    'options': combo_dict,
-                    'variant': existing_variant,
-                    'exists': bool(existing_variant),
-                    'combo_key': hashlib.md5(str(combo_dict).encode()).hexdigest()[:10]
-                }
-                
-                if existing_variant:
-                    row.update({
-                        'price': existing_variant.price,
-                        'compare_at_price': existing_variant.compare_at_price,
-                        'quantity': existing_variant.quantity,
-                        'sku': existing_variant.sku,
-                    })
-                variant_matrix['rows'].append(row)
-    
-    context = {
-        'page': page,
-        'product': product,
-        'options': options,
-        'product_options': options,
-        'variants': variants,
-        'variant_matrix': variant_matrix,
-        'has_variants': variants.exists(),
-    }
-    
-    return render(request, 'builder/product_variants.html', context)
 
+    options = list(product_options_qs(product))
+    variants = list(product.variants.all().order_by("id"))
 
+    # Build the column headers: one per option
+    option_names = [o.name for o in options]
+
+    # Build a variant matrix: each row = one variant, with an `option_map`
+    # for cell display
+    variant_rows = []
+    for v in variants:
+        variant_rows.append({
+            "id": v.id,
+            "sku": v.sku or "",
+            "price": v.price if v.price is not None else product.price,
+            "compare_at_price": v.compare_at_price,
+            "quantity": v.quantity,
+            "image": v.image,
+            "options": v.options or {},
+            "option1": v.option1 or "",
+            "option2": v.option2 or "",
+        })
+
+    product_images = list(product.product_images.all())
+    print("=== manage_variants ===")
+    print("options:", len(options))
+    print("variants:", len(variants))
+    print("variant_rows:", len(variant_rows))
+    print("option_names:", option_names)
+    print("first row:", variant_rows[0] if variant_rows else None)
+
+    return render(request, "builder/product_variants.html", {
+        "page": page,
+        "product": product,
+        "options": options,
+        "option_names": option_names,
+        "variants": variants,
+        "variant_rows": variant_rows,
+        "product_images": product_images,
+        "active_menu": "products",
+    })
 @login_required
 @require_http_methods(["POST"])
 def create_product_option(request, subdomain):
@@ -14228,18 +14629,8 @@ def get_product_variant(request, subdomain, product_id):
 
 @login_required
 def manage_variants_simple(request, subdomain, product_id):
-    """Simplified variant management"""
-    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    product = get_object_or_404(Product, id=product_id, page=page)
-    
-    context = {
-        'page': page,
-        'product': product,
-        'variants': product.variants.all(),
-    }
-    
-    return render(request, 'builder/product_variants.html', context)
-
+    # Delegate to the full view — same URL, updated context.
+    return manage_variants(request, subdomain, product_id)
 
 @login_required
 @require_http_methods(["POST"])

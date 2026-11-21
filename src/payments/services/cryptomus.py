@@ -165,81 +165,147 @@ class CryptomusService:
             
             return {'success': False, 'error': result.get('error')}
     
-    # payments/services/cryptomus.py - Update process_webhook
 
     def process_webhook(self, webhook_data):
-        """Process incoming webhook and activate subscription"""
-        
+        """Process incoming webhook — subscriptions AND domain purchases."""
+
         if not self._verify_webhook_sign(webhook_data):
             return {'success': False, 'error': 'Invalid webhook signature'}
-        
+
         order_id = webhook_data.get('order_id')
         payment_status = webhook_data.get('status')
         payment_uuid = webhook_data.get('uuid')
-        
+
         logger.info(f"Webhook received: {order_id} - {payment_status}")
-        
+
         if payment_status not in ['paid', 'paid_over']:
             logger.info(f"Ignoring status: {payment_status}")
             return {'success': True, 'ignored': True}
-        
-        # Payment confirmed! Now activate subscription
+
         from payments.models import PaymentTransaction, Subscription, Plan
         from django.utils import timezone
-        
+
         try:
             transaction = PaymentTransaction.objects.get(transaction_id=order_id)
         except PaymentTransaction.DoesNotExist:
             logger.error(f"Transaction not found: {order_id}")
             return {'success': False, 'error': 'Transaction not found'}
-        
-        # Mark transaction as completed
+
+        # ============================================================
+        # NEW: Domain purchase branch
+        # ============================================================
+        metadata = transaction.metadata or {}
+        if metadata.get('kind') == 'domain_purchase':
+            return self._activate_domain_purchase(transaction, webhook_data, metadata)
+
+        # ============================================================
+        # Existing: Subscription branch
+        # ============================================================
         transaction.status = 'completed'
         transaction.completed_at = timezone.now()
         transaction.gateway_response = webhook_data
         transaction.save()
-        
-        # Get metadata from transaction
-        metadata = transaction.metadata or {}
+
         target_tier = metadata.get('target_plan_tier')
         billing_period = metadata.get('billing_period', 'monthly')
-        
+
         if not target_tier:
             logger.error("No target tier in metadata")
             return {'success': False, 'error': 'No target tier'}
-        
-        # Get or create subscription for user
+
         subscription, created = Subscription.objects.get_or_create(
             user=transaction.user,
             defaults={'status': 'active'}
         )
-        
-        # Update subscription
+
         plan = Plan.objects.get(tier=target_tier)
         subscription.plan = plan
         subscription.status = 'active'
         subscription.billing_period = billing_period
         subscription.start_date = timezone.now()
-        
-        if billing_period == 'monthly':
-            subscription.end_date = timezone.now() + timezone.timedelta(days=30)
-        else:
-            subscription.end_date = timezone.now() + timezone.timedelta(days=365)
-        
+        subscription.end_date = timezone.now() + timezone.timedelta(
+            days=30 if billing_period == 'monthly' else 365
+        )
         subscription.verified_at = timezone.now()
         subscription.amount_paid = transaction.amount
         subscription.payment_method = 'Cryptomus (Crypto)'
         subscription.payment_reference = payment_uuid
         subscription.save()
-        
-        # Link transaction to subscription
+
         transaction.subscription = subscription
         transaction.save()
-        
+
         logger.info(f"✅ Subscription activated: {subscription.user.email} → {plan.name}")
-        
-        return {
-            'success': True,
-            'status': 'completed',
-            'subscription_activated': True
-        }
+        return {'success': True, 'status': 'completed', 'subscription_activated': True}
+
+    def _activate_domain_purchase(self, transaction, webhook_data, metadata):
+        """When a Cryptomus payment completes for a domain purchase."""
+        from django.utils import timezone
+        from builder.models import PublishedPage, DomainRequest
+
+        domain_name = metadata.get('domain_name')
+        tld = metadata.get('tld') or (domain_name.rsplit('.', 1)[-1] if domain_name else None)
+        page_subdomain = metadata.get('page_subdomain') or metadata.get('subdomain')
+
+        if not all([domain_name, tld, page_subdomain]):
+            logger.error(f"Domain payment missing metadata: {metadata}")
+            return {'success': False, 'error': 'Incomplete metadata'}
+
+        transaction.status = 'completed'
+        transaction.completed_at = timezone.now()
+        transaction.gateway_response = webhook_data
+        transaction.save()
+
+        try:
+            page = PublishedPage.objects.get(subdomain=page_subdomain, user=transaction.user)
+        except PublishedPage.DoesNotExist:
+            logger.error(f"Page not found: {page_subdomain}")
+            return {'success': False, 'error': 'Page not found'}
+
+        existing = DomainRequest.objects.filter(
+            user=transaction.user,
+            domain_name=domain_name,
+        ).exclude(status__in=DomainRequest.TERMINAL_STATUSES).first()
+
+        if existing:
+            existing.payment_transaction = transaction
+            existing.is_paid = True
+            existing.price_paid = transaction.amount
+            existing.save(update_fields=['payment_transaction', 'is_paid', 'price_paid'])
+            logger.info(f"Linked existing DomainRequest to payment: {domain_name}")
+            return {'success': True, 'status': 'completed', 'note': 'linked_existing'}
+
+        dr = DomainRequest.objects.create(
+            user=transaction.user,
+            page=page,
+            domain_name=domain_name,
+            tld=tld,
+            is_free_tier=False,
+            is_paid=True,
+            payment_transaction=transaction,
+            price_paid=transaction.amount,
+            status='pending_review',
+            admin_notes=f"Auto-created from Cryptomus payment {transaction.transaction_id}",
+        )
+
+        logger.info(f"✅ DomainRequest created from Cryptomus payment: {domain_name} (${transaction.amount})")
+
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            send_mail(
+                subject=f"Payment received for {domain_name}",
+                message=(
+                    f"Hi {transaction.user.first_name or transaction.user.username},\n\n"
+                    f"We've received your payment of ${transaction.amount} for {domain_name}.\n"
+                    f"Your domain is now in our setup queue and will be activated within 24 hours.\n\n"
+                    f"— The bynUp team"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[transaction.user.email],
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.warning(f"Domain payment email failed: {e}")
+
+        return {'success': True, 'status': 'completed', 'domain_request_id': dr.id}

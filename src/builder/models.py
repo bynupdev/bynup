@@ -9,6 +9,23 @@ from cloudinary_storage.storage import MediaCloudinaryStorage
 import re
 from analytics.models import *
 
+# ============================================================
+# DOMAIN PRICING (USD)
+# ============================================================
+DOMAIN_PRICES = {
+    'store': {'free': 0, 'paid': 3},
+    'shop':  {'free': 1, 'paid': 5},
+    'com':   {'free': 5, 'paid': 12},
+}
+
+
+def get_domain_price(tld, has_claimed_free):
+    """Return the USD price for a TLD. 0 for the free case. None if unsupported."""
+    tiers = DOMAIN_PRICES.get(tld)
+    if not tiers:
+        return None
+    return tiers['paid'] if has_claimed_free else tiers['free']
+
 
 
 class TemplateCategory(models.Model):
@@ -1209,7 +1226,8 @@ class ProductVariant(models.Model):
     low_stock_threshold = models.IntegerField(default=5)
 
     # Media
-    image = models.ImageField(upload_to='variant_images/',storage=MediaCloudinaryStorage(), blank=True, null=True)
+    # image = models.ImageField(upload_to='variant_images/',storage=MediaCloudinaryStorage(), blank=True, null=True)
+    image = models.ImageField(upload_to='media/variant_images/', blank=True, null=True)
 
     # Shipping
     weight = models.DecimalField(max_digits=8, decimal_places=2, default=0)
@@ -3326,7 +3344,24 @@ class DomainRequest(models.Model):
     purchase_currency = models.CharField(max_length=3, default='USD')
     purchase_date = models.DateTimeField(null=True, blank=True)
     expiry_date = models.DateTimeField(null=True, blank=True)
-
+        # Payment tracking
+    is_paid = models.BooleanField(
+        default=False,
+        help_text="True when the user paid for this domain (not free-tier)"
+    )
+    payment_transaction = models.ForeignKey(
+        'payments.PaymentTransaction',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='domain_requests',
+        help_text="AgentaOS/Cryptomus transaction that paid for this domain"
+    )
+    price_paid = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        help_text="Amount paid in USD"
+    )
+    
     # DNS / activation
     dns_configured = models.BooleanField(default=False)
     dns_verified_at = models.DateTimeField(null=True, blank=True)

@@ -6303,6 +6303,9 @@ def agentaos_webhook(request):
             
             if transaction.status == 'completed':
                 return JsonResponse({'status': 'OK'})  # Idempotent
+                        # Domain purchase branch
+            if metadata.get('kind') == 'domain_purchase':
+                return _activate_domain_from_agentaos(transaction, payload, metadata)
             
             # Mark transaction as completed
             transaction.status = 'completed'
@@ -6344,3 +6347,78 @@ def agentaos_webhook(request):
         logger = logging.getLogger(__name__)
         logger.error(f"AgentaOS webhook error: {e}", exc_info=True)
         return JsonResponse({'status': 'error'}, status=500)
+
+
+
+def _activate_domain_from_agentaos(transaction, payload, metadata):
+    """
+    When an AgentaOS payment completes for a domain purchase,
+    create the DomainRequest and mark it paid.
+    """
+    from django.utils import timezone
+    from builder.models import PublishedPage, DomainRequest
+
+    domain_name = metadata.get('domain_name')
+    tld = metadata.get('tld') or (domain_name.rsplit('.', 1)[-1] if domain_name else None)
+    page_subdomain = metadata.get('subdomain') or metadata.get('page_subdomain')
+
+    if not all([domain_name, tld, page_subdomain]):
+        logger.error(f"Domain payment missing metadata: {metadata}")
+        return JsonResponse({'status': 'error', 'message': 'Incomplete metadata'}, status=400)
+
+    transaction.status = 'completed'
+    transaction.completed_at = timezone.now()
+    transaction.gateway_response = payload
+    transaction.save()
+
+    try:
+        page = PublishedPage.objects.get(subdomain=page_subdomain, user=transaction.user)
+    except PublishedPage.DoesNotExist:
+        logger.error(f"Page not found: {page_subdomain}")
+        return JsonResponse({'status': 'error', 'message': 'Page not found'}, status=404)
+
+    existing = DomainRequest.objects.filter(
+        user=transaction.user,
+        domain_name=domain_name,
+    ).exclude(status__in=DomainRequest.TERMINAL_STATUSES).first()
+
+    if existing:
+        existing.payment_transaction = transaction
+        existing.is_paid = True
+        existing.price_paid = transaction.amount
+        existing.save(update_fields=['payment_transaction', 'is_paid', 'price_paid'])
+        return JsonResponse({'status': 'OK', 'note': 'linked_existing'})
+
+    dr = DomainRequest.objects.create(
+        user=transaction.user,
+        page=page,
+        domain_name=domain_name,
+        tld=tld,
+        is_free_tier=False,
+        is_paid=True,
+        payment_transaction=transaction,
+        price_paid=transaction.amount,
+        status='pending_review',
+        admin_notes=f"Auto-created from AgentaOS payment {transaction.transaction_id}",
+    )
+
+    try:
+        from django.core.mail import send_mail
+        send_mail(
+            subject=f"Payment received for {domain_name}",
+            message=(
+                f"Hi {transaction.user.first_name or transaction.user.username},\n\n"
+                f"We've received your payment of ${transaction.amount} for {domain_name}.\n"
+                f"Your domain is now in our setup queue and will be activated within 24 hours.\n\n"
+                f"— The bynUp team"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[transaction.user.email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        logger.warning(f"Domain payment email failed: {e}")
+
+    return JsonResponse({'status': 'OK', 'domain_request_id': dr.id})
+
+

@@ -196,6 +196,8 @@ def get_user_domain_summary(user):
     plan = get_user_plan(user)
     active_count = count_user_active_domains(user)
     pending_count = count_user_domains(user) - active_count
+    profile = getattr(user, 'profile', None)
+    has_claimed = bool(profile and profile.has_received_free_domain)
 
     return {
         'active': active_count,
@@ -203,6 +205,7 @@ def get_user_domain_summary(user):
         'total_used': active_count + pending_count,
         'limit': plan.max_domains,
         'free_tlds': plan.free_domain_tlds or [],
+        'has_claimed_free_domain': has_claimed,
         'has_received_free_domain': getattr(
             getattr(user, 'profile', None),
             'has_received_free_domain',
