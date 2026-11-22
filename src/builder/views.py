@@ -1485,7 +1485,6 @@ def _sync_status(page):
 @login_required
 def manage_domains(request, subdomain):
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    print(f"DEBUG: new_domain={new_domain}, old_domain={old_domain}")
     # Opportunistic sync: if we have a hostname, refresh its status on GET
     if request.method == 'GET' and page.custom_hostname_id:
         _sync_status(page)
@@ -1519,6 +1518,9 @@ def manage_domains(request, subdomain):
         if PublishedPage.objects.filter(custom_domain=new_domain).exclude(pk=page.pk).exists():
             messages.error(request, 'This domain is already linked to another store.')
             return render(request, 'builder/manage_domains.html', {'page': page})
+        
+    
+        print(f"DEBUG: new_domain={new_domain}, old_domain={old_domain}")
 
         # ---- New or changed domain → register with Cloudflare ----
         if new_domain != old_domain:
