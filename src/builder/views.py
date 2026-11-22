@@ -1485,7 +1485,7 @@ def _sync_status(page):
 @login_required
 def manage_domains(request, subdomain):
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-
+    print(f"DEBUG: new_domain={new_domain}, old_domain={old_domain}")
     # Opportunistic sync: if we have a hostname, refresh its status on GET
     if request.method == 'GET' and page.custom_hostname_id:
         _sync_status(page)
@@ -1522,11 +1522,13 @@ def manage_domains(request, subdomain):
 
         # ---- New or changed domain → register with Cloudflare ----
         if new_domain != old_domain:
+            print(f"DEBUG: Calling Cloudflare API for {new_domain}")
             if page.custom_hostname_id:
                 # Remove the old hostname first
                 _cf_delete_custom_hostname(page.custom_hostname_id)
 
             hostname_id, error = _cf_create_custom_hostname(new_domain)
+            print(f"DEBUG: Cloudflare result: id={hostname_id}, error={error}")
             if error:
                 messages.error(request, f'Could not register domain: {error}')
                 return render(request, 'builder/manage_domains.html', {'page': page})
