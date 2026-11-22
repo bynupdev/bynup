@@ -61,7 +61,8 @@ OPENROUTER_MODELS = [
 ]
 AGENTAOS_API_KEY = os.environ.get('AGENTAOS_API_KEY')
 AGENTAOS_WEBHOOK_SECRET = os.environ.get('AGENTAOS_WEBHOOK_SECRET') 
-
+CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+CLOUDFLARE_ZONE_ID = os.environ.get('CLOUDFLARE_ZONE_ID', '')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 

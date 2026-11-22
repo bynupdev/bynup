@@ -372,6 +372,9 @@ class PublishedPage(models.Model):
      # Custom domain fields
     custom_domain = models.CharField(max_length=255, blank=True, null=True, unique=True, help_text="Your custom domain (e.g., mystore.com)")
     is_custom_domain_active = models.BooleanField(default=False, help_text="Enable to use custom domain instead of subdomain")
+    custom_hostname_id = models.CharField(max_length=64, blank=True, null=True)
+    custom_hostname_status = models.CharField(max_length=32, blank=True, null=True)
+    custom_hostname_ssl_status = models.CharField(max_length=32, blank=True, null=True)
     is_live_editing = models.BooleanField(default=False)
     last_auto_save = models.DateTimeField(auto_now=True)
 

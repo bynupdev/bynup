@@ -1373,44 +1373,207 @@ def autosave_draft(request, subdomain):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+import os
+import logging
+
+import requests
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
+
+from .models import PublishedPage
+
+logger = logging.getLogger(__name__)
+
+CF_API_BASE = 'https://api.cloudflare.com/client/v4'
+CF_TIMEOUT = 15  # seconds
+
+
+# ============================================================
+# Helpers
+# ============================================================
+def _cf_headers():
+    return {
+        'Authorization': 'Bearer ' + settings.CLOUDFLARE_API_TOKEN,
+        'Content-Type': 'application/json',
+    }
+
+
+def _cf_create_custom_hostname(domain):
+    """Create a Cloudflare for SaaS custom hostname. Returns (id, error)."""
+    zone_id = settings.CLOUDFLARE_ZONE_ID
+    url = f'{CF_API_BASE}/zones/{zone_id}/custom_hostnames'
+    payload = {
+        'hostname': domain,
+        'ssl': {
+            'method': 'http',   # simplest for users — they only add a CNAME
+            'type': 'dv',
+            'settings': {
+                'min_tls_version': '1.2',
+            },
+        },
+    }
+    try:
+        r = requests.post(url, json=payload, headers=_cf_headers(), timeout=CF_TIMEOUT)
+        data = r.json()
+    except requests.RequestException as exc:
+        logger.exception('Cloudflare create hostname failed: %s', exc)
+        return None, 'Could not reach Cloudflare. Please try again.'
+
+    if not data.get('success'):
+        errs = data.get('errors') or [{}]
+        err_msg = errs[0].get('message', 'Cloudflare rejected the domain.')
+        # Friendly hint for common errors
+        code = errs[0].get('code')
+        if code == 1406:
+            err_msg = 'This domain is already registered on another account.'
+        elif code == 1414:
+            err_msg = 'The domain format is invalid.'
+        return None, err_msg
+
+    return data['result']['id'], None
+
+
+def _cf_get_custom_hostname(hostname_id):
+    """Fetch current status of a custom hostname. Returns (result, error)."""
+    zone_id = settings.CLOUDFLARE_ZONE_ID
+    url = f'{CF_API_BASE}/zones/{zone_id}/custom_hostnames/{hostname_id}'
+    try:
+        r = requests.get(url, headers=_cf_headers(), timeout=CF_TIMEOUT)
+        data = r.json()
+    except requests.RequestException as exc:
+        logger.exception('Cloudflare fetch hostname failed: %s', exc)
+        return None, 'Could not reach Cloudflare. Please try again.'
+
+    if not data.get('success'):
+        errs = data.get('errors') or [{}]
+        return None, errs[0].get('message', 'Cloudflare could not read the domain status.')
+
+    return data['result'], None
+
+
+def _cf_delete_custom_hostname(hostname_id):
+    """Best-effort delete when a domain is removed. Returns True/False."""
+    zone_id = settings.CLOUDFLARE_ZONE_ID
+    url = f'{CF_API_BASE}/zones/{zone_id}/custom_hostnames/{hostname_id}'
+    try:
+        r = requests.delete(url, headers=_cf_headers(), timeout=CF_TIMEOUT)
+        return r.status_code in (200, 204)
+    except requests.RequestException:
+        return False
+
+
+def _sync_status(page):
+    """Pull latest status from Cloudflare and persist on the page. Best-effort."""
+    if not page.custom_hostname_id:
+        return
+    result, err = _cf_get_custom_hostname(page.custom_hostname_id)
+    if err or not result:
+        return
+    page.custom_hostname_status = result.get('status') or 'pending'
+    ssl = result.get('ssl') or {}
+    page.custom_hostname_ssl_status = ssl.get('status') or 'pending'
+    page.save(update_fields=['custom_hostname_status', 'custom_hostname_ssl_status'])
+
+
+# ============================================================
+# Manage domains — main view
+# ============================================================
 @login_required
-@custom_domain_required
 def manage_domains(request, subdomain):
-    """Manage custom domains for a published page"""
     page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
-    
+
+    # Opportunistic sync: if we have a hostname, refresh its status on GET
+    if request.method == 'GET' and page.custom_hostname_id:
+        _sync_status(page)
+
     if request.method == 'POST':
-        custom_domain = request.POST.get('custom_domain', '').strip().lower()
+        new_domain = (request.POST.get('custom_domain') or '').strip().lower()
+        new_domain = new_domain.replace('https://', '').replace('http://', '').rstrip('/')
         is_active = request.POST.get('is_custom_domain_active') == 'on'
-        
-        # Validate domain
-        if custom_domain:
-            domain_pattern = r'^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$'
-            if not re.match(domain_pattern, custom_domain):
-                messages.error(request, 'Please enter a valid domain name (e.g., mystore.com)')
-                return redirect('manage_domains', subdomain=subdomain)
-            
-            # Check if domain is already taken
-            existing = PublishedPage.objects.filter(custom_domain=custom_domain).exclude(id=page.id).first()
-            if existing:
-                messages.error(request, f'Domain {custom_domain} is already in use by another store.')
-                return redirect('manage_domains', subdomain=subdomain)
-        
-        page.custom_domain = custom_domain if custom_domain else None
-        page.is_custom_domain_active = is_active if custom_domain else False
-        page.save()
-        
-        if custom_domain and is_active:
-            messages.success(request, f'Custom domain {custom_domain} activated successfully!')
-        elif custom_domain:
-            messages.info(request, f'Custom domain {custom_domain} saved but not activated.')
+
+        old_domain = (page.custom_domain or '').strip().lower()
+
+        # ---- Remove domain ----
+        if not new_domain:
+            if page.custom_hostname_id:
+                _cf_delete_custom_hostname(page.custom_hostname_id)
+            page.custom_domain = None
+            page.custom_hostname_id = None
+            page.custom_hostname_status = None
+            page.custom_hostname_ssl_status = None
+            page.is_custom_domain_active = False
+            page.save()
+            messages.success(request, 'Custom domain removed.')
+            return redirect('manage_domains', subdomain=page.subdomain)
+
+        # ---- Basic validation ----
+        if ' ' in new_domain or '.' not in new_domain:
+            messages.error(request, 'Please enter a valid domain (e.g. mystore.com).')
+            return render(request, 'builder/manage_domains.html', {'page': page})
+
+        # ---- Uniqueness check ----
+        if PublishedPage.objects.filter(custom_domain=new_domain).exclude(pk=page.pk).exists():
+            messages.error(request, 'This domain is already linked to another store.')
+            return render(request, 'builder/manage_domains.html', {'page': page})
+
+        # ---- New or changed domain → register with Cloudflare ----
+        if new_domain != old_domain:
+            if page.custom_hostname_id:
+                # Remove the old hostname first
+                _cf_delete_custom_hostname(page.custom_hostname_id)
+
+            hostname_id, error = _cf_create_custom_hostname(new_domain)
+            if error:
+                messages.error(request, f'Could not register domain: {error}')
+                return render(request, 'builder/manage_domains.html', {'page': page})
+
+            page.custom_domain = new_domain
+            page.custom_hostname_id = hostname_id
+            page.custom_hostname_status = 'pending'
+            page.custom_hostname_ssl_status = 'pending'
+            page.is_custom_domain_active = is_active
+            page.save()
+
+            messages.success(
+                request,
+                'Domain saved. Add the CNAME records below at your registrar. '
+                'SSL will be issued automatically once DNS is verified.'
+            )
         else:
-            messages.info(request, 'Custom domain removed. Using subdomain.')
-        
-        return redirect('manage_domains', subdomain=subdomain)
-    
-    return render(request, 'builder/manage_domains.html', {
-        'page': page,
+            # Domain unchanged — just toggle active flag
+            page.is_custom_domain_active = is_active
+            page.save(update_fields=['is_custom_domain_active'])
+            messages.success(request, 'Domain settings updated.')
+
+        return redirect('manage_domains', subdomain=page.subdomain)
+
+    return render(request, 'builder/manage_domains.html', {'page': page})
+
+
+# ============================================================
+# Refresh domain status — AJAX endpoint called by the template
+# ============================================================
+@login_required
+@require_POST
+def refresh_domain_status(request, subdomain):
+    page = get_object_or_404(PublishedPage, subdomain=subdomain, user=request.user)
+
+    if not page.custom_hostname_id:
+        return JsonResponse({'success': False, 'error': 'No custom domain configured.'})
+
+    _sync_status(page)
+
+    status = page.custom_hostname_status or 'pending'
+    ssl = page.custom_hostname_ssl_status or 'pending'
+    return JsonResponse({
+        'success': True,
+        'status': status,
+        'ssl_status': ssl,
+        'ready': status == 'active' and ssl == 'active',
     })
 
 @login_required
@@ -1426,6 +1589,60 @@ def domains_page(request, subdomain):
         'domain_limits': limits['domains'],
         'SITE_DOMAIN': getattr(settings, 'SITE_DOMAIN', 'bynup.store'),
     })
+
+import requests
+import os
+
+def register_custom_domain(user_domain):
+    zone_id = os.environ.get('CLOUDFLARE_ZONE_ID')
+    api_token = os.environ.get('CLOUDFLARE_API_TOKEN')
+    
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/custom_hostnames"
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
+    }
+    
+    # We use 'http' validation method so the user doesn't need to add a TXT record.
+    # Cloudflare will verify ownership by checking the user's CNAME points to us.
+    payload = {
+        "hostname": user_domain,
+        "ssl": {
+            "method": "http",
+            "type": "dv"
+        }
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    
+    if data.get('success'):
+        # Save the custom hostname ID to your database for status polling
+        return data['result']['id']
+    else:
+        # Handle errors (e.g., domain already registered)
+        return None
+
+
+
+def check_domain_status(custom_hostname_id):
+    zone_id = os.environ.get('CLOUDFLARE_ZONE_ID')
+    api_token = os.environ.get('CLOUDFLARE_API_TOKEN')
+    
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/custom_hostnames/{custom_hostname_id}"
+    headers = {"Authorization": f"Bearer {api_token}"}
+    
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    
+    if data.get('success'):
+        result = data['result']
+        status = result.get('status')       # Should be 'active'
+        ssl_status = result.get('ssl', {}).get('status') # Should be 'active'
+        
+        if status == 'active' and ssl_status == 'active':
+            return True # Domain is fully ready
+    return False
 
 # ============================================================
 # DOMAIN PAYMENT FLOW

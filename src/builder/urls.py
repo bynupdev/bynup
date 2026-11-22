@@ -311,7 +311,9 @@ path('api/delete-video-customization/<str:subdomain>/',
 
 
         # Domain management
-         path('domains/<str:subdomain>/', views.domains_page, name='domains_page'),
+     path('domains/<str:subdomain>/', views.domains_page, name='domains_page'),
+     path('manage-domains/<slug:subdomain>/', views.manage_domains, name='manage_domains'),
+    path('manage-domains/<slug:subdomain>/refresh/', views.refresh_domain_status, name='refresh_domain_status'),
     path('domains/search/<str:subdomain>/', views.search_domain, name='search_domain'),
     path('api/onboarding/check-domain/', views.onboarding_search_domain, name='onboarding_check_domain'),
     path('domains/request/<str:subdomain>/', views.request_domain, name='request_domain'),

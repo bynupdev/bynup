@@ -22,7 +22,11 @@
     --accent-hover: #000000;
 
     --success: #15803d;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
     --warning: #a16207;
+    --warning-bg: #fefce8;
+    --warning-border: #fde68a;
     --danger: #b91c1c;
 
     --border: var(--n-200);
@@ -156,6 +160,11 @@
     color: white;
 }
 
+.btn-sm {
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.75rem;
+}
+
 /* ===== Panels ===== */
 .panel {
     background: var(--n-0);
@@ -231,13 +240,22 @@
 }
 
 .info-strip.warn {
-    background: #fefce8;
-    border-color: #fde68a;
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
     color: #78350f;
 }
 
 .info-strip.warn svg { color: var(--warning); }
 .info-strip.warn strong { color: #78350f; }
+
+.info-strip.success {
+    background: var(--success-bg);
+    border-color: var(--success-border);
+    color: #14532d;
+}
+
+.info-strip.success svg { color: var(--success); }
+.info-strip.success strong { color: #14532d; }
 
 /* ===== Domain blocks ===== */
 .domain-blocks {
@@ -305,6 +323,25 @@
     border-radius: 50%;
     background: currentColor;
     flex-shrink: 0;
+}
+
+.status-chip.pending {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+.status-chip.pending::before {
+    animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+.status-chip.inactive {
+    background: var(--n-100);
+    color: var(--text-muted);
 }
 
 .domain-block-help {
@@ -501,6 +538,23 @@
     word-break: break-all;
 }
 
+.dns-copy-btn {
+    background: transparent;
+    border: 0;
+    padding: 2px;
+    margin-left: 0.25rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    vertical-align: middle;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.dns-copy-btn:hover {
+    color: var(--text);
+    background: var(--n-100);
+}
+
 /* ===== Sticky footer ===== */
 .form-footer {
     position: sticky;
@@ -653,7 +707,7 @@
         <!-- Messages -->
         {% if messages %}
         {% for message in messages %}
-        <div class="info-strip {% if message.tags == 'error' %}warn{% endif %}" style="margin-bottom: 1rem;">
+        <div class="info-strip {% if message.tags == 'error' %}warn{% elif message.tags == 'success' %}success{% endif %}" style="margin-bottom: 1rem;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 {% if message.tags == 'error' %}
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>
@@ -680,18 +734,41 @@
                     <div class="domain-block">
                         <span class="domain-block-label">Subdomain</span>
                         <div class="code-block">
-                            <span class="code-block-text">{{ page.subdomain }}.yourdomain.store</span>
+                            <span class="code-block-text">{{ page.subdomain }}.bynup.store</span>
                             <span class="status-chip">Always active</span>
                         </div>
                         <p class="domain-block-help">Your default website address.</p>
                     </div>
 
                     <div class="domain-block">
-                        <span class="domain-block-label">Development URL</span>
+                        <span class="domain-block-label">Custom domain</span>
                         <div class="code-block">
-                            <span class="code-block-text">{{ page.subdomain }}.localhost:8000</span>
+                            <span class="code-block-text">
+                                {% if page.custom_domain and page.is_custom_domain_active %}
+                                    {{ page.custom_domain }}
+                                {% elif page.custom_domain %}
+                                    {{ page.custom_domain }}
+                                {% else %}
+                                    Not configured
+                                {% endif %}
+                            </span>
+                            {% if page.custom_domain %}
+                                {% if page.custom_hostname_status == 'active' and page.custom_hostname_ssl_status == 'active' %}
+                                    <span class="status-chip">Active</span>
+                                {% elif page.custom_hostname_status == 'active' %}
+                                    <span class="status-chip pending">SSL pending</span>
+                                {% else %}
+                                    <span class="status-chip pending">Verifying</span>
+                                {% endif %}
+                            {% endif %}
                         </div>
-                        <p class="domain-block-help">For testing during development.</p>
+                        <p class="domain-block-help">
+                            {% if page.custom_domain %}
+                                Your public custom domain.
+                            {% else %}
+                                Add a custom domain below to activate.
+                            {% endif %}
+                        </p>
                     </div>
 
                 </div>
@@ -719,11 +796,11 @@
                                    class="form-control"
                                    id="custom_domain"
                                    name="custom_domain"
-                                   placeholder="mystore.store"
+                                   placeholder="mystore.com"
                                    value="{{ page.custom_domain|default:'' }}">
                         </div>
                         <div class="field-help">
-                            Enter without <code>http://</code>. E.g., <code>mystore.store</code> or <code>www.mystore.store</code>.
+                            Enter without <code>http://</code>. E.g., <code>mystore.com</code> or <code>www.mystore.com</code>.
                         </div>
                     </div>
 
@@ -765,48 +842,84 @@
             </div>
         </div>
 
+        <!-- Custom domain verification status -->
+        {% if page.custom_domain %}
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2 class="panel-title">Custom domain status</h2>
+                    <p class="panel-sub">Live verification from Cloudflare</p>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" id="refreshStatusBtn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                        <path d="M21 3v6h-6"/>
+                    </svg>
+                    <span>Refresh</span>
+                </button>
+            </div>
+            <div class="panel-body">
+
+                {% if page.custom_hostname_status == 'active' and page.custom_hostname_ssl_status == 'active' %}
+                <div class="info-strip success" style="margin-bottom: 0;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    <span>
+                        <strong>Your custom domain is live.</strong>
+                        Visitors can now reach your store at <code>https://{{ page.custom_domain }}</code>.
+                    </span>
+                </div>
+                {% else %}
+                <div class="info-strip warn" style="margin-bottom: 1rem;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>
+                        <strong>Verification in progress.</strong>
+                        Add the DNS records below at your registrar. Once Cloudflare verifies the CNAME, your SSL certificate will be issued automatically.
+                    </span>
+                </div>
+
+                <div class="domain-blocks">
+                    <div class="domain-block">
+                        <span class="domain-block-label">Domain status</span>
+                        <div class="code-block">
+                            <span class="code-block-text">{{ page.custom_hostname_status|default:"pending" }}</span>
+                            <span class="status-chip {% if page.custom_hostname_status != 'active' %}pending{% endif %}">
+                                {{ page.custom_hostname_status|default:"pending" }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="domain-block">
+                        <span class="domain-block-label">SSL status</span>
+                        <div class="code-block">
+                            <span class="code-block-text">{{ page.custom_hostname_ssl_status|default:"pending" }}</span>
+                            <span class="status-chip {% if page.custom_hostname_ssl_status != 'active' %}pending{% endif %}">
+                                {{ page.custom_hostname_ssl_status|default:"pending" }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+        {% endif %}
+
         <!-- DNS instructions -->
         <div class="panel">
             <div class="panel-head">
                 <div>
                     <h2 class="panel-title">DNS configuration</h2>
-                    <p class="panel-sub">Add these records with your domain provider</p>
+                    <p class="panel-sub">Add this record with your domain provider</p>
                 </div>
             </div>
             <div class="panel-body">
 
                 <div class="dns-section">
-                    <p class="dns-section-title">Root domain — mystore.store</p>
-                    <div class="dns-table-wrap">
-                        <table class="dns-table">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Name</th>
-                                    <th>Value</th>
-                                    <th>TTL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>A</code></td>
-                                    <td><code>@</code></td>
-                                    <td><code>YOUR_SERVER_IP</code></td>
-                                    <td><code>3600</code></td>
-                                </tr>
-                                <tr>
-                                    <td><code>CNAME</code></td>
-                                    <td><code>www</code></td>
-                                    <td><code>{{ page.subdomain }}.yourdomain.store</code></td>
-                                    <td><code>3600</code></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="dns-section">
-                    <p class="dns-section-title">Subdomain — shop.mystore.store</p>
+                    <p class="dns-section-title">Custom domain — {{ page.custom_domain|default:"mystore.com" }}</p>
                     <div class="dns-table-wrap">
                         <table class="dns-table">
                             <thead>
@@ -820,8 +933,50 @@
                             <tbody>
                                 <tr>
                                     <td><code>CNAME</code></td>
-                                    <td><code>shop</code></td>
-                                    <td><code>{{ page.subdomain }}.yourdomain.store</code></td>
+                                    <td>
+                                        <code>@</code>
+                                        <button type="button" class="dns-copy-btn" data-copy="@"
+                                                title="Copy">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <code>bynup.store</code>
+                                        <button type="button" class="dns-copy-btn" data-copy="bynup.store"
+                                                title="Copy">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                    <td><code>3600</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>CNAME</code></td>
+                                    <td>
+                                        <code>www</code>
+                                        <button type="button" class="dns-copy-btn" data-copy="www"
+                                                title="Copy">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <code>bynup.store</code>
+                                        <button type="button" class="dns-copy-btn" data-copy="bynup.store"
+                                                title="Copy">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </td>
                                     <td><code>3600</code></td>
                                 </tr>
                             </tbody>
@@ -829,13 +984,13 @@
                     </div>
                 </div>
 
-                <div class="info-strip" style="margin-top: 1rem;">
+                <div class="info-strip">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 16v-4M12 8h.01"/>
                     </svg>
                     <span>
-                        Replace <code>YOUR_SERVER_IP</code> with your actual server IP address.
+                        If you use Cloudflare or another proxy, set the proxy status to <strong>DNS only</strong> during verification, then switch to proxied after SSL is issued.
                     </span>
                 </div>
 
@@ -906,25 +1061,88 @@ document.addEventListener('DOMContentLoaded', function () {
             e.target.value = value;
         });
     }
+
+    /* ============ Copy-to-clipboard for DNS rows ============ */
+    document.querySelectorAll('.dns-copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const value = btn.getAttribute('data-copy');
+            if (!value) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(function () {
+                    showNotification('Copied "' + value + '"');
+                }).catch(function () {
+                    showNotification('Could not copy', 'error');
+                });
+            } else {
+                const tmp = document.createElement('textarea');
+                tmp.value = value;
+                document.body.appendChild(tmp);
+                tmp.select();
+                try {
+                    document.execCommand('copy');
+                    showNotification('Copied "' + value + '"');
+                } catch (e) {
+                    showNotification('Could not copy', 'error');
+                }
+                document.body.removeChild(tmp);
+            }
+        });
+    });
+
+    /* ============ Refresh verification status ============ */
+    const refreshBtn = document.getElementById('refreshStatusBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+            refreshBtn.disabled = true;
+            const span = refreshBtn.querySelector('span');
+            const original = span ? span.textContent : '';
+            if (span) span.textContent = 'Refreshing…';
+
+            fetch('{% url "refresh_domain_status" subdomain=page.subdomain %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    showNotification('Status refreshed: ' + data.status);
+                    setTimeout(function () { window.location.reload(); }, 700);
+                } else {
+                    showNotification(data.error || 'Could not refresh status', 'error');
+                }
+            })
+            .catch(function () {
+                showNotification('Network error', 'error');
+            })
+            .finally(function () {
+                refreshBtn.disabled = false;
+                if (span) span.textContent = original;
+            });
+        });
+    }
 });
 
-/* ============ Toast helper (kept for potential AJAX use) ============ */
-function showNotification(message, type = 'success') {
+/* ============ Toast helper ============ */
+function showNotification(message, type) {
+    type = type || 'success';
     const stack = document.getElementById('toastStack');
     if (!stack) return;
 
     const el = document.createElement('div');
-    el.className = `toast ${type === 'error' ? 'error' : ''}`;
+    el.className = 'toast ' + (type === 'error' ? 'error' : '');
     const icon = type === 'error'
         ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'
         : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    el.innerHTML = `${icon}<span>${message}</span>`;
+    el.innerHTML = icon + '<span>' + message + '</span>';
     stack.appendChild(el);
-    setTimeout(() => {
+    setTimeout(function () {
         el.style.transition = 'opacity 0.2s, transform 0.2s';
         el.style.opacity = '0';
         el.style.transform = 'translateY(-8px)';
-        setTimeout(() => el.remove(), 200);
+        setTimeout(function () { el.remove(); }, 200);
     }, 4000);
 }
 </script>
