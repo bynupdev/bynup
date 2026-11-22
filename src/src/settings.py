@@ -72,6 +72,7 @@ ALLOWED_HOSTS = [
     RENDER_DOMAIN,
     'localhost',
     '127.0.0.1',
+    '.bynup.store',
     '.onrender.com',  # Allow all Render subdomains
     '*',  # Temporarily keep this if needed, but better to specify exact domains
 ]
@@ -118,6 +119,7 @@ if not DEBUG:
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SAMESITE = 'Lax'
     SECURE_SSL_REDIRECT = True
+    USE_X_FORWARDED_HOST = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -190,6 +192,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'builder.middleware.CustomDomainMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware', #For static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',

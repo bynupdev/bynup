@@ -70,7 +70,17 @@ class SubdomainMiddleware:
         
 
 
+# middleware.py
+class CustomDomainMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
 
+    def __call__(self, request):
+        original_host = request.META.get('HTTP_X_ORIGINAL_HOST')
+        if original_host:
+            request.META['HTTP_HOST'] = original_host
+            request.META['SERVER_NAME'] = original_host
+        return self.get_response(request)
 
 
 # builder/middleware.py
