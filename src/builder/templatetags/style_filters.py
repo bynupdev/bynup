@@ -342,8 +342,15 @@ def generate_section_styles(style_customizations, start=1, end=1000):
             
         # Filter out non-style keys and empty values for normal state
         normal_styles = {}
-        excluded_keys = ['hover', 'hover_animation', 'hover_settings', 'text_opacity_children']
-        
+        excluded_keys = [
+            'hover',
+            'hover_animation',
+            'hover_settings',
+            'text_opacity_children',
+            '_apply_to_descendants',
+            '_class',
+            'custom_css'
+        ]        
         for key, value in section_styles.items():
             if key in excluded_keys:
                 continue
@@ -354,10 +361,53 @@ def generate_section_styles(style_customizations, start=1, end=1000):
         if normal_styles:
             normal_css = f"#section-{section_id} {{\n"
             for key, value in normal_styles.items():
-                css_property = key.replace('_', '-')
+                css_property = 'color' if key == 'text_color' else key.replace('_', '-')                
                 normal_css += f"    {css_property}: {value};\n"
             normal_css += "}\n"
             css_rules.append(normal_css)
+
+        # ==========================================
+        # APPLY PARENT STYLES TO ALL DESCENDANTS
+        # ==========================================
+
+        apply_to_descendants = section_styles.get(
+            '_apply_to_descendants',
+            False
+        )
+
+        if apply_to_descendants:
+
+            descendant_styles = {}
+
+            for key, value in section_styles.items():
+
+                if key in excluded_keys:
+                    continue
+
+                if key.startswith('_'):
+                    continue
+
+                if not isinstance(value, str) or not value.strip():
+                    continue
+
+                css_property = 'color' if key == 'text_color' else key.replace('_', '-')
+                descendant_styles[css_property] = value
+
+            if descendant_styles:
+
+                descendant_css = (
+                    f"#section-{section_id}#section-{section_id} * {{\n"
+                )
+
+                for prop, value in descendant_styles.items():
+
+                    descendant_css += (
+                        f"    {prop}: {value} !important;\n"
+                    )
+
+                descendant_css += "}\n"
+
+                css_rules.append(descendant_css)
 
         # ===== NEW: Generate custom CSS =====
         custom_css = section_styles.get('custom_css', '')
@@ -603,7 +653,7 @@ def generate_component_styles(component_customizations):
                     selector = f'[data-instance-id="{instance_id}"] [data-section="{element_id}"]'
                     css = f"{selector} {{\n"
                     for key, value in normal_styles.items():
-                        css_property = key.replace('_', '-')
+                        css_property = 'color' if key == 'text_color' else key.replace('_', '-')
                         css += f"    {css_property}: {value};\n"
                     css += "}\n"
                     css_rules.append(css)

@@ -68,7 +68,9 @@ from builder.utils.media_replacements import apply_media_replacements, inject_pu
 import os as _os
 import re as _re
 
-
+def _css_prop(prop):
+    """Map model field names to real CSS property names."""
+    return {'text_color': 'color'}.get(prop, prop.replace('_', '-'))
 # ────────────────────────────────────────────────────────────
 # 1. MEDIA REPLACEMENT HELPERS (video-in-place-of-image)
 # ────────────────────────────────────────────────────────────
@@ -2071,8 +2073,7 @@ def _apply_customizations_to_injected(html,
     if not html:
         return html
 
-    prefix = f'[data-injected-id="{instance_uid}"] ' if instance_uid else ''
-
+    prefix = f'#{instance_uid} ' if instance_uid else ''
     # ---------- Text ----------
     def apply_text(m):
         whole = m.group(0)
@@ -2109,37 +2110,88 @@ def _apply_customizations_to_injected(html,
         for prop, val in styles.items():
             if not val or not isinstance(val, str):
                 continue
-            if prop in ('hover', 'hover_animation', 'hover_settings',
-                        'text_opacity_children', '_class'):
-                continue
-            css_prop = prop.replace('_', '-')
+            if prop in (
+                'hover',
+                'hover_animation',
+                'hover_settings',
+                'text_opacity',
+                'text_opacity_children',
+                '_class',
+                '_apply_to_descendants',
+                'custom_css'
+            ):
+                continue                
+                
+                
+            css_prop = _css_prop(prop)
             decls.append(f"  {css_prop}: {val} !important;")
         if decls:
+            sel = f'{prefix}#section-{sid}'
+            if instance_uid:
+                # comma-group the link-clone identity so cloned anchors keep their styling
+                sel += f', {prefix}#section-linkclone-inj-{sid}'
             style_rules.append(
-                f'{prefix}[data-section="{sid}"] {{\n' + '\n'.join(decls) + '\n}'
+                f'{sel} {{\n' + '\n'.join(decls) + '\n}'
             )
 
     # Class-based style rules
     for sid, styles in (style_customizations or {}).items():
         if not isinstance(styles, dict):
             continue
-        target_class = styles.get('_class')
-        if not target_class:
-            continue
         decls = []
         for prop, val in styles.items():
             if prop.startswith('_') or not val or not isinstance(val, str):
                 continue
-            css_prop = prop.replace('_', '-')
+            css_prop = _css_prop(prop)
             decls.append(f"  {css_prop}: {val} !important;")
-        if decls:
-            style_rules.append(
-                f'{prefix}.{target_class} {{\n' + '\n'.join(decls) + '\n}'
-            )
 
     if style_rules:
         html = html + "\n<style>\n" + "\n".join(style_rules) + "\n</style>"
+    # ==========================================
+    # PROPAGATE STYLES TO ALL DESCENDANTS
+    # ==========================================
 
+    if styles.get('_apply_to_descendants', False):
+
+        descendant_decls = []
+
+        for prop, val in styles.items():
+
+            if prop.startswith('_'):
+                continue
+
+            if prop in (
+                'hover',
+                'hover_animation',
+                'hover_settings',
+                'text_opacity',
+                'text_opacity_children',
+                'custom_css'
+            ):
+                continue
+
+            if not isinstance(val, str) or not val.strip():
+                continue
+
+            css_prop = _css_prop(prop)
+
+            descendant_decls.append(
+                f" {css_prop}: {val} !important;"
+            )
+
+        if descendant_decls:
+
+            descendant_selector = (
+                f'{prefix}#section-{sid}'
+                f'#section-{sid} *'
+            )
+
+            style_rules.append(
+                f'{descendant_selector} {{\n'
+                + '\n'.join(descendant_decls)
+                + '\n}'
+            )
+        
     # ---------- Background images ----------
     bg_rules = []
     for bid, bg in (background_images or {}).items():
@@ -2153,7 +2205,7 @@ def _apply_customizations_to_injected(html,
         if not url:
             continue
         bg_rules.append(
-            f'{prefix}[data-section="{bid}"] {{\n'
+            f'{prefix}#section-{bid} {{\n'
             f'  background-image: url("{url}") !important;\n'
             f'  background-size: cover !important;\n'
             f'  background-position: center !important;\n'
@@ -2504,17 +2556,14 @@ def _inject_components_into_html(rendered_html,
                 # ✅ Give the wrapper a stable anchor id so #section-N links
                 #    from other pages can jump to it.
                 raw_id = str(inj_entry.get('id') or '')
-                slug = raw_id
-                if slug.startswith('inj_'):
-                    slug = slug[4:]
-                slug = ''.join(c for c in slug if c.isalnum() or c in '-_')
-
-                if slug:
-                    anchor_id = f'section-{slug}'
+                if raw_id:
+                    slug = raw_id[4:] if raw_id.startswith('inj_') else raw_id
+                    slug = ''.join(c for c in slug if c.isalnum() or c in '-_')
                     inj_html = (
-                        f'<div id="{anchor_id}" '
+                        f'<div id="{raw_id}" '
                         f'class="injected-section" '
                         f'data-injected-id="{raw_id}">'
+                        f'<span id="section-{slug}" class="injected-anchor"></span>'
                         f'{inj_html}</div>'
                     )
                 # else leave inj_html unchanged
@@ -3616,14 +3665,6 @@ def public_page(request):
     # and drop orphaned rules from deleted components whose
     # classes happen to collide with a live component.
     # ============================================================
-    _orphan_class_candidates = []
-    for id_str, styles in (style_customizations or {}).items():
-        if not isinstance(styles, dict):
-            continue
-        target_class = styles.get('_class')
-        if not target_class:
-            continue
-        _orphan_class_candidates.append((str(id_str), target_class, styles))
 
 
     # ============================================================
@@ -3631,43 +3672,6 @@ def public_page(request):
     # still exists in the final HTML. Orphaned deleted
     # components' class rules are dropped here.
     # ============================================================
-    final_class_css = []
-    for id_str, target_class, styles in _orphan_class_candidates:
-        # Skip if the ID doesn't appear anywhere in the rendered HTML
-        if (
-            f'data-section="{id_str}"' not in html and
-            f'data-text="{id_str}"' not in html and
-            f'data-image="{id_str}"' not in html and
-            f'data-icon="{id_str}"' not in html and
-            f'data-instance-id="{id_str}"' not in html and
-            f'data-iframe="{id_str}"' not in html and
-            f'data-video="{id_str}"' not in html
-        ):
-            continue  # ← orphaned — drop this class rule entirely
-
-        rules = [f'.{target_class} {{']
-        for prop, value in styles.items():
-            if prop.startswith('_'):
-                continue
-            if not value or not isinstance(value, str):
-                continue
-            css_prop = prop.replace('_', '-')
-            rules.append(f'  {css_prop}: {value} !important;')
-        rules.append('}')
-        if len(rules) > 2:
-            final_class_css.append('\n'.join(rules))
-
-    if final_class_css:
-        class_css = '\n'.join(final_class_css)
-        if '</head>' in html:
-            html = html.replace(
-                '</head>',
-                f'<style id="dynamic-class-styles">{class_css}</style></head>',
-                1
-            )
-        else:
-            html = f'<style id="dynamic-class-styles">{class_css}</style>' + html
-
     # ============================================================
     # 5. Smooth-scroll for #section-N links
     # ============================================================
@@ -3848,7 +3852,7 @@ def apply_component_customizations(html_content, customizations, background_imag
                     style_parts = []
                     for prop, value in styles.items():
                         if value and value.strip():
-                            css_prop = prop.replace('_', '-')
+                            css_prop = _css_prop(prop)
                             style_parts.append(f'{css_prop}: {value}')
                     
                     if not style_parts:
@@ -3946,7 +3950,7 @@ def generate_component_styles(component_customizations):
             
             for prop, value in customizations['styles'].items():
                 if value:  # Only add non-empty values
-                    css_prop = prop.replace('_', '-')
+                    css_prop = _css_prop(prop)
                     style_rules.append(f'{css_prop}: {value};')
             
             if style_rules:
@@ -9251,55 +9255,6 @@ def product_detail_page(request, product_slug):
     # Then cosmetic CSS injection
     from builder.utils.media_replacements import inject_public_css
     html = inject_public_css(html)
-    # ============================================================
-    # 14d. Emit class-scoped CSS for style customizations that
-    # carry a `_class` field. Matches public_page() exactly.
-    # Drops orphaned rules from deleted components whose classes
-    # happen to collide with a live component.
-    # ============================================================
-    _orphan_class_candidates = []
-    for id_str, styles in (style_customizations or {}).items():
-        if not isinstance(styles, dict):
-            continue
-        target_class = styles.get('_class')
-        if not target_class:
-            continue
-        _orphan_class_candidates.append((str(id_str), target_class, styles))
-
-    final_class_css = []
-    for id_str, target_class, styles in _orphan_class_candidates:
-        if (
-            f'data-section="{id_str}"' not in html and
-            f'data-text="{id_str}"' not in html and
-            f'data-image="{id_str}"' not in html and
-            f'data-icon="{id_str}"' not in html and
-            f'data-instance-id="{id_str}"' not in html and
-            f'data-iframe="{id_str}"' not in html and
-            f'data-video="{id_str}"' not in html
-        ):
-            continue
-        rules = [f'.{target_class} {{']
-        for prop, value in styles.items():
-            if prop.startswith('_'):
-                continue
-            if not value or not isinstance(value, str):
-                continue
-            css_prop = prop.replace('_', '-')
-            rules.append(f' {css_prop}: {value} !important;')
-        rules.append('}')
-        if len(rules) > 2:
-            final_class_css.append('\n'.join(rules))
-
-    if final_class_css:
-        class_css = '\n'.join(final_class_css)
-        if '</head>' in html:
-            html = html.replace(
-                '</head>',
-                f'<style id="dynamic-class-styles">{class_css}</style></head>',
-                1
-            )
-        else:
-            html = f'<style id="dynamic-class-styles">{class_css}</style>' + html
 
     # ============================================================
     # 14e. Smooth-scroll for #section-N links (matches public_page)

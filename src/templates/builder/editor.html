@@ -6678,6 +6678,21 @@ body.dragging-element .drop-zone[data-zone-type="element"] {
     .simple-tour-actions > div { width: 100%; }
     .simple-tour-btn-primary, .simple-tour-btn-secondary { width: 100%; justify-content: center; }
 }
+.sb-descendant-style-option {
+    padding: 12px;
+    margin: 12px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.sb-descendant-style-option small {
+    display: block;
+    margin: 6px 0 0 25px;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.5;
+}
 </style>
 </head>
 <body>
@@ -13733,6 +13748,24 @@ setupLinkEditor() {
        ============================================================ */
             _getFullStyleControlsHTML() {
         return `
+                <!-- APPLY STYLES TO DESCENDANTS -->
+                <div class="sb-descendant-style-option">
+                    <label class="sb-check">
+                        <input
+                            type="checkbox"
+                            id="applyStylesToDescendants"
+                        >
+
+                        <span>
+                            Apply styles to all children
+                        </span>
+                    </label>
+
+                    <small>
+                        Automatically apply changed styles to every
+                        child and nested element.
+                    </small>
+                </div>
             <!-- ============ SECTION: BACKGROUND ============ -->
             <div class="sb-section">
                 <div class="sb-header" data-section="background">
@@ -14728,11 +14761,56 @@ setupLinkEditor() {
         }
 
         // ---- RESET ALL STYLES ----
-        $('resetStyles')?.addEventListener('click', () => this.resetAllStyles());
+// ---- RESET ALL STYLES ----
 
-        // ---- HOVER EFFECTS (inside Design tab accordion) ----
-        this.setupHoverControls();
+$('resetStyles')?.addEventListener('click', () => this.resetAllStyles());
+
+
+// ---- APPLY STYLES TO ALL DESCENDANTS ----
+
+
+document.getElementById(
+    'applyStylesToDescendants'
+)?.addEventListener('change', (e) => {
+
+    if (!this.currentSelectedElement) return;
+
+    const id = this.extractNumericId(
+        this.currentSelectedElementId
+    );
+
+    const ns = this._getCustomizationNamespace(
+        this.currentSelectedElement
+    );
+
+    const dict = ns.scope === 'entry'
+        ? (ns.entry.style_customizations =
+            ns.entry.style_customizations || {})
+        : (this.styleCustomizations =
+            this.styleCustomizations || {});
+
+    if (!dict[id]) dict[id] = {};
+
+    dict[id]._apply_to_descendants = e.target.checked;
+
+    if (e.target.checked) {
+        this.applyStylesToDescendantSections(
+            this.currentSelectedElement,
+            dict[id]
+        );
     }
+
+    this._bumpChanges('descendant styling');
+    this.showAutoSaveIndicator();
+});
+
+
+// ---- HOVER EFFECTS (inside Design tab accordion) ----
+
+this.setupHoverControls();
+
+
+}
 
     /* ============================================================
        DIMENSIONS CONTROLS — full original
@@ -16392,7 +16470,203 @@ _clearMediaReplacementForImage(elementId) {
     /* ============================================================
        APPLY / LOAD STYLES
        ============================================================ */
-    applyStyle(prop, value) {
+    getApplyStylesToDescendants() {
+    return document.getElementById(
+        'applyStylesToDescendants'
+    )?.checked || false;
+}
+
+
+applyStyleToAllDescendants(element, property, value) {
+
+    if (!element) return;
+
+    const win = this.getTemplateWindow();
+
+    const doc = this.getTemplateDocument();
+
+    if (!win || !doc) return;
+
+    // Get every nested element
+    const descendants = element.querySelectorAll('*');
+
+    descendants.forEach(child => {
+
+        child.style.setProperty(
+            property,
+            value,
+            'important'
+        );
+
+    });
+
+}
+
+applyDescendantStylesToIframe(element, styles, enabled = true) {
+
+    if (!element || !styles) return;
+
+    const doc = this.getTemplateDocument();
+
+    if (!doc) return;
+
+    const id = element.dataset.section ||
+               element.dataset.text ||
+               this.extractNumericId(this.currentSelectedElementId);
+
+    if (!id) return;
+
+    const ns = this._getCustomizationNamespace(element);
+
+    const wrapperPrefix = ns.scope === 'entry'
+        ? `[data-injected-id="${ns.wrapperId}"] `
+        : '';
+
+    const selector = wrapperPrefix +
+        `#section-${id}#section-${id} *`;
+
+    const styleId = `descendant-style-${id}-${ns.wrapperId || 'page'}`
+        .replace(/[^a-zA-Z0-9-_]/g, '-');
+
+    let tag = doc.getElementById(styleId);
+
+    if (!enabled) {
+        tag?.remove();
+        return;
+    }
+
+    if (!tag) {
+        tag = doc.createElement('style');
+        tag.id = styleId;
+        tag.setAttribute('data-editor-generated', 'true');
+        doc.head.appendChild(tag);
+    }
+
+    const excluded = [
+        'hover',
+        'hover_animation',
+        'hover_settings',
+        'text_opacity',
+        'text_opacity_children',
+        'custom_css',
+        '_class',
+        '_apply_to_descendants'
+    ];
+
+    let css = `${selector} {\n`;
+
+    Object.entries(styles).forEach(([prop, value]) => {
+
+        if (excluded.includes(prop)) return;
+        if (prop.startsWith('_')) return;
+        if (typeof value !== 'string' || !value.trim()) return;
+
+        const cssProp = prop.replace(/_/g, '-');
+
+        css += `  ${cssProp}: ${value} !important;\n`;
+
+    });
+
+    css += '}';
+
+    tag.textContent = css;
+
+}
+
+    
+
+
+applyStylesToDescendantSections(parentElement, parentStyles) {
+    if (!parentElement || !parentStyles) return;
+
+    // Find actual nested sections in the editor preview.
+    const descendants = parentElement.querySelectorAll(
+        '.editable-section[data-section]'
+    );
+
+    const excluded = new Set([
+        '_class',
+        '_apply_to_descendants',
+        'hover',
+        'hover_animation',
+        'hover_settings',
+        'custom_css',
+        'text_opacity',
+        'text_opacity_children'
+    ]);
+
+    descendants.forEach(child => {
+        const childId = String(child.dataset.section || '').trim();
+        if (!childId) return;
+
+        // Determine the correct storage namespace.
+        const ns = this._getCustomizationNamespace(child);
+
+        const dict = ns.scope === 'entry'
+            ? (ns.entry.style_customizations =
+                ns.entry.style_customizations || {})
+            : (this.styleCustomizations =
+                this.styleCustomizations || {});
+
+        if (!dict[childId]) {
+            dict[childId] = {};
+        }
+
+        // Copy the parent's actual CSS customizations
+        // into this child's independent customization record.
+        Object.entries(parentStyles).forEach(([prop, value]) => {
+            if (excluded.has(prop) || prop.startsWith('_')) return;
+
+            if (
+                value === null ||
+                value === undefined ||
+                (typeof value === 'string' && !value.trim())
+            ) return;
+
+            dict[childId][prop] = value;
+        });
+
+        // Apply the copied styles to the child section itself.
+        const selector = this.getElementSelector(child);
+        if (!selector) return;
+
+        const wrapperPrefix = ns.scope === 'entry'
+            ? `[data-injected-id="${ns.wrapperId}"] `
+            : '';
+
+        const styleId = (
+            `editor-style-${ns.wrapperId || 'page'}-${childId}`
+        ).replace(/[^a-zA-Z0-9-_]/g, '-');
+
+        const tag = this.getOrCreateStyleTag(styleId);
+        if (!tag) return;
+
+        Object.entries(parentStyles).forEach(([prop, value]) => {
+            if (excluded.has(prop) || prop.startsWith('_')) return;
+
+            if (
+                value === null ||
+                value === undefined ||
+                (typeof value === 'string' && !value.trim())
+            ) return;
+
+            const cssProp = prop
+                .replace(/_/g, '-')
+                .replace(/([A-Z])/g, '-$1')
+                .toLowerCase();
+
+            this.updateStyleTagRule(
+                tag,
+                wrapperPrefix + selector,
+                cssProp,
+                value
+            );
+        });
+    });
+}
+
+
+applyStyle(prop, value) {
         if (!this.currentSelectedElement || !this.realTimePreview) return;
         const elementId = this.currentSelectedElementId;
         if (!elementId) return;
@@ -16415,7 +16689,31 @@ _clearMediaReplacementForImage(elementId) {
         // Save for publishing
         // Save for publishing
         this.saveStyleCustomization(cssProp, value);
+        // Apply the same changed property to all descendants
+        // Copy the parent's updated styles to descendant sections
+if (this.getApplyStylesToDescendants()) {
 
+    const id = this.extractNumericId(
+        this.currentSelectedElementId
+    );
+
+    const ns = this._getCustomizationNamespace(
+        this.currentSelectedElement
+    );
+
+    const dict = ns.scope === 'entry'
+        ? ns.entry.style_customizations
+        : this.styleCustomizations;
+
+    if (dict?.[id]) {
+        dict[id]._apply_to_descendants = true;
+
+        this.applyStylesToDescendantSections(
+            this.currentSelectedElement,
+            dict[id]
+        );
+    }
+}
         // Debounce: a slider drag should produce ONE history entry
         // Debounce: a slider drag should produce ONE history entry
         clearTimeout(this._styleSnapTimer);
@@ -16560,6 +16858,14 @@ _clearMediaReplacementForImage(elementId) {
     }, 400);
 
     this.showAutoSaveIndicator();
+    // Save whether descendant styling is enabled
+const toggle = document.getElementById(
+    'applyStylesToDescendants'
+);
+
+dict[id]._apply_to_descendants =
+    toggle?.checked || false;
+
 }
         loadCurrentStylesFromElement() {
         if (!this.currentSelectedElement) return;
@@ -16655,7 +16961,31 @@ _clearMediaReplacementForImage(elementId) {
                 b.classList.toggle('active', (b.dataset.justify || '') === jVal);
             });
         }
-    
+        
+        // ---- RESTORE APPLY-TO-DESCENDANTS CHECKBOX STATE ----
+
+const descendantToggle = document.getElementById(
+    'applyStylesToDescendants'
+);
+
+if (descendantToggle) {
+
+    const id = this.extractNumericId(
+        this.currentSelectedElementId
+    );
+
+    const ns = this._getCustomizationNamespace(
+        this.currentSelectedElement
+    );
+
+    const dict = ns.scope === 'entry'
+        ? ns.entry.style_customizations
+        : this.styleCustomizations;
+
+    descendantToggle.checked =
+        dict?.[id]?._apply_to_descendants === true;
+
+}
         
         const dp = document.getElementById('displayProperty'); 
         if (dp) dp.value = saved.display || el.style.display || '';
@@ -18559,7 +18889,10 @@ _deepMerge(base, override) {
             if (!val) continue;
             if (['hover', 'text_opacity', 'text_opacity_children',
                  'hover_animation', 'hover_settings', '_class'].includes(prop)) continue;
-            if (prop === 'text_color') { textColor = val; continue; }
+            if (prop === 'text_color' || prop === 'text-color') {
+                    textColor = val;
+                    continue;
+                }
             const cssProp = prop.replace(/_/g, '-');
             cssBlock += `  ${cssProp}: ${val} !important;\n`;
         }
